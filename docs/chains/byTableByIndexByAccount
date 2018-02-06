@@ -1,0 +1,35 @@
+TEST: byTableByIndexByAccount
+
+account: ctx1
+
+     _DATA_HK_S
+     ________________________________________
+     | hk           | hashKeyField| someField|
+     |=======================================|
+     | ctx1.table1.1| 1           | value-1  |
+     | ctx1.table1.2| 2           | value-2  |
+     | ctx1.table2.1| 1           | value-1  |
+     | ctx1.table2.2| 2           | value-2  |
+
+     _TABLEMETADATA
+     ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+     | table           | data                                                                                                                                                                                                                                            |
+     |===================================================================================================================================================================================================================================================================|
+     | ctx1.ctx1.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx1.table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
+     | ctx1.ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx1.table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
+
+account: ctx2
+
+     _DATA_HK_S
+     ________________________________________
+     | hk           | hashKeyField| someField|
+     |=======================================|
+     | ctx2.table1.1| 1           | value-1  |
+     | ctx2.table1.2| 2           | value-2  |
+
+     _TABLEMETADATA
+     ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
+     | table           | data                                                                                                                                                                                                                                            |
+     |===================================================================================================================================================================================================================================================================|
+     | ctx2.ctx2.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx2.table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
+

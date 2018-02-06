@@ -1,0 +1,23 @@
+TEST: byTable
+
+     ctx1.table1
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+
+     ctx1.table2
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+
+     ctx2.table1
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+

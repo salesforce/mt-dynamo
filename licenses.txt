@@ -1,0 +1,36 @@
+#
+# List of libraries being used with version of library and the license of the library, ignoring test dependencies.
+#
+# Generated via https://github.com/pivotal/LicenseFinder as follows ...
+#
+#   license_finder ignored_groups add test
+#   license_finder
+#
+# 2-FEB-2017.
+#
+animal-sniffer-annotations, 1.14, MIT
+awaitility, 3.0.0, "Apache 2.0"
+aws-java-sdk-core, 1.11.251, "Apache 2.0"
+aws-java-sdk-dynamodb, 1.11.251, "Apache 2.0"
+aws-java-sdk-kms, 1.11.251, "Apache 2.0"
+aws-java-sdk-s3, 1.11.251, "Apache 2.0"
+commons-codec, 1.9, "Apache 2.0"
+commons-logging, 1.1.3, "Apache 2.0"
+error_prone_annotations, 2.0.18, "Apache 2.0"
+gson, 2.8.2, "Apache 2.0"
+guava, 23.0, "Apache 2.0"
+hamcrest-core, 1.3, "New BSD License"
+hamcrest-library, 1.3, "New BSD License"
+httpclient, 4.5.2, "Apache 2.0"
+httpcore, 4.4.4, "Apache 2.0"
+ion-java, 1.0.2, "Apache 2.0"
+j2objc-annotations, 1.1, "Apache 2.0"
+jackson-annotations, 2.6.0, "Apache 2.0"
+jackson-core, 2.6.7, "Apache 2.0"
+jackson-databind, 2.6.7.1, "Apache 2.0"
+jackson-dataformat-cbor, 2.6.7, "Apache 2.0"
+jmespath-java, 1.11.251, "Apache 2.0"
+joda-time, 2.8.1, "Apache 2.0"
+jsr305, 1.3.9, "Apache 2.0"
+objenesis, 2.5.1, "Apache 2.0"
+slf4j-api, 1.7.25, MIT

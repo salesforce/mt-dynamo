@@ -1,0 +1,16 @@
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Maven
+pom.properties
+release.properties
+target
+pom.xml.releaseBackup
+
+### Eclipse IDE ###
+.classpath
+.project
+.settings/
