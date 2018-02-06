@@ -75,12 +75,12 @@ For example, you may want to split your tenants across 2 AWS accounts.  Within t
 
 Below is a list of supported chaining sequences with a link to an example of how data looks in its persisted state for the configured chaining sequence.
 
- * [table -> account](docs/byTableAccount)
- * [index -> account](docs/byIndexAccount)
- * [table -> index](docs/byTableIndex)
- * [index -> table](docs/byIndexTable)
- * [table -> index -> account](docs/byTableIndexAccount)
- * [index -> table -> account](docs/byIndexTableAccount)
+ * [table -> account](docs/chains/byTableByAccount)
+ * [index -> account](docs/chains/byIndexByAccount)
+ * [table -> index](docs/chains/byTableByIndex)
+ * [index -> table](docs/chains/byIndexByTable)
+ * [table -> index -> account](docs/chains/byTableByIndexByAccount)
+ * [index -> table -> account](docs/chains/byIndexByTableByAccount)
 
 See `DocGeneratorRunner` for examples of how to configure builders for each of the chain sequences.
 
