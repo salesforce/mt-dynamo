@@ -1,0 +1,20 @@
+<!--
+  ~ Copyright (c) 2018, salesforce.com, inc.
+  ~ All rights reserved.
+  ~ Licensed under the BSD 3-Clause license.
+  ~ For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
+  -->
+
+<configuration>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %-20.30logger{3} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="info">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>

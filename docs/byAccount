@@ -1,0 +1,27 @@
+TEST: byAccount
+
+account: ctx1
+
+     table1
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+
+     table2
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+
+account: ctx2
+
+     table1
+     _________________________
+     | hashKeyField| someField|
+     |========================|
+     | 1           | value-1  |
+     | 2           | value-2  |
+
