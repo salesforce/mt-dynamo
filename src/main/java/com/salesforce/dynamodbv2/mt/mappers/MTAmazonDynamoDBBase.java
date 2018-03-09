@@ -110,48 +110,59 @@ public class MTAmazonDynamoDBBase implements AmazonDynamoDB {
         return mtContext;
     }
 
+    @Override
     @Deprecated
     public void setEndpoint(String endpoint) {
         throw new UnsupportedOperationException("deprecated");
     }
 
+    @Override
     @Deprecated
     public void setRegion(Region region) {
         throw new UnsupportedOperationException("deprecated");
     }
 
+    @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public BatchGetItemResult batchGetItem(Map<String, KeysAndAttributes> requestItems, String returnConsumedCapacity) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public BatchGetItemResult batchGetItem(Map<String, KeysAndAttributes> requestItems) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public BatchWriteItemResult batchWriteItem(BatchWriteItemRequest batchWriteItemRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public BatchWriteItemResult batchWriteItem(Map<String, List<WriteRequest>> requestItems) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public CreateGlobalTableResult createGlobalTable(CreateGlobalTableRequest createGlobalTableRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         return getAmazonDynamoDB().createTable(createTableRequest);
     }
 
+    @Override
     public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions, String tableName, List<KeySchemaElement> keySchema, ProvisionedThroughput provisionedThroughput) {
         return createTable(new CreateTableRequest()
                 .withAttributeDefinitions(attributeDefinitions)
@@ -160,78 +171,97 @@ public class MTAmazonDynamoDBBase implements AmazonDynamoDB {
                 .withProvisionedThroughput(provisionedThroughput));
     }
 
+    @Override
     public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         return getAmazonDynamoDB().deleteItem(deleteItemRequest);
     }
 
+    @Override
     public DeleteItemResult deleteItem(String tableName, Map<String, AttributeValue> key) {
         return deleteItem(new DeleteItemRequest().withTableName(tableName).withKey(key));
     }
 
+    @Override
     public DeleteItemResult deleteItem(String tableName, Map<String, AttributeValue> key, String returnValues) {
         return deleteItem(new DeleteItemRequest().withTableName(tableName).withKey(key).withReturnValues(returnValues));
     }
 
+    @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         return getAmazonDynamoDB().deleteTable(deleteTableRequest);
     }
 
+    @Override
     public DeleteTableResult deleteTable(String tableName) {
         return deleteTable(new DeleteTableRequest().withTableName(tableName));
     }
 
+    @Override
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public DescribeContinuousBackupsResult describeContinuousBackups(DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public DescribeGlobalTableResult describeGlobalTable(DescribeGlobalTableRequest describeGlobalTableRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public DescribeLimitsResult describeLimits(DescribeLimitsRequest describeLimitsRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         return getAmazonDynamoDB().describeTable(describeTableRequest);
     }
 
+    @Override
     public DescribeTableResult describeTable(String tableName) {
         return describeTable(new DescribeTableRequest().withTableName(tableName));
     }
 
+    @Override
     public DescribeTimeToLiveResult describeTimeToLive(DescribeTimeToLiveRequest describeTimeToLiveRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         return getAmazonDynamoDB().getItem(getItemRequest);
     }
 
+    @Override
     public GetItemResult getItem(String tableName, Map<String, AttributeValue> key) {
         return getItem(new GetItemRequest().withTableName(tableName).withKey(key));
     }
 
+    @Override
     public GetItemResult getItem(String tableName, Map<String, AttributeValue> key, Boolean consistentRead) {
         return getItem(new GetItemRequest().withTableName(tableName).withKey(key).withConsistentRead(consistentRead));
     }
 
+    @Override
     public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public ListGlobalTablesResult listGlobalTables(ListGlobalTablesRequest listGlobalTablesRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
@@ -295,49 +325,61 @@ public class MTAmazonDynamoDBBase implements AmazonDynamoDB {
         return scan(new ScanRequest().withTableName(tableName).withAttributesToGet(attributesToGet).withScanFilter(scanFilter));
     }
 
+    @Override
     public TagResourceResult tagResource(TagResourceRequest tagResourceRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public UntagResourceResult untagResource(UntagResourceRequest untagResourceRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public UpdateGlobalTableResult updateGlobalTable(UpdateGlobalTableRequest updateGlobalTableRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         return getAmazonDynamoDB().updateItem(updateItemRequest);
     }
 
+    @Override
     public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates) {
         return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates));
     }
 
+    @Override
     public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates, String returnValues) {
         return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates).withReturnValues(returnValues));
     }
 
+    @Override
     public UpdateTableResult updateTable(UpdateTableRequest updateTableRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public UpdateTableResult updateTable(String tableName, ProvisionedThroughput provisionedThroughput) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public UpdateTimeToLiveResult updateTimeToLive(UpdateTimeToLiveRequest updateTimeToLiveRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public void shutdown() {
     }
 
+    @Override
     public ResponseMetadata getCachedResponseMetadata(AmazonWebServiceRequest amazonWebServiceRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @Override
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException("not yet supported");
     }
