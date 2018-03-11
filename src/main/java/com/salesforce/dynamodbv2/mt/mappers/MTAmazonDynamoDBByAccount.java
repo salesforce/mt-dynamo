@@ -14,6 +14,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -137,6 +138,11 @@ public class MTAmazonDynamoDBByAccount extends MTAmazonDynamoDBBase {
                                       MTAccountCredentialsMapper credentialsMapper) {
         super(mtContext, null);
         this.accountMapper = new CredentialBasedAccountMapperImpl(amazonDynamoDBClientBuilder, credentialsMapper);
+    }
+
+    @Override
+    public List<MTStreamDescription> listStreams() {
+        throw new UnsupportedOperationException();
     }
 
     /**

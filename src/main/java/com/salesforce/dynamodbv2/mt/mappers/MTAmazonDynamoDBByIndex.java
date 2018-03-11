@@ -7,6 +7,22 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -38,20 +54,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.K
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.QueryOrScanRequest;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.QueryOrScanRequestCallback;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.ResultCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Allows for storing all tenant data in shared table, separated by prefixing the table's hash key field with the multi-tenant
@@ -408,6 +410,11 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
         return indexTransformerCache.getIndexTransformer(describeTable(virtualTableName).getTable());
     }
 
+    @Override
+    public List<MTStreamDescription> listStreams() {
+        throw new UnsupportedOperationException();
+    }
+
     public static MTAmazonDynamoDBByIndexBuilder builder() {
         return new MTAmazonDynamoDBByIndexBuilder();
     }
@@ -620,4 +627,41 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
         TableDescription deleteTable(String tableName);
     }
 
+//	static class RecordProcessor extends StreamsRecordProcessor {
+//
+//		private final MTIRecordProcessor mtProcessor;
+//
+//		RecordProcessor(MTIRecordProcessor mtProcessor) {
+//			this.mtProcessor = mtProcessor;
+//		}
+//
+//		@Override
+//		public void initialize(InitializationInput initializationInput) {
+//			mtProcessor.initialize(initializationInput);
+//		}
+//
+//		@Override
+//		public void processStreamsRecords(List<Record> records, IRecordProcessorCheckpointer checkpointer) {
+//			Map<String, Map<String, List<Record>>> byTenantAndTable = null; // TODO group records by tenant and table
+//																			// name and remove the key prefixes
+//
+//			byTenantAndTable.forEach(
+//					(tenant, byTable) -> byTable.forEach((table, r) -> mtProcessor.processRecords(tenant, table, r)));
+//
+//			// TODO optimize?
+//			try {
+//				checkpointer.checkpoint();
+//			} catch (KinesisClientLibDependencyException | InvalidStateException | ThrottlingException
+//					| ShutdownException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
+//		}
+//
+//		@Override
+//		public void shutdown(ShutdownInput shutdownInput) {
+//			mtProcessor.shutdown(shutdownInput.getShutdownReason());
+//		}
+//
+//	}
 }

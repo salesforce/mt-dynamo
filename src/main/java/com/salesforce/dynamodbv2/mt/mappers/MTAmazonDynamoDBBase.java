@@ -7,6 +7,9 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import java.util.List;
+import java.util.Map;
+
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
 import com.amazonaws.regions.Region;
@@ -80,9 +83,6 @@ import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
-import java.util.List;
-import java.util.Map;
-
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
  * - throwing UnsupportedOperationException's for all methods that are collectively unsupported
@@ -91,7 +91,7 @@ import java.util.Map;
  *
  * @author msgroi
  */
-public class MTAmazonDynamoDBBase implements AmazonDynamoDB {
+public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     private final MTAmazonDynamoDBContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDB;
@@ -382,6 +382,15 @@ public class MTAmazonDynamoDBBase implements AmazonDynamoDB {
     @Override
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException("not yet supported");
+    }
+
+    @Override
+    public List<MTStreamDescription> listStreams() {
+        AmazonDynamoDB dynamo = getAmazonDynamoDB();
+        if (dynamo instanceof MTAmazonDynamoDB) {
+            return ((MTAmazonDynamoDB)getAmazonDynamoDB()).listStreams();
+        }
+        throw new UnsupportedOperationException();
     }
 
 }
