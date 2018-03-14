@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static java.util.stream.Collectors.toList;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,26 +34,28 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.streamsadapter.StreamsRecordProcessor;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.IRecordProcessorCheckpointer;
+import com.amazonaws.services.dynamodbv2.streamsadapter.model.RecordAdapter;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
+import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTIRecordProcessorFactory.Adapter;
 
 /**
- * Allows for dividing tenants into their own tables by prefixing table names with the multi-tenant context.
+ * Allows for dividing tenants into their own tables by prefixing table names
+ * with the multi-tenant context.
  *
- * The multi-tenant context is separated from the table name by the delimiter, which is '.' by default.
+ * The multi-tenant context is separated from the table name by the delimiter,
+ * which is '.' by default.
  *
- * To use, call the static builder() method.  The following parameters are required ...
- * - an AmazonDynamoDB instance
- * - a multi-tenant context
+ * To use, call the static builder() method. The following parameters are
+ * required ... - an AmazonDynamoDB instance - a multi-tenant context
  *
- * The following are optional arguments ...
- * - delimiter: a String delimiter used to separate the tenant identifier prefix from the table name
+ * The following are optional arguments ... - delimiter: a String delimiter used
+ * to separate the tenant identifier prefix from the table name
  * 
  * Supported: create|describe|delete Table, get|putItem, scan, query
  *
@@ -62,10 +66,8 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
     private final String delimiter;
     private final Optional<String> tablePrefix;
 
-    private MTAmazonDynamoDBByTable(MTAmazonDynamoDBContextProvider mtContext,
-                                    AmazonDynamoDB amazonDynamoDB,
-                                    String delimiter,
-                                    Optional<String> tablePrefix) {
+    private MTAmazonDynamoDBByTable(MTAmazonDynamoDBContextProvider mtContext, AmazonDynamoDB amazonDynamoDB,
+            String delimiter, Optional<String> tablePrefix) {
         super(mtContext, amazonDynamoDB);
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
@@ -137,7 +139,7 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
     // TODO assumes everything that starts with prefix is in fact an MT table (ok?)
     // TODO assumes context does not contain delimiter
     @Override
-    public List<MTStreamDescription> listStreams() {
+    public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         String prefix = tablePrefix.orElse("");
         return getAmazonDynamoDB().listTables().getTableNames().stream() //
                 .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
@@ -147,41 +149,56 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
                 .map(d -> new MTStreamDescription() //
                         .withLabel(d.getTableName()) // use raw name as label
                         .withArn(d.getLatestStreamArn()) //
-                        .withFactoryAdapter(newAdapter(d.getTableName().substring(prefix.length())))) //
+                        .withRecordProcessorFactory(newAdapter(factory, d.getTableName().substring(prefix.length())))) //
                 .collect(Collectors.toList());
     }
 
-    private Adapter newAdapter(String tableName) {
+    private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, String tableName) {
         int idx = tableName.indexOf(delimiter);
         String tenant = tableName.substring(0, idx);
         String name = tableName.substring(idx + delimiter.length(), tableName.length());
-        return f -> () -> new RecordProcessor(tenant, name, f.createProcessor());
+        return () -> new RecordProcessor(tenant, name, factory.createProcessor());
     }
 
-    private static class RecordProcessor extends StreamsRecordProcessor {
+    private static class RecordProcessor implements IRecordProcessor {
         private final String tenant;
         private final String tableName;
-        private final MTIRecordProcessor mtRecordProcessor;
+        private final IRecordProcessor processor;
 
-        public RecordProcessor(String tenant, String tableName, MTIRecordProcessor mtRecordProcessor) {
+        public RecordProcessor(String tenant, String tableName, IRecordProcessor processor) {
             this.tenant = tenant;
             this.tableName = tableName;
-            this.mtRecordProcessor = mtRecordProcessor;
+            this.processor = processor;
         }
 
         @Override
         public void initialize(InitializationInput initializationInput) {
-            mtRecordProcessor.initialize(initializationInput.getShardId());
+            processor.initialize(initializationInput);
         }
 
         @Override
-        public void processStreamsRecords(List<Record> records, IRecordProcessorCheckpointer checkpointer) {
-            mtRecordProcessor.processRecords(tenant, tableName, records);
+        public void processRecords(ProcessRecordsInput processRecordsInput) {
+            List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
+                    .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
+            processor.processRecords(processRecordsInput.withRecords(records));
+        }
+
+        private com.amazonaws.services.kinesis.model.Record toMTRecord(RecordAdapter adapter) {
+            Record r = adapter.getInternalObject();
+            return new RecordAdapter(new MTRecord() //
+                    .withAwsRegion(r.getAwsRegion()) //
+                    .withDynamodb(r.getDynamodb()) //
+                    .withEventID(r.getEventID()) //
+                    .withEventName(r.getEventName()) //
+                    .withEventSource(r.getEventSource()) //
+                    .withEventVersion(r.getEventVersion()) //
+                    .withContext(tenant) //
+                    .withTableName(tableName));
         }
 
         @Override
         public void shutdown(ShutdownInput shutdownInput) {
-            mtRecordProcessor.shutdown(shutdownInput.getShutdownReason());
+            processor.shutdown(shutdownInput);
         }
 
     }
@@ -237,9 +254,7 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
 
     @VisibleForTesting
     String buildPrefixedTablename(String virtualTablename) {
-        return (tablePrefix.orElse("")) +
-               getMTContext().getContext() +
-               delimiter + virtualTablename;
+        return (tablePrefix.orElse("")) + getMTContext().getContext() + delimiter + virtualTablename;
     }
 
 }

@@ -81,6 +81,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
 /**
@@ -385,10 +386,10 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     @Override
-    public List<MTStreamDescription> listStreams() {
+    public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         AmazonDynamoDB dynamo = getAmazonDynamoDB();
         if (dynamo instanceof MTAmazonDynamoDB) {
-            return ((MTAmazonDynamoDB)getAmazonDynamoDB()).listStreams();
+            return ((MTAmazonDynamoDB)getAmazonDynamoDB()).listStreams(factory);
         }
         throw new UnsupportedOperationException();
     }

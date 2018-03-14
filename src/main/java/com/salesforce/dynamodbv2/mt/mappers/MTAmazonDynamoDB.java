@@ -3,81 +3,147 @@ package com.salesforce.dynamodbv2.mt.mappers;
 import java.util.List;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.Identity;
+import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.ShutdownReason;
 
+/**
+ * This interface (including all contained interfaces and methods) is
+ * experimental. It is subject to breaking changes. Use at your own risk.
+ */
 public interface MTAmazonDynamoDB extends AmazonDynamoDB {
 
-	@FunctionalInterface
-	interface MTIRecordProcessorFactory {
+    public static class MTRecord extends Record {
 
-		@FunctionalInterface
-		interface Adapter {
-			IRecordProcessorFactory adapt(MTIRecordProcessorFactory factory);
-		}
+        private static final long serialVersionUID = -6099434068333437314L;
 
-		MTIRecordProcessor createProcessor();
-	}
+        private String context;
+        private String tableName;
 
-	public interface MTIRecordProcessor {
+        public String getContext() {
+            return context;
+        }
 
-		void initialize(String shardId);
+        public void setContext(String context) {
+            this.context = context;
+        }
 
-		void processRecords(String tenant, String tableName, List<Record> records);
+        public MTRecord withContext(String context) {
+            this.context = context;
+            return this;
+        }
 
-		void shutdown(ShutdownReason reason);
+        public String getTableName() {
+            return tableName;
+        }
 
-	}
+        public void setTableName(String tableName) {
+            this.tableName = tableName;
+        }
 
-	public static class MTStreamDescription {
+        public MTRecord withTableName(String tableName) {
+            this.tableName = tableName;
+            return this;
+        }
 
-		private String label;
-		private String arn;
-		private MTIRecordProcessorFactory.Adapter factoryAdapter;
+        @Override
+        public MTRecord withAwsRegion(String awsRegion) {
+            super.setAwsRegion(awsRegion);
+            return this;
+        }
 
-		public String getLabel() {
-			return label;
-		}
+        @Override
+        public MTRecord withDynamodb(StreamRecord dynamodb) {
+            super.setDynamodb(dynamodb);
+            return this;
+        }
 
-		public void setLabel(String label) {
-			this.label = label;
-		}
+        @Override
+        public MTRecord withEventID(String eventID) {
+            super.setEventID(eventID);
+            return this;
+        }
 
-		public MTStreamDescription withLabel(String label) {
-			setLabel(label);
-			return this;
-		}
+        @Override
+        public MTRecord withEventName(OperationType eventName) {
+            super.setEventName(eventName);
+            return this;
+        }
 
-		public String getArn() {
-			return arn;
-		}
+        @Override
+        public MTRecord withEventName(String eventName) {
+            super.setEventName(eventName);
+            return this;
+        }
 
-		public void setArn(String arn) {
-			this.arn = arn;
-		}
+        @Override
+        public MTRecord withEventSource(String eventSource) {
+            super.setEventSource(eventSource);
+            return this;
+        }
 
-		public MTStreamDescription withArn(String arn) {
-			setArn(arn);
-			return this;
-		}
+        @Override
+        public MTRecord withEventVersion(String eventVersion) {
+            setEventVersion(eventVersion);
+            return this;
+        }
 
-		public MTIRecordProcessorFactory.Adapter getFactoryAdapter() {
-			return factoryAdapter;
-		}
+        @Override
+        public MTRecord withUserIdentity(Identity userIdentity) {
+            super.setUserIdentity(userIdentity);
+            return this;
+        }
+    }
 
-		public void setFactoryAdapter(MTIRecordProcessorFactory.Adapter factoryAdapter) {
-			this.factoryAdapter = factoryAdapter;
-		}
+    public static class MTStreamDescription {
 
-		public MTStreamDescription withFactoryAdapter(MTIRecordProcessorFactory.Adapter factoryAdapter) {
-			setFactoryAdapter(factoryAdapter);
-			return this;
-		}
-	}
+        private String label;
+        private String arn;
+        private IRecordProcessorFactory recordProcessorFactory;
 
-	List<MTStreamDescription> listStreams();
+        public String getLabel() {
+            return label;
+        }
 
-	AmazonDynamoDB getAmazonDynamoDB();
+        public void setLabel(String label) {
+            this.label = label;
+        }
+
+        public MTStreamDescription withLabel(String label) {
+            setLabel(label);
+            return this;
+        }
+
+        public String getArn() {
+            return arn;
+        }
+
+        public void setArn(String arn) {
+            this.arn = arn;
+        }
+
+        public MTStreamDescription withArn(String arn) {
+            setArn(arn);
+            return this;
+        }
+
+        public IRecordProcessorFactory getRecordProcessorFactory() {
+            return recordProcessorFactory;
+        }
+
+        public void setRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
+            this.recordProcessorFactory = recordProcessorFactory;
+        }
+
+        public MTStreamDescription withRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
+            this.recordProcessorFactory = recordProcessorFactory;
+            return this;
+        }
+
+    }
+
+    List<MTStreamDescription> listStreams(IRecordProcessorFactory factory);
 
 }

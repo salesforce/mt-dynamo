@@ -48,6 +48,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.google.common.base.Predicate;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.KeyRequestCallback;
@@ -411,7 +412,7 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
     }
 
     @Override
-    public List<MTStreamDescription> listStreams() {
+    public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         throw new UnsupportedOperationException();
     }
 
@@ -627,41 +628,4 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
         TableDescription deleteTable(String tableName);
     }
 
-//	static class RecordProcessor extends StreamsRecordProcessor {
-//
-//		private final MTIRecordProcessor mtProcessor;
-//
-//		RecordProcessor(MTIRecordProcessor mtProcessor) {
-//			this.mtProcessor = mtProcessor;
-//		}
-//
-//		@Override
-//		public void initialize(InitializationInput initializationInput) {
-//			mtProcessor.initialize(initializationInput);
-//		}
-//
-//		@Override
-//		public void processStreamsRecords(List<Record> records, IRecordProcessorCheckpointer checkpointer) {
-//			Map<String, Map<String, List<Record>>> byTenantAndTable = null; // TODO group records by tenant and table
-//																			// name and remove the key prefixes
-//
-//			byTenantAndTable.forEach(
-//					(tenant, byTable) -> byTable.forEach((table, r) -> mtProcessor.processRecords(tenant, table, r)));
-//
-//			// TODO optimize?
-//			try {
-//				checkpointer.checkpoint();
-//			} catch (KinesisClientLibDependencyException | InvalidStateException | ThrottlingException
-//					| ShutdownException e) {
-//				// TODO Auto-generated catch block
-//				e.printStackTrace();
-//			}
-//		}
-//
-//		@Override
-//		public void shutdown(ShutdownInput shutdownInput) {
-//			mtProcessor.shutdown(shutdownInput.getShutdownReason());
-//		}
-//
-//	}
 }
