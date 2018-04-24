@@ -141,7 +141,7 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
     @Override
     public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         String prefix = tablePrefix.orElse("");
-        return getAmazonDynamoDB().listTables().getTableNames().stream() //
+        return listAllTables().stream() //
                 .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
                 .map(n -> getAmazonDynamoDB().describeTable(n).getTable()) // TODO handle table not exists
                 .filter(d -> Optional.ofNullable(d.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)

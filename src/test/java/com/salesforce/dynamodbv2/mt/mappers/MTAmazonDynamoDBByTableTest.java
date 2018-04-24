@@ -8,11 +8,19 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MTAmazonDynamoDBContextProviderImpl;
 import org.junit.jupiter.api.Test;
 
+import static com.amazonaws.services.dynamodbv2.model.StreamViewType.KEYS_ONLY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -23,17 +31,17 @@ import static org.mockito.Mockito.when;
 class MTAmazonDynamoDBByTableTest {
 
     private final boolean loggingEnabled = true;
-    private final MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
     private final AmazonDynamoDB localAmazonDynamoDB = MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDB();
-    private final AmazonDynamoDB amazonDynamoDBLogger = MTAmazonDynamoDBLogger.builder()
-            .withAmazonDynamoDB(localAmazonDynamoDB)
-            .withContext(mtContext)
-            .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
-                                               "putItem", "query", "scan", "updateItem")).build();
-    private final AmazonDynamoDB amazonDynamoDB = loggingEnabled ? amazonDynamoDBLogger : localAmazonDynamoDB;
 
     @Test
     void test() {
+        MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
+        AmazonDynamoDB amazonDynamoDBLogger = MTAmazonDynamoDBLogger.builder()
+                .withAmazonDynamoDB(localAmazonDynamoDB)
+                .withContext(mtContext)
+                .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
+                        "putItem", "query", "scan", "updateItem")).build();
+        AmazonDynamoDB amazonDynamoDB = loggingEnabled ? amazonDynamoDBLogger : localAmazonDynamoDB;
         AmazonDynamoDB amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
                 .withAmazonDynamoDB(amazonDynamoDB)
                 .withContext(mtContext).build();
@@ -81,6 +89,25 @@ class MTAmazonDynamoDBByTableTest {
                 .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx3");
         assertEquals("ctx3.originalTableFooBar", amazonDynamoDBByTable2.buildPrefixedTablename("originalTableFooBar"));
+    }
+
+    @Test
+    void listStreams() {
+        MTAmazonDynamoDBContextProvider mtContext = mock(MTAmazonDynamoDBContextProvider.class);
+        MTAmazonDynamoDBByTable amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
+                .withAmazonDynamoDB(localAmazonDynamoDB)
+                .withContext(mtContext).build();
+        when(mtContext.getContext()).thenReturn("ctx1");
+        int count = 110;
+        for (int i = 1; i <= count; i++) { // create more than 100 tables with stream specs, since this exercises the listStreams default maxsize
+            amazonDynamoDBByTable.createTable(new CreateTableRequest()
+                    .withAttributeDefinitions(new AttributeDefinition("hk", ScalarAttributeType.S))
+                    .withKeySchema(new KeySchemaElement("hk", KeyType.HASH))
+                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                    .withTableName("table" + i)
+                    .withStreamSpecification(new StreamSpecification().withStreamEnabled(true).withStreamViewType(KEYS_ONLY)));
+        }
+        assertEquals(count, amazonDynamoDBByTable.listStreams(null).size());
     }
 
 }
