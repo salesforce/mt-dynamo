@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -281,6 +282,27 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     public ListTablesResult listTables(Integer limit) {
         throw new UnsupportedOperationException("not yet supported");
+    }
+
+    protected List<String> listAllTables() {
+        return listTablesFrom(null);
+    }
+
+    protected List<String> listTablesFrom(ListTablesResult previousResult) {
+        List<String> tables = new ArrayList<>();
+        ListTablesResult result = null;
+        if (previousResult == null) {
+            result = getAmazonDynamoDB().listTables();
+        } else {
+            if (previousResult.getLastEvaluatedTableName() != null) {
+                result = getAmazonDynamoDB().listTables(previousResult.getLastEvaluatedTableName());
+            }
+        }
+        if (result != null) {
+            tables.addAll(result.getTableNames());
+            tables.addAll(listTablesFrom(result));
+        }
+        return tables;
     }
 
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
