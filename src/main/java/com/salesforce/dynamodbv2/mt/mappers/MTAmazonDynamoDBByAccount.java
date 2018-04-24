@@ -10,10 +10,12 @@ package com.salesforce.dynamodbv2.mt.mappers;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -137,6 +139,11 @@ public class MTAmazonDynamoDBByAccount extends MTAmazonDynamoDBBase {
                                       MTAccountCredentialsMapper credentialsMapper) {
         super(mtContext, null);
         this.accountMapper = new CredentialBasedAccountMapperImpl(amazonDynamoDBClientBuilder, credentialsMapper);
+    }
+
+    @Override
+    public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
+        throw new UnsupportedOperationException();
     }
 
     /**

@@ -23,6 +23,7 @@
         <junit.version>5.0.2</junit.version>
         <logback.version>1.2.3</logback.version>
         <aws.sdk.version>1.11.271</aws.sdk.version>
+        <dynamodb-streams-kinesis-adapter.version>1.2.2</dynamodb-streams-kinesis-adapter.version>
         <hamcrest.version>1.3</hamcrest.version>
     </properties>
 
@@ -38,6 +39,11 @@
             <groupId>com.amazonaws</groupId>
             <artifactId>aws-java-sdk-dynamodb</artifactId>
             <version>${aws.sdk.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>com.amazonaws</groupId>
+          <artifactId>dynamodb-streams-kinesis-adapter</artifactId>
+          <version>${dynamodb-streams-kinesis-adapter.version}</version>
         </dependency>
         <dependency>
             <groupId>com.amazonaws</groupId>
