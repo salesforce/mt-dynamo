@@ -285,26 +285,19 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     protected List<String> listAllTables() {
-        return listTablesFrom(null);
-    }
-
-    protected List<String> listTablesFrom(ListTablesResult previousResult) {
         List<String> tables = new ArrayList<>();
         ListTablesResult result = null;
-        if (previousResult == null) {
-            result = getAmazonDynamoDB().listTables();
-        } else {
-            if (previousResult.getLastEvaluatedTableName() != null) {
-                result = getAmazonDynamoDB().listTables(previousResult.getLastEvaluatedTableName());
+        String lastEvaluated  = null;//Below loop is to iterate through pages
+        do {
+            result  = (lastEvaluated == null) ? getAmazonDynamoDB().listTables() : getAmazonDynamoDB().listTables(lastEvaluated);
+            if (result != null) {
+                tables.addAll(result.getTableNames());
+                lastEvaluated =  result.getLastEvaluatedTableName();
             }
-        }
-        if (result != null) {
-            tables.addAll(result.getTableNames());
-            tables.addAll(listTablesFrom(result));
-        }
+        } while (lastEvaluated != null);
+
         return tables;
     }
-
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
