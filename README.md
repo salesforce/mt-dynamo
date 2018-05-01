@@ -106,6 +106,7 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 ## Release Notes
 
 - **v0.9.3** First revision
+- **v0.9.6** Added `listStreams()` support
 
 ## Backlog
 
