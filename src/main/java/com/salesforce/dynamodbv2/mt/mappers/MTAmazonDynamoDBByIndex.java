@@ -647,7 +647,10 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
             primaryKeyAttrDefs.forEach(attributeDefinition -> checkArgument(ScalarAttributeType.valueOf(attributeDefinition.getAttributeType()) == S,
             msg + ", attributeName=" + attributeDefinition.getAttributeName() + " is of type=" + attributeDefinition.getAttributeType()));
         }
-        checkArgument(createTableRequest.getStreamSpecification() == null, "streamSpecified may not be specified, table=" + createTableRequest.getTableName());
+        checkArgument(createTableRequest.getStreamSpecification() == null
+                        || !createTableRequest.getStreamSpecification().isStreamEnabled(),
+                "streamSpecification is not supported on " + this.getClass().getSimpleName() +
+                        ", table=" + createTableRequest.getTableName());
     }
 
     public interface MTTableDescriptionRepo {
