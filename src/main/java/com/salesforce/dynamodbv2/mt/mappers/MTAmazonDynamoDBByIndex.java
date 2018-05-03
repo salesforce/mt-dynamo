@@ -13,6 +13,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,6 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.google.common.base.Predicate;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.KeyRequestCallback;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndexTransformer.QueryOrScanRequest;
@@ -611,13 +611,41 @@ public class MTAmazonDynamoDBByIndex extends MTAmazonDynamoDBBase {
                     msg);
         }
         if (createTableRequest.getLocalSecondaryIndexes() != null && createTableRequest.getLocalSecondaryIndexes().size() > 0) {
+            String msg = "only a single LSI with a HASH key of type 'S' and RANGE key of type 'S' is currently supported";
             checkArgument(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().size() == 2 &&
                             KeyType.valueOf(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(0).getKeyType()) == HASH &&
-                            KeyType.valueOf(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(1).getKeyType()) == RANGE &&
-                            ScalarAttributeType.valueOf(createTableRequest.getAttributeDefinitions().stream().filter((Predicate<AttributeDefinition>) attrDef ->
-                                    attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(0).getAttributeName()) ||
-                                    attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(1).getAttributeName())).findFirst().get().getAttributeType()) == S,
-                    "only a single LSI with a HASH key of type 'S' and RANGE key of type 'S' is currently supported");
+                            KeyType.valueOf(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(1).getKeyType()) == RANGE, msg);
+            /*
+             * The following condition when used in the above checkArgument may throw an java.lang.IncompatibleClassChangeError
+             * when running in ZOS running in Spring boot.  Full stack trace below.
+             *
+             * ScalarAttributeType.valueOf(createTableRequest.getAttributeDefinitions().stream().filter((Predicate<AttributeDefinition>) attrDef ->
+             *                                  attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(0).getAttributeName()) ||
+             *                                  attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(1).getAttributeName())).findFirst().get().getAttributeType()) == S
+             *
+             * java.lang.IncompatibleClassChangeError
+             *     at java.util.stream.ReferencePipeline$2$1.accept(ReferencePipeline.java:174)
+             *     at java.util.ArrayList$ArrayListSpliterator.tryAdvance(ArrayList.java:1351)
+             *     at java.util.stream.ReferencePipeline.forEachWithCancel(ReferencePipeline.java:126)
+             *     at java.util.stream.AbstractPipeline.copyIntoWithCancel(AbstractPipeline.java:498)
+             *     at java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:485)
+             *     at java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:471)
+             *     at java.util.stream.FindOps$FindOp.evaluateSequential(FindOps.java:152)
+             *     at java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234)
+             *     at java.util.stream.ReferencePipeline.findFirst(ReferencePipeline.java:464)
+             *     at com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndex.validateCreateTableRequest(MTAmazonDynamoDBByIndex.java:621)
+             *
+             * The workaround is to use a for loop instead of a stream to populate a list of primary key attribute definitions.
+             */
+            List<AttributeDefinition> primaryKeyAttrDefs = new ArrayList<>();
+            createTableRequest.getAttributeDefinitions().stream().forEach(attrDef -> {
+                if (attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(0).getAttributeName())
+                    || attrDef.getAttributeName().equals(createTableRequest.getLocalSecondaryIndexes().get(0).getKeySchema().get(1).getAttributeName())) {
+                    primaryKeyAttrDefs.add(attrDef);
+                }
+            });
+            primaryKeyAttrDefs.forEach(attributeDefinition -> checkArgument(ScalarAttributeType.valueOf(attributeDefinition.getAttributeType()) == S,
+            msg + ", attributeName=" + attributeDefinition.getAttributeName() + " is of type=" + attributeDefinition.getAttributeType()));
         }
         checkArgument(createTableRequest.getStreamSpecification() == null, "streamSpecified may not be specified, table=" + createTableRequest.getTableName());
     }
