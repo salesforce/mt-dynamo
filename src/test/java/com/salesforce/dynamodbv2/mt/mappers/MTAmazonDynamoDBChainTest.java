@@ -90,6 +90,7 @@ class MTAmazonDynamoDBChainTest {
                 "method=query(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value, names={#name=hk}, values={:value={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=query(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=hk = :value, names=null, values={:value={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value, names={#name=hk}, values={:value={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
+                "method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#field1 = :value1, names={#field1=hk}, values={:value1={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value and begins_with(#___name___, :___value___), names={#___name___=hk, #name=someField}, values={:___value___={S: ctx2.MTAmazonDynamoDBTestRunner1.,}, :value={S: someValue2,}}",
                 "method=scan(), table=ctx1.mt_sharedtablestatic_s_nolsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx1.MTAmazonDynamoDBTestRunner1.,}}",
                 "method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx2.MTAmazonDynamoDBTestRunner1.,}}",

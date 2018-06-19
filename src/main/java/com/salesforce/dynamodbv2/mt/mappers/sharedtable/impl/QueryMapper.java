@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
+import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Joiner;
@@ -54,7 +55,7 @@ class QueryMapper {
      */
     void apply(QueryRequest queryRequest) {
         validateQueryRequest(queryRequest);
-        convertKeyCondition(queryRequest);
+        convertLegacyExpression(new QueryRequestWrapper(queryRequest));
         applyKeyCondition(new QueryRequestWrapper(queryRequest));
     }
 
@@ -62,6 +63,8 @@ class QueryMapper {
      * Takes a ScanRequest representing a scan against a virtual table and mutates it so it can be applied to its physical table counterpart.
      */
     void apply(ScanRequest scanRequest) {
+        validateScanRequest(scanRequest);
+        convertLegacyExpression(new ScanRequestWrapper(scanRequest));
         applyKeyCondition(new ScanRequestWrapper(scanRequest));
     }
 
@@ -119,7 +122,6 @@ class QueryMapper {
                 fieldMappingEntry -> fieldMappingEntry.getValue().get(0)
                 ));
     }
-
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
         String namePlaceholder = "#___name___";
         // TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with by adding an OR condition
@@ -162,7 +164,7 @@ class QueryMapper {
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
-                                                  String hashKeyField) {
+                                                  String hashKeyField) { // TODO look for hashkey in literals
         String conditionExpression = request.getExpression();
         if (conditionExpression == null) {
             // no filter criteria
@@ -184,15 +186,22 @@ class QueryMapper {
         String getExpression();
         void setExpression(String expression);
         void setIndexName(String indexName);
+        Map<String, Condition> getLegacyExpression();
+        void clearLegacyExpression();
     }
-
     private static class QueryRequestWrapper implements RequestWrapper {
-        private final QueryRequest queryRequest;
 
+        private final QueryRequest queryRequest;
         @SuppressWarnings("unchecked")
         QueryRequestWrapper(QueryRequest queryRequest) {
             queryRequest.setExpressionAttributeNames(getMutableMap(queryRequest.getExpressionAttributeNames()));
             queryRequest.setExpressionAttributeValues(getMutableMap(queryRequest.getExpressionAttributeValues()));
+            if (queryRequest.getKeyConditions() != null && queryRequest.getExpressionAttributeNames() == null) {
+                queryRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            if (queryRequest.getKeyConditions() != null && queryRequest.getExpressionAttributeValues() == null) {
+                queryRequest.setExpressionAttributeValues(new HashMap<>());
+            }
             this.queryRequest = queryRequest;
         }
 
@@ -225,6 +234,17 @@ class QueryMapper {
         public void setIndexName(String indexName) {
             queryRequest.setIndexName(indexName);
         }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            return queryRequest.getKeyConditions();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            queryRequest.clearKeyConditionsEntries();
+        }
+
     }
 
     private static class ScanRequestWrapper implements RequestWrapper {
@@ -266,6 +286,17 @@ class QueryMapper {
         public void setIndexName(String indexName) {
             scanRequest.setIndexName(indexName);
         }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            return scanRequest.getScanFilter();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            scanRequest.clearScanFilterEntries();
+        }
+
     }
 
     private static Map getMutableMap(Map potentiallyImmutableMap) {
@@ -284,19 +315,25 @@ class QueryMapper {
                 "ambiguous QueryRequest: both keyConditionExpression and keyConditions were provided");
     }
 
+    private void validateScanRequest(ScanRequest scanRequest) {
+        boolean hasFilterExpression = !isEmpty(scanRequest.getFilterExpression());
+        boolean hasScanFilter = (scanRequest.getScanFilter() != null && scanRequest.getScanFilter().keySet().size() > 0);
+        checkArgument(!hasFilterExpression || !hasScanFilter,
+                "ambiguous ScanRequest: both filterExpression and scanFilter were provided");
+    }
+
     /*
-     * Converts QueryRequest's containing keyConditions to keyConditionExpression.  According to the DynamoDB docs, keyConditions
-     * are considered a 'legacy parameter'.  However, since we support them by converting them to keyConditionExpressions
+     * Converts QueryRequest's containing keyConditions to keyConditionExpression and ScanRequest's containing scanFilters.
+     * According to the DynamoDB docs, QueryRequest keyConditions and ScanRequest scanFilter's are considered 'legacy parameters'.
+     * However, since we support them by converting them to keyConditionExpressions and filterExpression's respectively
      * because they are used by the DynamoDB document API
      * (https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/dynamodbv2/document/DynamoDB.html).
      */
-    private void convertKeyCondition(QueryRequest queryRequest) {
-        if ((queryRequest.getKeyConditions() != null && queryRequest.getKeyConditions().keySet().size() > 0)) {
+    private void convertLegacyExpression(RequestWrapper request) {
+        if ((request.getLegacyExpression() != null && request.getLegacyExpression().keySet().size() > 0)) {
             List<String> keyConditionExpressionParts = new ArrayList<>();
             AtomicInteger counter = new AtomicInteger(1);
-            queryRequest.setExpressionAttributeNames(new HashMap<>());
-            queryRequest.setExpressionAttributeValues(new HashMap<>());
-            queryRequest.getKeyConditions().forEach((key, condition) -> {
+            request.getLegacyExpression().forEach((key, condition) -> {
                 checkArgument(ComparisonOperator.valueOf(condition.getComparisonOperator()) == EQ,
                         "unsupported comparison operator " + condition.getComparisonOperator() + " in condition=" + condition);
                 checkArgument(condition.getAttributeValueList().size() == 1,
@@ -304,11 +341,11 @@ class QueryMapper {
                 String field = "#field" + counter;
                 String value = ":value" + counter.getAndIncrement();
                 keyConditionExpressionParts.add(field + " = " + value);
-                queryRequest.getExpressionAttributeNames().put(field, key);
-                queryRequest.getExpressionAttributeValues().put(value, condition.getAttributeValueList().get(0));
+                request.getExpressionAttributeNames().put(field, key);
+                request.getExpressionAttributeValues().put(value, condition.getAttributeValueList().get(0));
             });
-            queryRequest.setKeyConditionExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
-            queryRequest.clearKeyConditionsEntries();
+            request.setExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
+            request.clearLegacyExpression();
         }
     }
 

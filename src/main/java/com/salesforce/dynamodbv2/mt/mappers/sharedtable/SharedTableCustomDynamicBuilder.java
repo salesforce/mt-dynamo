@@ -66,11 +66,11 @@ import static java.util.Optional.of;
  *
  * Limitations ...
  *
- * Supported methods: create|describe|delete* Table, get|put|update Item, query, scan**
+ * Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only using filterExpression's are supported since, according to DynamoDB docs, scanFilters are considered a 'legacy parameter'.
+ * ** Only a single EQ condition is supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  */

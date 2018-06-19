@@ -57,11 +57,11 @@ import java.util.stream.Collectors;
  * SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
  * preconfigured to support a number of common mappings.  See Javadoc for each provided builder for details.
  *
- * Supported methods: create|describe|delete* Table, get|put|update Item, query, scan**
+ * Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only using filterExpression's are support since, according to DynamoDB docs, scanFilters are considered a 'legacy parameter'.
+ * ** Only a single EQ condition is supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  *

@@ -117,7 +117,7 @@ class QueryMapperTest {
     @Test
     void queryWithKeyConditionExpressionAndKeyConditions() {
         try {
-            getMockQueryMapper("prefixed-hkvalue").apply(new QueryRequest().withKeyConditions(ImmutableMap.of(
+            getMockQueryMapper(null).apply(new QueryRequest().withKeyConditions(ImmutableMap.of(
                     "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
                     .withKeyConditionExpression("#field = :value"));
             fail("expected exception not encountered");
@@ -129,7 +129,7 @@ class QueryMapperTest {
     @Test
     void queryWithNeitherKeyConditionExpressionNorKeyConditions() {
         try {
-            getMockQueryMapper("prefixed-hkvalue").apply(new QueryRequest());
+            getMockQueryMapper(null).apply(new QueryRequest());
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("keyConditionExpression or keyConditions are required", e.getMessage());
@@ -165,6 +165,18 @@ class QueryMapperTest {
                 .withFilterExpression("begins_with(#___name___, :___value___)")
                 .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalhk"))
                 .withExpressionAttributeValues(ImmutableMap.of(":___value___", new AttributeValue().withS("prefixed"))), scanRequest);
+    }
+
+    @Test
+    void scanWithFilterExpressionAndScanFilter() {
+        try {
+            getMockQueryMapper(null).apply(new ScanRequest().withScanFilter(ImmutableMap.of(
+                    "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
+                    .withFilterExpression("#field = :value"));
+            fail("expected exception not encountered");
+        } catch (IllegalArgumentException e) {
+            assertEquals("ambiguous ScanRequest: both filterExpression and scanFilter were provided", e.getMessage());
+        }
     }
 
 }

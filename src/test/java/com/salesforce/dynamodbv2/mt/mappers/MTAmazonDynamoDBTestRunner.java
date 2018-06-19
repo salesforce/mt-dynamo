@@ -258,6 +258,12 @@ public class MTAmazonDynamoDBTestRunner {
         assertThat(scanRequest.getExpressionAttributeNames(), is(scanExpressionAttrNames1));
         assertThat(scanRequest.getExpressionAttributeValues(), is(scanExpressionAttrValues1));
 
+        // scan item from ctx using scanFilter
+        ScanRequest scanRequestKeyConditions = new ScanRequest().withTableName(tableName1).withScanFilter(ImmutableMap.of(
+                hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+        List<Map<String, AttributeValue>> scanItemsScanFilter = getAmazonDynamoDBSupplier().scan(scanRequestKeyConditions).getItems();
+        assertItemValue("someValue2", scanItemsScanFilter.get(0));
+
         // scan for an item using non-hk
         String filterExpression2 = "#name = :value";
         Map<String, String> scanExpressionAttrNames2 = ImmutableMap.of("#name", someField);
