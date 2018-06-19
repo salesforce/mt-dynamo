@@ -85,6 +85,7 @@ class MTAmazonDynamoDBChainTest {
                 "method=putItem(), table=ctx2.mt_sharedtablestatic_s_nolsi, item={hk={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}, someField={S: someValue2,}}",
                 "method=getItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=query(), table=ctx1.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value, names={#name=hk}, values={:value={S: ctx1.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
+                "method=query(), table=ctx1.mt_sharedtablestatic_s_nolsi, filterExpression=#field1 = :value1, names={#field1=hk}, values={:value1={S: ctx1.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=getItem(), table=ctx2.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=query(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value, names={#name=hk}, values={:value={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",
                 "method=query(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=hk = :value, names=null, values={:value={S: ctx2.MTAmazonDynamoDBTestRunner1.hashKeyValue,}}",

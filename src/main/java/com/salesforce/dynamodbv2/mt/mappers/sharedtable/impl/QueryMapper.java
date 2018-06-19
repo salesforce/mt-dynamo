@@ -8,23 +8,30 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.commons.lang.StringUtils.isEmpty;
 
 /*
  * Maps query and scan requests against virtual tables to their physical table counterpart according to the provided
@@ -46,7 +53,8 @@ class QueryMapper {
      * Takes a QueryRequest representing a query against a virtual table and mutates it so it can be applied to its physical table counterpart.
      */
     void apply(QueryRequest queryRequest) {
-        checkNotNull(queryRequest.getKeyConditionExpression(), "only QueryRequest's with keyConditionExpressions are currently supported");
+        validateQueryRequest(queryRequest);
+        convertKeyCondition(queryRequest);
         applyKeyCondition(new QueryRequestWrapper(queryRequest));
     }
 
@@ -114,7 +122,7 @@ class QueryMapper {
 
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
         String namePlaceholder = "#___name___";
-        // make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked
+        // TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with by adding an OR condition
         FieldMapping fieldMappingForPrefix = new FieldMapping(new Field(null, S),
                                                        null,
                                                               fieldMapping.getVirtualIndexName(),
@@ -262,6 +270,46 @@ class QueryMapper {
 
     private static Map getMutableMap(Map potentiallyImmutableMap) {
         return (potentiallyImmutableMap == null) ? null : new HashMap<Object, Object>(potentiallyImmutableMap);
+    }
+
+    /*
+     * Validate that there are keyConditions or a keyConditionExpression, but not both.
+     */
+    private void validateQueryRequest(QueryRequest queryRequest) {
+        boolean hasKeyConditionExpression = !isEmpty(queryRequest.getKeyConditionExpression());
+        boolean hasKeyConditions = (queryRequest.getKeyConditions() != null && queryRequest.getKeyConditions().keySet().size() > 0);
+        checkArgument(hasKeyConditionExpression || hasKeyConditions,
+                "keyConditionExpression or keyConditions are required");
+        checkArgument(!hasKeyConditionExpression || !hasKeyConditions,
+                "ambiguous QueryRequest: both keyConditionExpression and keyConditions were provided");
+    }
+
+    /*
+     * Converts QueryRequest's containing keyConditions to keyConditionExpression.  According to the DynamoDB docs, keyConditions
+     * are considered a 'legacy parameter'.  However, since we support them by converting them to keyConditionExpressions
+     * because they are used by the DynamoDB document API
+     * (https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/dynamodbv2/document/DynamoDB.html).
+     */
+    private void convertKeyCondition(QueryRequest queryRequest) {
+        if ((queryRequest.getKeyConditions() != null && queryRequest.getKeyConditions().keySet().size() > 0)) {
+            List<String> keyConditionExpressionParts = new ArrayList<>();
+            AtomicInteger counter = new AtomicInteger(1);
+            queryRequest.setExpressionAttributeNames(new HashMap<>());
+            queryRequest.setExpressionAttributeValues(new HashMap<>());
+            queryRequest.getKeyConditions().forEach((key, condition) -> {
+                checkArgument(ComparisonOperator.valueOf(condition.getComparisonOperator()) == EQ,
+                        "unsupported comparison operator " + condition.getComparisonOperator() + " in condition=" + condition);
+                checkArgument(condition.getAttributeValueList().size() == 1,
+                        "keyCondition with more than one(" + condition.getAttributeValueList().size() + ") encountered in condition=" + condition);
+                String field = "#field" + counter;
+                String value = ":value" + counter.getAndIncrement();
+                keyConditionExpressionParts.add(field + " = " + value);
+                queryRequest.getExpressionAttributeNames().put(field, key);
+                queryRequest.getExpressionAttributeValues().put(value, condition.getAttributeValueList().get(0));
+            });
+            queryRequest.setKeyConditionExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
+            queryRequest.clearKeyConditionsEntries();
+        }
     }
 
 }

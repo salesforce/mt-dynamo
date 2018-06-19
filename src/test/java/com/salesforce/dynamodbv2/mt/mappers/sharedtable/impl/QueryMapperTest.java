@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableMap;
@@ -20,9 +21,11 @@ import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -69,6 +72,19 @@ class QueryMapperTest {
     }
 
     @Test
+    void queryWithKeyConditions() {
+        QueryRequest queryRequest = new QueryRequest().withKeyConditions(ImmutableMap.of(
+                "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))));
+
+        getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
+
+        assertEquals(new QueryRequest()
+                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+    }
+
+    @Test
     void nonIndexQueryWithLiterals() {
         QueryRequest queryRequest = new QueryRequest()
                 .withKeyConditionExpression("virtualhk = :value")
@@ -96,6 +112,28 @@ class QueryMapperTest {
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), queryRequest);
+    }
+
+    @Test
+    void queryWithKeyConditionExpressionAndKeyConditions() {
+        try {
+            getMockQueryMapper("prefixed-hkvalue").apply(new QueryRequest().withKeyConditions(ImmutableMap.of(
+                    "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
+                    .withKeyConditionExpression("#field = :value"));
+            fail("expected exception not encountered");
+        } catch (IllegalArgumentException e) {
+            assertEquals("ambiguous QueryRequest: both keyConditionExpression and keyConditions were provided", e.getMessage());
+        }
+    }
+
+    @Test
+    void queryWithNeitherKeyConditionExpressionNorKeyConditions() {
+        try {
+            getMockQueryMapper("prefixed-hkvalue").apply(new QueryRequest());
+            fail("expected exception not encountered");
+        } catch (IllegalArgumentException e) {
+            assertEquals("keyConditionExpression or keyConditions are required", e.getMessage());
+        }
     }
 
     @Test

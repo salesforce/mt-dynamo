@@ -11,6 +11,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
+import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
@@ -44,6 +45,7 @@ import java.util.Map.Entry;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -218,6 +220,12 @@ public class MTAmazonDynamoDBTestRunner {
         assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression));
         assertThat(queryRequest.getExpressionAttributeNames(), is(queryExpressionAttrNames));
         assertThat(queryRequest.getExpressionAttributeValues(), is(queryExpressionAttrValues));
+
+        // query item from ctx using keyConditions
+        QueryRequest queryRequestKeyConditions = new QueryRequest().withTableName(tableName1).withKeyConditions(ImmutableMap.of(
+                hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+        List<Map<String, AttributeValue>> queryItemsKeyConditions = getAmazonDynamoDBSupplier().query(queryRequestKeyConditions).getItems();
+        assertItemValue("someValue1", queryItemsKeyConditions.get(0));
 
         // get item from ctx2
         mtContext.setContext("ctx2");
