@@ -117,8 +117,10 @@ class MTAmazonDynamoDBChainTest {
                 "method=getItem(), table=ctx1._tablemetadata, key={table={S: ctx1.MTAmazonDynamoDBTestRunner1,}}",
                 "method=scan(), table=ctx1.mt_sharedtablestatic_s_nolsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx1.MTAmazonDynamoDBTestRunner1.,}}",
                 "method=putItem(), table=ctx1.mt_sharedtablestatic_s_s, item={hk={S: ctx1.MTAmazonDynamoDBTestRunner3.hashKeyValue,}, gsi_s_hk={S: ctx1.testgsi.indexFieldValue,}, rk={S: rangeKeyValue,}, lsi_s_s_rk={S: indexFieldValue,}}",
+                "method=query(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name = :value AND #name2 = :value2, names={#name2=rk, #name=hk}, values={:value2={S: rangeKeyValue,}, :value={S: ctx1.MTAmazonDynamoDBTestRunner3.hashKeyValue,}}",
                 "method=query(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name = :value, names={#name=gsi_s_hk}, values={:value={S: ctx1.testgsi.indexFieldValue,}}, index=gsi_s",
                 "method=query(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name = :value and #name2 = :value2, names={#name2=lsi_s_s_rk, #name=hk}, values={:value2={S: indexFieldValue,}, :value={S: ctx1.MTAmazonDynamoDBTestRunner3.hashKeyValue,}}, index=lsi_s_s",
+                "method=scan(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name1 = :value1 AND #name2 = :value2, names={#name2=rk, #name1=hk}, values={:value2={S: rangeKeyValue,}, :value1={S: ctx1.MTAmazonDynamoDBTestRunner3.hashKeyValue,}}",
                 "method=scan(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name = :value and begins_with(#___name___, :___value___), names={#___name___=hk, #name=gsi_s_hk}, values={:___value___={S: ctx1.MTAmazonDynamoDBTestRunner3.,}, :value={S: ctx1.testgsi.indexFieldValue,}}"
         )));
 

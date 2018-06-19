@@ -61,7 +61,7 @@ import java.util.stream.Collectors;
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only a single EQ condition is supported.
+ * ** Only EQ conditions are supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  *

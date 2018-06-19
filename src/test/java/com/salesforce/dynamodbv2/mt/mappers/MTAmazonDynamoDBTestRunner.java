@@ -355,13 +355,23 @@ public class MTAmazonDynamoDBTestRunner {
         List<Map<String, AttributeValue>> scanItems3 = getAmazonDynamoDBSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
         assertEquals(0, scanItems3.size());
 
-        // query on gsi
+        // query hk and rk
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> table3item3 = new HashMap<>(ImmutableMap.of(
                 hashKeyField, createAttribute("hashKeyValue"),
                 rangeKeyField, createStringAttribute("rangeKeyValue"),
                 indexField, createStringAttribute("indexFieldValue")));
         getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
+        List<Map<String, AttributeValue>> queryItems6 = getAmazonDynamoDBSupplier().query(
+                new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value AND #name2 = :value2")
+                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", rangeKeyField))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
+                                                                       ":value2", createStringAttribute("rangeKeyValue")))).getItems();
+        assertEquals(1, queryItems6.size());
+        Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
+        assertThat(queryItem6, is(table3item3));
+
+        // query on gsi
         List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDBSupplier().query(
                 new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
                         .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
@@ -381,6 +391,19 @@ public class MTAmazonDynamoDBTestRunner {
         assertEquals(1, queryItems5.size());
         Map<String, AttributeValue> queryItem5 = queryItems5.get(0);
         assertThat(queryItem5, is(table3item3));
+
+        // scan on hk and rk
+        String filterExpressionHkRk = "#name1 = :value1 AND #name2 = :value2";
+        Map<String, String> scanExpressionAttrNamesHkRk = ImmutableMap.of("#name1", hashKeyField, "#name2", rangeKeyField);
+        Map<String, AttributeValue> scanExpressionAttrValuesHkRk = ImmutableMap.of(":value1", createAttribute("hashKeyValue"),
+                                                                                   ":value2", createStringAttribute("rangeKeyValue"));
+        ScanRequest scanRequestHkRk = new ScanRequest().withTableName(tableName3).withFilterExpression(filterExpressionHkRk)
+                .withExpressionAttributeNames(scanExpressionAttrNamesHkRk)
+                .withExpressionAttributeValues(scanExpressionAttrValuesHkRk);
+        List<Map<String, AttributeValue>> scanItemsHkRk = getAmazonDynamoDBSupplier().scan(scanRequestHkRk).getItems();
+        assertEquals(1, scanItemsHkRk.size());
+        Map<String, AttributeValue> scanItemHkRk = scanItemsHkRk.get(0);
+        assertThat(scanItemHkRk, is(table3item3));
 
         // scan all on table with gsi and confirm fields with gsi is saved
         mtContext.setContext("ctx1");
