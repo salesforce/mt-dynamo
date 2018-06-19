@@ -107,32 +107,6 @@ class QueryMapper {
         fieldMappings.forEach(targetFieldMapping -> applyKeyConditionToField(request, targetFieldMapping));
     }
 
-    @VisibleForTesting
-    void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings, // TODO msgroi unit test
-                                                   RequestWrapper request) {
-        AtomicInteger counter = new AtomicInteger(1);
-        fieldMappings.forEach(fieldMapping -> {
-            String virtualFieldName = fieldMapping.getSource().getName();
-            String toFind = " " + virtualFieldName + " =";
-            int start = (" " + request.getExpression()).indexOf(toFind); // TODO msgroi look for other operators, deal with space
-            while (start >= 0) {
-                String fieldLiteral = request.getExpression().substring(start, start + virtualFieldName.length());
-                String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
-                request.setExpression(request.getExpression().replaceAll(fieldLiteral + " ", fieldPlaceholder + " "));
-                request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
-                start = (" " + request.getExpression()).indexOf(toFind);
-            }
-        });
-    }
-
-    private String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
-        String fieldPlaceholderCandidate = "#field" + counter.get();
-        while (expressionAttributeNames != null && expressionAttributeNames.containsKey(fieldPlaceholderCandidate)) {
-            fieldPlaceholderCandidate = "#field" + counter.incrementAndGet();
-        }
-        return fieldPlaceholderCandidate;
-    }
-
     /*
      * This method takes a mapping of virtual to physical fields, where it is possible that a single given virtual
      * field may map to more than one physical field, and returns a mapping where each virtual field maps to exactly
@@ -151,6 +125,7 @@ class QueryMapper {
                 fieldMappingEntry -> fieldMappingEntry.getValue().get(0)
                 ));
     }
+
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
         String namePlaceholder = "#___name___";
         // TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with by adding an OR condition
@@ -173,17 +148,19 @@ class QueryMapper {
         String virtualAttrName = fieldMapping.getSource().getName();
         Map<String, String> expressionAttrNames = request.getExpressionAttributeNames();
         Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findFirst() : Optional.empty();
-        String toFind = (keyFieldName.orElse(virtualAttrName)) + " = ";
-        int start = conditionExpression.indexOf(toFind);
-        if (start != -1) {
-            // key is present in filter criteria
-            int end = conditionExpression.indexOf(" ", start + toFind.length());
-            String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end);
-            AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
-            AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
-            request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
-            request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
+                .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny() : Optional.empty();
+        if (keyFieldName.isPresent()) {
+            String toFind = keyFieldName.get() + " = ";
+            int start = conditionExpression.indexOf(toFind);
+            if (start != -1) {
+                // key is present in filter criteria
+                int end = conditionExpression.indexOf(" ", start + toFind.length());
+                String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end);
+                AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
+                AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
+                request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+                request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
+            }
         }
     }
 
@@ -402,6 +379,32 @@ class QueryMapper {
             request.setExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
             request.clearLegacyExpression();
         }
+    }
+
+    @VisibleForTesting
+    void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings, // TODO msgroi unit test
+                                                   RequestWrapper request) {
+        AtomicInteger counter = new AtomicInteger(1);
+        fieldMappings.forEach(fieldMapping -> {
+            String virtualFieldName = fieldMapping.getSource().getName();
+            String toFind = " " + virtualFieldName + " =";
+            int start = (" " + request.getExpression()).indexOf(toFind); // TODO msgroi look for other operators, deal with space
+            while (start >= 0) {
+                String fieldLiteral = request.getExpression().substring(start, start + virtualFieldName.length());
+                String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
+                request.setExpression(request.getExpression().replaceAll(fieldLiteral + " ", fieldPlaceholder + " "));
+                request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
+                start = (" " + request.getExpression()).indexOf(toFind);
+            }
+        });
+    }
+
+    private String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
+        String fieldPlaceholderCandidate = "#field" + counter.get();
+        while (expressionAttributeNames != null && expressionAttributeNames.containsKey(fieldPlaceholderCandidate)) {
+            fieldPlaceholderCandidate = "#field" + counter.incrementAndGet();
+        }
+        return fieldPlaceholderCandidate;
     }
 
 }
