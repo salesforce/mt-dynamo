@@ -1,0 +1,132 @@
+/*
+ * Copyright (c) 2018, salesforce.com, inc.
+ * All rights reserved.
+ * Licensed under the BSD 3-Clause license.
+ * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
+ */
+
+package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
+
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.QueryRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import org.junit.jupiter.api.Test;
+
+import java.util.HashMap;
+
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Matchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/*
+ * @author msgroi
+ */
+class QueryMapperTest {
+
+    private static final DynamoTableDescription virtualTableDescription = new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder()
+                    .withTableKeySchema("virtualhk", S)
+                    .addSI("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
+    private static final DynamoTableDescription physicalTableDescription = new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder()
+                    .withTableKeySchema("physicalhk", S)
+                    .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
+    private static final TableMapping tableMapping = new TableMapping(virtualTableDescription,
+            virtualTableDescription1 -> physicalTableDescription.getCreateTableRequest(),
+            new DynamoSecondaryIndexMapperByTypeImpl(),
+            () -> "ctx",
+            ".",
+            true);
+
+    private QueryMapper getMockQueryMapper(String fieldMapperReturnValue) {
+        FieldMapper fieldMapper = mock(FieldMapper.class);
+        when(fieldMapper.apply(any(), any())).thenReturn(new AttributeValue().withS(fieldMapperReturnValue));
+        return new QueryMapper(tableMapping, fieldMapper);
+    }
+
+    @Test
+    void nonIndexQuery() {
+        QueryRequest queryRequest = new QueryRequest()
+                .withKeyConditionExpression("#field = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualhk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
+
+        getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
+
+        assertEquals(new QueryRequest()
+                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalhk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+    }
+
+    @Test
+    void nonIndexQueryWithLiterals() {
+        QueryRequest queryRequest = new QueryRequest()
+                .withKeyConditionExpression("virtualhk = :value")
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
+
+        getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
+
+        assertEquals(new QueryRequest()
+                        .withKeyConditionExpression("physicalhk = :value")
+                        .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+    }
+
+    @Test
+    void indexQuery() {
+        QueryRequest queryRequest = new QueryRequest()
+                .withIndexName("virtualgsi")
+                .withKeyConditionExpression("#field = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
+
+        getMockQueryMapper("prefixed-hkgsivalue").apply(queryRequest);
+
+        assertEquals(new QueryRequest()
+                        .withIndexName("physicalgsi")
+                        .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+                        .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), queryRequest);
+    }
+
+    @Test
+    void indexScan() {
+        ScanRequest scanRequest = new ScanRequest()
+                .withIndexName("virtualgsi")
+                .withFilterExpression("#field = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
+
+        getMockQueryMapper("prefixed-hkgsivalue").apply(scanRequest);
+
+        assertEquals(new ScanRequest()
+                .withIndexName("physicalgsi")
+                .withFilterExpression(scanRequest.getFilterExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), scanRequest);
+    }
+
+    @Test
+    void nonIndexScanMissingHKField() {
+        ScanRequest scanRequest = new ScanRequest()
+                .withExpressionAttributeNames(new HashMap<>())
+                .withExpressionAttributeValues(new HashMap<>());
+
+        getMockQueryMapper("prefixed").apply(scanRequest);
+
+        assertEquals(new ScanRequest()
+                .withFilterExpression("begins_with(#___name___, :___value___)")
+                .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalhk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":___value___", new AttributeValue().withS("prefixed"))), scanRequest);
+    }
+
+}

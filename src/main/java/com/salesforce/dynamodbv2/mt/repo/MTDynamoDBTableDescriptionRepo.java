@@ -29,12 +29,14 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MTCache;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByIndex.MTTableDescriptionRepo;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 /*
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
@@ -45,7 +47,6 @@ import java.util.stream.Collectors;
  */
 public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
 
-    private static final String TABLEMETADATA_TABLENAME = "_TABLEMETADATA";
     private static final String TABLEMETADATA_HKFIELD = "table";
     private static final String TABLEMETADATA_DATAFIELD = "data";
     private static final String DELIMITER = ".";
@@ -61,49 +62,23 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
     private final int pollIntervalSeconds;
     private final MTCache<TableDescription> cache;
 
-    public MTDynamoDBTableDescriptionRepo(AmazonDynamoDB amazonDynamoDB,
-                                          MTAmazonDynamoDBContextProvider mtContext,
-                                          int pollIntervalSeconds) {
-        this(amazonDynamoDB,
-                mtContext,
-                TABLEMETADATA_TABLENAME,
-                TABLEMETADATA_HKFIELD,
-                TABLEMETADATA_DATAFIELD,
-                DELIMITER,
-                pollIntervalSeconds
-        );
-    }
-
-    public MTDynamoDBTableDescriptionRepo(AmazonDynamoDB amazonDynamoDB,
-                                          MTAmazonDynamoDBContextProvider mtContext,
-                                          int pollIntervalSeconds,
-                                          String tableMetaDataTableName) {
-        this(amazonDynamoDB,
-                mtContext,
-                tableMetaDataTableName,
-                TABLEMETADATA_HKFIELD,
-                TABLEMETADATA_DATAFIELD,
-                DELIMITER,
-                pollIntervalSeconds
-        );
-    }
-
     private MTDynamoDBTableDescriptionRepo(AmazonDynamoDB amazonDynamoDB,
                                            MTAmazonDynamoDBContextProvider mtContext,
                                            String tableDescriptionTableName,
+                                           Optional<String> tablePrefix,
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds) {
         this.amazonDynamoDB = amazonDynamoDB;
         this.mtContext = mtContext;
-        this.adminUtils = new AmazonDynamoDBAdminUtils(amazonDynamoDB);
-        this.tableDescriptionTableName = tableDescriptionTableName;
+        adminUtils = new AmazonDynamoDBAdminUtils(amazonDynamoDB);
+        this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
-        this.cache = new MTCache<>(mtContext);
+        cache = new MTCache<>(mtContext);
     }
 
     @Override
@@ -115,6 +90,10 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
     @Override
     public TableDescription getTableDescription(String tableName) {
         return getTableDescriptionFromCache(tableName);
+    }
+
+    public static MTDynamoDBTableDescriptionRepoBuilder builder() {
+        return new MTDynamoDBTableDescriptionRepoBuilder();
     }
 
     private TableDescription getTableDescriptionFromCache(String tableName) throws ResourceNotFoundException {
@@ -219,6 +198,92 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
 
     private String getPrefix() {
         return mtContext.getContext() + delimiter;
+    }
+
+    public static class MTDynamoDBTableDescriptionRepoBuilder {
+        private AmazonDynamoDB amazonDynamoDB;
+        private MTAmazonDynamoDBContextProvider mtContext;
+        private String tableDescriptionTableName;
+        private String tableDescriptionTableHashKeyField;
+        private String tableDescriptionTableDataField;
+        private String delimiter;
+        private Integer pollIntervalSeconds;
+        private Optional<String> tablePrefix = Optional.empty();
+
+        public MTDynamoDBTableDescriptionRepoBuilder withAmazonDynamoDB(AmazonDynamoDB amazonDynamoDB) {
+            this.amazonDynamoDB = amazonDynamoDB; return this;
+        }
+
+        public MTDynamoDBTableDescriptionRepoBuilder withContext(MTAmazonDynamoDBContextProvider mtContext) {
+            this.mtContext = mtContext; return this;
+        }
+
+        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
+            this.tableDescriptionTableName = tableDescriptionTableName; return this;
+        }
+
+        @SuppressWarnings("unused")
+        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(String tableDescriptionTableHashKeyField) {
+            this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField; return this;
+        }
+
+        @SuppressWarnings("unused")
+        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableDataField(String tableDescriptionTableDataField) {
+            this.tableDescriptionTableDataField = tableDescriptionTableDataField; return this;
+        }
+
+        @SuppressWarnings("unused")
+        public MTDynamoDBTableDescriptionRepoBuilder withDelimiter(String delimiter) {
+            this.delimiter = delimiter; return this;
+        }
+
+        public MTDynamoDBTableDescriptionRepoBuilder withPollIntervalSeconds(int pollIntervalSeconds) {
+            this.pollIntervalSeconds = pollIntervalSeconds; return this;
+        }
+
+        public MTDynamoDBTableDescriptionRepoBuilder withTablePrefix(Optional<String> tablePrefix) {
+            this.tablePrefix = tablePrefix; return this;
+        }
+
+        public MTDynamoDBTableDescriptionRepo build() {
+            setDefaults();
+            validate();
+            return new MTDynamoDBTableDescriptionRepo(
+                    amazonDynamoDB,
+                    mtContext,
+                    tableDescriptionTableName,
+                    tablePrefix,
+                    tableDescriptionTableHashKeyField,
+                    tableDescriptionTableDataField,
+                    delimiter,
+                    pollIntervalSeconds);
+        }
+
+        private void validate() {
+            checkArgument(amazonDynamoDB != null,"amazonDynamoDB is required");
+            checkArgument(mtContext != null,"mtContext is required");
+            checkArgument(tableDescriptionTableName != null,"tableDescriptionTableName is required");
+        }
+
+        private void setDefaults() {
+            if (tableDescriptionTableHashKeyField == null) {
+                tableDescriptionTableHashKeyField = TABLEMETADATA_HKFIELD;
+            }
+            if (tableDescriptionTableDataField == null) {
+                tableDescriptionTableDataField = TABLEMETADATA_DATAFIELD;
+            }
+            if (delimiter == null) {
+                delimiter = DELIMITER;
+            }
+            if (pollIntervalSeconds == null) {
+                pollIntervalSeconds = 5;
+            }
+        }
+
+    }
+
+    private String prefix(String tableName, Optional<String> tablePrefix) {
+        return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
 }

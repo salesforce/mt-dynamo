@@ -98,7 +98,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     private final MTAmazonDynamoDBContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDB;
 
-    MTAmazonDynamoDBBase(MTAmazonDynamoDBContextProvider mtContext,
+    public MTAmazonDynamoDBBase(MTAmazonDynamoDBContextProvider mtContext,
                          AmazonDynamoDB amazonDynamoDB) {
         this.mtContext = mtContext;
         this.amazonDynamoDB = amazonDynamoDB;
@@ -276,6 +276,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
         throw new UnsupportedOperationException("not yet supported");
     }
 
+    @SuppressWarnings("WeakerAccess")
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         throw new UnsupportedOperationException("not yet supported");
     }
@@ -284,9 +285,9 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
         throw new UnsupportedOperationException("not yet supported");
     }
 
-    protected List<String> listAllTables() {
+    List<String> listAllTables() {
         List<String> tables = new ArrayList<>();
-        ListTablesResult result = null;
+        ListTablesResult result;
         String lastEvaluated  = null;//Below loop is to iterate through pages
         do {
             result  = (lastEvaluated == null) ? getAmazonDynamoDB().listTables() : getAmazonDynamoDB().listTables(lastEvaluated);
