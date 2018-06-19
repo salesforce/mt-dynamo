@@ -11,19 +11,25 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryMapper.QueryRequestWrapper;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryMapper.RequestWrapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Matchers.any;
@@ -93,7 +99,8 @@ class QueryMapperTest {
         getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression("physicalhk = :value")
+                        .withKeyConditionExpression("#field1 = :value")
+                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
     }
 
@@ -178,5 +185,32 @@ class QueryMapperTest {
             assertEquals("ambiguous ScanRequest: both filterExpression and scanFilter were provided", e.getMessage());
         }
     }
+
+    @Test
+    void convertFieldNameLiteralsToExpressionNames() {
+        List<FieldMapping> fieldMappings = ImmutableList.of(new FieldMapping(
+                new Field("field", S), new Field("field", S), null, null, TABLE, true));
+        RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
+                .withKeyConditionExpression("field = :value")
+                .withExpressionAttributeNames(new HashMap<>())
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
+        getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
+        assertEquals("#field1 = :value", requestWrapper.getExpression());
+        assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
+    }
+
+    @Test
+    void convertFieldNameLiteralsToExpressionNamesMultiple() {
+        List<FieldMapping> fieldMappings = ImmutableList.of(new FieldMapping(
+                new Field("field", S), new Field("field", S), null, null, TABLE, true));
+        RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
+                .withKeyConditionExpression("field = :value and field2 = :value2 and field = :value3")
+                .withExpressionAttributeNames(new HashMap<>())
+                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
+        getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
+        assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3", requestWrapper.getExpression());
+        assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
+    }
+
 
 }

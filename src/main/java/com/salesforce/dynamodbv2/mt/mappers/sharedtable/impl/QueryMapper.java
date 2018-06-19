@@ -12,6 +12,7 @@ import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
@@ -85,6 +86,8 @@ class QueryMapper {
             virtualHashKey = virtualSecondaryIndex.getPrimaryKey().getHashKey();
         }
 
+        convertFieldNameLiteralsToExpressionNames(fieldMappings, request);
+
         if (!queryContainsHashKeyCondition(request, virtualHashKey)) {
             // the expression does not contain the table or index key that's being used in the query, add begins_with clause
             String physicalHashKey = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping ->
@@ -102,6 +105,32 @@ class QueryMapper {
 
         // map each field to its target name and apply field prefixing as appropriate
         fieldMappings.forEach(targetFieldMapping -> applyKeyConditionToField(request, targetFieldMapping));
+    }
+
+    @VisibleForTesting
+    void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings, // TODO msgroi unit test
+                                                   RequestWrapper request) {
+        AtomicInteger counter = new AtomicInteger(1);
+        fieldMappings.forEach(fieldMapping -> {
+            String virtualFieldName = fieldMapping.getSource().getName();
+            String toFind = " " + virtualFieldName + " =";
+            int start = (" " + request.getExpression()).indexOf(toFind); // TODO msgroi look for other operators, deal with space
+            while (start >= 0) {
+                String fieldLiteral = request.getExpression().substring(start, start + virtualFieldName.length());
+                String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
+                request.setExpression(request.getExpression().replaceAll(fieldLiteral + " ", fieldPlaceholder + " "));
+                request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
+                start = (" " + request.getExpression()).indexOf(toFind);
+            }
+        });
+    }
+
+    private String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
+        String fieldPlaceholderCandidate = "#field" + counter.get();
+        while (expressionAttributeNames != null && expressionAttributeNames.containsKey(fieldPlaceholderCandidate)) {
+            fieldPlaceholderCandidate = "#field" + counter.incrementAndGet();
+        }
+        return fieldPlaceholderCandidate;
     }
 
     /*
@@ -133,8 +162,8 @@ class QueryMapper {
                                                               fieldMapping.isContextAware());
         AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
         String valuePlaceholder = ":___value___";
-        request.getExpressionAttributeNames().put(namePlaceholder, hashKey);
-        request.getExpressionAttributeValues().put(valuePlaceholder, physicalValuePrefixAttribute);
+        request.putExpressionAttributeName(namePlaceholder, hashKey);
+        request.putExpressionAttributeValue(valuePlaceholder, physicalValuePrefixAttribute);
         request.setExpression((request.getExpression() != null ? request.getExpression() + " and " : "") +
                 "begins_with(" + namePlaceholder + ", " + valuePlaceholder + ")");
     }
@@ -151,15 +180,10 @@ class QueryMapper {
             // key is present in filter criteria
             int end = conditionExpression.indexOf(" ", start + toFind.length());
             String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end);
-            Map<String, AttributeValue> expressionAttrValues = request.getExpressionAttributeValues();
-            AttributeValue virtualAttr = expressionAttrValues.get(virtualValuePlaceholder);
+            AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
             AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
-            expressionAttrValues.put(virtualValuePlaceholder, physicalAttr);
-            if (keyFieldName.isPresent()) {
-                expressionAttrNames.put(keyFieldName.get(), fieldMapping.getTarget().getName());
-            } else {
-                request.setExpression(conditionExpression.replace(toFind, fieldMapping.getTarget().getName() + " = "));
-            }
+            request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+            request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
         }
     }
 
@@ -179,29 +203,28 @@ class QueryMapper {
         return start != -1;
     }
 
-    private interface RequestWrapper {
+    @VisibleForTesting
+    interface RequestWrapper {
         String getIndexName();
         Map<String, String> getExpressionAttributeNames();
+        void putExpressionAttributeName(String key, String value);
         Map<String, AttributeValue> getExpressionAttributeValues();
+        void putExpressionAttributeValue(String key, AttributeValue value);
         String getExpression();
         void setExpression(String expression);
         void setIndexName(String indexName);
         Map<String, Condition> getLegacyExpression();
         void clearLegacyExpression();
     }
-    private static class QueryRequestWrapper implements RequestWrapper {
+
+    @VisibleForTesting
+    static class QueryRequestWrapper implements RequestWrapper {
 
         private final QueryRequest queryRequest;
         @SuppressWarnings("unchecked")
         QueryRequestWrapper(QueryRequest queryRequest) {
             queryRequest.setExpressionAttributeNames(getMutableMap(queryRequest.getExpressionAttributeNames()));
             queryRequest.setExpressionAttributeValues(getMutableMap(queryRequest.getExpressionAttributeValues()));
-            if (queryRequest.getKeyConditions() != null && queryRequest.getExpressionAttributeNames() == null) {
-                queryRequest.setExpressionAttributeNames(new HashMap<>());
-            }
-            if (queryRequest.getKeyConditions() != null && queryRequest.getExpressionAttributeValues() == null) {
-                queryRequest.setExpressionAttributeValues(new HashMap<>());
-            }
             this.queryRequest = queryRequest;
         }
 
@@ -216,8 +239,24 @@ class QueryMapper {
         }
 
         @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (queryRequest.getExpressionAttributeNames() == null) {
+                queryRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            queryRequest.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
         public Map<String, AttributeValue> getExpressionAttributeValues() {
             return queryRequest.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            if (queryRequest.getExpressionAttributeValues() == null) {
+                queryRequest.setExpressionAttributeValues(new HashMap<>());
+            }
+            queryRequest.getExpressionAttributeValues().put(key, value);
         }
 
         @Override
@@ -268,8 +307,24 @@ class QueryMapper {
         }
 
         @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (scanRequest.getExpressionAttributeNames() == null) {
+                scanRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            scanRequest.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
         public Map<String, AttributeValue> getExpressionAttributeValues() {
             return scanRequest.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            if (scanRequest.getExpressionAttributeValues() == null) {
+                scanRequest.setExpressionAttributeValues(new HashMap<>());
+            }
+            scanRequest.getExpressionAttributeValues().put(key, value);
         }
 
         @Override
@@ -341,8 +396,8 @@ class QueryMapper {
                 String field = "#field" + counter;
                 String value = ":value" + counter.getAndIncrement();
                 keyConditionExpressionParts.add(field + " = " + value);
-                request.getExpressionAttributeNames().put(field, key);
-                request.getExpressionAttributeValues().put(value, condition.getAttributeValueList().get(0));
+                request.putExpressionAttributeName(field, key);
+                request.putExpressionAttributeValue(value, condition.getAttributeValueList().get(0));
             });
             request.setExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
             request.clearLegacyExpression();
