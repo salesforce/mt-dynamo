@@ -43,6 +43,9 @@ import static org.apache.commons.lang.StringUtils.isEmpty;
  */
 class QueryMapper {
 
+    private static final String namePlaceholder = "#___name___";
+    private static final String valuePlaceholder = ":___value___";
+
     private final FieldMapper fieldMapper;
     private final TableMapping tableMapping;
 
@@ -127,7 +130,6 @@ class QueryMapper {
     }
 
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
-        String namePlaceholder = "#___name___";
         // TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with by adding an OR condition
         FieldMapping fieldMappingForPrefix = new FieldMapping(new Field(null, S),
                                                        null,
@@ -136,7 +138,6 @@ class QueryMapper {
                                                               fieldMapping.getIndexType(),
                                                               fieldMapping.isContextAware());
         AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
-        String valuePlaceholder = ":___value___";
         request.putExpressionAttributeName(namePlaceholder, hashKey);
         request.putExpressionAttributeValue(valuePlaceholder, physicalValuePrefixAttribute);
         request.setExpression((request.getExpression() != null ? request.getExpression() + " and " : "") +
@@ -149,18 +150,15 @@ class QueryMapper {
         Map<String, String> expressionAttrNames = request.getExpressionAttributeNames();
         Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny() : Optional.empty();
-        if (keyFieldName.isPresent()) {
+        if (keyFieldName.isPresent() && !keyFieldName.get().equals(namePlaceholder)) {
             String toFind = keyFieldName.get() + " = ";
             int start = conditionExpression.indexOf(toFind);
-            if (start != -1) {
-                // key is present in filter criteria
-                int end = conditionExpression.indexOf(" ", start + toFind.length());
-                String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end);
-                AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
-                AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
-                request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
-                request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
-            }
+            int end = conditionExpression.indexOf(" ", start + toFind.length());
+            String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end); // TODO msgroi does this really work with other operators and more elaborate conditions?
+            AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
+            AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
+            request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+            request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
         }
     }
 
