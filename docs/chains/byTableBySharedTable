@@ -8,14 +8,7 @@ TEST: byTableBySharedTable
      | ctx1.ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx1.table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
      | ctx2.ctx2.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx2.table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
-     ctx1._tablemetadata
-     __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-     | table      | data                                                                                                                                                                                                                                       |
-     |=========================================================================================================================================================================================================================================================|
-     | ctx1.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
-     | ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
-
-     ctx1.mt_sharedtablestatic_s_nolsi
+     mt_sharedtablestatic_s_nolsi
      __________________________
      | hk           | someField|
      |=========================|
@@ -23,18 +16,6 @@ TEST: byTableBySharedTable
      | ctx1.table1.2| value-2  |
      | ctx1.table2.1| value-1  |
      | ctx1.table2.2| value-2  |
+     | ctx2.table1.1| value-1  |
+     | ctx2.table1.2| value-2  |
 
-     ctx1.table88
-     ctx1.table89
-     ctx1.table9
-     ctx1.table90
-     ctx1.table91
-     ctx1.table92
-     ctx1.table93
-     ctx1.table94
-     ctx1.table95
-     ctx1.table96
-     ctx1.table97
-     ctx1.table98
-     ctx1.table99
-     ctx2.MTAmazonDynamoDBTestRunner1

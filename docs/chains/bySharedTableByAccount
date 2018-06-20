@@ -33,4 +33,3 @@ account: ctx2
      | ctx2.table1.1| value-1  |
      | ctx2.table1.2| value-2  |
 
-     oktodelete-msgroi-ltm-MTAmazonDynamoDBTestRunner1

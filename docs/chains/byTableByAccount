@@ -2,13 +2,6 @@ TEST: byTableByAccount
 
 account: ctx1
 
-     _tablemetadata
-     __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-     | table      | data                                                                                                                                                                                                                                       |
-     |=========================================================================================================================================================================================================================================================|
-     | ctx1.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
-     | ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
-
      ctx1.table1
      _________________________
      | hashKeyField| someField|
@@ -23,22 +16,7 @@ account: ctx1
      | 1           | value-1  |
      | 2           | value-2  |
 
-     mt_sharedtablestatic_s_nolsi
-     __________________________
-     | hk           | someField|
-     |=========================|
-     | ctx1.table1.1| value-1  |
-     | ctx1.table1.2| value-2  |
-     | ctx1.table2.1| value-1  |
-     | ctx1.table2.2| value-2  |
-
 account: ctx2
-
-     _tablemetadata
-     __________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
-     | table      | data                                                                                                                                                                                                                                       |
-     |=========================================================================================================================================================================================================================================================|
-     | ctx2.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
      ctx2.table1
      _________________________
@@ -47,11 +25,3 @@ account: ctx2
      | 1           | value-1  |
      | 2           | value-2  |
 
-     mt_sharedtablestatic_s_nolsi
-     __________________________
-     | hk           | someField|
-     |=========================|
-     | ctx2.table1.1| value-1  |
-     | ctx2.table1.2| value-2  |
-
-     oktodelete-msgroi-ltm-MTAmazonDynamoDBTestRunner1
