@@ -16,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 
@@ -102,6 +103,12 @@ public class CreateTableRequestBuilder {
 
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
         this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits, writeCapacityUnits));
+        return this;
+    }
+
+    @SuppressWarnings("all")
+    public CreateTableRequestBuilder withStreamSpecification(StreamSpecification streamSpecification) {
+        this.createTableRequest.withStreamSpecification(streamSpecification);
         return this;
     }
 

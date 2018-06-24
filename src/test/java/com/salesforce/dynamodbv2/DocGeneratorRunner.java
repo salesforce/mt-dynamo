@@ -504,8 +504,7 @@ class DocGeneratorRunner {
         return SharedTableBuilder.builder()
                 .withPrecreateTables(false)
                 .withContext(mtContext)
-                .withTruncateOnDeleteTable(true)
-                .withIsPolymorphicTable(true);
+                .withTruncateOnDeleteTable(true);
     }
 
     private static String getTablePrefix(boolean prefixTablenames) {

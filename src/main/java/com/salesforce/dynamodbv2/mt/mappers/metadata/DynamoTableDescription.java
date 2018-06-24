@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
 
@@ -29,6 +30,8 @@ public interface DynamoTableDescription extends HasPrimaryKey {
     List<DynamoSecondaryIndex> getLSIs();
     Optional<DynamoSecondaryIndex> getLSI(String indexName);
     DynamoSecondaryIndex findSI(String indexName);
+    StreamSpecification getStreamSpecification();
+    String getLastStreamArn();
     CreateTableRequest getCreateTableRequest();
 
 }

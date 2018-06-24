@@ -44,8 +44,9 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     private final Map<String, DynamoSecondaryIndex> lsiMap;
     private final ProvisionedThroughputDescription provisionedThroughput;
     private final StreamSpecification streamSpecification;
-    private final CreateTableRequest createTableRequest;
+    private final String lastStreamArn;
 
+    private final CreateTableRequest createTableRequest;
     public DynamoTableDescriptionImpl(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
         tableName = createTableRequest.getTableName();
@@ -61,6 +62,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
                         .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         provisionedThroughput = fromProvisionedThroughput(createTableRequest.getProvisionedThroughput());
         streamSpecification = createTableRequest.getStreamSpecification();
+        lastStreamArn = null;
     }
 
     public DynamoTableDescriptionImpl(TableDescription tableDescription) {
@@ -77,6 +79,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
                         new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
                         .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         provisionedThroughput = tableDescription.getProvisionedThroughput();
+        lastStreamArn = tableDescription.getLatestStreamArn();
         streamSpecification = tableDescription.getStreamSpecification();
     }
 
@@ -151,6 +154,14 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             throw new IllegalArgumentException("secondary index '" + indexName + "' not found");
         }
         return si.get();
+    }
+
+    public StreamSpecification getStreamSpecification() {
+        return streamSpecification;
+    }
+
+    public String getLastStreamArn() {
+        return lastStreamArn;
     }
 
     @Override

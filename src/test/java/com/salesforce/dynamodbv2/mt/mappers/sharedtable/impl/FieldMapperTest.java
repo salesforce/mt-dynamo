@@ -30,27 +30,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class FieldMapperTest {
 
-    private static final String delimiter = random();
+//    private static final String delimiter = random(); // TODO flip this back on when escaping is implemented
+    private static final String delimiter = ".";
 
     @Test
-    void applyTableIndexNonPolymorphic() {
+    void applyTableIndex() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         String value = generateValue();
-        assertMapper(false,
-                     S,
-                     TABLE,
-                     () -> new AttributeValue().withS(value),
-                     mtContext.getContext() + delimiter + value,
-                     mtContext);
-    }
-
-    @Test
-    void applyTableIndexPolymorphic() {
-        MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
-        String value = generateValue();
-        assertMapper(
-                     true,
-                     S,
+        assertMapper(S,
                      TABLE,
                      () -> new AttributeValue().withS(value),
                      mtContext.getContext() + delimiter + "virtualtable" + delimiter + value,
@@ -61,8 +48,7 @@ class FieldMapperTest {
     void applySecondaryIndex() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         String value = generateValue();
-        assertMapper(true,
-                     S,
+        assertMapper(S,
                      SECONDARYINDEX,
                      () -> new AttributeValue().withS(value),
                      mtContext.getContext() + delimiter + "virtualindex" + delimiter + value,
@@ -70,31 +56,29 @@ class FieldMapperTest {
     }
 
     @Test
-    void applyTableIndexNonPolymorphicNumber() {
+    void applyTableIndexNumber() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
-        assertMapper(false,
-                     N,
+        assertMapper(N,
                      TABLE,
                      () -> new AttributeValue().withN("123"),
-                     mtContext.getContext() + delimiter + "123",
+                     mtContext.getContext() + delimiter + "virtualtable" + delimiter + "123",
                      mtContext);
     }
 
     @Test
-    void applyTableIndexNonPolymorphicByteArray() {
+    void applyTableIndexByteArray() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
-        assertMapper(false,
-                     B,
+        assertMapper(B,
                      TABLE,
                      () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
-                     mtContext.getContext() + delimiter + "bytebuffer",
+                     mtContext.getContext() + delimiter + "virtualtable" + delimiter + "bytebuffer",
                      mtContext);
     }
 
     @Test
     void applyValueNotFound() {
         try {
-            buildFieldMapper(buildMTContext(), false).apply(buildFieldMapping(N, TABLE), new AttributeValue().withS("value"));
+            buildFieldMapper(buildMTContext()).apply(buildFieldMapping(N, TABLE), new AttributeValue().withS("value"));
         } catch (NullPointerException e) {
             // expected
             assertEquals("attributeValue={S: value,} of type=N could not be converted", e.getMessage());
@@ -104,21 +88,20 @@ class FieldMapperTest {
     @Test
     void invalidType() {
         try {
-            buildFieldMapper(buildMTContext(), false).apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
+            buildFieldMapper(buildMTContext()).apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
         } catch (NullPointerException e) {
             // expected
             assertEquals("null attribute type", e.getMessage());
         }
     }
 
-    private void assertMapper(boolean isPolymorphicTable,
-                              ScalarAttributeType fieldType,
+    private void assertMapper(ScalarAttributeType fieldType,
                               IndexType indexType,
                               Supplier<AttributeValue> attributeValue,
                               String expectedStringValue,
                               MTAmazonDynamoDBContextProvider mtContext) {
         FieldMapping fieldMapping = buildFieldMapping(fieldType, indexType);
-        FieldMapper fieldMapper = buildFieldMapper(mtContext, isPolymorphicTable);
+        FieldMapper fieldMapper = buildFieldMapper(mtContext);
         AttributeValue qualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue.get());
         assertEquals(expectedStringValue, qualifiedAttributeValue.getS());
         AttributeValue actualAttributeValue = fieldMapper.reverse(reverseFieldMapping(fieldMapping), qualifiedAttributeValue);
@@ -146,11 +129,10 @@ class FieldMapperTest {
                 fieldMapping.isContextAware());
     }
 
-    private FieldMapper buildFieldMapper(MTAmazonDynamoDBContextProvider mtContext, boolean isPolyporphicTable) {
+    private FieldMapper buildFieldMapper(MTAmazonDynamoDBContextProvider mtContext) {
         return new FieldMapper(mtContext,
-                delimiter,
-                "virtualtable",
-                isPolyporphicTable);
+                               "virtualtable",
+                               new FieldPrefixFunction(delimiter));
     }
 
     private static String random() {

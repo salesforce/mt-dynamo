@@ -55,8 +55,8 @@ class TableMappingTest {
             virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
-            null,
-            false);
+            null
+    );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
             "virtualhk", ImmutableList.of(
                     new FieldMapping(new Field("virtualhk", N),
@@ -202,8 +202,8 @@ class TableMappingTest {
                 virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
                 spyIndexMapper,
                 null,
-                null,
-                false);
+                null
+        );
         when(spyIndexMapper.lookupPhysicalSecondaryIndex(virtualTable.getSIs().get(0), physicalTable)).thenThrow(new IllegalArgumentException("index mapping exception"));
         assertException((TestFunction<IllegalArgumentException>) () ->
                         tableMapping.validateSecondaryIndexes(virtualTable, physicalTable, spyIndexMapper),
@@ -236,9 +236,9 @@ class TableMappingTest {
                 virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
                 new DynamoSecondaryIndexMapperByTypeImpl(),
                 null,
-                null,
-                false),
-                "two logical LSI's");
+                null
+                ),
+                "two virtual LSI's");
     }
 
     @Test

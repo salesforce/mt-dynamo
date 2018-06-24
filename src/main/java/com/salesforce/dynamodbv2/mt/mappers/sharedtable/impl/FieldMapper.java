@@ -11,59 +11,38 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 /*
- * Adds and removes prefixes to fields based on the tenant context.  If isPolymorphicTable is set to true, also includes
- * the virtual table name in the prefix.
+ * Adds and removes prefixes to fields based on the tenant context.
  *
  * @author msgroi
  */
 class FieldMapper {
 
     private final MTAmazonDynamoDBContextProvider mtContext;
-    private final String delimiter;
     private final String virtualTableName;
-    private final boolean isPolymorphicTable;
+    private final FieldPrefixFunction fieldPrefixFunction;
 
     FieldMapper(MTAmazonDynamoDBContextProvider mtContext,
-                String delimiter,
                 String virtualTableName,
-                boolean isPolymorphicTable) {
+                FieldPrefixFunction fieldPrefixFunction) {
         this.mtContext = mtContext;
-        this.delimiter = delimiter;
         this.virtualTableName = virtualTableName;
-        this.isPolymorphicTable = isPolymorphicTable;
+        this.fieldPrefixFunction = fieldPrefixFunction;
     }
 
     AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
-        return new AttributeValue(getPrefix(fieldMapping) + convertToStringNotNull(fieldMapping.getSource().getType(), unqualifiedAttribute));
+        return new AttributeValue(fieldPrefixFunction.apply(mtContext,
+                                  fieldMapping.getIndexType() == TABLE ? virtualTableName : fieldMapping.getVirtualIndexName(),
+                                  convertToStringNotNull(fieldMapping.getSource().getType(), unqualifiedAttribute)).getQualifiedValue());
     }
 
     AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
-        String qualifiedValue = qualifiedAttribute.getS();
-        String expectedPrefix = getPrefix(fieldMapping);
-        String actualPrefix = qualifiedValue.substring(0, expectedPrefix.length());
-        checkArgument(actualPrefix.equalsIgnoreCase(expectedPrefix),
-                "qualified value expected to start with '" + expectedPrefix + "' but started with '" + actualPrefix + "'");
-        return convertFromString(fieldMapping.getTarget().getType(), qualifiedValue.substring(expectedPrefix.length()));
-    }
-
-    private String getPrefix(FieldMapping fieldMapping) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(mtContext.getContext()).append(delimiter);
-        if (fieldMapping.getIndexType() == TABLE) {
-            if (isPolymorphicTable) {
-                sb.append(virtualTableName).append(delimiter);
-            }
-        } else {
-            // SECONDARYINDEX
-            sb.append(fieldMapping.getVirtualIndexName()).append(delimiter);
-        }
-        return sb.toString();
+        return convertFromString(fieldMapping.getTarget().getType(),
+                                 fieldPrefixFunction.reverse(qualifiedAttribute.getS()).getUnqualifiedValue());
     }
 
     private String convertToStringNotNull(ScalarAttributeType type, AttributeValue attributeValue) {

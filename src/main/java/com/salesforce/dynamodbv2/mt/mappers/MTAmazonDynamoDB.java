@@ -95,6 +95,15 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             super.setUserIdentity(userIdentity);
             return this;
         }
+
+        @Override
+        public String toString() {
+            return "MTRecord{" +
+                    "context='" + context + '\'' +
+                    ", tableName='" + tableName + '\'' +
+                    ", recordFields=" + super.toString() +
+                    '}';
+        }
     }
 
     public static class MTStreamDescription {

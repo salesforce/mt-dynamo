@@ -18,6 +18,7 @@ import java.util.Map;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /*
  * @author msgroi
@@ -25,18 +26,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ItemMapperTest {
 
     private static final String prefix = "prefix-";
+    private static final ItemMapper sut = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
+            virtualTableDescription1 -> new DynamoTableDescriptionImpl(
+                    CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
+            new DynamoSecondaryIndexMapperByTypeImpl(),
+            null,
+            null
+    ), new MockFieldMapper());
 
     @Test
     void applyAndReverse() {
-        ItemMapper sut = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
-                virtualTableDescription1 -> new DynamoTableDescriptionImpl(
-                        CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
-                new DynamoSecondaryIndexMapperByTypeImpl(),
-                null,
-                null,
-                false), new MockFieldMapper());
-
         Map<String, AttributeValue> item = ImmutableMap.of(
                 "virtualhk", new AttributeValue().withS("hkvalue"),
                 "somefield", new AttributeValue().withS("somevalue"));
@@ -52,10 +52,15 @@ class ItemMapperTest {
         assertEquals(item, reversedItem);
     }
 
+    @Test
+    void reverseNull() {
+        assertNull(sut.reverse(null));
+    }
+
     private static class MockFieldMapper extends FieldMapper {
 
         MockFieldMapper() {
-            super(null, null, null, false);
+            super(null, null, null);
         }
 
         @Override

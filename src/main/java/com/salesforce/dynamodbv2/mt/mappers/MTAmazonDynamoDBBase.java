@@ -99,7 +99,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     private final AmazonDynamoDB amazonDynamoDB;
 
     public MTAmazonDynamoDBBase(MTAmazonDynamoDBContextProvider mtContext,
-                         AmazonDynamoDB amazonDynamoDB) {
+                                AmazonDynamoDB amazonDynamoDB) {
         this.mtContext = mtContext;
         this.amazonDynamoDB = amazonDynamoDB;
     }
@@ -108,7 +108,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
         return amazonDynamoDB;
     }
 
-    MTAmazonDynamoDBContextProvider getMTContext() {
+    protected MTAmazonDynamoDBContextProvider getMTContext() {
         return mtContext;
     }
 

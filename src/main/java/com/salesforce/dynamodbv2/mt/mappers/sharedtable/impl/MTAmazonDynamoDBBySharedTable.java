@@ -24,16 +24,26 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.amazonaws.services.dynamodbv2.streamsadapter.model.RecordAdapter;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
+import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
+import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
+import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.cache.Cache;
 import com.salesforce.dynamodbv2.mt.cache.MTCache;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBBase;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MTTableDescriptionRepo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,9 +56,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
+
 /**
  * Allows a developer using the mt-dynamo library to provide a custom mapping between tables that clients interact with
- * and the physical tables where the data for those tables are stored.  It support mapping many logical tables to a
+ * and the physical tables where the data for those tables are stored.  It support mapping many virtual tables to a
  * single physical table, mapping field names and types, secondary indexes.  It supports for allowing multi-tenant
  * context to be added to table and index hash key fields.  Throughout this documentation, virtual tables are meant to
  * represent tables as they are understood by the developer using the DynamoDB Java API.  Physical tables represent the
@@ -78,6 +90,8 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
     private final TableMappingFactory tableMappingFactory;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
+
+    @SuppressWarnings("unchecked")
     public MTAmazonDynamoDBBySharedTable(String name,
                                          MTAmazonDynamoDBContextProvider mtContext,
                                          AmazonDynamoDB amazonDynamoDB,
@@ -88,7 +102,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         super(mtContext, amazonDynamoDB);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
-        tableMappingCache = new MTCache<>(mtContext);
+        tableMappingCache = new MTCache(mtContext);
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
@@ -178,7 +192,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
 
         // map result
         QueryResult queryResult = getAmazonDynamoDB().query(queryRequest);
-        queryResult.setItems(queryResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(Collectors.toList()));
+        queryResult.setItems(queryResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(toList()));
 
         return queryResult;
     }
@@ -196,7 +210,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
 
         // map result
         ScanResult scanResult = getAmazonDynamoDB().scan(clonedScanRequest);
-        scanResult.setItems(scanResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(Collectors.toList()));
+        scanResult.setItems(scanResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(toList()));
 
         return scanResult;
     }
@@ -219,74 +233,69 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         return name;
     }
 
-    // TODO paging
     @Override
     public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
-//        String prefix = tablePrefix.orElse("");
-//        return listAllTables().stream() //
-//                .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
-//                .map(n -> getAmazonDynamoDB().describeTable(n).getTable()) // TODO handle table not exists
-//                .filter(d -> ofNullable(d.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
-//                        .orElse(false)) // only include tables with streaming enabled
-//                .map(d -> new MTStreamDescription() //
-//                        .withLabel(d.getTableName()) // use raw name as label
-//                        .withArn(d.getLatestStreamArn()) //
-//                        .withRecordProcessorFactory(newAdapter(factory, d.getTableName().substring(prefix.length())))) //
-//                .collect(Collectors.toList());
-        return null; // TODO implement
+        return tableMappingCache.asMap().values().stream()
+                .map(TableMapping::getPhysicalTable).filter(physicalTable -> Optional.ofNullable(physicalTable.getStreamSpecification())
+                .map(StreamSpecification::isStreamEnabled).orElse(false))
+                .map(physicalTable -> new MTStreamDescription()
+                        .withLabel(physicalTable.getTableName())
+                        .withArn(physicalTable.getLastStreamArn())
+                        .withRecordProcessorFactory(newAdapter(factory, physicalTable))).collect(toList());
     }
 
-    // TODO assumes context does not contain delimiter
-//
-//        private final String tenant;
-//
-    // TODO assumes prefix does not contain delimiter
-    //    private static class RecordProcessor implements IRecordProcessor {
-    // TODO assumes everything that starts with prefix is in fact an MT table (ok?)
-    //    }
-    //        return () -> new RecordProcessor(tenant, name, factory.createProcessor());
-    //        String name = tableName.substring(idx + delimiter.length(), tableName.length());
-    //        String tenant = tableName.substring(0, idx);
-    //        int idx = tableName.indexOf(delimiter);
-    //    private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, String tableName) {
-//        private final String tableName;
-//        private final IRecordProcessor processor;
-//        public RecordProcessor(String tenant, String tableName, IRecordProcessor processor) {
-//            this.tenant = tenant;
-//            this.tableName = tableName;
-//            this.processor = processor;
-//        }
-//        @Override
-//        public void initialize(InitializationInput initializationInput) {
-//            processor.initialize(initializationInput);
-//        }
-//
-//        @Override
-//        public void processRecords(ProcessRecordsInput processRecordsInput) {
-//            List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
-//                    .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
-//            processor.processRecords(processRecordsInput.withRecords(records));
-//        }
-//
-//        private com.amazonaws.services.kinesis.model.Record toMTRecord(RecordAdapter adapter) {
-//            Record r = adapter.getInternalObject();
-//            return new RecordAdapter(new MTRecord() //
-//                    .withAwsRegion(r.getAwsRegion()) //
-//                    .withDynamodb(r.getDynamodb()) //
-//                    .withEventID(r.getEventID()) //
-//                    .withEventName(r.getEventName()) //
-//                    .withEventSource(r.getEventSource()) //
-//                    .withEventVersion(r.getEventVersion()) //
-//                    .withContext(tenant) //
-//                    .withTableName(tableName));
-//        }
-//
-//        @Override
-//        public void shutdown(ShutdownInput shutdownInput) {
-//            processor.shutdown(shutdownInput);
-//        }
-//
-//    }
+    private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, DynamoTableDescription physicalTable) {
+        return () -> new RecordProcessor(factory.createProcessor(), physicalTable);
+    }
+
+    private class RecordProcessor implements IRecordProcessor {
+        private final IRecordProcessor processor;
+        private final DynamoTableDescription physicalTable;
+
+        RecordProcessor(IRecordProcessor processor, DynamoTableDescription physicalTable) {
+            this.processor = processor;
+            this.physicalTable = physicalTable;
+        }
+
+        @Override
+        public void initialize(InitializationInput initializationInput) {
+            processor.initialize(initializationInput);
+        }
+
+        @Override
+        public void processRecords(ProcessRecordsInput processRecordsInput) {
+            List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
+                    .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
+            processor.processRecords(processRecordsInput.withRecords(records));
+        }
+
+        private com.amazonaws.services.kinesis.model.Record toMTRecord(RecordAdapter adapter) {
+            Record r = adapter.getInternalObject();
+            StreamRecord streamRecord = r.getDynamodb();
+            FieldValue fieldValue = new FieldPrefixFunction(".").reverse(streamRecord.getKeys().get(physicalTable.getPrimaryKey().getHashKey()).getS());
+            getMTContext().setContext(fieldValue.getMtContext());
+            TableMapping tableMapping = getTableMapping(fieldValue.getTableIndex());
+            ItemMapper itemMapper = tableMapping.getItemMapper();
+            streamRecord.setKeys(itemMapper.reverse(streamRecord.getKeys()));
+            streamRecord.setOldImage(itemMapper.reverse(streamRecord.getOldImage()));
+            streamRecord.setNewImage(itemMapper.reverse(streamRecord.getNewImage()));
+            return new RecordAdapter(new MTRecord()
+                    .withAwsRegion(r.getAwsRegion())
+                    .withDynamodb(streamRecord)
+                    .withEventID(r.getEventID())
+                    .withEventName(r.getEventName())
+                    .withEventSource(r.getEventSource())
+                    .withEventVersion(r.getEventVersion())
+                    .withContext(fieldValue.getMtContext())
+                    .withTableName(fieldValue.getTableIndex()));
+        }
+
+        @Override
+        public void shutdown(ShutdownInput shutdownInput) {
+            processor.shutdown(shutdownInput);
+        }
+
+    }
 
     private DeleteTableResult deleteTableInternal(DeleteTableRequest deleteTableRequest) {
         String tableDesc = "table=" + deleteTableRequest.getTableName() + " " + (deleteTableAsync ? "asynchronously" : "synchronously");

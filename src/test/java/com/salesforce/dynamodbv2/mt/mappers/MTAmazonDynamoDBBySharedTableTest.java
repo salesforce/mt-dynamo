@@ -9,6 +9,8 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
@@ -18,12 +20,14 @@ import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.TestAmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MTAmazonDynamoDBContextProviderImpl;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
 import org.junit.jupiter.api.Test;
@@ -44,6 +48,9 @@ class MTAmazonDynamoDBBySharedTableTest {
     private static final AmazonDynamoDB rootAmazonDynamoDB = isLocalDynamo
         ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDB()
         : AmazonDynamoDBClientBuilder.standard().build();
+    private static final AmazonDynamoDBStreams rootAmazonDynamoDBStreams = isLocalDynamo
+            ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDBStreams()
+            : AmazonDynamoDBStreamsClientBuilder.standard().build();
     private static final MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
     private static final AmazonDynamoDB amazonDynamoDB = MTAmazonDynamoDBLogger.builder()
             .withAmazonDynamoDB(rootAmazonDynamoDB)
@@ -79,13 +86,19 @@ class MTAmazonDynamoDBBySharedTableTest {
                         .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                                 .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH),
                                                new KeySchemaElement(indexRangeField, KeyType.RANGE))
-                                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                        .withStreamSpecification(new StreamSpecification()
+                                .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                .withStreamEnabled(true));
             } else {
                 return new CreateTableRequest()
                         .withTableName(tableName)
                         .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                         .withAttributeDefinitions(new AttributeDefinition(MTAmazonDynamoDBTestRunner.hashKeyField, S))
-                        .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH));
+                        .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH))
+                        .withStreamSpecification(new StreamSpecification()
+                                .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                .withStreamEnabled(true));
             }
         };
         run(() -> defaultSettings(SharedTableCustomDynamicBuilder.builder().withAmazonDynamoDB(amazonDynamoDB)
@@ -102,7 +115,10 @@ class MTAmazonDynamoDBBySharedTableTest {
                             .withTableName(hkTableName)
                             .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                             .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S))
-                            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH)),
+                            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+                            .withStreamSpecification(new StreamSpecification()
+                                    .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                    .withStreamEnabled(true)),
                         new CreateTableRequest()
                             .withTableName(hkRkTableName)
                             .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
@@ -118,7 +134,10 @@ class MTAmazonDynamoDBBySharedTableTest {
                             .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                                     .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
                                             new KeySchemaElement(indexRangeField, KeyType.RANGE))
-                                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL))))
+                                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                            .withStreamSpecification(new StreamSpecification()
+                                .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                .withStreamEnabled(true)))
                 .withTableMapper(virtualTableDescription ->
                         virtualTableDescription.getTableName().endsWith("3") ? hkRkTableName : hkTableName)
                 .withAmazonDynamoDB(amazonDynamoDB)
@@ -147,16 +166,19 @@ class MTAmazonDynamoDBBySharedTableTest {
                 mtContext,
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
+                rootAmazonDynamoDBStreams, // test streams for this run only
                 isLocalDynamo, S).runAll();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
+                null,
                 isLocalDynamo, N).runAll();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
+                null,
                 isLocalDynamo, S).runBinaryTest();
     }
 

@@ -154,7 +154,7 @@ class QueryMapper {
             String toFind = keyFieldName.get() + " = ";
             int start = conditionExpression.indexOf(toFind);
             int end = conditionExpression.indexOf(" ", start + toFind.length());
-            String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end); // TODO msgroi does this really work with other operators and more elaborate conditions?
+            String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end); // TODO add support for non-EQ operators
             AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
             AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
             request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
@@ -337,6 +337,7 @@ class QueryMapper {
      * Validate that there are keyConditions or a keyConditionExpression, but not both.
      */
     private void validateQueryRequest(QueryRequest queryRequest) {
+        checkArgument(queryRequest.getFilterExpression() == null, "Query filterExpressions are not supported");
         boolean hasKeyConditionExpression = !isEmpty(queryRequest.getKeyConditionExpression());
         boolean hasKeyConditions = (queryRequest.getKeyConditions() != null && queryRequest.getKeyConditions().keySet().size() > 0);
         checkArgument(hasKeyConditionExpression || hasKeyConditions,
@@ -380,13 +381,13 @@ class QueryMapper {
     }
 
     @VisibleForTesting
-    void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings, // TODO msgroi unit test
+    void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings,
                                                    RequestWrapper request) {
         AtomicInteger counter = new AtomicInteger(1);
         fieldMappings.forEach(fieldMapping -> {
             String virtualFieldName = fieldMapping.getSource().getName();
             String toFind = " " + virtualFieldName + " =";
-            int start = (" " + request.getExpression()).indexOf(toFind); // TODO msgroi look for other operators, deal with space
+            int start = (" " + request.getExpression()).indexOf(toFind); // TODO add support for non-EQ operators
             while (start >= 0) {
                 String fieldLiteral = request.getExpression().substring(start, start + virtualFieldName.length());
                 String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);

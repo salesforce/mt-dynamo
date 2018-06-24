@@ -89,8 +89,8 @@ public class MTCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public ConcurrentMap<String, V> asMap() {
-        throw new UnsupportedOperationException();
+    public ConcurrentMap asMap() {
+        return cache.asMap();
     }
 
     @Override

@@ -9,6 +9,8 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
@@ -172,6 +174,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
                                 mt_sharedtablestatic_s_b_nolsi
                                 ).stream().map(createTableRequestBuilder -> {
             addSIs(createTableRequestBuilder);
+            addStreamSpecification(createTableRequestBuilder);
             return createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput,
                     provisionedThroughput).build();
         }).collect(Collectors.toList());
@@ -187,6 +190,12 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             addSI(createTableRequestBuilder, LSI, S, of(N));
             addSI(createTableRequestBuilder, LSI, S, of(B));
         }
+    }
+
+    private void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder) {
+        createTableRequestBuilder.withStreamSpecification(new StreamSpecification()
+                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                        .withStreamEnabled(true));
     }
 
     private void addSI(CreateTableRequestBuilder createTableRequestBuilder,

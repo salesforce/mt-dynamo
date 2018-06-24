@@ -46,7 +46,7 @@ import static java.util.Optional.ofNullable;
 class TableMapping {
 
     private final DynamoTableDescription virtualTable;
-    private final DynamoTableDescription physicalTable;
+    private DynamoTableDescription physicalTable;
     private final DynamoSecondaryIndexMapper secondaryIndexMapper;
     private final Map<String, List<FieldMapping>> virtualToPhysicalMappings;
     private final Map<String, List<FieldMapping>> physicalToVirtualMappings;
@@ -59,8 +59,7 @@ class TableMapping {
                  CreateTableRequestFactory createTableRequestFactory,
                  DynamoSecondaryIndexMapper secondaryIndexMapper,
                  MTAmazonDynamoDBContextProvider mtContext,
-                 String delimiter,
-                 boolean isPolymorphicTable) {
+                 String delimiter) {
         physicalTable = lookupPhysicalTable(virtualTable, createTableRequestFactory);
         validatePhysicalTable(physicalTable);
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -70,9 +69,8 @@ class TableMapping {
         this.physicalToVirtualMappings = buildAllPhysicalToVirtualFieldMappings(virtualToPhysicalMappings);
         validateVirtualPhysicalCompatibility();
         FieldMapper fieldMapper = new FieldMapper(mtContext,
-                                                                             delimiter,
-                                                                             virtualTable.getTableName(),
-                                                                             isPolymorphicTable);
+                                                  virtualTable.getTableName(),
+                                                  new FieldPrefixFunction(delimiter));
         itemMapper = new ItemMapper(this, fieldMapper);
         queryMapper = new QueryMapper(this, fieldMapper);
     }
@@ -269,7 +267,7 @@ class TableMapping {
             try {
                 DynamoSecondaryIndex physicalLSI = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLSI, physicalTable);
                 checkArgument(!usedPhysicalLSIs.containsKey(physicalLSI),
-                        "two logical LSI's(one:" + usedPhysicalLSIs.get(physicalLSI) + ", two:" +
+                        "two virtual LSI's(one:" + usedPhysicalLSIs.get(physicalLSI) + ", two:" +
                                 virtualLSI + ", mapped to one physical LSI: " + physicalLSI);
                 usedPhysicalLSIs.put(physicalLSI, virtualLSI);
             } catch (MappingException e) {
@@ -313,6 +311,10 @@ class TableMapping {
         checkArgument(primaryKey.getHashKeyType() == S,
                       msgPrefix + " primary key hashkey must be type S, encountered type " +
                       primaryKey.getHashKeyType());
+    }
+
+    void setPhysicalTable(DynamoTableDescription physicalTable) {
+        this.physicalTable = physicalTable;
     }
 
 }

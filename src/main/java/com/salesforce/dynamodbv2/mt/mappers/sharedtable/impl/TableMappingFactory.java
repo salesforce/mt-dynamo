@@ -16,6 +16,7 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 
 import java.util.Optional;
@@ -37,7 +38,6 @@ public class TableMappingFactory {
     private final DynamoSecondaryIndexMapper secondaryIndexMapper;
     private final String delimiter;
     private final AmazonDynamoDB amazonDynamoDB;
-    private final boolean isPolymorphicTable;
     private final int pollIntervalSeconds;
 
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
@@ -45,7 +45,6 @@ public class TableMappingFactory {
                                DynamoSecondaryIndexMapper secondaryIndexMapper,
                                String delimiter,
                                AmazonDynamoDB amazonDynamoDB,
-                               boolean isPolymorphicTable,
                                int pollIntervalSeconds) {
         this.createTableRequestFactory = createTableRequestFactory;
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -53,7 +52,6 @@ public class TableMappingFactory {
         this.delimiter = delimiter;
         this.amazonDynamoDB = amazonDynamoDB;
         this.dynamoDBAdminUtils = new AmazonDynamoDBAdminUtils(amazonDynamoDB);
-        this.isPolymorphicTable = isPolymorphicTable;
         this.pollIntervalSeconds = pollIntervalSeconds;
         precreateTables(createTableRequestFactory);
     }
@@ -62,21 +60,26 @@ public class TableMappingFactory {
         createTableRequestFactory.precreateTables().forEach(this::createTableIfNotExists);
     }
 
+    /*
+     * Creates the table mapping, creates the table if it does not exist, sets the physical table description
+     * back onto the table mapping so it includes things that can only be determined after the physical
+     * table is created, like the streamArn.
+     */
     TableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
         TableMapping tableMapping = new TableMapping(virtualTableDescription,
                                                      createTableRequestFactory,
                                                      secondaryIndexMapper,
                                                      mtContext,
-                                                     delimiter,
-                                                     isPolymorphicTable);
-        createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest());
+                                                     delimiter);
+        tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
         return tableMapping;
     }
 
-    private void createTableIfNotExists(CreateTableRequest physicalTable) {
+    private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
         if (!getTableDescription(physicalTable.getTableName()).isPresent()) new DynamoDBRetry(()
                 -> dynamoDBAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds)).execute();
+        return new DynamoTableDescriptionImpl(amazonDynamoDB.describeTable(physicalTable.getTableName()).getTable());
     }
 
     private Optional<TableDescription> getTableDescription(String tableName) {

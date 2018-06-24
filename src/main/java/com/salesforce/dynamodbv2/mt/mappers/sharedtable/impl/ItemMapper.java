@@ -63,6 +63,9 @@ class ItemMapper {
      * Used for removing context from GetItemResult, QueryResult, or ScanResult's.
      */
     Map<String, AttributeValue> reverse(Map<String, AttributeValue> qualifiedItem) {
+        if (qualifiedItem == null) {
+            return null;
+        }
         Map<String, AttributeValue> unqualifiedItem = new HashMap<>();
         Map<String, List<FieldMapping>> physicalToVirtualFieldMappings = tableMapping.getAllPhysicalToVirtualFieldMappings();
         qualifiedItem.forEach((field, attribute) -> {

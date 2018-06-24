@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
@@ -27,6 +28,7 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -34,6 +36,7 @@ import com.salesforce.dynamodbv2.AmazonDynamoDBLocal;
 import com.salesforce.dynamodbv2.TestAmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +49,9 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -83,6 +89,7 @@ public class MTAmazonDynamoDBTestRunner {
     private final String tableName4;
     private final List<Map<String, CreateTableRequest>> ctxTablePairs;
     private final ScalarAttributeType hashKeyAttrType;
+    private final MTAmazonDynamoDBStreamTestRunner streamTestRunner;
 
     protected MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
                                          AmazonDynamoDB amazonDynamoDB,
@@ -90,7 +97,8 @@ public class MTAmazonDynamoDBTestRunner {
                                          boolean isLocalDynamo) {
         this(mtContext,
              amazonDynamoDB,
-                rootAmazonDynamoDB,
+             rootAmazonDynamoDB,
+             null,
              isLocalDynamo,
              S);
     }
@@ -98,6 +106,7 @@ public class MTAmazonDynamoDBTestRunner {
     MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
                                AmazonDynamoDB amazonDynamoDB,
                                AmazonDynamoDB rootAmazonDynamoDB,
+                               AmazonDynamoDBStreams rootAmazonDynamoDBStreams,
                                boolean isLocalDynamo,
                                ScalarAttributeType hashKeyAttrType) {
         this.mtContext = mtContext;
@@ -147,10 +156,19 @@ public class MTAmazonDynamoDBTestRunner {
             ImmutableMap.of("ctx1", createTableRequest2),
             ImmutableMap.of("ctx1", createTableRequest3)
         ));
+        this.streamTestRunner = new MTAmazonDynamoDBStreamTestRunner(amazonDynamoDBSupplier.get(),
+                                                                     rootAmazonDynamoDB,
+                                                                     rootAmazonDynamoDBStreams,
+                                                                     getExpectedMTRecords()
+        );
     }
 
     static AmazonDynamoDB getLocalAmazonDynamoDB() {
         return AmazonDynamoDBLocal.getAmazonDynamoDBLocal();
+    }
+
+    static AmazonDynamoDBStreams getLocalAmazonDynamoDBStreams() {
+        return AmazonDynamoDBLocal.getAmazonDynamoDBStreamsLocal();
     }
 
     void runAll() {
@@ -165,6 +183,7 @@ public class MTAmazonDynamoDBTestRunner {
 
     void setup() {
         setup(ctxTablePairs);
+        streamTestRunner.startStreamWorker();
     }
 
     private void setup(List<Map<String, CreateTableRequest>> ctxTablePairs) {
@@ -319,7 +338,7 @@ public class MTAmazonDynamoDBTestRunner {
 
         // delete item in ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> deleteItemKey = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("someValue1Updated")));
+        Map<String, AttributeValue> deleteItemKey = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
         Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1).withKey(deleteItemKey);
         getAmazonDynamoDBSupplier().deleteItem(deleteItemRequest);
@@ -415,8 +434,97 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> scanItem4 = scanItems4.get(0);
         assertThat(scanItem4, is(table3item3));
 
+        streamTestRunner.await(isLocalDynamo ? 15 : 30);
+
         // log end
         log.info("END test " + testDescription);
+    }
+
+    private List<MTRecord> getExpectedMTRecords() {
+        return ImmutableList.of(
+            new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                    .withEventName(INSERT.name())
+                    .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                          "someField", new AttributeValue().withS("someValue1")))),
+            new MTRecord()
+                    .withContext("ctx2")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                    .withEventName(INSERT.name())
+                    .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                      "someField", new AttributeValue().withS("someValue2")))),
+            new MTRecord()
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(MODIFY.name())
+                    .withDynamodb(new StreamRecord()
+                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                          "someField", new AttributeValue().withS("someValue1")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                            "someField", new AttributeValue().withS("someValue1Updated")))),
+            new MTRecord()
+                .withContext("ctx2")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(MODIFY.name())
+                .withDynamodb(new StreamRecord()
+                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                          "someField", new AttributeValue().withS("someValue2")))
+                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                            "someField", new AttributeValue().withS("someValue2Updated")))),
+            new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner2")
+                    .withEventName(INSERT.name())
+                    .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                    "someField", new AttributeValue().withS("someValueTable2")))),
+            new MTRecord()
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(REMOVE.name())
+                .withDynamodb(new StreamRecord()
+                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                          "someField", new AttributeValue().withS("someValue1Updated")))),
+            new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                    .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a")))
+                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
+                                              "someField", new AttributeValue().withS("someValue3a")))),
+            new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                    .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b")))
+                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b"),
+                                              "someField", new AttributeValue().withS("someValue3b")))),
+            new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                    .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue")))
+                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue"),
+                                              "indexField", new AttributeValue().withS("indexFieldValue"))))
+        );
     }
 
     void runBinaryTest() {
@@ -503,9 +611,10 @@ public class MTAmazonDynamoDBTestRunner {
     }
 
     void teardown() {
+        streamTestRunner.stop();
         for (String tableName : rootAmazonDynamoDB.listTables().getTableNames()) {
             String prefix = getPrefix();
-                if (tableName.startsWith(prefix)) {
+            if (tableName.startsWith(prefix)) {
                 new AmazonDynamoDBAdminUtils(rootAmazonDynamoDB).deleteTableIfNotExists(tableName, getPollInterval(), timeoutSeconds);
             }
         }

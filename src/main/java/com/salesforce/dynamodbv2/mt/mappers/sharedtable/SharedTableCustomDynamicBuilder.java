@@ -55,7 +55,6 @@ import static java.util.Optional.of;
  *   secondary indexes.  Two implementations are provided, DynamoSecondaryIndexMapperByNameImpl and
  *   DynamoSecondaryIndexMapperByTypeImpl.  See Javadoc there for details.  Default: DynamoSecondaryIndexMapperByNameImpl.
  * - delimiter: a String delimiter used to separate the tenant identifier prefix from the hashkey value.  Default: '-'.
- * - isTablePolymorphic: when set to true, allows a single physical table to store data representing more than one virtual table.
  *   See Javadoc below.  Default: true.
  * - tablePrefix: a String used to prefix all tables with, independently of multi-tenant context, to provide the
  *   ability to support multiple environments within an account.
@@ -70,7 +69,7 @@ import static java.util.Optional.of;
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only EQ conditions are supported.
+ * ** Only EQ conditions are supported.  Filter expressions are not supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  */
@@ -90,17 +89,6 @@ public class SharedTableCustomDynamicBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
-    /*
-     * This flag allows a single physical table to store data representing more than one virtual table by preventing
-     * name collisions in the table and its indexes' hashkeys.  It should be set to true any time the CreateTableRequestFactory
-     * configured in the MTAmazonDynamoDBBySharedTable instance maps more than one virtual table to a given physical
-     * table.
-     *
-     * It it set to true by default as it guarantees that collisions are avoided in all cases.  It may be set to false
-     * to reduce the size of the hashkey when the mapping from virtual to physical tables is one to one.
-     */
-    private Boolean isPolymorphicTable;
-
     public MTAmazonDynamoDBBySharedTable build() {
         setDefaults();
         validate();
@@ -111,7 +99,6 @@ public class SharedTableCustomDynamicBuilder {
                     secondaryIndexMapper,
                     delimiter,
                     amazonDynamoDB,
-                    isPolymorphicTable,
                     pollIntervalSeconds
             );
         }
@@ -160,11 +147,6 @@ public class SharedTableCustomDynamicBuilder {
         this.secondaryIndexMapper = dynamoSecondaryIndexMapper; return this;
     }
 
-    public SharedTableCustomDynamicBuilder withIsPolymorphicTable(boolean isPolymorphicTable) {
-        this.isPolymorphicTable = isPolymorphicTable;
-        return this;
-    }
-
     @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withTableDescriptionRepo(MTTableDescriptionRepo mtTableDescriptionRepo) {
         this.mtTableDescriptionRepo = mtTableDescriptionRepo; return this;
@@ -199,9 +181,6 @@ public class SharedTableCustomDynamicBuilder {
         }
         if (delimiter == null) {
             delimiter = ".";
-        }
-        if (isPolymorphicTable == null) {
-            isPolymorphicTable = true; // see instance variable for an explanation for the chosen default
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
