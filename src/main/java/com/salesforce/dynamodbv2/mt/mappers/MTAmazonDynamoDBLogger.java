@@ -168,7 +168,8 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
 
     private String queryRequest(QueryRequest queryRequest) {
         return (queryRequest.getKeyConditionExpression() != null ?
-                "filterExpression=" + queryRequest.getKeyConditionExpression() +
+                "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
+                        (queryRequest.getFilterExpression() !=null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
                         ", names=" + queryRequest.getExpressionAttributeNames() +
                         ", values=" + queryRequest.getExpressionAttributeValues() +
                         (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "")

@@ -144,16 +144,6 @@ class QueryMapperTest {
     }
 
     @Test
-    void queryWithFilterExpression() {
-        try {
-            getMockQueryMapper(null).apply(new QueryRequest().withFilterExpression("x = y"));
-            fail("expected exception not encountered");
-        } catch (IllegalArgumentException e) {
-            assertEquals("Query filterExpressions are not supported", e.getMessage());
-        }
-    }
-
-    @Test
     void indexScan() {
         ScanRequest scanRequest = new ScanRequest()
                 .withIndexName("virtualgsi")
@@ -205,7 +195,7 @@ class QueryMapperTest {
                 .withExpressionAttributeNames(new HashMap<>())
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
         getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
-        assertEquals("#field1 = :value", requestWrapper.getExpression());
+        assertEquals("#field1 = :value", requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
     }
 
@@ -218,7 +208,7 @@ class QueryMapperTest {
                 .withExpressionAttributeNames(new HashMap<>())
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
         getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
-        assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3", requestWrapper.getExpression());
+        assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3", requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
     }
 

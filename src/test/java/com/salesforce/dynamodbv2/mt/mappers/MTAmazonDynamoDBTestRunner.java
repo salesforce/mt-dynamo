@@ -390,6 +390,15 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
         assertThat(queryItem6, is(table3item3));
 
+        // query hk with filter expression on someField
+        List<Map<String, AttributeValue>> queryItemsFE = getAmazonDynamoDBSupplier().query(
+                new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
+                        .withFilterExpression("#name2 = :value2")
+                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
+                                ":value2", createStringAttribute("someValue3a")))).getItems();
+        assertEquals(1, queryItemsFE.size());
+
         // query on gsi
         List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDBSupplier().query(
                 new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")

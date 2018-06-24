@@ -69,7 +69,7 @@ import static java.util.Optional.of;
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only EQ conditions are supported.  Filter expressions are not supported.
+ * ** Only EQ conditions are supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  */

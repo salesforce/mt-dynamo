@@ -104,7 +104,7 @@ class QueryMapper {
             addBeginsWith(request, physicalHashKey, fieldMapping);
         }
 
-        checkNotNull(request.getExpression(), "request expression is required");
+        checkNotNull(request.getPrimaryExpression(), "request expression is required");
 
         // map each field to its target name and apply field prefixing as appropriate
         fieldMappings.forEach(targetFieldMapping -> applyKeyConditionToField(request, targetFieldMapping));
@@ -140,31 +140,66 @@ class QueryMapper {
         AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
         request.putExpressionAttributeName(namePlaceholder, hashKey);
         request.putExpressionAttributeValue(valuePlaceholder, physicalValuePrefixAttribute);
-        request.setExpression((request.getExpression() != null ? request.getExpression() + " and " : "") +
+        request.setPrimaryExpression((request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "") +
                 "begins_with(" + namePlaceholder + ", " + valuePlaceholder + ")");
     }
 
     private void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) {
-        String conditionExpression = request.getExpression();
-        String virtualAttrName = fieldMapping.getSource().getName();
-        Map<String, String> expressionAttrNames = request.getExpressionAttributeNames();
-        Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny() : Optional.empty();
-        if (keyFieldName.isPresent() && !keyFieldName.get().equals(namePlaceholder)) {
-            String toFind = keyFieldName.get() + " = ";
-            int start = conditionExpression.indexOf(toFind);
-            int end = conditionExpression.indexOf(" ", start + toFind.length());
-            String virtualValuePlaceholder = conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end); // TODO add support for non-EQ operators
-            AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
-            AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
-            request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
-            request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
+        applyKeyConditionToField(request, fieldMapping, request.getPrimaryExpression(), request.getFilterExpression());
+    }
+
+    /*
+     * Finds a virtual field name reference in the expression attribute names, finds the value in the right-hand side
+     * operand in the primary expression or filter expression, gets its value in the expression attribute values,
+     * applies the multi-mapping value mapping, and sets the physical name of the field to that of the target field.
+     */
+    private void applyKeyConditionToField(RequestWrapper request,
+                                          FieldMapping fieldMapping,
+                                          String primaryExpression,
+                                          String filterExpression) {
+        if (primaryExpression != null) {
+            String virtualAttrName = fieldMapping.getSource().getName();
+            Map<String, String> expressionAttrNames = request.getExpressionAttributeNames();
+            Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
+                    .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny() : Optional.empty();
+            if (keyFieldName.isPresent() && !keyFieldName.get().equals(namePlaceholder)) {
+                String virtualValuePlaceholder = findVirtualValuePlaceholder(primaryExpression, filterExpression, keyFieldName.get());
+                AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
+                AttributeValue physicalAttr = fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
+                request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+                request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
+            }
         }
+    }
+
+    /*
+     * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the primary
+     * expression, then in the filterExpression.
+     */
+    private String findVirtualValuePlaceholder(String primaryExpression, String filterExpression, String keyFieldName) {
+        return findVirtualValuePlaceholder(primaryExpression, keyFieldName)
+                .orElseGet((Supplier<String>) () -> findVirtualValuePlaceholder(filterExpression, keyFieldName)
+                .orElseThrow((Supplier<IllegalArgumentException>) () ->
+                        new IllegalArgumentException("field " + keyFieldName + " not found in either conditionExpression=" +
+                                                     primaryExpression + ", or filterExpression=" + filterExpression)));
+    }
+
+    /*
+     * Finds the value in the right-hand side operand of an expression where the left-hand operator is a given field.
+     */
+    private Optional<String> findVirtualValuePlaceholder(String conditionExpression, String keyFieldName) {
+        String toFind = keyFieldName + " = ";
+        int start = conditionExpression.indexOf(toFind);
+        if (start == -1) {
+            return Optional.empty();
+        }
+        int end = conditionExpression.indexOf(" ", start + toFind.length());
+        return Optional.of(conditionExpression.substring(start + toFind.length(), end == -1 ? conditionExpression.length() : end)); // TODO add support for non-EQ operators
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
                                                   String hashKeyField) { // TODO look for hashkey in literals
-        String conditionExpression = request.getExpression();
+        String conditionExpression = request.getPrimaryExpression();
         if (conditionExpression == null) {
             // no filter criteria
             return false;
@@ -185,8 +220,10 @@ class QueryMapper {
         void putExpressionAttributeName(String key, String value);
         Map<String, AttributeValue> getExpressionAttributeValues();
         void putExpressionAttributeValue(String key, AttributeValue value);
-        String getExpression();
-        void setExpression(String expression);
+        String getPrimaryExpression();
+        void setPrimaryExpression(String expression);
+        String getFilterExpression();
+        void setFilterExpression(String s);
         void setIndexName(String indexName);
         Map<String, Condition> getLegacyExpression();
         void clearLegacyExpression();
@@ -235,13 +272,23 @@ class QueryMapper {
         }
 
         @Override
-        public String getExpression() {
+        public String getPrimaryExpression() {
             return queryRequest.getKeyConditionExpression();
         }
 
         @Override
-        public void setExpression(String expression) {
+        public void setPrimaryExpression(String expression) {
             queryRequest.setKeyConditionExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return queryRequest.getFilterExpression();
+        }
+
+        @Override
+        public void setFilterExpression(String filterExpression) {
+            queryRequest.setFilterExpression(filterExpression);
         }
 
         @Override
@@ -303,13 +350,25 @@ class QueryMapper {
         }
 
         @Override
-        public String getExpression() {
+        public String getPrimaryExpression() {
             return scanRequest.getFilterExpression();
         }
 
         @Override
-        public void setExpression(String expression) {
+        public void setPrimaryExpression(String expression) {
             scanRequest.setFilterExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return null;
+        }
+
+        @Override
+        public void setFilterExpression(String filterExpression) {
+            if (filterExpression != null) {
+                throw new UnsupportedOperationException();
+            }
         }
 
         @Override
@@ -337,7 +396,6 @@ class QueryMapper {
      * Validate that there are keyConditions or a keyConditionExpression, but not both.
      */
     private void validateQueryRequest(QueryRequest queryRequest) {
-        checkArgument(queryRequest.getFilterExpression() == null, "Query filterExpressions are not supported");
         boolean hasKeyConditionExpression = !isEmpty(queryRequest.getKeyConditionExpression());
         boolean hasKeyConditions = (queryRequest.getKeyConditions() != null && queryRequest.getKeyConditions().keySet().size() > 0);
         checkArgument(hasKeyConditionExpression || hasKeyConditions,
@@ -375,7 +433,7 @@ class QueryMapper {
                 request.putExpressionAttributeName(field, key);
                 request.putExpressionAttributeValue(value, condition.getAttributeValueList().get(0));
             });
-            request.setExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
+            request.setPrimaryExpression(Joiner.on(" AND ").join(keyConditionExpressionParts));
             request.clearLegacyExpression();
         }
     }
@@ -383,19 +441,30 @@ class QueryMapper {
     @VisibleForTesting
     void convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings,
                                                    RequestWrapper request) {
-        AtomicInteger counter = new AtomicInteger(1);
-        fieldMappings.forEach(fieldMapping -> {
-            String virtualFieldName = fieldMapping.getSource().getName();
-            String toFind = " " + virtualFieldName + " =";
-            int start = (" " + request.getExpression()).indexOf(toFind); // TODO add support for non-EQ operators
-            while (start >= 0) {
-                String fieldLiteral = request.getExpression().substring(start, start + virtualFieldName.length());
-                String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
-                request.setExpression(request.getExpression().replaceAll(fieldLiteral + " ", fieldPlaceholder + " "));
-                request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
-                start = (" " + request.getExpression()).indexOf(toFind);
+        request.setPrimaryExpression(convertFieldNameLiteralsToExpressionNames(fieldMappings, request.getPrimaryExpression(), request));
+        request.setFilterExpression(convertFieldNameLiteralsToExpressionNames(fieldMappings, request.getFilterExpression(), request));
+    }
+
+    private String convertFieldNameLiteralsToExpressionNames(Collection<FieldMapping> fieldMappings,
+                                                             String conditionExpression,
+                                                             RequestWrapper request) {
+        String newConditionExpression = conditionExpression;
+        if (conditionExpression != null) {
+            AtomicInteger counter = new AtomicInteger(1);
+            for (FieldMapping fieldMapping : fieldMappings) {
+                String virtualFieldName = fieldMapping.getSource().getName();
+                String toFind = " " + virtualFieldName + " =";
+                int start = (" " + newConditionExpression).indexOf(toFind); // TODO add support for non-EQ operators
+                while (start >= 0) {
+                    String fieldLiteral = newConditionExpression.substring(start, start + virtualFieldName.length());
+                    String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
+                    newConditionExpression = request.getPrimaryExpression().replaceAll(fieldLiteral + " ", fieldPlaceholder + " ");
+                    request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
+                    start = (" " + newConditionExpression).indexOf(toFind);
+                }
             }
-        });
+        }
+        return newConditionExpression;
     }
 
     private String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
