@@ -224,6 +224,10 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         // map key
         updateItemRequest.setKey(tableMapping.getItemMapper().apply(updateItemRequest.getKey()));
 
+        // map attributeUpdates // TODO msgroi todo
+
+        // map updateCondition // TODO msgroi todo
+
         // update
         return getAmazonDynamoDB().updateItem(updateItemRequest);
     }

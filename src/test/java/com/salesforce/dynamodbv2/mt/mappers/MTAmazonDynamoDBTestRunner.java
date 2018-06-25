@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
@@ -327,6 +328,36 @@ public class MTAmazonDynamoDBTestRunner {
                 .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
         assertItemValue("someValue2Updated", getItem(tableName1));
 
+        // conditional update, fail
+        mtContext.setContext("ctx1");
+        UpdateItemRequest condUpdateItemRequestFail = new UpdateItemRequest()
+                .withTableName(tableName1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #name = :newValue")
+                .withConditionExpression("#name = :currentValue")
+                .addExpressionAttributeNamesEntry("#name", someField)
+                .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
+                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
+        try {
+            getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestFail);
+            throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
+        } catch (ConditionalCheckFailedException ignore) {
+        }
+        assertItemValue("someValue1Updated", getItem(tableName1));
+
+        // conditional update, success
+        mtContext.setContext("ctx1");
+        UpdateItemRequest condUpdateItemRequestSuccess = new UpdateItemRequest()
+                .withTableName(tableName1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #name = :newValue")
+                .withConditionExpression("#name = :currentValue")
+                .addExpressionAttributeNamesEntry("#name", someField)
+                .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
+                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
+        getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestSuccess);
+        assertItemValue("someValue1UpdatedAgain", getItem(tableName1));
+
         // put item into table2 in ctx1
         mtContext.setContext("ctx1");
         getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName2).withItem(createItem("someValueTable2")));
@@ -478,6 +509,16 @@ public class MTAmazonDynamoDBTestRunner {
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                             "someField", new AttributeValue().withS("someValue1Updated")))),
             new MTRecord()
+                    .withContext("ctx1")
+                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                    .withEventName(MODIFY.name())
+                    .withDynamodb(new StreamRecord()
+                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                            .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                    "someField", new AttributeValue().withS("someValue1Updated")))
+                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                                    "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
+            new MTRecord()
                 .withContext("ctx2")
                 .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
                 .withEventName(MODIFY.name())
@@ -502,7 +543,7 @@ public class MTAmazonDynamoDBTestRunner {
                 .withDynamodb(new StreamRecord()
                                 .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                 .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                          "someField", new AttributeValue().withS("someValue1Updated")))),
+                                                          "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
             new MTRecord()
                     .withContext("ctx1")
                     .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")

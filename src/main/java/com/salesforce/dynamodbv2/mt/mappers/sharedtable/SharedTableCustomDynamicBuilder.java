@@ -65,11 +65,12 @@ import static java.util.Optional.of;
  *
  * Limitations ...
  *
- * Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
+ * Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
  *
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
- * ** Only EQ conditions are supported.
+ * ** Updates on gsi hashkey's are unsupported
+ * *** Only EQ conditions are supported.
  *
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  */
