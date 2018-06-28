@@ -25,7 +25,7 @@ import java.util.stream.StreamSupport;
  */
 public class MTCache<V> implements Cache<String, V> {
 
-    private final static String delimiter = "-";
+    private static final String delimiter = "-";
     private final MTAmazonDynamoDBContextProvider contextProvider;
     private final Cache<Object, V> cache;
 
@@ -89,8 +89,8 @@ public class MTCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public ConcurrentMap<String, V> asMap() {
-        throw new UnsupportedOperationException();
+    public ConcurrentMap asMap() {
+        return cache.asMap();
     }
 
     @Override

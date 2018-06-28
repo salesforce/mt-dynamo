@@ -134,7 +134,6 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
         return getAmazonDynamoDB().updateItem(updateItemRequest);
     }
 
-    // TODO paging
     // TODO assumes prefix does not contain delimiter
     // TODO assumes everything that starts with prefix is in fact an MT table (ok?)
     // TODO assumes context does not contain delimiter
@@ -150,7 +149,7 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
                         .withLabel(d.getTableName()) // use raw name as label
                         .withArn(d.getLatestStreamArn()) //
                         .withRecordProcessorFactory(newAdapter(factory, d.getTableName().substring(prefix.length())))) //
-                .collect(Collectors.toList());
+                .collect(toList());
     }
 
     private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, String tableName) {

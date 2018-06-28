@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
  */
 class MTAmazonDynamoDBByTableTest {
 
+    @SuppressWarnings("FieldCanBeLocal")
     private final boolean loggingEnabled = true;
     private final AmazonDynamoDB localAmazonDynamoDB = MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDB();
 
@@ -47,7 +48,8 @@ class MTAmazonDynamoDBByTableTest {
                 .withContext(mtContext).build();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,
-                () -> amazonDynamoDBByTable,
+                amazonDynamoDBByTable,
+                amazonDynamoDB,
                 true).runAll();
     }
 

@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.local.embedded.DynamoDBEmbedded;
 
 /**
@@ -16,18 +17,33 @@ import com.amazonaws.services.dynamodbv2.local.embedded.DynamoDBEmbedded;
 public class AmazonDynamoDBLocal {
 
     private static AmazonDynamoDB localAmazonDynamoDB;
+    private static AmazonDynamoDBStreams localAmazonDynamoDBStreams;
 
     public static AmazonDynamoDB getAmazonDynamoDBLocal() {
+        initialize();
+        return localAmazonDynamoDB;
+    }
+
+    public static AmazonDynamoDBStreams getAmazonDynamoDBStreamsLocal() {
+        initialize();
+        return localAmazonDynamoDBStreams;
+    }
+
+    private static void initialize() {
         if (localAmazonDynamoDB == null) {
-            return localAmazonDynamoDB = getNewAmazonDynamoDBLocal();
-        } else {
-            return localAmazonDynamoDB;
+            com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal amazonDynamoDBLocalClient = getNewAmazonDynamoDBLocalClient();
+            localAmazonDynamoDB = amazonDynamoDBLocalClient.amazonDynamoDB();
+            localAmazonDynamoDBStreams = amazonDynamoDBLocalClient.amazonDynamoDBStreams();
         }
     }
 
     public static AmazonDynamoDB getNewAmazonDynamoDBLocal() {
+        return getNewAmazonDynamoDBLocalClient().amazonDynamoDB();
+    }
+
+    private static com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal getNewAmazonDynamoDBLocalClient() {
         System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
-        return DynamoDBEmbedded.create().amazonDynamoDB();
+        return DynamoDBEmbedded.create();
     }
 
 }

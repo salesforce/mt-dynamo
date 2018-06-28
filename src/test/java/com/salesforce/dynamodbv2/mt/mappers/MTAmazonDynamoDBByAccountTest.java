@@ -52,16 +52,16 @@ public class MTAmazonDynamoDBByAccountTest {
             MTAmazonDynamoDBByAccount.MTAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.accountMapperBuilder()
                     .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
                     .withContext(mtContext);
-            new MTAmazonDynamoDBTestRunner(mtContext,
-                    builder::build,
+            AmazonDynamoDB amazonDynamoDB = builder.build();
+            new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB,
                     false).runAll();
         } else {
             MTAmazonDynamoDBByAccount.MTCredentialsBasedAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.builder()
                     .withAmazonDynamoDBClientBuilder(amazonDynamoDBClientBuilder)
                     .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
                     .withContext(mtContext);
-            new MTAmazonDynamoDBTestRunner(mtContext,
-                    builder::build,
+            AmazonDynamoDB amazonDynamoDB = builder.build();
+            new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB,
                     false).runAll();
         }
     }
