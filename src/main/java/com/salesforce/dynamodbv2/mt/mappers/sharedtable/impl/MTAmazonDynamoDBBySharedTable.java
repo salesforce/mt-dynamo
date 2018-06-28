@@ -277,8 +277,14 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
             Record r = adapter.getInternalObject();
             StreamRecord streamRecord = r.getDynamodb();
             FieldValue fieldValue = new FieldPrefixFunction(".").reverse(streamRecord.getKeys().get(physicalTable.getPrimaryKey().getHashKey()).getS());
-            getMTContext().setContext(fieldValue.getMtContext());
-            TableMapping tableMapping = getTableMapping(fieldValue.getTableIndex());
+            MTAmazonDynamoDBContextProvider mtContext = getMTContext();
+            TableMapping tableMapping;
+            try {
+                mtContext.setContext(fieldValue.getMtContext());
+                tableMapping = getTableMapping(fieldValue.getTableIndex());
+            } finally {
+                mtContext.setContext(null);
+            }
             ItemMapper itemMapper = tableMapping.getItemMapper();
             streamRecord.setKeys(itemMapper.reverse(streamRecord.getKeys()));
             streamRecord.setOldImage(itemMapper.reverse(streamRecord.getOldImage()));
