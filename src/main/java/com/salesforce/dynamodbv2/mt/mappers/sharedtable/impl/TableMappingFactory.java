@@ -11,7 +11,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
-import com.salesforce.dynamodbv2.dynamodb.DynamoDBRetry;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -77,8 +76,9 @@ public class TableMappingFactory {
 
     private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
-        if (!getTableDescription(physicalTable.getTableName()).isPresent()) new DynamoDBRetry(()
-                -> dynamoDBAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds)).execute();
+        if (!getTableDescription(physicalTable.getTableName()).isPresent()) {
+            dynamoDBAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
+        }
         return new DynamoTableDescriptionImpl(amazonDynamoDB.describeTable(physicalTable.getTableName()).getTable());
     }
 
