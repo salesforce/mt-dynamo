@@ -281,7 +281,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
             TableMapping tableMapping;
             try {
                 mtContext.setContext(fieldValue.getMtContext());
-                tableMapping = getTableMapping(fieldValue.getTableIndex());
+                tableMapping = getTableMapping(fieldValue.getTableIndex()); // getting a table mapping requires tenant context
             } finally {
                 mtContext.setContext(null);
             }
