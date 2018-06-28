@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
 import org.apache.commons.lang.NotImplementedException;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +49,6 @@ class MTAmazonDynamoDBStreamsTest {
     void testCreateFromDynamoByIndex() {
         // TODO Not implemented yet
         assertThrows(NotImplementedException.class, () -> MTAmazonDynamoDBStreams
-                .createFromDynamo(mock(MTAmazonDynamoDBByIndex.class), mock(AmazonDynamoDBStreams.class)));
+                .createFromDynamo(mock(MTAmazonDynamoDBBySharedTable.class), mock(AmazonDynamoDBStreams.class)));
     }
 }
