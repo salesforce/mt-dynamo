@@ -665,7 +665,7 @@ public class MTAmazonDynamoDBTestRunner {
         for (String tableName : rootAmazonDynamoDB.listTables().getTableNames()) {
             String prefix = getPrefix();
             if (tableName.startsWith(prefix)) {
-                new AmazonDynamoDBAdminUtils(rootAmazonDynamoDB).deleteTableIfNotExists(tableName, getPollInterval(), timeoutSeconds);
+                new AmazonDynamoDBAdminUtils(rootAmazonDynamoDB).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
             }
         }
     }
@@ -723,7 +723,7 @@ public class MTAmazonDynamoDBTestRunner {
 
     protected void deleteTable(String tenantId, String tableName) {
         mtContext.setContext(tenantId);
-        new TestAmazonDynamoDBAdminUtils(getAmazonDynamoDBSupplier()).deleteTableIfNotExists(tableName, getPollInterval(), timeoutSeconds);
+        new TestAmazonDynamoDBAdminUtils(getAmazonDynamoDBSupplier()).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
     }
 
     protected void createTable(String context, String tableName) {

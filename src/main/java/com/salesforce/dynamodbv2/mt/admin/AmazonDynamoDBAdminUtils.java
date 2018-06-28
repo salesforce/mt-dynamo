@@ -59,7 +59,7 @@ public class AmazonDynamoDBAdminUtils {
         }
     }
 
-    public void deleteTableIfNotExists(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
+    public void deleteTableIfExists(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         try {
             if (!tableExists(tableName)) {
                 return;

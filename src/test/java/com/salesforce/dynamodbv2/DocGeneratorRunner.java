@@ -345,7 +345,7 @@ class DocGeneratorRunner {
             deleteTables(ctxTablePairs);
             targetAmazonDynamoDBs.forEach((s, amazonDynamoDB) -> amazonDynamoDB.listTables().getTableNames().forEach(tableName -> {
                 if (tableName.startsWith(DocGeneratorRunner.getTablePrefix(true))) {
-                    new TestAmazonDynamoDBAdminUtils(amazonDynamoDB).deleteTableIfNotExists(tableName, getPollInterval(), timeoutSeconds);
+                    new TestAmazonDynamoDBAdminUtils(amazonDynamoDB).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
                 }
             }));
         }
