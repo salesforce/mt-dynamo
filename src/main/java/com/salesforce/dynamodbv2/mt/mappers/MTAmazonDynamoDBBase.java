@@ -292,26 +292,6 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     @Override
-    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
-    }
-
-    @Override
-    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
-    }
-
-    @Override
-    public RestoreTableToPointInTimeResult restoreTableToPointInTime(RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
-        throw new UnsupportedOperationException("not yet supported");
-    }
-
-    @Override
-    public UpdateContinuousBackupsResult updateContinuousBackups(UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
-    }
-
-    @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
         throw new UnsupportedOperationException();
     }
