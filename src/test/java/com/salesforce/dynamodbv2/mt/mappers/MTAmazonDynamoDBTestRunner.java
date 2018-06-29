@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -95,11 +96,13 @@ public class MTAmazonDynamoDBTestRunner {
     protected MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
                                          AmazonDynamoDB amazonDynamoDB,
                                          AmazonDynamoDB rootAmazonDynamoDB,
+                                         AWSCredentialsProvider awsCredentialsProvider,
                                          boolean isLocalDynamo) {
         this(mtContext,
              amazonDynamoDB,
              rootAmazonDynamoDB,
              null,
+             awsCredentialsProvider,
              isLocalDynamo,
              S);
     }
@@ -108,6 +111,7 @@ public class MTAmazonDynamoDBTestRunner {
                                AmazonDynamoDB amazonDynamoDB,
                                AmazonDynamoDB rootAmazonDynamoDB,
                                AmazonDynamoDBStreams rootAmazonDynamoDBStreams,
+                               AWSCredentialsProvider awsCredentialsProvider,
                                boolean isLocalDynamo,
                                ScalarAttributeType hashKeyAttrType) {
         this.mtContext = mtContext;
@@ -160,6 +164,7 @@ public class MTAmazonDynamoDBTestRunner {
         this.streamTestRunner = new MTAmazonDynamoDBStreamTestRunner(amazonDynamoDBSupplier.get(),
                                                                      rootAmazonDynamoDB,
                                                                      rootAmazonDynamoDBStreams,
+                                                                     awsCredentialsProvider,
                                                                      getExpectedMTRecords()
         );
     }

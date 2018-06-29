@@ -294,7 +294,7 @@ class DocGeneratorRunner {
                      boolean isLocalDynamo,
                      boolean prefixTablenames,
                      Map<String, AmazonDynamoDB> targetAmazonDynamoDBs) {
-            super(mtContext, amazonDynamoDBSupplier.get(), getPhysicalAmazonDynamoDB(isLocalDynamo), isLocalDynamo);
+            super(mtContext, amazonDynamoDBSupplier.get(), getPhysicalAmazonDynamoDB(isLocalDynamo), null, isLocalDynamo);
             this.test = test;
             this.outputFile = getOutputFile(outputFilePath);
             this.manuallyPrefixTablenames = prefixTablenames;

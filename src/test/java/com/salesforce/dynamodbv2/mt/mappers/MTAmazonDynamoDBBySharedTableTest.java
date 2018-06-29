@@ -7,6 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -44,13 +49,21 @@ import static java.util.UUID.randomUUID;
 class MTAmazonDynamoDBBySharedTableTest {
 
     private static final boolean randomTableName = false;
+    private static final Regions region = Regions.US_EAST_1;
+    /*
+     * To run against hosted DynamoDB, you need AWS credentials in your .aws/credentials file,
+     * see https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html.
+     */
     private static final boolean isLocalDynamo = true;
     private static final AmazonDynamoDB rootAmazonDynamoDB = isLocalDynamo
         ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDB()
-        : AmazonDynamoDBClientBuilder.standard().build();
+        : AmazonDynamoDBClientBuilder.standard().withRegion(region).build();
     private static final AmazonDynamoDBStreams rootAmazonDynamoDBStreams = isLocalDynamo
             ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDBStreams()
-            : AmazonDynamoDBStreamsClientBuilder.standard().build();
+            : AmazonDynamoDBStreamsClientBuilder.standard().withRegion(region).build();
+    private static final AWSCredentialsProvider awsCredentialsProvider = isLocalDynamo
+                ? new AWSStaticCredentialsProvider(new BasicAWSCredentials("",""))
+                : new DefaultAWSCredentialsProviderChain();
     private static final MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
     private static final AmazonDynamoDB amazonDynamoDB = MTAmazonDynamoDBLogger.builder()
             .withAmazonDynamoDB(rootAmazonDynamoDB)
@@ -167,18 +180,21 @@ class MTAmazonDynamoDBBySharedTableTest {
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
                 rootAmazonDynamoDBStreams, // test streams for this run only
+                awsCredentialsProvider,
                 isLocalDynamo, S).runAll();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
                 null,
+                awsCredentialsProvider,
                 isLocalDynamo, N).runAll();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,
                 amazonDynamoDBSupplier.get(),
                 rootAmazonDynamoDB,
                 null,
+                awsCredentialsProvider,
                 isLocalDynamo, S).runBinaryTest();
     }
 

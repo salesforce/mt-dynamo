@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.regions.Region;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.model.DeleteAlarmsRequest;
@@ -89,10 +89,14 @@ class MTAmazonDynamoDBStreamTestRunner {
     MTAmazonDynamoDBStreamTestRunner(AmazonDynamoDB mtAmazonDynamoDB,
                                      AmazonDynamoDB rootAmazonDynamoDB,
                                      AmazonDynamoDBStreams rootAmazonDynamoDBStreams,
+                                     AWSCredentialsProvider awsCredentialsProvider,
                                      List<MTRecord> expectedMTRecords) {
         this.mtAmazonDynamoDB = mtAmazonDynamoDB;
         if (rootAmazonDynamoDBStreams != null) {
-            streamWorker = new StreamWorker(rootAmazonDynamoDB, rootAmazonDynamoDBStreams, expectedMTRecords.size());
+            streamWorker = new StreamWorker(rootAmazonDynamoDB,
+                                            rootAmazonDynamoDBStreams,
+                                            awsCredentialsProvider,
+                                            expectedMTRecords.size());
             this.expectedMTRecords = new ArrayList<>(expectedMTRecords);
         }
     }
@@ -174,14 +178,17 @@ class MTAmazonDynamoDBStreamTestRunner {
 
         private final AmazonDynamoDB amazonDynamoDB;
         private final AmazonDynamoDBStreams amazonDynamoDBStreams;
+        private final AWSCredentialsProvider awsCredentialsProvider;
         private final CountDownLatch countDownLatch;
         private final List<MTRecord> recordsReceived;
 
         StreamWorker(AmazonDynamoDB amazonDynamoDB,
                      AmazonDynamoDBStreams amazonDynamoDBStreams,
+                     AWSCredentialsProvider awsCredentialsProvider,
                      int expectedRecordCount) {
             this.amazonDynamoDB = amazonDynamoDB;
             this.amazonDynamoDBStreams = amazonDynamoDBStreams;
+            this.awsCredentialsProvider = awsCredentialsProvider;
             this.countDownLatch = new CountDownLatch(expectedRecordCount);
             this.recordsReceived = new ArrayList<>();
         }
@@ -194,7 +201,7 @@ class MTAmazonDynamoDBStreamTestRunner {
                         .config(new KinesisClientLibConfiguration(
                                 applicationName,
                                 streamArn,
-                                new DefaultAWSCredentialsProviderChain(),
+                                awsCredentialsProvider,
                                 applicationName + "_" + System.currentTimeMillis())
                                 .withIdleTimeBetweenReadsInMillis(1)
                                 .withCallProcessRecordsEvenForEmptyRecordList(true)
