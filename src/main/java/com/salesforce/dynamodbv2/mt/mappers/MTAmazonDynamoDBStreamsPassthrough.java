@@ -15,22 +15,22 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
  */
 public class MTAmazonDynamoDBStreamsPassthrough extends MTAmazonDynamoDBStreamsBase {
 
-    MTAmazonDynamoDBStreamsPassthrough(final AmazonDynamoDBStreams dynamoDBStreams) {
+    MTAmazonDynamoDBStreamsPassthrough(AmazonDynamoDBStreams dynamoDBStreams) {
         super(dynamoDBStreams);
     }
 
     @Override
-    public final GetRecordsResult getRecords(final GetRecordsRequest request) {
+    public final GetRecordsResult getRecords(GetRecordsRequest request) {
         return getAmazonDynamoDBStreams().getRecords(request);
     }
 
     @Override
-    public final ListStreamsResult listStreams(final ListStreamsRequest request) {
+    public final ListStreamsResult listStreams(ListStreamsRequest request) {
         return getAmazonDynamoDBStreams().listStreams(request);
     }
 
     @Override
-    public final GetShardIteratorResult getShardIterator(final GetShardIteratorRequest request) {
+    public final GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
         return getAmazonDynamoDBStreams().getShardIterator(request);
     }
 }

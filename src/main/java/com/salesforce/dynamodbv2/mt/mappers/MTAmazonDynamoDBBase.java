@@ -41,6 +41,8 @@ import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
@@ -66,14 +68,20 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupResult;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableToPointInTimeRequest;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableToPointInTimeResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.TagResourceResult;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
@@ -260,6 +268,26 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public ListGlobalTablesResult listGlobalTables(ListGlobalTablesRequest listGlobalTablesRequest) {
+        throw new UnsupportedOperationException("not yet supported");
+    }
+
+    @Override
+    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
+        throw new UnsupportedOperationException("not yet supported");
+    }
+
+    @Override
+    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
+        throw new UnsupportedOperationException("not yet supported");
+    }
+
+    @Override
+    public RestoreTableToPointInTimeResult restoreTableToPointInTime(RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
+        throw new UnsupportedOperationException("not yet supported");
+    }
+
+    @Override
+    public UpdateContinuousBackupsResult updateContinuousBackups(UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
         throw new UnsupportedOperationException("not yet supported");
     }
 

@@ -12,7 +12,6 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import org.apache.commons.lang.builder.EqualsBuilder;
 
 import java.util.List;
 import java.util.Optional;
@@ -90,16 +89,21 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-
         if (o == null || getClass() != o.getClass()) return false;
 
         DynamoSecondaryIndex that = (DynamoSecondaryIndex) o;
 
-        return new EqualsBuilder()
-                .append(indexName, that.indexName)
-                .append(primaryKey, that.primaryKey)
-                .append(type, that.type)
-                .isEquals();
+        if (!indexName.equals(that.indexName)) return false;
+        if (!primaryKey.equals(that.primaryKey)) return false;
+        return type == that.type;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = indexName.hashCode();
+        result = 31 * result + primaryKey.hashCode();
+        result = 31 * result + type.hashCode();
+        return result;
     }
 
 }

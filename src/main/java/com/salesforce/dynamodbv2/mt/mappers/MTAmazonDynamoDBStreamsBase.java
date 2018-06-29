@@ -11,7 +11,7 @@ public abstract class MTAmazonDynamoDBStreamsBase extends AbstractAmazonDynamoDB
     
     private final AmazonDynamoDBStreams amazonDynamoDBStreams;
 
-    MTAmazonDynamoDBStreamsBase(final AmazonDynamoDBStreams amazonDynamoDBStreams) {
+    MTAmazonDynamoDBStreamsBase(AmazonDynamoDBStreams amazonDynamoDBStreams) {
         this.amazonDynamoDBStreams = amazonDynamoDBStreams;
     }
 
@@ -26,17 +26,17 @@ public abstract class MTAmazonDynamoDBStreamsBase extends AbstractAmazonDynamoDB
     }
 
     @Override
-    public final void setEndpoint(final String endpoint) {
+    public final void setEndpoint(String endpoint) {
         deprecated();
     }
 
     @Override
-    public final void setRegion(final Region region) {
+    public final void setRegion(Region region) {
         deprecated();
     }
 
     @Override
-    public final DescribeStreamResult describeStream(final DescribeStreamRequest request) {
+    public final DescribeStreamResult describeStream(DescribeStreamRequest request) {
         return amazonDynamoDBStreams.describeStream(request);
     }
 
