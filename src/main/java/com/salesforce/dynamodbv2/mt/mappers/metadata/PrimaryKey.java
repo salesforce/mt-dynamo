@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import org.apache.commons.lang.builder.EqualsBuilder;
 
 import java.util.Optional;
 
@@ -72,17 +71,22 @@ public class PrimaryKey {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-
         if (o == null || getClass() != o.getClass()) return false;
 
         PrimaryKey that = (PrimaryKey) o;
 
-        return new EqualsBuilder()
-                .append(hashKey, that.hashKey)
-                .append(hashKeyType, that.hashKeyType)
-                .append(rangeKey, that.rangeKey)
-                .append(rangeKeyType, that.rangeKeyType)
-                .isEquals();
+        if (!hashKey.equals(that.hashKey)) return false;
+        if (hashKeyType != that.hashKeyType) return false;
+        if (!rangeKey.equals(that.rangeKey)) return false;
+        return rangeKeyType.equals(that.rangeKeyType);
     }
 
+    @Override
+    public int hashCode() {
+        int result = hashKey.hashCode();
+        result = 31 * result + hashKeyType.hashCode();
+        result = 31 * result + rangeKey.hashCode();
+        result = 31 * result + rangeKeyType.hashCode();
+        return result;
+    }
 }

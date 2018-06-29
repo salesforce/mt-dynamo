@@ -2,7 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang3.NotImplementedException;
 
 /**
  * A multi-tenant version of {@link AmazonDynamoDBStreams} that returns only results for the appropriate tenant.
@@ -23,7 +23,7 @@ public interface MTAmazonDynamoDBStreams extends AmazonDynamoDBStreams {
         }
 
         if (dynamoDB instanceof MTAmazonDynamoDBBase) {
-            throw new NotImplementedException();
+            throw new NotImplementedException(dynamoDB.getClass().getName() + " is not supported");
         }
 
         return new MTAmazonDynamoDBStreamsPassthrough(dynamoDBStreams);

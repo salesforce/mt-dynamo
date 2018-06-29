@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.google.common.base.Splitter;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.function.Executable;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
 abstract class MTAmazonDynamoDBStreamsBaseTest<T extends MTAmazonDynamoDBStreamsBase> {
@@ -26,7 +26,7 @@ abstract class MTAmazonDynamoDBStreamsBaseTest<T extends MTAmazonDynamoDBStreams
         mtDynamoDBStreamsBase = instantiateUnitUnderTest(amazonDynamoDBStreams);
     }
 
-    protected abstract T instantiateUnitUnderTest(final AmazonDynamoDBStreams dynamoDBStreams);
+    protected abstract T instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDBStreams);
 
     T getMTStreamsInstance() {
         return mtDynamoDBStreamsBase;
@@ -71,7 +71,7 @@ abstract class MTAmazonDynamoDBStreamsBaseTest<T extends MTAmazonDynamoDBStreams
         assertUnsupported(() -> mtDynamoDBStreamsBase.getCachedResponseMetadata(mock(AmazonWebServiceRequest.class)));
     }
 
-    private void assertUnsupported(final Executable executable) {
+    private void assertUnsupported(Executable executable) {
         assertThrows(UnsupportedOperationException.class, executable);
     }
 }

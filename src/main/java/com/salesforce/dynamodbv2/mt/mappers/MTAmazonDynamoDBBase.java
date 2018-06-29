@@ -41,6 +41,8 @@ import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
@@ -66,14 +68,20 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupResult;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableToPointInTimeRequest;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableToPointInTimeResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.TagResourceResult;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
@@ -126,37 +134,37 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public BatchGetItemResult batchGetItem(Map<String, KeysAndAttributes> requestItems, String returnConsumedCapacity) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public BatchGetItemResult batchGetItem(Map<String, KeysAndAttributes> requestItems) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public BatchWriteItemResult batchWriteItem(BatchWriteItemRequest batchWriteItemRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public BatchWriteItemResult batchWriteItem(Map<String, List<WriteRequest>> requestItems) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public CreateGlobalTableResult createGlobalTable(CreateGlobalTableRequest createGlobalTableRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -175,7 +183,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -205,22 +213,22 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public DescribeContinuousBackupsResult describeContinuousBackups(DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public DescribeGlobalTableResult describeGlobalTable(DescribeGlobalTableRequest describeGlobalTableRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public DescribeLimitsResult describeLimits(DescribeLimitsRequest describeLimitsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -235,7 +243,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DescribeTimeToLiveResult describeTimeToLive(DescribeTimeToLiveRequest describeTimeToLiveRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -255,17 +263,37 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public ListGlobalTablesResult listGlobalTables(ListGlobalTablesRequest listGlobalTablesRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public RestoreTableToPointInTimeResult restoreTableToPointInTime(RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UpdateContinuousBackupsResult updateContinuousBackups(UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     public ListTablesResult listTables() {
@@ -273,16 +301,16 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @SuppressWarnings("WeakerAccess")
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     public ListTablesResult listTables(Integer limit) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     List<String> listAllTables() {
@@ -300,7 +328,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
         return tables;
     }
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     public PutItemResult putItem(PutItemRequest putItemRequest) {
@@ -320,7 +348,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     public RestoreTableFromBackupResult restoreTableFromBackup(RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     public ScanResult scan(ScanRequest scanRequest) {
@@ -344,17 +372,17 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public TagResourceResult tagResource(TagResourceRequest tagResourceRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public UntagResourceResult untagResource(UntagResourceRequest untagResourceRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public UpdateGlobalTableResult updateGlobalTable(UpdateGlobalTableRequest updateGlobalTableRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -374,17 +402,17 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public UpdateTableResult updateTable(UpdateTableRequest updateTableRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public UpdateTableResult updateTable(String tableName, ProvisionedThroughput provisionedThroughput) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public UpdateTimeToLiveResult updateTimeToLive(UpdateTimeToLiveRequest updateTimeToLiveRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -393,12 +421,12 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public ResponseMetadata getCachedResponseMetadata(AmazonWebServiceRequest amazonWebServiceRequest) {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public AmazonDynamoDBWaiters waiters() {
-        throw new UnsupportedOperationException("not yet supported");
+        throw new UnsupportedOperationException();
     }
 
     @Override
