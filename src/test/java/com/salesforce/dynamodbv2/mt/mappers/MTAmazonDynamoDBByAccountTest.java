@@ -18,6 +18,8 @@ import com.salesforce.dynamodbv2.mt.context.impl.MTAmazonDynamoDBContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByAccount.AmazonDynamoDBCache;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByAccount.MTAccountCredentialsMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByAccount.MTAccountMapper;
+import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByAccount.MTAmazonDynamoDBByAccountBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBByAccount.MTCredentialsBasedAmazonDynamoDBByAccountBuilder;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -27,7 +29,7 @@ import java.util.function.Supplier;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.salesforce.dynamodbv2.AmazonDynamoDBLocal.getNewAmazonDynamoDBLocal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -43,19 +45,19 @@ public class MTAmazonDynamoDBByAccountTest {
 
     // local by default because hosted dynamo depends on hosted AWS which is 1) slow, and 2) requires two sets of credentials.
     private static final boolean isLocalDynamo = true;
-    private static AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_1);
+    private static final AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_1);
 
     @Test
     void test() {
         MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
         if (isLocalDynamo) {
-            MTAmazonDynamoDBByAccount.MTAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.accountMapperBuilder()
+            MTAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.accountMapperBuilder()
                     .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
                     .withContext(mtContext);
             AmazonDynamoDB amazonDynamoDB = builder.build();
             new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB,null,false).runAll();
         } else {
-            MTAmazonDynamoDBByAccount.MTCredentialsBasedAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.builder()
+            MTCredentialsBasedAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.builder()
                     .withAmazonDynamoDBClientBuilder(amazonDynamoDBClientBuilder)
                     .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
                     .withContext(mtContext);
@@ -65,6 +67,7 @@ public class MTAmazonDynamoDBByAccountTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testCache() {
         AmazonDynamoDBCache cache = new AmazonDynamoDBCache();
         Function<String, AmazonDynamoDB> function = mock(Function.class);
@@ -83,7 +86,7 @@ public class MTAmazonDynamoDBByAccountTest {
 
     private static class TestAccountMapper implements MTAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
 
-        private static Map<String, AmazonDynamoDB> cache = ImmutableMap.of("ctx1", getNewAmazonDynamoDBLocal(),
+        private static final Map<String, AmazonDynamoDB> cache = ImmutableMap.of("ctx1", getNewAmazonDynamoDBLocal(),
                                                                            "ctx2", getNewAmazonDynamoDBLocal());
 
         @Override

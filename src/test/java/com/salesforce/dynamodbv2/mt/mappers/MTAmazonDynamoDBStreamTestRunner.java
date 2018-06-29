@@ -268,10 +268,12 @@ class MTAmazonDynamoDBStreamTestRunner {
 
     private static class DummyCloudWatch implements AmazonCloudWatch {
         @Override
+        @Deprecated
         public void setEndpoint(String endpoint) {
         }
 
         @Override
+        @Deprecated
         public void setRegion(Region region) {
         }
 

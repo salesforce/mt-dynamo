@@ -12,14 +12,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
 class MTAmazonDynamoDBStreamsPassthroughTest extends MTAmazonDynamoDBStreamsBaseTest<MTAmazonDynamoDBStreamsPassthrough> {
 
 
     @Override
-    protected MTAmazonDynamoDBStreamsPassthrough instantiateUnitUnderTest(final AmazonDynamoDBStreams dynamoDBStreams) {
+    protected MTAmazonDynamoDBStreamsPassthrough instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDBStreams) {
         return new MTAmazonDynamoDBStreamsPassthrough(dynamoDBStreams);
     }
 
