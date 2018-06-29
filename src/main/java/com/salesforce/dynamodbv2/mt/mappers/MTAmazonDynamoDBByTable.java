@@ -11,7 +11,6 @@ import static java.util.stream.Collectors.toList;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -164,7 +163,7 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
         private final String tableName;
         private final IRecordProcessor processor;
 
-        public RecordProcessor(String tenant, String tableName, IRecordProcessor processor) {
+        RecordProcessor(String tenant, String tableName, IRecordProcessor processor) {
             this.tenant = tenant;
             this.tableName = tableName;
             this.processor = processor;
@@ -223,7 +222,8 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
             return this;
         }
 
-        public MTAmazonDynamoDBBuilder withDelimiter(String delimiter) {
+        @SuppressWarnings("all")
+        MTAmazonDynamoDBBuilder withDelimiter(String delimiter) {
             this.delimiter = delimiter;
             return this;
         }

@@ -15,7 +15,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcess
  */
 public interface MTAmazonDynamoDB extends AmazonDynamoDB {
 
-    public static class MTRecord extends Record {
+    class MTRecord extends Record {
 
         private static final long serialVersionUID = -6099434068333437314L;
 
@@ -50,37 +50,37 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
 
         @Override
         public MTRecord withAwsRegion(String awsRegion) {
-            super.setAwsRegion(awsRegion);
+            setAwsRegion(awsRegion);
             return this;
         }
 
         @Override
         public MTRecord withDynamodb(StreamRecord dynamodb) {
-            super.setDynamodb(dynamodb);
+            setDynamodb(dynamodb);
             return this;
         }
 
         @Override
         public MTRecord withEventID(String eventID) {
-            super.setEventID(eventID);
+            setEventID(eventID);
             return this;
         }
 
         @Override
         public MTRecord withEventName(OperationType eventName) {
-            super.setEventName(eventName);
+            setEventName(eventName);
             return this;
         }
 
         @Override
         public MTRecord withEventName(String eventName) {
-            super.setEventName(eventName);
+            setEventName(eventName);
             return this;
         }
 
         @Override
         public MTRecord withEventSource(String eventSource) {
-            super.setEventSource(eventSource);
+            setEventSource(eventSource);
             return this;
         }
 
@@ -92,7 +92,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
 
         @Override
         public MTRecord withUserIdentity(Identity userIdentity) {
-            super.setUserIdentity(userIdentity);
+            setUserIdentity(userIdentity);
             return this;
         }
 
@@ -106,17 +106,17 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
         }
     }
 
-    public static class MTStreamDescription {
+    class MTStreamDescription {
 
         private String label;
         private String arn;
         private IRecordProcessorFactory recordProcessorFactory;
 
-        public String getLabel() {
+        String getLabel() {
             return label;
         }
 
-        public void setLabel(String label) {
+        void setLabel(String label) {
             this.label = label;
         }
 
@@ -125,11 +125,11 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             return this;
         }
 
-        public String getArn() {
+        String getArn() {
             return arn;
         }
 
-        public void setArn(String arn) {
+        void setArn(String arn) {
             this.arn = arn;
         }
 
@@ -138,12 +138,8 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             return this;
         }
 
-        public IRecordProcessorFactory getRecordProcessorFactory() {
+        IRecordProcessorFactory getRecordProcessorFactory() {
             return recordProcessorFactory;
-        }
-
-        public void setRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
-            this.recordProcessorFactory = recordProcessorFactory;
         }
 
         public MTStreamDescription withRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {

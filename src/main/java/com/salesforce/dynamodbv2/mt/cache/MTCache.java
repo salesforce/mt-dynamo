@@ -23,6 +23,7 @@ import java.util.stream.StreamSupport;
 /*
  * @author msgroi
  */
+@SuppressWarnings("all")
 public class MTCache<V> implements Cache<String, V> {
 
     private static final String delimiter = "-";
