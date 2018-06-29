@@ -479,7 +479,7 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> scanItem4 = scanItems4.get(0);
         assertThat(scanItem4, is(table3item3));
 
-        streamTestRunner.await(isLocalDynamo ? 15 : 30);
+        streamTestRunner.await(30);
 
         // log end
         log.info("END test " + testDescription);
