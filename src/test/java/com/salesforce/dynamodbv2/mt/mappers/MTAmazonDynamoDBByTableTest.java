@@ -50,6 +50,7 @@ class MTAmazonDynamoDBByTableTest {
                 mtContext,
                 amazonDynamoDBByTable,
                 amazonDynamoDB,
+                null,
                 true).runAll();
     }
 

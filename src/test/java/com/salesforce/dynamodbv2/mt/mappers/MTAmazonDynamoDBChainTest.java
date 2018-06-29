@@ -66,7 +66,7 @@ class MTAmazonDynamoDBChainTest {
                 .withAmazonDynamoDB(amazonDynamoDBByTable)
                 .withContext(mtContext)
                 .withTruncateOnDeleteTable(true).build();
-        MTAmazonDynamoDBTestRunner testRunner = new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDBBySharedTable, amazonDynamoDB, true);
+        MTAmazonDynamoDBTestRunner testRunner = new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDBBySharedTable, amazonDynamoDB, null, true);
 
         // setup
         testRunner.setup(); logAggregator.messages.clear();
