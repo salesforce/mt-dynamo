@@ -43,6 +43,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 
+import java.util.List;
+import java.util.Optional;
+
+import static java.util.stream.Collectors.toList;
+
 /**
  * Allows for dividing tenants into their own tables by prefixing table names
  * with the multi-tenant context.
