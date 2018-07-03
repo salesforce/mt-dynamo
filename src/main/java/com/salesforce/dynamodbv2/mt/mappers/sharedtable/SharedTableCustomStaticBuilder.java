@@ -8,11 +8,9 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
-import com.salesforce.dynamodbv2.mt.repo.MTTableDescriptionRepo;
 
 import java.util.ArrayList;
 import java.util.Arrays;

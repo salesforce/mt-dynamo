@@ -79,8 +79,8 @@ class QueryMapper {
         if (request.getIndexName() == null) {
             // query or scan does NOT use index
             virtualHashKey = tableMapping.getVirtualTable().getPrimaryKey().getHashKey();
-            Map<String, List<FieldMapping>> fieldMappingUnduped = tableMapping.getAllVirtualToPhysicalFieldMappings();
-            fieldMappings = dedupFieldMappings(fieldMappingUnduped).values();
+            Map<String, List<FieldMapping>> fieldMappingDeduped = tableMapping.getAllVirtualToPhysicalFieldMappings();
+            fieldMappings = dedupeFieldMappings(fieldMappingDeduped).values();
         } else {
             // query uses index
             DynamoSecondaryIndex virtualSecondaryIndex = tableMapping.getVirtualTable().findSI(request.getIndexName());
@@ -122,7 +122,7 @@ class QueryMapper {
      * that maps a given virtual field to multiple physical fields.  In that case, it doesn't matter which field we use
      * in the query, the results should be the same, so we choose one of the physical fields arbitrarily.
      */
-    private Map<String, FieldMapping> dedupFieldMappings(Map<String, List<FieldMapping>> fieldMappings) {
+    private Map<String, FieldMapping> dedupeFieldMappings(Map<String, List<FieldMapping>> fieldMappings) {
         return fieldMappings.entrySet().stream().collect(Collectors.toMap(
                 Entry::getKey,
                 fieldMappingEntry -> fieldMappingEntry.getValue().get(0)

@@ -7,12 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import static java.util.stream.Collectors.toList;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
@@ -43,6 +37,11 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+
+import java.util.List;
+import java.util.Optional;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * Allows for dividing tenants into their own tables by prefixing table names

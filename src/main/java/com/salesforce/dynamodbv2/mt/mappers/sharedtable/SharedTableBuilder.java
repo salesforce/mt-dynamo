@@ -47,7 +47,7 @@ import static java.util.Optional.of;
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
  * type(global vs local) where the primary keys are compatible.
  *
- * See "Table and Secondary Index Primary Key Compatibility" for an exaplanation of compatibility.
+ * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
  * The builder requires ...
  *
@@ -80,9 +80,9 @@ import static java.util.Optional.of;
  *
  * - In order to support multi-tenancy, all HK's(table and index-level) must be prefixed with the alphanumeric tenant id.
  *   Therefore, all HK's must be of type S.
- * - Tables with LSI's are limited to 10GB(https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.ItemCollections.SizeLimit).
- *   Therefore, we have two sets of tables, one set with LSI's and one set without.
- * - Tables with HK only may not have LSI's(error: "AmazonServiceException: Local Secondary indices are not allowed on
+ * - Tables with LSIs are limited to 10GB(https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.ItemCollections.SizeLimit).
+ *   Therefore, we have two sets of tables, one set with LSIs and one set without.
+ * - Tables with HK only may not have LSIs (error: "AmazonServiceException: Local Secondary indices are not allowed on
  *   hash tables, only hash and range tables").  Therefore, the only table that has HK only does not have an LSI.
  * - Virtual tables with only a HK may not be mapped to a table that has both a HK and RK per
  *   https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html, "When you add an item, the primary

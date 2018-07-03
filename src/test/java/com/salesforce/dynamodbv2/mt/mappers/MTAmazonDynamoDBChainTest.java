@@ -22,7 +22,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 /**
- * This tests that chaining works.  Note that this is a whitebox test.  It inspects the calls to dynamo to see if
+ * This tests that chaining works.  Note that this is a white-box test.  It inspects the calls to dynamo to see if
  * account, table, and index mapping has been applied.
  *
  * Chain: amazonDynamoDBBySharedTable -> amazonDynamoDBByTable -> amazonDynamoDBLogger -> amazonDynamoDBByAccount
