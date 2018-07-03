@@ -15,7 +15,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcess
  */
 public interface MTAmazonDynamoDB extends AmazonDynamoDB {
 
-    public static class MTRecord extends Record {
+    class MTRecord extends Record {
 
         private static final long serialVersionUID = -6099434068333437314L;
 
@@ -106,7 +106,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
         }
     }
 
-    public static class MTStreamDescription {
+    class MTStreamDescription {
 
         private String label;
         private String arn;

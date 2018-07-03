@@ -16,7 +16,6 @@ public interface MTAmazonDynamoDBContextProvider {
     String getContext();
 
     default void setContext(String tenantId) {
-    		// defaults to no-op
+        // defaults to no-op
     }
-
 }
