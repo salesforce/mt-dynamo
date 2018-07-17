@@ -231,10 +231,11 @@
                         <id>package</id>
                         <phase>package</phase>
                         <configuration>
-                            <configLocation>src/test/resources/checkstyle.xml</configLocation>
+                            <configLocation>src/test/resources/sf_checkstyle.xml</configLocation>
                             <linkXRef>false</linkXRef>
                             <failsOnError>false</failsOnError>
                             <consoleOutput>true</consoleOutput>
+                            <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>
                         <goals>
                             <goal>checkstyle</goal>
