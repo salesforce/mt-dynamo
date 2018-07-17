@@ -7,6 +7,14 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static java.util.UUID.randomUUID;
+
+import java.util.function.Supplier;
+
+import org.junit.jupiter.api.Test;
+
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -35,13 +43,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
-import org.junit.jupiter.api.Test;
-
-import java.util.function.Supplier;
-
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static java.util.UUID.randomUUID;
 
 /**m
  * @author msgroi

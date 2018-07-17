@@ -30,8 +30,10 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.amazonaws.services.dynamodbv2.xspec.N;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.AmazonDynamoDBLocal;
@@ -43,10 +45,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -56,11 +61,14 @@ import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static java.lang.Boolean.TRUE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author msgroi
@@ -159,7 +167,9 @@ public class MTAmazonDynamoDBTestRunner {
             ImmutableMap.of("ctx1", createTableRequest1),
             ImmutableMap.of("ctx2", createTableRequest1),
             ImmutableMap.of("ctx1", createTableRequest2),
-            ImmutableMap.of("ctx1", createTableRequest3)
+            ImmutableMap.of("ctx1", createTableRequest3),
+            ImmutableMap.of("ctx3", createTableRequest1),
+            ImmutableMap.of("ctx4", createTableRequest1)
         ));
         this.streamTestRunner = new MTAmazonDynamoDBStreamTestRunner(amazonDynamoDBSupplier.get(),
                                                                      rootAmazonDynamoDB,
@@ -481,6 +491,41 @@ public class MTAmazonDynamoDBTestRunner {
 
         streamTestRunner.await(30);
 
+        // scan with paging (including empty pages)
+        mtContext.setContext("ctx3");
+        // insert some data for another tenant as noise
+        for (int i = 0; i < 100; i++) {
+            getAmazonDynamoDBSupplier().putItem(
+                    new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+        }
+        mtContext.setContext("ctx4");
+        Set<Integer> remaining = new HashSet<>();
+        for (int i = 0; i < 10; i++) {
+            getAmazonDynamoDBSupplier().putItem(
+                    new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+            remaining.add(i);
+        }
+        Map<String, AttributeValue> exclusiveStartKey = null;
+        do {
+            ScanResult scanResult = getAmazonDynamoDBSupplier()
+                    .scan(new ScanRequest(tableName1).withLimit(10).withExclusiveStartKey(exclusiveStartKey));
+            exclusiveStartKey = scanResult.getLastEvaluatedKey();
+            List<Map<String, AttributeValue>> items = scanResult.getItems();
+
+            if (items.isEmpty()) {
+                assertTrue(remaining.isEmpty());
+                assertTrue(exclusiveStartKey == null);
+            } else {
+                assertTrue(items.stream() //
+                        .map(i -> i.get(hashKeyField)) //
+                        .map(this::getValue) //
+                        .map(Integer::parseInt) //
+                        .map(remaining::remove) //
+                        .allMatch(TRUE::equals));
+            }
+        } while (exclusiveStartKey != null);
+        assertTrue(remaining.isEmpty());
+
         // log end
         log.info("END test " + testDescription);
     }
@@ -704,6 +749,19 @@ public class MTAmazonDynamoDBTestRunner {
                 attr.setB(UTF_8.encode(value)); return attr;
             default:
                 throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
+        }
+    }
+
+    private String getValue(AttributeValue attr) {
+        switch (hashKeyAttrType) {
+        case B:
+            return new StringBuffer(UTF_8.decode(attr.getB())).toString();
+        case N:
+            return attr.getN();
+        case S:
+            return attr.getS();
+        default:
+            throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
         }
     }
 

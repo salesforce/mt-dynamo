@@ -7,6 +7,19 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static java.util.stream.Collectors.toList;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -37,26 +50,18 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcess
 import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
+import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.cache.MTCache;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDBBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MTTableDescriptionRepo;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
-
-import static java.util.stream.Collectors.toList;
 
 /**
  * Allows a developer using the mt-dynamo library to provide a custom mapping between tables that clients interact with
@@ -91,7 +96,6 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
 
-    @SuppressWarnings("unchecked")
     public MTAmazonDynamoDBBySharedTable(String name,
                                          MTAmazonDynamoDBContextProvider mtContext,
                                          AmazonDynamoDB amazonDynamoDB,
@@ -102,7 +106,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         super(mtContext, amazonDynamoDB);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
-        tableMappingCache = new MTCache(mtContext);
+        this.tableMappingCache = new MTCache<>(mtContext);
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
@@ -198,9 +202,17 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
     }
 
     public ScanResult scan(ScanRequest scanRequest) {
+        TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
+        PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
+                : tableMapping.getVirtualTable().findSI(scanRequest.getIndexName()).getPrimaryKey();
+
+        // Projection must include primary key, since we use it for paging.
+        // (We could add key fields into projection and filter result in the future)
+        Preconditions.checkArgument(projectionContainsKey(scanRequest, key),
+                "Multitenant scans must include key in projection expression");
+
         // map table name
         ScanRequest clonedScanRequest = scanRequest.clone();
-        TableMapping tableMapping = getTableMapping(clonedScanRequest.getTableName());
         clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map query request
@@ -208,11 +220,56 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression()).map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
         tableMapping.getQueryMapper().apply(clonedScanRequest);
 
+        // scan until we find at least one record for current tenant or reach end
+        ScanResult scanResult;
+        while ((scanResult = getAmazonDynamoDB().scan(clonedScanRequest)).getItems().isEmpty()
+                && scanResult.getLastEvaluatedKey() != null) {
+            clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
+        }
+
         // map result
-        ScanResult scanResult = getAmazonDynamoDB().scan(clonedScanRequest);
-        scanResult.setItems(scanResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(toList()));
+        List<Map<String, AttributeValue>> items = scanResult.getItems();
+        if (!items.isEmpty()) {
+            scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
+            if (scanResult.getLastEvaluatedKey() != null) {
+                scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
+            }
+        } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
 
         return scanResult;
+    }
+
+    private boolean projectionContainsKey(ScanRequest request, PrimaryKey key) {
+        String projection = request.getProjectionExpression();
+        List<String> legacyProjection = request.getAttributesToGet();
+
+        // vacuously true if projection not specified
+        if (projection == null && legacyProjection == null) {
+            return true;
+        } else {
+            Map<String, String> expressionNames = request.getExpressionAttributeNames();
+            return projectionContainsKey(projection, expressionNames, legacyProjection, key.getHashKey()) && key
+                    .getRangeKey()
+                    .map(rangeKey -> projectionContainsKey(projection, expressionNames, legacyProjection, rangeKey))
+                    .orElse(true);
+        }
+    }
+
+    private boolean projectionContainsKey(String projection, Map<String, String> expressionNames,
+            List<String> legacyProjection, String key) {
+        if (projection != null) {
+            // TODO we should probably parse expressions or use more sophisticated matching
+            if (expressionNames != null) {
+                String name = expressionNames.get(key);
+                if (name != null && projection.contains(name)) {
+                    return true;
+                }
+            }
+            if (projection.contains(key)) {
+                return true;
+            }
+        }
+        return legacyProjection != null && legacyProjection.contains(key);
     }
 
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
@@ -336,4 +393,10 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
                         keySchemaElement -> item.get(keySchemaElement.getAttributeName())));
     }
 
+    private static Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item, PrimaryKey primaryKey) {
+        String hashKey = primaryKey.getHashKey();
+        return primaryKey.getRangeKey()
+                .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
+                .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
+    }
 }
