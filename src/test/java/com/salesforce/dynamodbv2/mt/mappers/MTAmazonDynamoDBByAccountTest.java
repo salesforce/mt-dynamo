@@ -87,7 +87,9 @@ public class MTAmazonDynamoDBByAccountTest {
     private static class TestAccountMapper implements MTAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
 
         private static final Map<String, AmazonDynamoDB> cache = ImmutableMap.of("ctx1", getNewAmazonDynamoDBLocal(),
-                                                                           "ctx2", getNewAmazonDynamoDBLocal());
+                                                                           "ctx2", getNewAmazonDynamoDBLocal(),
+                                                                           "ctx3", getNewAmazonDynamoDBLocal(),
+                                                                           "ctx4", getNewAmazonDynamoDBLocal());
 
         @Override
         public AmazonDynamoDB getAmazonDynamoDB(MTAmazonDynamoDBContextProvider context) {
@@ -106,32 +108,39 @@ public class MTAmazonDynamoDBByAccountTest {
 
         AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
         AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
+        AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
+        AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
 
         @Override
         public AWSCredentialsProvider getAWSCredentialsProvider(String context) {
-            if (context.equals("1")) {
+            switch (context) {
+            case "1":
                 /*
                  * loads default profile
                  */
                 return ctx1CredentialsProvider;
-            } else {
-                if (context.equals("2")) {
-                    /*
-                     * loads 'personal' profile
-                     *
-                     * http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html
-                     */
-                    return ctx2CredentialsProvider;
-                } else {
-                    throw new IllegalArgumentException("invalid context '" + context + "'");
-                }
+            case "2":
+                /*
+                 * loads 'personal' profile
+                 *
+                 * http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html
+                 */
+                return ctx2CredentialsProvider;
+            case "3":
+                return ctx3CredentialsProvider;
+            case "4":
+                return ctx4CredentialsProvider;
+            default:
+                throw new IllegalArgumentException("invalid context '" + context + "'");
             }
         }
 
         @Override
         public Map<String, AmazonDynamoDB> get() {
             return ImmutableMap.of("1", amazonDynamoDBClientBuilder.withCredentials(ctx1CredentialsProvider).build(),
-                                   "2", amazonDynamoDBClientBuilder.withCredentials(ctx2CredentialsProvider).build());
+                                   "2", amazonDynamoDBClientBuilder.withCredentials(ctx2CredentialsProvider).build(),
+                                   "3", amazonDynamoDBClientBuilder.withCredentials(ctx3CredentialsProvider).build(),
+                                   "4", amazonDynamoDBClientBuilder.withCredentials(ctx4CredentialsProvider).build());
         }
 
     }

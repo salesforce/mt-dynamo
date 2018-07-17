@@ -59,8 +59,7 @@ class QueryMapper {
      */
     void apply(QueryRequest queryRequest) {
         validateQueryRequest(queryRequest);
-        convertLegacyExpression(new QueryRequestWrapper(queryRequest));
-        applyKeyCondition(new QueryRequestWrapper(queryRequest));
+        apply(new QueryRequestWrapper(queryRequest));
     }
 
     /*
@@ -68,8 +67,13 @@ class QueryMapper {
      */
     void apply(ScanRequest scanRequest) {
         validateScanRequest(scanRequest);
-        convertLegacyExpression(new ScanRequestWrapper(scanRequest));
-        applyKeyCondition(new ScanRequestWrapper(scanRequest));
+        apply(new ScanRequestWrapper(scanRequest));
+    }
+
+    private void apply(RequestWrapper request) {
+        convertLegacyExpression(request);
+        applyKeyCondition(request);
+        applyExclusiveStartKey(request);
     }
 
     private void applyKeyCondition(RequestWrapper request) {
@@ -172,6 +176,13 @@ class QueryMapper {
         }
     }
 
+    private void applyExclusiveStartKey(RequestWrapper request) {
+        Map<String, AttributeValue> key = request.getExclusiveStartKey();
+        if (key != null) {
+            request.setExclusiveStartKey(tableMapping.getItemMapper().apply(request.getExclusiveStartKey()));
+        }
+    }
+
     /*
      * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the primary
      * expression, then in the filterExpression.
@@ -227,13 +238,15 @@ class QueryMapper {
         void setIndexName(String indexName);
         Map<String, Condition> getLegacyExpression();
         void clearLegacyExpression();
+        Map<String, AttributeValue> getExclusiveStartKey();
+        void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey);
     }
 
     @VisibleForTesting
     static class QueryRequestWrapper implements RequestWrapper {
 
         private final QueryRequest queryRequest;
-        @SuppressWarnings("unchecked")
+
         QueryRequestWrapper(QueryRequest queryRequest) {
             queryRequest.setExpressionAttributeNames(getMutableMap(queryRequest.getExpressionAttributeNames()));
             queryRequest.setExpressionAttributeValues(getMutableMap(queryRequest.getExpressionAttributeValues()));
@@ -306,12 +319,21 @@ class QueryMapper {
             queryRequest.clearKeyConditionsEntries();
         }
 
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            return queryRequest.getExclusiveStartKey();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            queryRequest.setExclusiveStartKey(exclusiveStartKey);
+        }
+
     }
 
     private static class ScanRequestWrapper implements RequestWrapper {
         private final ScanRequest scanRequest;
 
-        @SuppressWarnings("unchecked")
         ScanRequestWrapper(ScanRequest scanRequest) {
             scanRequest.setExpressionAttributeNames(getMutableMap(scanRequest.getExpressionAttributeNames()));
             scanRequest.setExpressionAttributeValues(getMutableMap(scanRequest.getExpressionAttributeValues()));
@@ -386,10 +408,20 @@ class QueryMapper {
             scanRequest.clearScanFilterEntries();
         }
 
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            return scanRequest.getExclusiveStartKey();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            scanRequest.setExclusiveStartKey(exclusiveStartKey);
+        }
+
     }
 
-    private static Map getMutableMap(Map potentiallyImmutableMap) {
-        return (potentiallyImmutableMap == null) ? null : new HashMap<Object, Object>(potentiallyImmutableMap);
+    private static <K, V> Map<K, V> getMutableMap(Map<K, V> potentiallyImmutableMap) {
+        return (potentiallyImmutableMap == null) ? null : new HashMap<>(potentiallyImmutableMap);
     }
 
     /*
