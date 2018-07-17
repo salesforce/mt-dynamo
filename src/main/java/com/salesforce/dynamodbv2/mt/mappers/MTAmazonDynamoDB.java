@@ -112,7 +112,8 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
         private String arn;
         private IRecordProcessorFactory recordProcessorFactory;
 
-        String getLabel() {
+        @SuppressWarnings("WeakerAccess")
+        public String getLabel() {
             return label;
         }
 
@@ -125,7 +126,8 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             return this;
         }
 
-        String getArn() {
+        @SuppressWarnings("WeakerAccess")
+        public String getArn() {
             return arn;
         }
 
@@ -138,7 +140,8 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             return this;
         }
 
-        IRecordProcessorFactory getRecordProcessorFactory() {
+        @SuppressWarnings("WeakerAccess")
+        public IRecordProcessorFactory getRecordProcessorFactory() {
             return recordProcessorFactory;
         }
 
