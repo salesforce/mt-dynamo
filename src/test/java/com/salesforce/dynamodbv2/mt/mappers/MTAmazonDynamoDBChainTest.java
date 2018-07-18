@@ -128,6 +128,9 @@ class MTAmazonDynamoDBChainTest {
             "method=scan(), table=ctx1.mt_sharedtablestatic_s_s, filterExpression=#name = :value and begins_with(#___name___, :___value___), names={#___name___=hk, #name=gsi_s_hk}, values={:___value___={S: ctx1.MTAmazonDynamoDBTestRunner3.,}, :value={S: ctx1.testgsi.indexFieldValue,}}"
         )));
 
+        // run
+        testRunner.runWithoutLogging();
+
         // teardown
         testRunner.teardown();
     }
