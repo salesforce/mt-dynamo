@@ -491,24 +491,30 @@ public class MTAmazonDynamoDBTestRunner {
 
         streamTestRunner.await(30);
 
+        // log end
+        log.info("END test " + testDescription);
+    }
+
+    void runWithoutLogging() {
+
         // scan with paging (including empty pages)
         mtContext.setContext("ctx3");
         // insert some data for another tenant as noise
         for (int i = 0; i < 100; i++) {
             getAmazonDynamoDBSupplier().putItem(
-                    new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
         }
         mtContext.setContext("ctx4");
         Set<Integer> remaining = new HashSet<>();
         for (int i = 0; i < 10; i++) {
             getAmazonDynamoDBSupplier().putItem(
-                    new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
             remaining.add(i);
         }
         Map<String, AttributeValue> exclusiveStartKey = null;
         do {
             ScanResult scanResult = getAmazonDynamoDBSupplier()
-                    .scan(new ScanRequest(tableName1).withLimit(10).withExclusiveStartKey(exclusiveStartKey));
+                .scan(new ScanRequest(tableName1).withLimit(10).withExclusiveStartKey(exclusiveStartKey));
             exclusiveStartKey = scanResult.getLastEvaluatedKey();
             List<Map<String, AttributeValue>> items = scanResult.getItems();
 
@@ -517,17 +523,14 @@ public class MTAmazonDynamoDBTestRunner {
                 assertTrue(exclusiveStartKey == null);
             } else {
                 assertTrue(items.stream() //
-                        .map(i -> i.get(hashKeyField)) //
-                        .map(this::getValue) //
-                        .map(Integer::parseInt) //
-                        .map(remaining::remove) //
-                        .allMatch(TRUE::equals));
+                    .map(i -> i.get(hashKeyField)) //
+                    .map(this::getValue) //
+                    .map(Integer::parseInt) //
+                    .map(remaining::remove) //
+                    .allMatch(TRUE::equals));
             }
         } while (exclusiveStartKey != null);
         assertTrue(remaining.isEmpty());
-
-        // log end
-        log.info("END test " + testDescription);
     }
 
     private List<MTRecord> getExpectedMTRecords() {
