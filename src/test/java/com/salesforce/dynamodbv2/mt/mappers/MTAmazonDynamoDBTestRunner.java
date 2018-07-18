@@ -190,6 +190,7 @@ public class MTAmazonDynamoDBTestRunner {
     void runAll() {
         setup();
         run();
+        runWithoutLogging();
         teardown();
     }
 
