@@ -26,9 +26,9 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
-import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
-import com.salesforce.dynamodbv2.mt.cache.MTCache;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.mt.cache.MtCache;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,49 +41,49 @@ import static com.google.common.base.Preconditions.checkArgument;
 /*
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
  *
- * The AmazonDynamoDB that it uses must not, itself, be a MTAmazonDynamoDB* instance.  MTAmazonDynamoDBLogger is supported.
+ * The AmazonDynamoDb that it uses must not, itself, be a MtAmazonDynamoDb* instance.  MtAmazonDynamoDbLogger is supported.
  *
  * @author msgroi
  */
-public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
+public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private static final String TABLEMETADATA_HKFIELD = "table";
     private static final String TABLEMETADATA_DATAFIELD = "data";
     private static final String DELIMITER = ".";
 
     private static final Gson gson = new Gson();
-    private final AmazonDynamoDB amazonDynamoDB;
-    private final MTAmazonDynamoDBContextProvider mtContext;
-    private final AmazonDynamoDBAdminUtils adminUtils;
+    private final AmazonDynamoDB amazonDynamoDb;
+    private final MtAmazonDynamoDbContextProvider mtContext;
+    private final AmazonDynamoDbAdminUtils adminUtils;
     private final String tableDescriptionTableName;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
-    private final MTCache<TableDescription> cache;
+    private final MtCache<TableDescription> cache;
 
-    private MTDynamoDBTableDescriptionRepo(AmazonDynamoDB amazonDynamoDB,
-                                           MTAmazonDynamoDBContextProvider mtContext,
+    private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
+                                           MtAmazonDynamoDbContextProvider mtContext,
                                            String tableDescriptionTableName,
                                            Optional<String> tablePrefix,
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds) {
-        this.amazonDynamoDB = amazonDynamoDB;
+        this.amazonDynamoDb = amazonDynamoDb;
         this.mtContext = mtContext;
-        adminUtils = new AmazonDynamoDBAdminUtils(amazonDynamoDB);
+        adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
-        cache = new MTCache<>(mtContext);
+        cache = new MtCache<>(mtContext);
     }
 
     @Override
     public TableDescription createTable(CreateTableRequest createTableRequest) {
-        amazonDynamoDB.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName()).withItem(createItem(createTableRequest)));
+        amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName()).withItem(createItem(createTableRequest)));
         return getTableDescription(createTableRequest.getTableName());
     }
 
@@ -92,8 +92,8 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
         return getTableDescriptionFromCache(tableName);
     }
 
-    public static MTDynamoDBTableDescriptionRepoBuilder builder() {
-        return new MTDynamoDBTableDescriptionRepoBuilder();
+    public static MtDynamoDbTableDescriptionRepoBuilder builder() {
+        return new MtDynamoDbTableDescriptionRepoBuilder();
     }
 
     private TableDescription getTableDescriptionFromCache(String tableName) throws ResourceNotFoundException {
@@ -111,7 +111,7 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
     }
 
     private TableDescription getTableDescriptionNoCache(String tableName) {
-        Map<String, AttributeValue> item = amazonDynamoDB.getItem(new GetItemRequest()
+        Map<String, AttributeValue> item = amazonDynamoDb.getItem(new GetItemRequest()
             .withTableName(getTableDescriptionTableName())
             .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(tableName)))))).getItem();
         if (item == null) {
@@ -127,7 +127,7 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
 
         cache.invalidate(tableName);
 
-        amazonDynamoDB.deleteItem(new DeleteItemRequest()
+        amazonDynamoDb.deleteItem(new DeleteItemRequest()
             .withTableName(getTableDescriptionTableName())
             .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(tableName))))));
 
@@ -200,9 +200,9 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
         return mtContext.getContext() + delimiter;
     }
 
-    public static class MTDynamoDBTableDescriptionRepoBuilder {
-        private AmazonDynamoDB amazonDynamoDB;
-        private MTAmazonDynamoDBContextProvider mtContext;
+    public static class MtDynamoDbTableDescriptionRepoBuilder {
+        private AmazonDynamoDB amazonDynamoDb;
+        private MtAmazonDynamoDbContextProvider mtContext;
         private String tableDescriptionTableName;
         private String tableDescriptionTableHashKeyField;
         private String tableDescriptionTableDataField;
@@ -210,54 +210,54 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
         private Integer pollIntervalSeconds;
         private Optional<String> tablePrefix = Optional.empty();
 
-        public MTDynamoDBTableDescriptionRepoBuilder withAmazonDynamoDB(AmazonDynamoDB amazonDynamoDB) {
-            this.amazonDynamoDB = amazonDynamoDB;
+        public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
+            this.amazonDynamoDb = amazonDynamoDb;
             return this;
         }
 
-        public MTDynamoDBTableDescriptionRepoBuilder withContext(MTAmazonDynamoDBContextProvider mtContext) {
+        public MtDynamoDbTableDescriptionRepoBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
             return this;
         }
 
-        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
             this.tableDescriptionTableName = tableDescriptionTableName;
             return this;
         }
 
         @SuppressWarnings("unused")
-        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(String tableDescriptionTableHashKeyField) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(String tableDescriptionTableHashKeyField) {
             this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
             return this;
         }
 
         @SuppressWarnings("unused")
-        public MTDynamoDBTableDescriptionRepoBuilder withTableDescriptionTableDataField(String tableDescriptionTableDataField) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(String tableDescriptionTableDataField) {
             this.tableDescriptionTableDataField = tableDescriptionTableDataField;
             return this;
         }
 
         @SuppressWarnings("unused")
-        public MTDynamoDBTableDescriptionRepoBuilder withDelimiter(String delimiter) {
+        public MtDynamoDbTableDescriptionRepoBuilder withDelimiter(String delimiter) {
             this.delimiter = delimiter;
             return this;
         }
 
-        public MTDynamoDBTableDescriptionRepoBuilder withPollIntervalSeconds(int pollIntervalSeconds) {
+        public MtDynamoDbTableDescriptionRepoBuilder withPollIntervalSeconds(int pollIntervalSeconds) {
             this.pollIntervalSeconds = pollIntervalSeconds;
             return this;
         }
 
-        public MTDynamoDBTableDescriptionRepoBuilder withTablePrefix(Optional<String> tablePrefix) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTablePrefix(Optional<String> tablePrefix) {
             this.tablePrefix = tablePrefix;
             return this;
         }
 
-        public MTDynamoDBTableDescriptionRepo build() {
+        public MtDynamoDbTableDescriptionRepo build() {
             setDefaults();
             validate();
-            return new MTDynamoDBTableDescriptionRepo(
-                amazonDynamoDB,
+            return new MtDynamoDbTableDescriptionRepo(
+                amazonDynamoDb,
                 mtContext,
                 tableDescriptionTableName,
                 tablePrefix,
@@ -268,7 +268,7 @@ public class MTDynamoDBTableDescriptionRepo implements MTTableDescriptionRepo {
         }
 
         private void validate() {
-            checkArgument(amazonDynamoDB != null, "amazonDynamoDB is required");
+            checkArgument(amazonDynamoDb != null, "amazonDynamoDb is required");
             checkArgument(mtContext != null, "mtContext is required");
             checkArgument(tableDescriptionTableName != null, "tableDescriptionTableName is required");
         }

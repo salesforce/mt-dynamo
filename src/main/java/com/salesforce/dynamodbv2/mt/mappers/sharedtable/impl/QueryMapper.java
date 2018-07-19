@@ -83,7 +83,7 @@ class QueryMapper {
             fieldMappings = dedupeFieldMappings(fieldMappingDeduped).values();
         } else {
             // query uses index
-            DynamoSecondaryIndex virtualSecondaryIndex = tableMapping.getVirtualTable().findSI(request.getIndexName());
+            DynamoSecondaryIndex virtualSecondaryIndex = tableMapping.getVirtualTable().findSi(request.getIndexName());
             fieldMappings = tableMapping.getIndexPrimaryKeyFieldMappings(virtualSecondaryIndex);
             request.setIndexName(((List<FieldMapping>) fieldMappings).get(0).getPhysicalIndexName());
             virtualHashKey = virtualSecondaryIndex.getPrimaryKey().getHashKey();

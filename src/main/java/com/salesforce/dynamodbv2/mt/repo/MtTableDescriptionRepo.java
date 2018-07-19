@@ -13,7 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 /*
  * @author msgroi
  */
-public interface MTTableDescriptionRepo {
+public interface MtTableDescriptionRepo {
 
     TableDescription createTable(CreateTableRequest createTableRequest);
 

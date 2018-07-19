@@ -26,17 +26,17 @@ public interface DynamoTableDescription extends HasPrimaryKey {
 
     PrimaryKey getPrimaryKey();
 
-    List<DynamoSecondaryIndex> getSIs();
+    List<DynamoSecondaryIndex> getSis();
 
-    List<DynamoSecondaryIndex> getGSIs();
+    List<DynamoSecondaryIndex> getGsis();
 
-    Optional<DynamoSecondaryIndex> getGSI(String indexName);
+    Optional<DynamoSecondaryIndex> getGsi(String indexName);
 
-    List<DynamoSecondaryIndex> getLSIs();
+    List<DynamoSecondaryIndex> getLsis();
 
-    Optional<DynamoSecondaryIndex> getLSI(String indexName);
+    Optional<DynamoSecondaryIndex> getLsi(String indexName);
 
-    DynamoSecondaryIndex findSI(String indexName);
+    DynamoSecondaryIndex findSi(String indexName);
 
     StreamSpecification getStreamSpecification();
 

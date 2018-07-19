@@ -34,7 +34,7 @@ class DynamoSecondaryIndexMapperByTypeImplTest {
             ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
             GSI);
         DynamoTableDescription physicalTable = mock(DynamoTableDescription.class);
-        when(physicalTable.getSIs()).thenReturn(ImmutableList.of(vsi));
+        when(physicalTable.getSis()).thenReturn(ImmutableList.of(vsi));
         new DynamoSecondaryIndexMapperByTypeImpl().lookupPhysicalSecondaryIndex(vsi, physicalTable);
     }
 
@@ -47,7 +47,7 @@ class DynamoSecondaryIndexMapperByTypeImplTest {
             ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
             GSI);
         DynamoTableDescription physicalTable = mock(DynamoTableDescription.class);
-        when(physicalTable.getSIs()).thenReturn(ImmutableList.of(new DynamoSecondaryIndex(
+        when(physicalTable.getSis()).thenReturn(ImmutableList.of(new DynamoSecondaryIndex(
             ImmutableList.of(new AttributeDefinition().withAttributeName("hk").withAttributeType(N)),
             "index1",
             ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),

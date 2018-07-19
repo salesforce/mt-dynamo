@@ -34,11 +34,11 @@ import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.AmazonDynamoDBLocal;
-import com.salesforce.dynamodbv2.TestAmazonDynamoDBAdminUtils;
-import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTRecord;
+import com.salesforce.dynamodbv2.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,17 +65,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 /**
  * @author msgroi
  */
-public class MTAmazonDynamoDBTestRunner {
+public class MtAmazonDynamoDbTestRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(MTAmazonDynamoDBTestRunner.class);
-    private final MTAmazonDynamoDBContextProvider mtContext;
+    private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbTestRunner.class);
+    private final MtAmazonDynamoDbContextProvider mtContext;
     protected static String hashKeyField = "hashKeyField";
     static String rangeKeyField = "rangeKeyField";
     static String indexField = "indexField";
     private static final String someField = "someField";
-    protected final Supplier<AmazonDynamoDB> amazonDynamoDBSupplier;
-    private final AmazonDynamoDB amazonDynamoDB;
-    private final AmazonDynamoDB rootAmazonDynamoDB;
+    protected final Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
+    private final AmazonDynamoDB amazonDynamoDb;
+    private final AmazonDynamoDB rootAmazonDynamoDb;
     protected final int timeoutSeconds = 600;
     private final boolean isLocalDynamo;
     @SuppressWarnings("FieldCanBeLocal")
@@ -91,33 +91,33 @@ public class MTAmazonDynamoDBTestRunner {
     private final String tableName4;
     private final List<Map<String, CreateTableRequest>> ctxTablePairs;
     private final ScalarAttributeType hashKeyAttrType;
-    private final MTAmazonDynamoDBStreamTestRunner streamTestRunner;
+    private final MtAmazonDynamoDbStreamTestRunner streamTestRunner;
 
-    protected MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
-                                         AmazonDynamoDB amazonDynamoDB,
-                                         AmazonDynamoDB rootAmazonDynamoDB,
+    protected MtAmazonDynamoDbTestRunner(MtAmazonDynamoDbContextProvider mtContext,
+                                         AmazonDynamoDB amazonDynamoDb,
+                                         AmazonDynamoDB rootAmazonDynamoDb,
                                          AWSCredentialsProvider awsCredentialsProvider,
                                          boolean isLocalDynamo) {
         this(mtContext,
-            amazonDynamoDB,
-            rootAmazonDynamoDB,
+            amazonDynamoDb,
+            rootAmazonDynamoDb,
             null,
             awsCredentialsProvider,
             isLocalDynamo,
             S);
     }
 
-    MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
-                               AmazonDynamoDB amazonDynamoDB,
-                               AmazonDynamoDB rootAmazonDynamoDB,
-                               AmazonDynamoDBStreams rootAmazonDynamoDBStreams,
+    MtAmazonDynamoDbTestRunner(MtAmazonDynamoDbContextProvider mtContext,
+                               AmazonDynamoDB amazonDynamoDb,
+                               AmazonDynamoDB rootAmazonDynamoDb,
+                               AmazonDynamoDBStreams rootAmazonDynamoDbStreams,
                                AWSCredentialsProvider awsCredentialsProvider,
                                boolean isLocalDynamo,
                                ScalarAttributeType hashKeyAttrType) {
         this.mtContext = mtContext;
-        this.amazonDynamoDB = amazonDynamoDB;
-        this.rootAmazonDynamoDB = rootAmazonDynamoDB;
-        this.amazonDynamoDBSupplier = () -> this.amazonDynamoDB;
+        this.amazonDynamoDb = amazonDynamoDb;
+        this.rootAmazonDynamoDb = rootAmazonDynamoDb;
+        this.amazonDynamoDbSupplier = () -> this.amazonDynamoDb;
         this.isLocalDynamo = isLocalDynamo;
         this.hashKeyAttrType = hashKeyAttrType;
         tableName1 = buildTableName(1);
@@ -161,20 +161,20 @@ public class MTAmazonDynamoDBTestRunner {
             ImmutableMap.of("ctx1", createTableRequest2),
             ImmutableMap.of("ctx1", createTableRequest3)
         ));
-        this.streamTestRunner = new MTAmazonDynamoDBStreamTestRunner(amazonDynamoDBSupplier.get(),
-            rootAmazonDynamoDB,
-            rootAmazonDynamoDBStreams,
+        this.streamTestRunner = new MtAmazonDynamoDbStreamTestRunner(amazonDynamoDbSupplier.get(),
+            rootAmazonDynamoDb,
+            rootAmazonDynamoDbStreams,
             awsCredentialsProvider,
-            getExpectedMTRecords()
+            getExpectedMtRecords()
         );
     }
 
-    static AmazonDynamoDB getLocalAmazonDynamoDB() {
-        return AmazonDynamoDBLocal.getAmazonDynamoDBLocal();
+    static AmazonDynamoDB getLocalAmazonDynamoDb() {
+        return AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     }
 
-    static AmazonDynamoDBStreams getLocalAmazonDynamoDBStreams() {
-        return AmazonDynamoDBLocal.getAmazonDynamoDBStreamsLocal();
+    static AmazonDynamoDBStreams getLocalAmazonDynamoDbStreams() {
+        return AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal();
     }
 
     void runAll() {
@@ -183,8 +183,8 @@ public class MTAmazonDynamoDBTestRunner {
         teardown();
     }
 
-    private AmazonDynamoDB getAmazonDynamoDBSupplier() {
-        return amazonDynamoDB;
+    private AmazonDynamoDB getAmazonDynamoDbSupplier() {
+        return amazonDynamoDb;
     }
 
     void setup() {
@@ -201,31 +201,31 @@ public class MTAmazonDynamoDBTestRunner {
 
     void run() {
         // log start
-        String testDescription = getAmazonDynamoDBSupplier() + " with hashkey type=" + hashKeyAttrType;
+        String testDescription = getAmazonDynamoDbSupplier() + " with hashkey type=" + hashKeyAttrType;
         log.info("START test " + testDescription);
 
         // table with hk only
 
         // describe table in ctx1
         mtContext.setContext("ctx1");
-        assertEquals(tableName1, getAmazonDynamoDBSupplier().describeTable(tableName1).getTable().getTableName());
+        assertEquals(tableName1, getAmazonDynamoDbSupplier().describeTable(tableName1).getTable().getTableName());
 
         // describe table in ctx2
         mtContext.setContext("ctx2");
-        assertEquals(tableName1, getAmazonDynamoDBSupplier().describeTable(tableName1).getTable().getTableName());
+        assertEquals(tableName1, getAmazonDynamoDbSupplier().describeTable(tableName1).getTable().getTableName());
 
         // put item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> item = createItem("someValue1");
         Map<String, AttributeValue> originalItem = new HashMap<>(item);
         PutItemRequest putItemRequest = new PutItemRequest().withTableName(tableName1).withItem(item);
-        getAmazonDynamoDBSupplier().putItem(putItemRequest);
+        getAmazonDynamoDbSupplier().putItem(putItemRequest);
         assertThat(putItemRequest.getItem(), is(originalItem));
         assertEquals(tableName1, putItemRequest.getTableName());
 
         // put item in ctx2
         mtContext.setContext("ctx2");
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName1).withItem(createItem("someValue2")));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName1).withItem(createItem("someValue2")));
 
         // get item from ctx1
         mtContext.setContext("ctx1");
@@ -239,7 +239,7 @@ public class MTAmazonDynamoDBTestRunner {
         QueryRequest queryRequest = new QueryRequest().withTableName(tableName1).withKeyConditionExpression(keyConditionExpression)
             .withExpressionAttributeNames(queryExpressionAttrNames)
             .withExpressionAttributeValues(queryExpressionAttrValues);
-        List<Map<String, AttributeValue>> queryItems1 = getAmazonDynamoDBSupplier().query(queryRequest).getItems();
+        List<Map<String, AttributeValue>> queryItems1 = getAmazonDynamoDbSupplier().query(queryRequest).getItems();
         assertItemValue("someValue1", queryItems1.get(0));
         assertEquals(tableName1, queryRequest.getTableName());
         assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression));
@@ -249,7 +249,7 @@ public class MTAmazonDynamoDBTestRunner {
         // query item from ctx using keyConditions
         QueryRequest queryRequestKeyConditions = new QueryRequest().withTableName(tableName1).withKeyConditions(ImmutableMap.of(
             hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
-        List<Map<String, AttributeValue>> queryItemsKeyConditions = getAmazonDynamoDBSupplier().query(queryRequestKeyConditions).getItems();
+        List<Map<String, AttributeValue>> queryItemsKeyConditions = getAmazonDynamoDbSupplier().query(queryRequestKeyConditions).getItems();
         assertItemValue("someValue1", queryItemsKeyConditions.get(0));
 
         // get item from ctx2
@@ -257,7 +257,7 @@ public class MTAmazonDynamoDBTestRunner {
         assertItemValue("someValue2", getItem(tableName1));
 
         // query item from ctx2 using attribute name placeholders
-        List<Map<String, AttributeValue>> queryItems2 = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> queryItems2 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
@@ -265,7 +265,7 @@ public class MTAmazonDynamoDBTestRunner {
 
         // query item from ctx2 using attribute name literals
         // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
-        List<Map<String, AttributeValue>> queryItems3 = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> queryItems3 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression(hashKeyField + " = :value")
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
         assertItemValue("someValue2", queryItems3.get(0));
@@ -277,7 +277,7 @@ public class MTAmazonDynamoDBTestRunner {
         ScanRequest scanRequest = new ScanRequest().withTableName(tableName1).withFilterExpression(filterExpression1)
             .withExpressionAttributeNames(scanExpressionAttrNames1)
             .withExpressionAttributeValues(scanExpressionAttrValues1);
-        assertItemValue("someValue2", getAmazonDynamoDBSupplier().scan(scanRequest).getItems().get(0));
+        assertItemValue("someValue2", getAmazonDynamoDbSupplier().scan(scanRequest).getItems().get(0));
         assertEquals(tableName1, queryRequest.getTableName());
         assertThat(scanRequest.getFilterExpression(), is(filterExpression1));
         assertThat(scanRequest.getExpressionAttributeNames(), is(scanExpressionAttrNames1));
@@ -286,7 +286,7 @@ public class MTAmazonDynamoDBTestRunner {
         // scan item from ctx using scanFilter
         ScanRequest scanRequestKeyConditions = new ScanRequest().withTableName(tableName1).withScanFilter(ImmutableMap.of(
             hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
-        List<Map<String, AttributeValue>> scanItemsScanFilter = getAmazonDynamoDBSupplier().scan(scanRequestKeyConditions).getItems();
+        List<Map<String, AttributeValue>> scanItemsScanFilter = getAmazonDynamoDbSupplier().scan(scanRequestKeyConditions).getItems();
         assertItemValue("someValue2", scanItemsScanFilter.get(0));
 
         // scan for an item using non-hk
@@ -296,7 +296,7 @@ public class MTAmazonDynamoDBTestRunner {
         ScanRequest scanRequest2 = new ScanRequest().withTableName(tableName1).withFilterExpression(filterExpression2)
             .withExpressionAttributeNames(scanExpressionAttrNames2)
             .withExpressionAttributeValues(scanExpressionAttrValues2);
-        assertItemValue("someValue2", getAmazonDynamoDBSupplier().scan(scanRequest2).getItems().get(0));
+        assertItemValue("someValue2", getAmazonDynamoDbSupplier().scan(scanRequest2).getItems().get(0));
         assertEquals(tableName1, queryRequest.getTableName());
         assertThat(scanRequest2.getFilterExpression(), is(filterExpression2));
         assertThat(scanRequest2.getExpressionAttributeNames(), is(scanExpressionAttrNames2));
@@ -304,11 +304,11 @@ public class MTAmazonDynamoDBTestRunner {
 
         // scan all
         mtContext.setContext("ctx1");
-        List<Map<String, AttributeValue>> scanItems1 = getAmazonDynamoDBSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
+        List<Map<String, AttributeValue>> scanItems1 = getAmazonDynamoDbSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
         assertEquals(1, scanItems1.size());
         assertItemValue("someValue1", scanItems1.get(0));
         mtContext.setContext("ctx2");
-        List<Map<String, AttributeValue>> scanItems2 = getAmazonDynamoDBSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
+        List<Map<String, AttributeValue>> scanItems2 = getAmazonDynamoDbSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
         assertEquals(1, scanItems2.size());
         assertItemValue("someValue2", scanItems2.get(0));
 
@@ -320,14 +320,14 @@ public class MTAmazonDynamoDBTestRunner {
             .withTableName(tableName1)
             .withKey(updateItemKey)
             .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
-        getAmazonDynamoDBSupplier().updateItem(updateItemRequest);
+        getAmazonDynamoDbSupplier().updateItem(updateItemRequest);
         assertItemValue("someValue1Updated", getItem(tableName1));
         assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
         assertEquals(tableName1, updateItemRequest.getTableName());
 
         // update item in ctx2
         mtContext.setContext("ctx2");
-        getAmazonDynamoDBSupplier().updateItem(new UpdateItemRequest()
+        getAmazonDynamoDbSupplier().updateItem(new UpdateItemRequest()
             .withTableName(tableName1)
             .withKey(new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"))))
             .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
@@ -344,7 +344,7 @@ public class MTAmazonDynamoDBTestRunner {
             .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
             .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         try {
-            getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestFail);
+            getAmazonDynamoDbSupplier().updateItem(condUpdateItemRequestFail);
             throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
         } catch (ConditionalCheckFailedException ignore) {
         }
@@ -360,12 +360,12 @@ public class MTAmazonDynamoDBTestRunner {
             .addExpressionAttributeNamesEntry("#name", someField)
             .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
             .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
-        getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestSuccess);
+        getAmazonDynamoDbSupplier().updateItem(condUpdateItemRequestSuccess);
         assertItemValue("someValue1UpdatedAgain", getItem(tableName1));
 
         // put item into table2 in ctx1
         mtContext.setContext("ctx1");
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName2).withItem(createItem("someValueTable2")));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName2).withItem(createItem("someValueTable2")));
 
         // get item from table2 in ctx1
         mtContext.setContext("ctx1");
@@ -377,7 +377,7 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> deleteItemKey = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
         Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1).withKey(deleteItemKey);
-        getAmazonDynamoDBSupplier().deleteItem(deleteItemRequest);
+        getAmazonDynamoDbSupplier().deleteItem(deleteItemRequest);
         assertNull(getItem(tableName1, "someValue1Updated"));
         mtContext.setContext("ctx2");
         assertItemValue("someValue2Updated", getItem(tableName1));
@@ -395,19 +395,19 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> table3item2 = ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
             rangeKeyField, createStringAttribute("rangeKeyValue3b"),
             someField, createStringAttribute("someValue3b"));
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item1));
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(new HashMap<>(table3item2)));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item1));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(new HashMap<>(table3item2)));
 
         // get item
         GetItemRequest getItemRequest4 = new GetItemRequest().withTableName(tableName3).withKey(new HashMap<>(
             ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
                 rangeKeyField, createStringAttribute("rangeKeyValue3a"))));
-        assertThat(getAmazonDynamoDBSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
+        assertThat(getAmazonDynamoDbSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
 
         // delete and create table and verify no leftover data
         deleteTable("ctx1", tableName1);
         createTable("ctx1", createTableRequest1);
-        List<Map<String, AttributeValue>> scanItems3 = getAmazonDynamoDBSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
+        List<Map<String, AttributeValue>> scanItems3 = getAmazonDynamoDbSupplier().scan(new ScanRequest().withTableName(tableName1)).getItems();
         assertEquals(0, scanItems3.size());
 
         // query hk and rk
@@ -416,8 +416,8 @@ public class MTAmazonDynamoDBTestRunner {
             hashKeyField, createAttribute("hashKeyValue"),
             rangeKeyField, createStringAttribute("rangeKeyValue"),
             indexField, createStringAttribute("indexFieldValue")));
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
-        List<Map<String, AttributeValue>> queryItems6 = getAmazonDynamoDBSupplier().query(
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
+        List<Map<String, AttributeValue>> queryItems6 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value AND #name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", rangeKeyField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
@@ -427,16 +427,16 @@ public class MTAmazonDynamoDBTestRunner {
         assertThat(queryItem6, is(table3item3));
 
         // query hk with filter expression on someField
-        List<Map<String, AttributeValue>> queryItemsFE = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> queryItemsFe = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
                 .withFilterExpression("#name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
                     ":value2", createStringAttribute("someValue3a")))).getItems();
-        assertEquals(1, queryItemsFE.size());
+        assertEquals(1, queryItemsFe.size());
 
         // query on gsi
-        List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))
@@ -451,7 +451,7 @@ public class MTAmazonDynamoDBTestRunner {
             .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
                 ":value2", createStringAttribute("indexFieldValue")))
             .withIndexName("testlsi");
-        List<Map<String, AttributeValue>> queryItems5 = getAmazonDynamoDBSupplier().query(queryRequest5).getItems();
+        List<Map<String, AttributeValue>> queryItems5 = getAmazonDynamoDbSupplier().query(queryRequest5).getItems();
         assertEquals(1, queryItems5.size());
         Map<String, AttributeValue> queryItem5 = queryItems5.get(0);
         assertThat(queryItem5, is(table3item3));
@@ -464,14 +464,14 @@ public class MTAmazonDynamoDBTestRunner {
         ScanRequest scanRequestHkRk = new ScanRequest().withTableName(tableName3).withFilterExpression(filterExpressionHkRk)
             .withExpressionAttributeNames(scanExpressionAttrNamesHkRk)
             .withExpressionAttributeValues(scanExpressionAttrValuesHkRk);
-        List<Map<String, AttributeValue>> scanItemsHkRk = getAmazonDynamoDBSupplier().scan(scanRequestHkRk).getItems();
+        List<Map<String, AttributeValue>> scanItemsHkRk = getAmazonDynamoDbSupplier().scan(scanRequestHkRk).getItems();
         assertEquals(1, scanItemsHkRk.size());
         Map<String, AttributeValue> scanItemHkRk = scanItemsHkRk.get(0);
         assertThat(scanItemHkRk, is(table3item3));
 
         // scan all on table with gsi and confirm fields with gsi is saved
         mtContext.setContext("ctx1");
-        List<Map<String, AttributeValue>> scanItems4 = getAmazonDynamoDBSupplier().scan(
+        List<Map<String, AttributeValue>> scanItems4 = getAmazonDynamoDbSupplier().scan(
             new ScanRequest().withTableName(tableName3).withFilterExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))).getItems();
@@ -485,27 +485,27 @@ public class MTAmazonDynamoDBTestRunner {
         log.info("END test " + testDescription);
     }
 
-    private List<MTRecord> getExpectedMTRecords() {
+    private List<MtAmazonDynamoDb.MtRecord> getExpectedMtRecords() {
         return ImmutableList.of(
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx2")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue2")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(MODIFY.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
@@ -513,9 +513,9 @@ public class MTAmazonDynamoDBTestRunner {
                         "someField", new AttributeValue().withS("someValue1")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1Updated")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(MODIFY.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
@@ -523,9 +523,9 @@ public class MTAmazonDynamoDBTestRunner {
                         "someField", new AttributeValue().withS("someValue1Updated")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
-            new MTRecord()
+            new MtRecord()
                 .withContext("ctx2")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(MODIFY.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
@@ -533,25 +533,25 @@ public class MTAmazonDynamoDBTestRunner {
                         "someField", new AttributeValue().withS("someValue2")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue2Updated")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner2")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner2")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValueTable2")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(REMOVE.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
@@ -559,9 +559,9 @@ public class MTAmazonDynamoDBTestRunner {
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
                         "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
                         "someField", new AttributeValue().withS("someValue3a")))),
-            new MTRecord()
+            new MtAmazonDynamoDb.MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
@@ -569,9 +569,9 @@ public class MTAmazonDynamoDBTestRunner {
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
                         "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b"),
                         "someField", new AttributeValue().withS("someValue3b")))),
-            new MTRecord()
+            new MtRecord()
                 .withContext("ctx1")
-                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
                 .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
@@ -583,7 +583,7 @@ public class MTAmazonDynamoDBTestRunner {
     }
 
     void runBinaryTest() {
-        String testDescription = getAmazonDynamoDBSupplier() + " with hashkey type=B";
+        String testDescription = getAmazonDynamoDbSupplier() + " with hashkey type=B";
         log.info("START test " + testDescription);
 
         // setup
@@ -593,7 +593,7 @@ public class MTAmazonDynamoDBTestRunner {
         ));
 
         // test
-        getAmazonDynamoDBSupplier().createTable(createTableRequest4);
+        getAmazonDynamoDbSupplier().createTable(createTableRequest4);
         testWithHashKeyType(createTableRequest4,
             tableName4,
             value -> new AttributeValue().withB(UTF_8.encode(value))
@@ -620,33 +620,33 @@ public class MTAmazonDynamoDBTestRunner {
         Supplier<AttributeValue> generator1 = () -> attributeValueGeneratorFunction.apply("41");
         Supplier<AttributeValue> generator2 = () -> attributeValueGeneratorFunction.apply("42");
 
-        getAmazonDynamoDBSupplier().createTable(createTableRequest);
+        getAmazonDynamoDbSupplier().createTable(createTableRequest);
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> item41 = createItem(generator1.get(), "someValue41");
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName).withItem(item41));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName).withItem(item41));
 
         // put item in ctx2
         mtContext.setContext("ctx2");
         Map<String, AttributeValue> item42 = createItem(generator2.get(), "someValue42");
-        getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName).withItem(item42));
+        getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName).withItem(item42));
 
         // get item from ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> item41get = getAmazonDynamoDBSupplier()
+        Map<String, AttributeValue> item41get = getAmazonDynamoDbSupplier()
             .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator1.get()))).getItem();
         assertThat(item41get, is(ImmutableMap.of(hashKeyField, generator1.get(),
             someField, new AttributeValue().withS("someValue41"))));
 
         // get item from ctx2
         mtContext.setContext("ctx2");
-        Map<String, AttributeValue> item42get = getAmazonDynamoDBSupplier()
+        Map<String, AttributeValue> item42get = getAmazonDynamoDbSupplier()
             .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator2.get()))).getItem();
         assertThat(item42get, is(ImmutableMap.of(hashKeyField, generator2.get(),
             someField, new AttributeValue().withS("someValue42"))));
 
         // query item from ctx1
         mtContext.setContext("ctx1");
-        List<Map<String, AttributeValue>> item41query = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> item41query = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", generator1.get()))).getItems();
@@ -656,7 +656,7 @@ public class MTAmazonDynamoDBTestRunner {
 
         // query item from ctx2
         mtContext.setContext("ctx2");
-        List<Map<String, AttributeValue>> item42query = getAmazonDynamoDBSupplier().query(
+        List<Map<String, AttributeValue>> item42query = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", generator2.get()))).getItems();
@@ -667,10 +667,10 @@ public class MTAmazonDynamoDBTestRunner {
 
     void teardown() {
         streamTestRunner.stop();
-        for (String tableName : rootAmazonDynamoDB.listTables().getTableNames()) {
+        for (String tableName : rootAmazonDynamoDb.listTables().getTableNames()) {
             String prefix = getPrefix();
             if (tableName.startsWith(prefix)) {
-                new AmazonDynamoDBAdminUtils(rootAmazonDynamoDB).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
+                new AmazonDynamoDbAdminUtils(rootAmazonDynamoDb).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
             }
         }
     }
@@ -718,7 +718,7 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> keys = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(value)));
         Map<String, AttributeValue> originalKeys = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(value)));
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
-        GetItemResult getItemResult = getAmazonDynamoDBSupplier().getItem(getItemRequest);
+        GetItemResult getItemResult = getAmazonDynamoDbSupplier().getItem(getItemRequest);
         assertEquals(tableName, getItemRequest.getTableName());
         assertThat(getItemRequest.getKey(), is(originalKeys));
         return getItemResult.getItem();
@@ -731,7 +731,7 @@ public class MTAmazonDynamoDBTestRunner {
 
     protected void deleteTable(String tenantId, String tableName) {
         mtContext.setContext(tenantId);
-        new TestAmazonDynamoDBAdminUtils(getAmazonDynamoDBSupplier()).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
+        new TestAmazonDynamoDbAdminUtils(getAmazonDynamoDbSupplier()).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
     }
 
     protected void createTable(String context, String tableName) {
@@ -745,7 +745,7 @@ public class MTAmazonDynamoDBTestRunner {
 
     private void createTable(String context, CreateTableRequest createTableRequest) {
         mtContext.setContext(context);
-        new TestAmazonDynamoDBAdminUtils(getAmazonDynamoDBSupplier()).createTableIfNotExists(createTableRequest, getPollInterval());
+        new TestAmazonDynamoDbAdminUtils(getAmazonDynamoDbSupplier()).createTableIfNotExists(createTableRequest, getPollInterval());
     }
 
     protected void recreateTable(String context, String tableName) {
@@ -773,7 +773,7 @@ public class MTAmazonDynamoDBTestRunner {
     }
 
     private String getPrefix() {
-        return (isLocalDynamo ? "" : "oktodelete-" + TestAmazonDynamoDBAdminUtils.getLocalHost() + "-");
+        return (isLocalDynamo ? "" : "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "-");
     }
 
 }

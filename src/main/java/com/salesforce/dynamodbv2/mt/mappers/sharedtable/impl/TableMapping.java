@@ -11,7 +11,7 @@ import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -58,7 +58,7 @@ class TableMapping {
     TableMapping(DynamoTableDescription virtualTable,
                  CreateTableRequestFactory createTableRequestFactory,
                  DynamoSecondaryIndexMapper secondaryIndexMapper,
-                 MTAmazonDynamoDBContextProvider mtContext,
+                 MtAmazonDynamoDbContextProvider mtContext,
                  String delimiter) {
         physicalTable = lookupPhysicalTable(virtualTable, createTableRequestFactory);
         validatePhysicalTable(physicalTable);
@@ -153,7 +153,7 @@ class TableMapping {
     private Map<String, List<FieldMapping>> buildAllVirtualToPhysicalFieldMappings(DynamoTableDescription virtualTable) {
         Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
         getTablePrimaryKeyFieldMappings().forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping));
-        virtualTable.getSIs().forEach(virtualSI -> getIndexPrimaryKeyFieldMappings(virtualSI).forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping)));
+        virtualTable.getSis().forEach(virtualSi -> getIndexPrimaryKeyFieldMappings(virtualSi).forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping)));
         return fieldMappings;
     }
 
@@ -174,32 +174,32 @@ class TableMapping {
                                                                                             DynamoTableDescription physicalTable,
                                                                                             DynamoSecondaryIndexMapper secondaryIndexMapper) {
         Map<DynamoSecondaryIndex, List<FieldMapping>> secondaryIndexFieldMappings = new HashMap<>();
-        for (DynamoSecondaryIndex virtualSI : virtualTable.getSIs()) {
+        for (DynamoSecondaryIndex virtualSi : virtualTable.getSis()) {
             List<FieldMapping> fieldMappings = new ArrayList<>();
             try {
-                DynamoSecondaryIndex physicalSI = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSI, physicalTable);
-                fieldMappings.add(new FieldMapping(new Field(virtualSI.getPrimaryKey().getHashKey(),
-                    virtualSI.getPrimaryKey().getHashKeyType()),
-                    new Field(physicalSI.getPrimaryKey().getHashKey(),
-                        physicalSI.getPrimaryKey().getHashKeyType()),
-                    virtualSI.getIndexName(),
-                    physicalSI.getIndexName(),
-                    virtualSI.getType() == LSI ? TABLE : SECONDARYINDEX,
+                DynamoSecondaryIndex physicalSi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSi, physicalTable);
+                fieldMappings.add(new FieldMapping(new Field(virtualSi.getPrimaryKey().getHashKey(),
+                    virtualSi.getPrimaryKey().getHashKeyType()),
+                    new Field(physicalSi.getPrimaryKey().getHashKey(),
+                        physicalSi.getPrimaryKey().getHashKeyType()),
+                    virtualSi.getIndexName(),
+                    physicalSi.getIndexName(),
+                    virtualSi.getType() == LSI ? TABLE : SECONDARYINDEX,
                     true));
-                if (virtualSI.getPrimaryKey().getRangeKey().isPresent()) {
-                    fieldMappings.add(new FieldMapping(new Field(virtualSI.getPrimaryKey().getRangeKey().get(),
-                        virtualSI.getPrimaryKey().getRangeKeyType().get()),
-                        new Field(physicalSI.getPrimaryKey().getRangeKey().get(),
-                            physicalSI.getPrimaryKey().getRangeKeyType().get()),
-                        virtualSI.getIndexName(),
-                        physicalSI.getIndexName(),
+                if (virtualSi.getPrimaryKey().getRangeKey().isPresent()) {
+                    fieldMappings.add(new FieldMapping(new Field(virtualSi.getPrimaryKey().getRangeKey().get(),
+                        virtualSi.getPrimaryKey().getRangeKeyType().get()),
+                        new Field(physicalSi.getPrimaryKey().getRangeKey().get(),
+                            physicalSi.getPrimaryKey().getRangeKeyType().get()),
+                        virtualSi.getIndexName(),
+                        physicalSi.getIndexName(),
                         SECONDARYINDEX,
                         false));
                 }
-                secondaryIndexFieldMappings.put(virtualSI, fieldMappings);
+                secondaryIndexFieldMappings.put(virtualSi, fieldMappings);
             } catch (MappingException e) {
-                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualSI.getType() + ": " + e.getMessage() +
-                    ", virtualSIPrimaryKey=" + virtualSI + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
+                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualSi.getType() + ": " + e.getMessage() +
+                    ", virtualSiPrimaryKey=" + virtualSi + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
             }
         }
         return secondaryIndexFieldMappings;
@@ -234,45 +234,45 @@ class TableMapping {
     void validateSecondaryIndexes(DynamoTableDescription virtualTable,
                                   DynamoTableDescription physicalTable,
                                   DynamoSecondaryIndexMapper secondaryIndexMapper) {
-        for (DynamoSecondaryIndex virtualSI : virtualTable.getSIs()) {
-            DynamoSecondaryIndex physicalSI;
+        for (DynamoSecondaryIndex virtualSi : virtualTable.getSis()) {
+            DynamoSecondaryIndex physicalSi;
             // map the virtual index a physical one
             try {
-                physicalSI = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSI, physicalTable);
+                physicalSi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSi, physicalTable);
             } catch (IllegalArgumentException | NullPointerException | MappingException e) {
-                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualSI.getType() + ": " + e.getMessage() +
-                    ", virtualSIPrimaryKey=" + virtualSI + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
+                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualSi.getType() + ": " + e.getMessage() +
+                    ", virtualSiPrimaryKey=" + virtualSi + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
             }
             try {
                 // validate each virtual against the physical index that it was mapped to
-                validateCompatiblePrimaryKey(virtualSI.getPrimaryKey(), physicalSI.getPrimaryKey());
+                validateCompatiblePrimaryKey(virtualSi.getPrimaryKey(), physicalSi.getPrimaryKey());
             } catch (IllegalArgumentException | NullPointerException e) {
-                throw new IllegalArgumentException("invalid mapping virtual to physical " + virtualSI.getType() + ": " + e.getMessage() +
-                    ", virtualSIPrimaryKey=" + virtualSI.getPrimaryKey() + ", physicalSIPrimaryKey=" + physicalSI.getPrimaryKey() +
+                throw new IllegalArgumentException("invalid mapping virtual to physical " + virtualSi.getType() + ": " + e.getMessage() +
+                    ", virtualSiPrimaryKey=" + virtualSi.getPrimaryKey() + ", physicalSiPrimaryKey=" + physicalSi.getPrimaryKey() +
                     ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
             }
         }
 
-        validateLSIMappings(virtualTable, physicalTable, secondaryIndexMapper);
+        validateLsiMappings(virtualTable, physicalTable, secondaryIndexMapper);
     }
 
     /*
      * Validate that for any given physical LSI, there is no more than one virtual LSI that is mapped to it.
      */
-    private void validateLSIMappings(DynamoTableDescription virtualTable,
+    private void validateLsiMappings(DynamoTableDescription virtualTable,
                                      DynamoTableDescription physicalTable,
                                      DynamoSecondaryIndexMapper secondaryIndexMapper) {
-        Map<DynamoSecondaryIndex, DynamoSecondaryIndex> usedPhysicalLSIs = new HashMap<>();
-        virtualTable.getLSIs().forEach(virtualLSI -> {
+        Map<DynamoSecondaryIndex, DynamoSecondaryIndex> usedPhysicalLsis = new HashMap<>();
+        virtualTable.getLsis().forEach(virtualLsi -> {
             try {
-                DynamoSecondaryIndex physicalLSI = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLSI, physicalTable);
-                checkArgument(!usedPhysicalLSIs.containsKey(physicalLSI),
-                    "two virtual LSI's(one:" + usedPhysicalLSIs.get(physicalLSI) + ", two:" +
-                        virtualLSI + ", mapped to one physical LSI: " + physicalLSI);
-                usedPhysicalLSIs.put(physicalLSI, virtualLSI);
+                DynamoSecondaryIndex physicalLsi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLsi, physicalTable);
+                checkArgument(!usedPhysicalLsis.containsKey(physicalLsi),
+                    "two virtual LSI's(one:" + usedPhysicalLsis.get(physicalLsi) + ", two:" +
+                        virtualLsi + ", mapped to one physical LSI: " + physicalLsi);
+                usedPhysicalLsis.put(physicalLsi, virtualLsi);
             } catch (MappingException e) {
-                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualLSI.getType() + ": " + e.getMessage() +
-                    ", virtualSIPrimaryKey=" + virtualLSI + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
+                throw new IllegalArgumentException("failure mapping virtual to physical " + virtualLsi.getType() + ": " + e.getMessage() +
+                    ", virtualSiPrimaryKey=" + virtualLsi + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
             }
         });
     }
@@ -300,9 +300,9 @@ class TableMapping {
     void validatePhysicalTable(DynamoTableDescription physicalTableDescription) {
         String tableMsgPrefix = "physical table " + physicalTableDescription.getTableName() + "'s";
         validatePrimaryKey(physicalTableDescription.getPrimaryKey(), tableMsgPrefix);
-        physicalTableDescription.getGSIs().forEach(dynamoSecondaryIndex ->
+        physicalTableDescription.getGsis().forEach(dynamoSecondaryIndex ->
             validatePrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix + " GSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
-        physicalTableDescription.getLSIs().forEach(dynamoSecondaryIndex ->
+        physicalTableDescription.getLsis().forEach(dynamoSecondaryIndex ->
             validatePrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix + " LSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
     }
 

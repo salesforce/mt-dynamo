@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
 import org.junit.jupiter.api.Test;
@@ -35,7 +35,7 @@ class FieldMapperTest {
 
     @Test
     void applyTableIndex() {
-        MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
+        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         String value = generateValue();
         assertMapper(S,
             TABLE,
@@ -46,7 +46,7 @@ class FieldMapperTest {
 
     @Test
     void applySecondaryIndex() {
-        MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
+        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         String value = generateValue();
         assertMapper(S,
             SECONDARYINDEX,
@@ -57,7 +57,7 @@ class FieldMapperTest {
 
     @Test
     void applyTableIndexNumber() {
-        MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
+        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         assertMapper(N,
             TABLE,
             () -> new AttributeValue().withN("123"),
@@ -67,7 +67,7 @@ class FieldMapperTest {
 
     @Test
     void applyTableIndexByteArray() {
-        MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
+        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         assertMapper(B,
             TABLE,
             () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
@@ -78,7 +78,7 @@ class FieldMapperTest {
     @Test
     void applyValueNotFound() {
         try {
-            buildFieldMapper(buildMTContext()).apply(buildFieldMapping(N, TABLE), new AttributeValue().withS("value"));
+            buildFieldMapper(buildMtContext()).apply(buildFieldMapping(N, TABLE), new AttributeValue().withS("value"));
         } catch (NullPointerException e) {
             // expected
             assertEquals("attributeValue={S: value,} of type=N could not be converted", e.getMessage());
@@ -88,7 +88,7 @@ class FieldMapperTest {
     @Test
     void invalidType() {
         try {
-            buildFieldMapper(buildMTContext()).apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
+            buildFieldMapper(buildMtContext()).apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
         } catch (NullPointerException e) {
             // expected
             assertEquals("null attribute type", e.getMessage());
@@ -99,7 +99,7 @@ class FieldMapperTest {
                               IndexType indexType,
                               Supplier<AttributeValue> attributeValue,
                               String expectedStringValue,
-                              MTAmazonDynamoDBContextProvider mtContext) {
+                              MtAmazonDynamoDbContextProvider mtContext) {
         FieldMapping fieldMapping = buildFieldMapping(fieldType, indexType);
         FieldMapper fieldMapper = buildFieldMapper(mtContext);
         AttributeValue qualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue.get());
@@ -129,7 +129,7 @@ class FieldMapperTest {
             fieldMapping.isContextAware());
     }
 
-    private FieldMapper buildFieldMapper(MTAmazonDynamoDBContextProvider mtContext) {
+    private FieldMapper buildFieldMapper(MtAmazonDynamoDbContextProvider mtContext) {
         return new FieldMapper(mtContext,
             "virtualtable",
             new FieldPrefixFunction(delimiter));
@@ -139,8 +139,8 @@ class FieldMapperTest {
         return randomUUID().toString();
     }
 
-    private MTAmazonDynamoDBContextProvider buildMTContext() {
-        return new MTAmazonDynamoDBContextProvider() {
+    private MtAmazonDynamoDbContextProvider buildMtContext() {
+        return new MtAmazonDynamoDbContextProvider() {
             String context = random();
 
             @Override

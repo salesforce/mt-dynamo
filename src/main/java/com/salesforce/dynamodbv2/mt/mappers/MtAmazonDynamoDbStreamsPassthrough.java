@@ -9,27 +9,27 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 
 /**
- * An implementation of {@link MTAmazonDynamoDBStreams} that simply delegates supported calls to the underlying
+ * An implementation of {@link MtAmazonDynamoDbStreams} that simply delegates supported calls to the underlying
  * {@link AmazonDynamoDBStreams} instance.
  */
-public class MTAmazonDynamoDBStreamsPassthrough extends MTAmazonDynamoDBStreamsBase {
+public class MtAmazonDynamoDbStreamsPassthrough extends MtAmazonDynamoDbStreamsBase {
 
-    MTAmazonDynamoDBStreamsPassthrough(AmazonDynamoDBStreams dynamoDBStreams) {
-        super(dynamoDBStreams);
+    MtAmazonDynamoDbStreamsPassthrough(AmazonDynamoDBStreams dynamoDbStreams) {
+        super(dynamoDbStreams);
     }
 
     @Override
     public final GetRecordsResult getRecords(GetRecordsRequest request) {
-        return getAmazonDynamoDBStreams().getRecords(request);
+        return getAmazonDynamoDbStreams().getRecords(request);
     }
 
     @Override
     public final ListStreamsResult listStreams(ListStreamsRequest request) {
-        return getAmazonDynamoDBStreams().listStreams(request);
+        return getAmazonDynamoDbStreams().listStreams(request);
     }
 
     @Override
     public final GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
-        return getAmazonDynamoDBStreams().getShardIterator(request);
+        return getAmazonDynamoDbStreams().getShardIterator(request);
     }
 }

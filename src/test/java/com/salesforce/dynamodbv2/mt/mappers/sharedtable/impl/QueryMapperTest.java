@@ -44,11 +44,11 @@ class QueryMapperTest {
     private static final DynamoTableDescription virtualTableDescription = new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder()
             .withTableKeySchema("virtualhk", S)
-            .addSI("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
+            .addSi("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
     private static final DynamoTableDescription physicalTableDescription = new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder()
             .withTableKeySchema("physicalhk", S)
-            .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
+            .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
     private static final TableMapping tableMapping = new TableMapping(virtualTableDescription,
         virtualTableDescription1 -> physicalTableDescription.getCreateTableRequest(),
         new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -161,7 +161,7 @@ class QueryMapperTest {
     }
 
     @Test
-    void nonIndexScanMissingHKField() {
+    void nonIndexScanMissingHkField() {
         ScanRequest scanRequest = new ScanRequest()
             .withExpressionAttributeNames(new HashMap<>())
             .withExpressionAttributeValues(new HashMap<>());

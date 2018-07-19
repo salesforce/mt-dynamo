@@ -28,9 +28,9 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.TestAmazonDynamoDBAdminUtils;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MTAmazonDynamoDBContextProviderImpl;
+import com.salesforce.dynamodbv2.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
@@ -46,7 +46,7 @@ import static java.util.UUID.randomUUID;
 /**
  * @author msgroi
  */
-class MTAmazonDynamoDBBySharedTableTest {
+class MtAmazonDynamoDbBySharedTableTest {
 
     private static final boolean randomTableName = false;
     private static final Regions region = Regions.US_EAST_1;
@@ -55,18 +55,18 @@ class MTAmazonDynamoDBBySharedTableTest {
      * see https://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html.
      */
     private static final boolean isLocalDynamo = true;
-    private static final AmazonDynamoDB rootAmazonDynamoDB = isLocalDynamo
-        ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDB()
+    private static final AmazonDynamoDB rootAmazonDynamoDb = isLocalDynamo
+        ? MtAmazonDynamoDbTestRunner.getLocalAmazonDynamoDb()
         : AmazonDynamoDBClientBuilder.standard().withRegion(region).build();
-    private static final AmazonDynamoDBStreams rootAmazonDynamoDBStreams = isLocalDynamo
-        ? MTAmazonDynamoDBTestRunner.getLocalAmazonDynamoDBStreams()
+    private static final AmazonDynamoDBStreams rootAmazonDynamoDbStreams = isLocalDynamo
+        ? MtAmazonDynamoDbTestRunner.getLocalAmazonDynamoDbStreams()
         : AmazonDynamoDBStreamsClientBuilder.standard().withRegion(region).build();
     private static final AWSCredentialsProvider awsCredentialsProvider = isLocalDynamo
         ? new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))
         : new DefaultAWSCredentialsProviderChain();
-    private static final MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
-    private static final AmazonDynamoDB amazonDynamoDB = MTAmazonDynamoDBLogger.builder()
-        .withAmazonDynamoDB(rootAmazonDynamoDB)
+    private static final MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
+    private static final AmazonDynamoDB amazonDynamoDb = MtAmazonDynamoDbLogger.builder()
+        .withAmazonDynamoDb(rootAmazonDynamoDb)
         .withContext(mtContext)
         .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
             "putItem", "query", "scan", "updateItem")).build();
@@ -86,18 +86,18 @@ class MTAmazonDynamoDBBySharedTableTest {
                 return new CreateTableRequest()
                     .withTableName(tableName)
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(MTAmazonDynamoDBTestRunner.hashKeyField, S),
-                        new AttributeDefinition(MTAmazonDynamoDBTestRunner.rangeKeyField, S),
-                        new AttributeDefinition(MTAmazonDynamoDBTestRunner.indexField, S),
+                    .withAttributeDefinitions(new AttributeDefinition(MtAmazonDynamoDbTestRunner.hashKeyField, S),
+                        new AttributeDefinition(MtAmazonDynamoDbTestRunner.rangeKeyField, S),
+                        new AttributeDefinition(MtAmazonDynamoDbTestRunner.indexField, S),
                         new AttributeDefinition(indexRangeField, S))
-                    .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH),
-                        new KeySchemaElement(MTAmazonDynamoDBTestRunner.rangeKeyField, KeyType.RANGE))
+                    .withKeySchema(new KeySchemaElement(MtAmazonDynamoDbTestRunner.hashKeyField, KeyType.HASH),
+                        new KeySchemaElement(MtAmazonDynamoDbTestRunner.rangeKeyField, KeyType.RANGE))
                     .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                        .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.indexField, KeyType.HASH))
+                        .withKeySchema(new KeySchemaElement(MtAmazonDynamoDbTestRunner.indexField, KeyType.HASH))
                         .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                        .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH),
+                        .withKeySchema(new KeySchemaElement(MtAmazonDynamoDbTestRunner.hashKeyField, KeyType.HASH),
                             new KeySchemaElement(indexRangeField, KeyType.RANGE))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withStreamSpecification(new StreamSpecification()
@@ -107,14 +107,14 @@ class MTAmazonDynamoDBBySharedTableTest {
                 return new CreateTableRequest()
                     .withTableName(tableName)
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(MTAmazonDynamoDBTestRunner.hashKeyField, S))
-                    .withKeySchema(new KeySchemaElement(MTAmazonDynamoDBTestRunner.hashKeyField, KeyType.HASH))
+                    .withAttributeDefinitions(new AttributeDefinition(MtAmazonDynamoDbTestRunner.hashKeyField, S))
+                    .withKeySchema(new KeySchemaElement(MtAmazonDynamoDbTestRunner.hashKeyField, KeyType.HASH))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                         .withStreamEnabled(true));
             }
         };
-        run(() -> defaultSettings(SharedTableCustomDynamicBuilder.builder().withAmazonDynamoDB(amazonDynamoDB)
+        run(() -> defaultSettings(SharedTableCustomDynamicBuilder.builder().withAmazonDynamoDb(amazonDynamoDb)
             .withContext(mtContext)
             .withCreateTableRequestFactory(createTableRequestFactory)
             .withTruncateOnDeleteTable(true)).build());
@@ -153,7 +153,7 @@ class MTAmazonDynamoDBBySharedTableTest {
                         .withStreamEnabled(true)))
             .withTableMapper(virtualTableDescription ->
                 virtualTableDescription.getTableName().endsWith("3") ? hkRkTableName : hkTableName)
-            .withAmazonDynamoDB(amazonDynamoDB)
+            .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(mtContext)
             .withTruncateOnDeleteTable(true)).build());
     }
@@ -165,7 +165,7 @@ class MTAmazonDynamoDBBySharedTableTest {
     @Test
     void sharedTable() {
         run(() -> defaultSettings(SharedTableBuilder.builder()
-            .withAmazonDynamoDB(amazonDynamoDB)
+            .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(mtContext)
             .withTruncateOnDeleteTable(true)).build());
     }
@@ -174,25 +174,25 @@ class MTAmazonDynamoDBBySharedTableTest {
      * Each test run needs its own AmazonDynamoDB because table mappings are cached per instance and running
      * consecutive tests using the same table names with different primary key types trigger makes the caches invalid.
      */
-    private void run(Supplier<AmazonDynamoDB> amazonDynamoDBSupplier) {
-        new MTAmazonDynamoDBTestRunner(
+    private void run(Supplier<AmazonDynamoDB> amazonDynamoDbSupplier) {
+        new MtAmazonDynamoDbTestRunner(
             mtContext,
-            amazonDynamoDBSupplier.get(),
-            rootAmazonDynamoDB,
-            rootAmazonDynamoDBStreams, // test streams for this run only
+            amazonDynamoDbSupplier.get(),
+            rootAmazonDynamoDb,
+            rootAmazonDynamoDbStreams, // test streams for this run only
             awsCredentialsProvider,
             isLocalDynamo, S).runAll();
-        new MTAmazonDynamoDBTestRunner(
+        new MtAmazonDynamoDbTestRunner(
             mtContext,
-            amazonDynamoDBSupplier.get(),
-            rootAmazonDynamoDB,
+            amazonDynamoDbSupplier.get(),
+            rootAmazonDynamoDb,
             null,
             awsCredentialsProvider,
             isLocalDynamo, N).runAll();
-        new MTAmazonDynamoDBTestRunner(
+        new MtAmazonDynamoDbTestRunner(
             mtContext,
-            amazonDynamoDBSupplier.get(),
-            rootAmazonDynamoDB,
+            amazonDynamoDbSupplier.get(),
+            rootAmazonDynamoDb,
             null,
             awsCredentialsProvider,
             isLocalDynamo, S).runBinaryTest();
@@ -212,7 +212,7 @@ class MTAmazonDynamoDBBySharedTableTest {
         return isLocalDynamo
             ? ""
             : "oktodelete-" +
-            TestAmazonDynamoDBAdminUtils.getLocalHost() +
+            TestAmazonDynamoDbAdminUtils.getLocalHost() +
             "-" + (randomTableName ? randomUUID() + "-" : "");
     }
 

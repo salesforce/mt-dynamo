@@ -15,61 +15,61 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 
-abstract class MTAmazonDynamoDBStreamsBaseTest<T extends MTAmazonDynamoDBStreamsBase> {
+abstract class MtAmazonDynamoDbStreamsBaseTest<T extends MtAmazonDynamoDbStreamsBase> {
 
-    private AmazonDynamoDBStreams amazonDynamoDBStreams;
+    private AmazonDynamoDBStreams amazonDynamoDbStreams;
 
-    private T mtDynamoDBStreamsBase;
+    private T mtDynamoDbStreamsBase;
 
     @BeforeEach
     final void setUp() {
-        amazonDynamoDBStreams = mock(AmazonDynamoDBStreams.class);
-        mtDynamoDBStreamsBase = instantiateUnitUnderTest(amazonDynamoDBStreams);
+        amazonDynamoDbStreams = mock(AmazonDynamoDBStreams.class);
+        mtDynamoDbStreamsBase = instantiateUnitUnderTest(amazonDynamoDbStreams);
     }
 
-    protected abstract T instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDBStreams);
+    protected abstract T instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDbStreams);
 
-    T getMTStreamsInstance() {
-        return mtDynamoDBStreamsBase;
+    T getMtStreamsInstance() {
+        return mtDynamoDbStreamsBase;
     }
 
     AmazonDynamoDBStreams getMockedDynamoStreams() {
-        return amazonDynamoDBStreams;
+        return amazonDynamoDbStreams;
     }
 
     @Test
     void testSetEndpoint() {
-        assertUnsupported(() -> mtDynamoDBStreamsBase.setEndpoint(""));
+        assertUnsupported(() -> mtDynamoDbStreamsBase.setEndpoint(""));
     }
 
     @Test
     void testSetRegion() {
-        assertUnsupported(() -> mtDynamoDBStreamsBase.setRegion(null));
+        assertUnsupported(() -> mtDynamoDbStreamsBase.setRegion(null));
     }
 
     @Test
     void testDescribeStream() {
         // Should just pass through
         DescribeStreamResult expected = mock(DescribeStreamResult.class);
-        given(amazonDynamoDBStreams.describeStream(any())).willReturn(expected);
+        given(amazonDynamoDbStreams.describeStream(any())).willReturn(expected);
 
         DescribeStreamRequest request = mock(DescribeStreamRequest.class);
-        DescribeStreamResult actual = mtDynamoDBStreamsBase.describeStream(request);
+        DescribeStreamResult actual = mtDynamoDbStreamsBase.describeStream(request);
 
         assertEquals(expected, actual);
-        then(amazonDynamoDBStreams).should().describeStream(request);
+        then(amazonDynamoDbStreams).should().describeStream(request);
     }
 
     @Test
     void shutdown() {
-        mtDynamoDBStreamsBase.shutdown();
+        mtDynamoDbStreamsBase.shutdown();
 
-        then(amazonDynamoDBStreams).should().shutdown();
+        then(amazonDynamoDbStreams).should().shutdown();
     }
 
     @Test
     void getCachedResponseMetadata() {
-        assertUnsupported(() -> mtDynamoDBStreamsBase.getCachedResponseMetadata(mock(AmazonWebServiceRequest.class)));
+        assertUnsupported(() -> mtDynamoDbStreamsBase.getCachedResponseMetadata(mock(AmazonWebServiceRequest.class)));
     }
 
     private void assertUnsupported(Executable executable) {

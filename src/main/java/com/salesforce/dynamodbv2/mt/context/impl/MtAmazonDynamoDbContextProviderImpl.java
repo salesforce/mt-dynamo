@@ -7,7 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.context.impl;
 
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * @author msgroi
  */
-public class MTAmazonDynamoDBContextProviderImpl implements MTAmazonDynamoDBContextProvider {
+public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbContextProvider {
 
     private static final String CONTEXT_KEY = "multitenant-context";
     private final ThreadLocal<Object> threadLocal = new ThreadLocal<>();

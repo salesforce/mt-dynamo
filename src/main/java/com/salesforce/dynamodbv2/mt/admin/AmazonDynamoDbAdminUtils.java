@@ -27,21 +27,21 @@ import static org.awaitility.Awaitility.await;
 /**
  * @author msgroi
  */
-public class AmazonDynamoDBAdminUtils {
+public class AmazonDynamoDbAdminUtils {
 
     private static final int tableDDLOperationTimeoutSeconds = 600;
-    private static final Logger log = LoggerFactory.getLogger(AmazonDynamoDBAdminUtils.class);
-    private final AmazonDynamoDB amazonDynamoDB;
+    private static final Logger log = LoggerFactory.getLogger(AmazonDynamoDbAdminUtils.class);
+    private final AmazonDynamoDB amazonDynamoDb;
 
-    public AmazonDynamoDBAdminUtils(AmazonDynamoDB amazonDynamoDB) {
-        this.amazonDynamoDB = amazonDynamoDB;
+    public AmazonDynamoDbAdminUtils(AmazonDynamoDB amazonDynamoDb) {
+        this.amazonDynamoDb = amazonDynamoDb;
     }
 
     public void createTableIfNotExists(CreateTableRequest createTableRequest, int pollIntervalSeconds) {
         try {
             if (!tableExists(createTableRequest.getTableName())) {
                 String tableName = createTableRequest.getTableName();
-                amazonDynamoDB.createTable(createTableRequest);
+                amazonDynamoDb.createTable(createTableRequest);
                 awaitTableActive(tableName, pollIntervalSeconds, tableDDLOperationTimeoutSeconds);
             } else {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(createTableRequest.getTableName()));
@@ -64,7 +64,7 @@ public class AmazonDynamoDBAdminUtils {
             if (!tableExists(tableName)) {
                 return;
             } else {
-                amazonDynamoDB.deleteTable(new DeleteTableRequest().withTableName(tableName));
+                amazonDynamoDb.deleteTable(new DeleteTableRequest().withTableName(tableName));
             }
         } catch (TableInUseException e) {
             if (!e.getStatus().toUpperCase().equals("DELETING")) {
@@ -138,7 +138,7 @@ public class AmazonDynamoDBAdminUtils {
     }
 
     private TableDescription describeTable(String tableName) {
-        return amazonDynamoDB.describeTable(tableName).getTable();
+        return amazonDynamoDb.describeTable(tableName).getTable();
     }
 
 

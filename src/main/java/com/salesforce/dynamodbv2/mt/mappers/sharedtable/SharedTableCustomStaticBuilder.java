@@ -10,7 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,7 +66,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
         return this;
     }
 
-    public MTAmazonDynamoDBBySharedTable build() {
+    public MtAmazonDynamoDbBySharedTable build() {
         withName("SharedTableCustomStaticBuilder");
         createTableRequestsMap.values().forEach(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())));
         withCreateTableRequestFactory(new CreateTableRequestFactory() {

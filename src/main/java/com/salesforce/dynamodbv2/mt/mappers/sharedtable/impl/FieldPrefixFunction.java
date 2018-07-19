@@ -8,7 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.google.common.base.Splitter;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
@@ -24,7 +24,7 @@ class FieldPrefixFunction {
         this.delimiter = delimiter;
     }
 
-    FieldValue apply(MTAmazonDynamoDBContextProvider mtContext, String tableIndex, String value) {
+    FieldValue apply(MtAmazonDynamoDbContextProvider mtContext, String tableIndex, String value) {
         return new FieldValue(mtContext.getContext(),
             tableIndex,
             mtContext.getContext() + delimiter + tableIndex + delimiter + value,

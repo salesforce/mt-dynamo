@@ -13,9 +13,9 @@ import java.util.List;
  * This interface (including all contained interfaces and methods) is
  * experimental. It is subject to breaking changes. Use at your own risk.
  */
-public interface MTAmazonDynamoDB extends AmazonDynamoDB {
+public interface MtAmazonDynamoDb extends AmazonDynamoDB {
 
-    class MTRecord extends Record {
+    class MtRecord extends Record {
 
         private static final long serialVersionUID = -6099434068333437314L;
 
@@ -30,7 +30,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             this.context = context;
         }
 
-        public MTRecord withContext(String context) {
+        public MtRecord withContext(String context) {
             this.context = context;
             return this;
         }
@@ -43,62 +43,62 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             this.tableName = tableName;
         }
 
-        public MTRecord withTableName(String tableName) {
+        public MtRecord withTableName(String tableName) {
             this.tableName = tableName;
             return this;
         }
 
         @Override
-        public MTRecord withAwsRegion(String awsRegion) {
+        public MtRecord withAwsRegion(String awsRegion) {
             setAwsRegion(awsRegion);
             return this;
         }
 
         @Override
-        public MTRecord withDynamodb(StreamRecord dynamodb) {
+        public MtRecord withDynamodb(StreamRecord dynamodb) {
             setDynamodb(dynamodb);
             return this;
         }
 
         @Override
-        public MTRecord withEventID(String eventID) {
-            setEventID(eventID);
+        public MtRecord withEventID(String eventId) {
+            setEventID(eventId);
             return this;
         }
 
         @Override
-        public MTRecord withEventName(OperationType eventName) {
+        public MtRecord withEventName(OperationType eventName) {
             setEventName(eventName);
             return this;
         }
 
         @Override
-        public MTRecord withEventName(String eventName) {
+        public MtRecord withEventName(String eventName) {
             setEventName(eventName);
             return this;
         }
 
         @Override
-        public MTRecord withEventSource(String eventSource) {
+        public MtRecord withEventSource(String eventSource) {
             setEventSource(eventSource);
             return this;
         }
 
         @Override
-        public MTRecord withEventVersion(String eventVersion) {
+        public MtRecord withEventVersion(String eventVersion) {
             setEventVersion(eventVersion);
             return this;
         }
 
         @Override
-        public MTRecord withUserIdentity(Identity userIdentity) {
+        public MtRecord withUserIdentity(Identity userIdentity) {
             setUserIdentity(userIdentity);
             return this;
         }
 
         @Override
         public String toString() {
-            return "MTRecord{" +
+            return "MtRecord{" +
                 "context='" + context + '\'' +
                 ", tableName='" + tableName + '\'' +
                 ", recordFields=" + super.toString() +
@@ -106,7 +106,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
         }
     }
 
-    class MTStreamDescription {
+    class MtStreamDescription {
 
         private String label;
         private String arn;
@@ -120,7 +120,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             this.label = label;
         }
 
-        public MTStreamDescription withLabel(String label) {
+        public MtStreamDescription withLabel(String label) {
             setLabel(label);
             return this;
         }
@@ -133,7 +133,7 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             this.arn = arn;
         }
 
-        public MTStreamDescription withArn(String arn) {
+        public MtStreamDescription withArn(String arn) {
             setArn(arn);
             return this;
         }
@@ -142,13 +142,13 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
             return recordProcessorFactory;
         }
 
-        public MTStreamDescription withRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
+        public MtStreamDescription withRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
             this.recordProcessorFactory = recordProcessorFactory;
             return this;
         }
 
     }
 
-    List<MTStreamDescription> listStreams(IRecordProcessorFactory factory);
+    List<MtStreamDescription> listStreams(IRecordProcessorFactory factory);
 
 }

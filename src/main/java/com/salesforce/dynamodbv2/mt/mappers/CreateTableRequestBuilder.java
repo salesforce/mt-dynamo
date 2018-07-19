@@ -76,7 +76,7 @@ public class CreateTableRequestBuilder {
     }
 
     @SuppressWarnings("all")
-    public CreateTableRequestBuilder addSI(String indexName,
+    public CreateTableRequestBuilder addSi(String indexName,
                                            DynamoSecondaryIndexType indexType,
                                            PrimaryKey secondaryIndexKey,
                                            Long provisionedThroughput) {

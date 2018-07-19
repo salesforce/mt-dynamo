@@ -118,7 +118,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     @Override
-    public List<DynamoSecondaryIndex> getSIs() {
+    public List<DynamoSecondaryIndex> getSis() {
         List<DynamoSecondaryIndex> sis = new ArrayList<>();
         sis.addAll(gsiMap.values());
         sis.addAll(lsiMap.values());
@@ -126,30 +126,30 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     @Override
-    public List<DynamoSecondaryIndex> getGSIs() {
+    public List<DynamoSecondaryIndex> getGsis() {
         return new ArrayList<>(gsiMap.values());
     }
 
     @Override
-    public Optional<DynamoSecondaryIndex> getGSI(String indexName) {
+    public Optional<DynamoSecondaryIndex> getGsi(String indexName) {
         return Optional.ofNullable(gsiMap.get(indexName));
     }
 
     @Override
-    public List<DynamoSecondaryIndex> getLSIs() {
+    public List<DynamoSecondaryIndex> getLsis() {
         return new ArrayList<>(lsiMap.values());
     }
 
     @Override
-    public Optional<DynamoSecondaryIndex> getLSI(String indexName) {
+    public Optional<DynamoSecondaryIndex> getLsi(String indexName) {
         return Optional.ofNullable(lsiMap.get(indexName));
     }
 
     @Override
-    public DynamoSecondaryIndex findSI(String indexName) {
-        Optional<DynamoSecondaryIndex> si = getGSI(indexName);
+    public DynamoSecondaryIndex findSi(String indexName) {
+        Optional<DynamoSecondaryIndex> si = getGsi(indexName);
         if (!si.isPresent()) {
-            si = getLSI(indexName);
+            si = getLsi(indexName);
         }
         if (!si.isPresent()) {
             throw new IllegalArgumentException("secondary index '" + indexName + "' not found");

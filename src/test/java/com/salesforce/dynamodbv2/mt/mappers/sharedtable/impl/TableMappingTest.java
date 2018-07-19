@@ -47,10 +47,10 @@ class TableMappingTest {
 
     private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableName("virtualTableName").withTableKeySchema("virtualhk", N, "virtualrk", N)
-            .addSI("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L).build());
+            .addSi("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L).build());
     private final DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableName("physicalTableName").withTableKeySchema("physicalhk", S, "physicalrk", N)
-            .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S, "physicalgsirk", N), 1L).build());
+            .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S, "physicalgsirk", N), 1L).build());
     private final TableMapping sut = new TableMapping(virtualTable,
         virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
         new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -147,32 +147,32 @@ class TableMappingTest {
                 .filter(fieldMappingEntry -> fieldMappingEntry.getKey().contains("gsi"))
                 .flatMap((Function<Entry<String, List<FieldMapping>>, Stream<FieldMapping>>)
                     fieldMappingEntry -> fieldMappingEntry.getValue().stream()).collect(Collectors.toList()),
-            sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGSI("virtualgsi").get()));
+            sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").get()));
     }
 
     @Test
-    void validateVirtualPhysicalCompatibility_missingVirtualHK() {
+    void validateVirtualPhysicalCompatibility_missingVirtualHk() {
         assertException((TestFunction<NullPointerException>) () ->
                 sut.validateCompatiblePrimaryKey(new PrimaryKey(null, S), null),
             "hashkey is required on virtual table");
     }
 
     @Test
-    void validateVirtualPhysicalCompatibility_missingPhysicalHK() {
+    void validateVirtualPhysicalCompatibility_missingPhysicalHk() {
         assertException((TestFunction<NullPointerException>) () ->
                 sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S), new PrimaryKey(null, S)),
             "hashkey is required on physical table");
     }
 
     @Test
-    void validateVirtualPhysicalCompatibility_invalidVirtualHKType() {
+    void validateVirtualPhysicalCompatibility_invalidVirtualHkType() {
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S), new PrimaryKey("hk", N)),
             "hashkey must be of type S");
     }
 
     @Test
-    void validateVirtualPhysicalCompatibility_physicalRKMissing() {
+    void validateVirtualPhysicalCompatibility_physicalRkMissing() {
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S, "rk", S),
                     new PrimaryKey("hk", S)),
@@ -180,7 +180,7 @@ class TableMappingTest {
     }
 
     @Test
-    void validateVirtualPhysicalCompatibility_incompatibleRKTypes() {
+    void validateVirtualPhysicalCompatibility_incompatibleRkTypes() {
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S, "rk", S),
                     new PrimaryKey("hk", S, "rk", N)),
@@ -204,7 +204,7 @@ class TableMappingTest {
             null,
             null
         );
-        when(spyIndexMapper.lookupPhysicalSecondaryIndex(virtualTable.getSIs().get(0), physicalTable)).thenThrow(new IllegalArgumentException("index mapping exception"));
+        when(spyIndexMapper.lookupPhysicalSecondaryIndex(virtualTable.getSis().get(0), physicalTable)).thenThrow(new IllegalArgumentException("index mapping exception"));
         assertException((TestFunction<IllegalArgumentException>) () ->
                 tableMapping.validateSecondaryIndexes(virtualTable, physicalTable, spyIndexMapper),
             "failure mapping virtual to physical GSI: index mapping exception");
@@ -216,21 +216,21 @@ class TableMappingTest {
         DynamoSecondaryIndex secondaryIndex = mock(DynamoSecondaryIndex.class);
         when(secondaryIndex.getType()).thenReturn(GSI);
         when(secondaryIndex.getPrimaryKey()).thenThrow(new IllegalArgumentException("incompatible index mapping"));
-        when(mockVirtualTable.getSIs()).thenReturn(ImmutableList.of(secondaryIndex));
+        when(mockVirtualTable.getSis()).thenReturn(ImmutableList.of(secondaryIndex));
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validateSecondaryIndexes(mockVirtualTable, physicalTable, new DynamoSecondaryIndexMapperByTypeImpl()),
             "failure mapping virtual to physical GSI: incompatible index mapping");
     }
 
     @Test
-    void validateLSIMappings() {
+    void validateLsiMappings() {
         DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder().withTableName("virtualTableName").withTableKeySchema("virtualhk", N, "virtualrk", N)
-                .addSI("virtualgsi1", LSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L)
-                .addSI("virtualgsi2", LSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L).build());
+                .addSi("virtualgsi1", LSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L)
+                .addSi("virtualgsi2", LSI, new PrimaryKey("virtualgsihk", S, "virtualgsirk", N), 1L).build());
         DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder().withTableName("physicalTableName").withTableKeySchema("physicalhk", S, "physicalrk", N)
-                .addSI("physicalgsi", LSI, new PrimaryKey("physicalgsihk", S, "physicalgsirk", N), 1L).build());
+                .addSi("physicalgsi", LSI, new PrimaryKey("physicalgsihk", S, "physicalgsirk", N), 1L).build());
         assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
                 virtualTable,
                 virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
@@ -250,12 +250,12 @@ class TableMappingTest {
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
                     CreateTableRequestBuilder.builder().withTableName("physicalTableName").withTableKeySchema("physicalhk", S)
-                        .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", N), 1L).build())),
+                        .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", N), 1L).build())),
             "physical table physicalTableName's GSI physicalgsi's primary key hashkey must be type S, encountered type N");
         assertException((TestFunction<IllegalArgumentException>) () ->
                 sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
                     CreateTableRequestBuilder.builder().withTableName("physicalTableName").withTableKeySchema("physicalhk", S)
-                        .addSI("physicallsi", LSI, new PrimaryKey("physicalgsihk", N), 1L).build())),
+                        .addSi("physicallsi", LSI, new PrimaryKey("physicalgsihk", N), 1L).build())),
             "physical table physicalTableName's LSI physicallsi's primary key hashkey must be type S, encountered type N");
     }
 

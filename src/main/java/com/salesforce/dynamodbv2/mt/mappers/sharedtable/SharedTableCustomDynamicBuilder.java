@@ -8,13 +8,13 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
-import com.salesforce.dynamodbv2.mt.repo.MTDynamoDBTableDescriptionRepo;
-import com.salesforce.dynamodbv2.mt.repo.MTTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 
 import java.util.Optional;
 
@@ -58,7 +58,7 @@ import static java.util.Optional.of;
  *   See Javadoc below.  Default: true.
  * - tablePrefix: a String used to prefix all tables with, independently of multi-tenant context, to provide the
  *   ability to support multiple environments within an account.
- * - MTTableDescriptionRepo: Responsible for storing and retrieving table descriptions.  Default: MTDynamoDBTableDescriptionRepo
+ * - MtTableDescriptionRepo: Responsible for storing and retrieving table descriptions.  Default: MtDynamoDbTableDescriptionRepo
  *   which stores table definitions in DynamoDB itself.
  * - deleteTableAsync: a boolean to indicate whether table data deletion may happen asynchronously after the table is dropped, default: FALSE
  * - truncateOnDeleteTable: a boolean to indicate whether all of a table's data should be deleted when a table is dropped, default: FALSE
@@ -78,10 +78,10 @@ public class SharedTableCustomDynamicBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
     private String name;
-    private AmazonDynamoDB amazonDynamoDB;
-    private MTAmazonDynamoDBContextProvider mtContext;
+    private AmazonDynamoDB amazonDynamoDb;
+    private MtAmazonDynamoDbContextProvider mtContext;
     private String delimiter;
-    private MTTableDescriptionRepo mtTableDescriptionRepo;
+    private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
@@ -90,7 +90,7 @@ public class SharedTableCustomDynamicBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
-    public MTAmazonDynamoDBBySharedTable build() {
+    public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         validate();
         if (tableMappingFactory == null) {
@@ -99,13 +99,13 @@ public class SharedTableCustomDynamicBuilder {
                 mtContext,
                 secondaryIndexMapper,
                 delimiter,
-                amazonDynamoDB,
+                amazonDynamoDb,
                 pollIntervalSeconds
             );
         }
-        return new MTAmazonDynamoDBBySharedTable(name,
+        return new MtAmazonDynamoDbBySharedTable(name,
             mtContext,
-            amazonDynamoDB,
+            amazonDynamoDb,
             tableMappingFactory,
             mtTableDescriptionRepo,
             deleteTableAsync,
@@ -122,12 +122,12 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    public SharedTableCustomDynamicBuilder withAmazonDynamoDB(AmazonDynamoDB amazonDynamoDB) {
-        this.amazonDynamoDB = amazonDynamoDB;
+    public SharedTableCustomDynamicBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
+        this.amazonDynamoDb = amazonDynamoDb;
         return this;
     }
 
-    public SharedTableCustomDynamicBuilder withContext(MTAmazonDynamoDBContextProvider mtContext) {
+    public SharedTableCustomDynamicBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
         this.mtContext = mtContext;
         return this;
     }
@@ -156,7 +156,7 @@ public class SharedTableCustomDynamicBuilder {
     }
 
     @SuppressWarnings("unused")
-    public SharedTableCustomDynamicBuilder withTableDescriptionRepo(MTTableDescriptionRepo mtTableDescriptionRepo) {
+    public SharedTableCustomDynamicBuilder withTableDescriptionRepo(MtTableDescriptionRepo mtTableDescriptionRepo) {
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         return this;
     }
@@ -179,14 +179,14 @@ public class SharedTableCustomDynamicBuilder {
     }
 
     private void validate() {
-        checkNotNull(amazonDynamoDB, "amazonDynamoDB is required");
+        checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
         checkNotNull(createTableRequestFactory, "createTableRequestFactory is required");
     }
 
     protected void setDefaults() {
         if (name == null) {
-            name = "MTAmazonDynamoDBBySharedTable";
+            name = "MtAmazonDynamoDbBySharedTable";
         }
         if (secondaryIndexMapper == null) {
             secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
@@ -204,8 +204,8 @@ public class SharedTableCustomDynamicBuilder {
             pollIntervalSeconds = 0;
         }
         if (mtTableDescriptionRepo == null) {
-            mtTableDescriptionRepo = MTDynamoDBTableDescriptionRepo.builder()
-                .withAmazonDynamoDB(amazonDynamoDB)
+            mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
+                .withAmazonDynamoDb(amazonDynamoDb)
                 .withContext(mtContext)
                 .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLENAME)
                 .withPollIntervalSeconds(pollIntervalSeconds)

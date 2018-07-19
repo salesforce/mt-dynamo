@@ -75,21 +75,21 @@ class PrimaryKeyMapperByTypeImplTest {
     }
 
     @Test
-    void testSS() throws MappingException {
+    void testSs() throws MappingException {
         assertEquals(ss, sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(ss, ss)));
     }
 
     @Test
-    void testSN() throws MappingException {
+    void testSn() throws MappingException {
         assertEquals(sn, sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(ss, ss)));
     }
 
     @Test
-    void testSB() throws MappingException {
+    void testSb() throws MappingException {
         assertEquals(sb, sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn)));
         assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(ss, ss)));

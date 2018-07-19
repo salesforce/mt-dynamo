@@ -57,8 +57,8 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker.Builder;
 import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
-import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTRecord;
-import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTStreamDescription;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,32 +79,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /*
  * @author msgroi
  */
-class MTAmazonDynamoDBStreamTestRunner {
+class MtAmazonDynamoDbStreamTestRunner {
 
-    private static final Logger log = LoggerFactory.getLogger(MTAmazonDynamoDBTestRunner.class);
-    private final AmazonDynamoDB mtAmazonDynamoDB;
+    private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbTestRunner.class);
+    private final AmazonDynamoDB mtAmazonDynamoDb;
     private StreamWorker streamWorker;
-    private List<MTRecord> expectedMTRecords;
+    private List<MtRecord> expectedMtRecords;
 
-    MTAmazonDynamoDBStreamTestRunner(AmazonDynamoDB mtAmazonDynamoDB,
-                                     AmazonDynamoDB rootAmazonDynamoDB,
-                                     AmazonDynamoDBStreams rootAmazonDynamoDBStreams,
+    MtAmazonDynamoDbStreamTestRunner(AmazonDynamoDB mtAmazonDynamoDb,
+                                     AmazonDynamoDB rootAmazonDynamoDb,
+                                     AmazonDynamoDBStreams rootAmazonDynamoDbStreams,
                                      AWSCredentialsProvider awsCredentialsProvider,
-                                     List<MTRecord> expectedMTRecords) {
-        this.mtAmazonDynamoDB = mtAmazonDynamoDB;
-        if (rootAmazonDynamoDBStreams != null) {
-            streamWorker = new StreamWorker(rootAmazonDynamoDB,
-                rootAmazonDynamoDBStreams,
+                                     List<MtAmazonDynamoDb.MtRecord> expectedMtRecords) {
+        this.mtAmazonDynamoDb = mtAmazonDynamoDb;
+        if (rootAmazonDynamoDbStreams != null) {
+            streamWorker = new StreamWorker(rootAmazonDynamoDb,
+                rootAmazonDynamoDbStreams,
                 awsCredentialsProvider,
-                expectedMTRecords.size());
-            this.expectedMTRecords = new ArrayList<>(expectedMTRecords);
+                expectedMtRecords.size());
+            this.expectedMtRecords = new ArrayList<>(expectedMtRecords);
         }
     }
 
     void startStreamWorker() {
         if (streamWorker != null) {
             Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                new StreamWorkerStarter(streamWorker, mtAmazonDynamoDB),
+                new StreamWorkerStarter(streamWorker, mtAmazonDynamoDb),
                 0,
                 1,
                 TimeUnit.SECONDS);
@@ -121,40 +121,40 @@ class MTAmazonDynamoDBStreamTestRunner {
     void await(int timeoutSeconds) {
         if (streamWorker != null) {
             streamWorker.await(timeoutSeconds);
-            List<MTRecord> recordsReceived = new ArrayList<>(streamWorker.getRecordsReceived());
-            assertEquals(expectedMTRecords.size(), recordsReceived.size(),
-                recordsReceived.size() + " of " + expectedMTRecords.size() + " records received");
-            for (MTRecord recordReceived : recordsReceived) {
-                assertMTRecord(recordReceived, expectedMTRecords);
+            List<MtRecord> recordsReceived = new ArrayList<>(streamWorker.getRecordsReceived());
+            assertEquals(expectedMtRecords.size(), recordsReceived.size(),
+                recordsReceived.size() + " of " + expectedMtRecords.size() + " records received");
+            for (MtAmazonDynamoDb.MtRecord recordReceived : recordsReceived) {
+                assertMtRecord(recordReceived, expectedMtRecords);
             }
-            assertEquals(0, expectedMTRecords.size(), "records not encountered: " + expectedMTRecords);
+            assertEquals(0, expectedMtRecords.size(), "records not encountered: " + expectedMtRecords);
         }
     }
 
-    private void assertMTRecord(MTRecord receivedRecord, List<MTRecord> expectedMTRecords) {
-        Optional<MTRecord> mtRecordFound = expectedMTRecords.stream().filter(
-            mtRecord -> new MTRecordComparator().compare(receivedRecord, mtRecord) == 0).findFirst();
+    private void assertMtRecord(MtRecord receivedRecord, List<MtRecord> expectedMtRecords) {
+        Optional<MtRecord> mtRecordFound = expectedMtRecords.stream().filter(
+            mtRecord -> new MtRecordComparator().compare(receivedRecord, mtRecord) == 0).findFirst();
         if (mtRecordFound.isPresent()) {
-            expectedMTRecords.remove(mtRecordFound.get());
+            expectedMtRecords.remove(mtRecordFound.get());
         } else {
-            throw new IllegalArgumentException("unexpected MTRecord encountered: " + receivedRecord);
+            throw new IllegalArgumentException("unexpected MtRecord encountered: " + receivedRecord);
         }
     }
 
     private static class StreamWorkerStarter implements Runnable {
 
-        private final AmazonDynamoDB mtAmazonDynamoDB;
+        private final AmazonDynamoDB mtAmazonDynamoDb;
         private final StreamWorker streamWorker;
 
         StreamWorkerStarter(StreamWorker streamWorker,
-                            AmazonDynamoDB mtAmazonDynamoDB) {
+                            AmazonDynamoDB mtAmazonDynamoDb) {
             this.streamWorker = streamWorker;
-            this.mtAmazonDynamoDB = mtAmazonDynamoDB;
+            this.mtAmazonDynamoDb = mtAmazonDynamoDb;
         }
 
         @Override
         public void run() {
-            ((MTAmazonDynamoDBBase) mtAmazonDynamoDB).listStreams(() -> new IRecordProcessor() {
+            ((MtAmazonDynamoDbBase) mtAmazonDynamoDb).listStreams(() -> new IRecordProcessor() {
                 @Override
                 public void initialize(InitializationInput initializationInput) {
                 }
@@ -162,7 +162,7 @@ class MTAmazonDynamoDBStreamTestRunner {
                 @Override
                 public void processRecords(ProcessRecordsInput processRecordsInput) {
                     processRecordsInput.getRecords().forEach(record -> {
-                        MTRecord mtRecord = ((MTRecord) ((RecordAdapter) record).getInternalObject());
+                        MtRecord mtRecord = ((MtRecord) ((RecordAdapter) record).getInternalObject());
                         streamWorker.recordReceived(mtRecord);
                     });
                 }
@@ -179,24 +179,24 @@ class MTAmazonDynamoDBStreamTestRunner {
         private final ExecutorService workerPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         private final Map<String, Worker> workers = new HashMap<>();
 
-        private final AmazonDynamoDB amazonDynamoDB;
-        private final AmazonDynamoDBStreams amazonDynamoDBStreams;
+        private final AmazonDynamoDB amazonDynamoDb;
+        private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private final AWSCredentialsProvider awsCredentialsProvider;
         private final CountDownLatch countDownLatch;
-        private final List<MTRecord> recordsReceived;
+        private final List<MtAmazonDynamoDb.MtRecord> recordsReceived;
 
-        StreamWorker(AmazonDynamoDB amazonDynamoDB,
-                     AmazonDynamoDBStreams amazonDynamoDBStreams,
+        StreamWorker(AmazonDynamoDB amazonDynamoDb,
+                     AmazonDynamoDBStreams amazonDynamoDbStreams,
                      AWSCredentialsProvider awsCredentialsProvider,
                      int expectedRecordCount) {
-            this.amazonDynamoDB = amazonDynamoDB;
-            this.amazonDynamoDBStreams = amazonDynamoDBStreams;
+            this.amazonDynamoDb = amazonDynamoDb;
+            this.amazonDynamoDbStreams = amazonDynamoDbStreams;
             this.awsCredentialsProvider = awsCredentialsProvider;
             this.countDownLatch = new CountDownLatch(expectedRecordCount);
             this.recordsReceived = new ArrayList<>();
         }
 
-        private void start(MTStreamDescription streamDescription) {
+        private void start(MtStreamDescription streamDescription) {
             String streamArn = streamDescription.getArn();
             if (workers.get(streamArn) == null) {
                 String applicationName = streamDescription.getLabel();
@@ -213,9 +213,9 @@ class MTAmazonDynamoDBStreamTestRunner {
                         .withTableName("oktodelete-LEASE_TABLE." + applicationName)
                         .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON))
                     .recordProcessorFactory(streamDescription.getRecordProcessorFactory())
-                    .dynamoDBClient(amazonDynamoDB)
+                    .dynamoDBClient(amazonDynamoDb)
                     .cloudWatchClient(new DummyCloudWatch())
-                    .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDBStreams))
+                    .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDbStreams))
                     .execService(workerPool)
                     .build();
                 workerPool.submit(worker);
@@ -229,7 +229,7 @@ class MTAmazonDynamoDBStreamTestRunner {
             workerPool.shutdown();
         }
 
-        void recordReceived(MTRecord mtRecord) {
+        void recordReceived(MtRecord mtRecord) {
             this.recordsReceived.add(mtRecord);
             this.countDownLatch.countDown();
             log.info("record received, outstanding=" + countDownLatch.getCount() + ", record=" + mtRecord);
@@ -244,16 +244,16 @@ class MTAmazonDynamoDBStreamTestRunner {
             }
         }
 
-        List<MTRecord> getRecordsReceived() {
+        List<MtRecord> getRecordsReceived() {
             return recordsReceived;
         }
 
     }
 
-    private static class MTRecordComparator implements Comparator<MTRecord> {
+    private static class MtRecordComparator implements Comparator<MtRecord> {
 
         @Override
-        public int compare(MTRecord r1, MTRecord r2) {
+        public int compare(MtRecord r1, MtRecord r2) {
             if (!r1.getContext().equals(r2.getContext())) {
                 return 1;
             }

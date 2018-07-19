@@ -4,7 +4,7 @@
 
 Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/index.html?com/amazonaws/services/dynamodbv2/document/package-summary.html).
   
-You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.  You can tell the implementation how you want the data stored when you create the AmazonDynamoDB using the provided builders.  This library provides 3 multitenant builders that allow you to create your AmazonDynamoDB client.  Using these builders, you tell the implementation how you want to manage storage of tenant data.  The 3 basic implementations are `MTAmazonDynamoDBByAccount`, `MTAmazonDynamoDBByTable`, and `SharedTable`.  These implementations allow you to separate your tenants' data by AWS account, to separate your tenants' data by table name, or to store tenant data colocated in a set of predefined physical tables, respectively.  Builders may also be chained, allowing you to combine storage schemes.  In order for the implementation to manage multitenancy on your behalf, you provide it with an `MTAmazonDynamoDBContextProvider`.  The implementation calls back to the context provider whenever it needs to retrieve or store data.  Your implementation returns a string representing a tenant identifier of your choosing.
+You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.  You can tell the implementation how you want the data stored when you create the AmazonDynamoDB using the provided builders.  This library provides 3 multitenant builders that allow you to create your AmazonDynamoDB client.  Using these builders, you tell the implementation how you want to manage storage of tenant data.  The 3 basic implementations are `MtAmazonDynamoDBByAccount`, `MtAmazonDynamoDBByTable`, and `SharedTable`.  These implementations allow you to separate your tenants' data by AWS account, to separate your tenants' data by table name, or to store tenant data colocated in a set of predefined physical tables, respectively.  Builders may also be chained, allowing you to combine storage schemes.  In order for the implementation to manage multitenancy on your behalf, you provide it with an `MtAmazonDynamoDBContextProvider`.  The implementation calls back to the context provider whenever it needs to retrieve or store data.  Your implementation returns a string representing a tenant identifier of your choosing.
 
 See details below on each of the 3 tenant storage schemes.  Further details are provided in the Javadoc for each implementation.
 
@@ -14,63 +14,63 @@ Note: Not all `AmazonDynamoDB` methods are currently supported.  See Javadoc for
 
 ### Multitenant Context
 
-`MTAmazonDynamoDBContextProvider`
+`MtAmazonDynamoDbContextProvider`
 
-Each builder requires providing an `MTAmazonDynamoDBContextProvider` implementation.  This context implementation allows your application code to return a unique identifier for a tenant which is used by the implementation to include the tenant identifier in all read and write operations.
+Each builder requires providing an `MtAmazonDynamoDbContextProvider` implementation.  This context implementation allows your application code to return a unique identifier for a tenant which is used by the implementation to include the tenant identifier in all read and write operations.
 
 ### Multitenant Builders
 
 Each of the following implementations has a `builder()` method.  See the Javadoc for each class for details on usage.
 
-#### `MTAmazonDynamoDBByAccount`
+#### `MtAmazonDynamoDbByAccount`
 
 Allows for dividing tenants into different AWS accounts.  [byAccount](docs/byAccount) shows an example of how data looks in its persisted state.
 
-To use, pass your `AmazonDynamoDBClientBuilder`, `MTAccountCredentialsMapper`, and `MTAmazonDynamoDBContextProvider` to the builder.  At runtime, a String representing the tenant identifier will be passed to your credentials mapper, allowing you to map the context to different AWS credentials implementations.  Note that `MTAmazonDynamoDBByAccount` does not support delegation and therefore must always be at the end of the chain when it is used.  See details about chaining below.
+To use, pass your `AmazonDynamoDBClientBuilder`, `MtAccountCredentialsMapper`, and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, a String representing the tenant identifier will be passed to your credentials mapper, allowing you to map the context to different AWS credentials implementations.  Note that `MtAmazonDynamoDBByAccount` does not support delegation and therefore must always be at the end of the chain when it is used.  See details about chaining below.
 
 ```
-MTAmazonDynamoDBByAccount.builder().withAmazonDynamoDBClientBuilder(AmazonDynamoDBClientBuilder.standard())
-                .withAccountCredentialsMapper(new MTAccountCredentialsMapper() {
+MtAmazonDynamoDbByAccount.builder().withAmazonDynamoDbClientBuilder(AmazonDynamoDBClientBuilder.standard())
+                .withAccountCredentialsMapper(new MtAccountCredentialsMapper() {
                     @Override
-                    public AWSCredentialsProvider getAWSCredentialsProvider(String tenantIdentifier) {
+                    public AWSCredentialsProvider getAwsCredentialsProvider(String tenantIdentifier) {
                         // return an AWSCredentialsProvider based on the tenant identifier
                     }
                 })
                 .withContext(contextProviderImpl);
 ```
 
-See Javadoc for `MTAmazonDynamoDBByAccount` for more details.  See `MTAmazonDynamoDBByAccountTest` for code examples.
+See Javadoc for `MtAmazonDynamoDbByAccount` for more details.  See `MtAmazonDynamoDbByAccountTest` for code examples.
  
-#### `MTAmazonDynamoDBByTable`
+#### `MtAmazonDynamoDbByTable`
 
 Allows for dividing tenants into their own tables by prefixing table names with the tenant identifier.  [byTable](docs/byTable) shows an example of how data looks in its persisted state.
 
-To use, pass your `AmazonDynamoDB` and `MTAmazonDynamoDBContextProvider` to the builder.  At runtime, the implementation will prefix all table names with the tenant identifier.
+To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix all table names with the tenant identifier.
 
 ```
-MTAmazonDynamoDBByTable.builder().withAmazonDynamoDB(AmazonDynamoDBClientBuilder.standard().build())
+MtAmazonDynamoDbByTable.builder().withAmazonDynamoDb(AmazonDynamoDBClientBuilder.standard().build())
                 .withContext(contextProviderImpl).build();
 ```
 
-See Javadoc for `MTAmazonDynamoDBByTable` for more details.  See `MTAmazonDynamoDBByTableTest` for code examples.
+See Javadoc for `MtAmazonDynamoDbByTable` for more details.  See `MtAmazonDynamoDbByTableTest` for code examples.
 
 #### `SharedTable`
 
 Allows for storing all tenant data in a set of shared tables, dividing tenants by prefixing the table's `HASH` key field with the tenant identifier.  [bySharedTable](docs/bySharedTable) shows an example of how data looks in its persisted state.
 
-To use, pass your `AmazonDynamoDB` and `MTAmazonDynamoDBContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLEMETADATA`.  Data will be stored in tables starting with the name `mt_sharedtablestatic_`.
+To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLEMETADATA`.  Data will be stored in tables starting with the name `mt_sharedtablestatic_`.
 
 ```
-MTAmazonDynamoDBBySharedTableBuilders.SharedTable.builder()
-                .withAmazonDynamoDB(AmazonDynamoDBClientBuilder.standard().build())
+MtAmazonDynamoDbBySharedTableBuilders.SharedTable.builder()
+                .withAmazonDynamoDb(AmazonDynamoDBClientBuilder.standard().build())
                 .withContext(mtContext).build()
 ```
 
-See Javadoc for `MTAmazonDynamoDBBySharedTableBuilders.SharedTable` for more build-time configuration options and details.  See `MTAmazonDynamoDBBySharedTableTest` for code examples.
+See Javadoc for `MtAmazonDynamoDbBySharedTableBuilders.SharedTable` for more build-time configuration options and details.  See `MtAmazonDynamoDbBySharedTableTest` for code examples.
 
 #### `SharedTableCustomDynamic` and `SharedTableCustomStatic`
 
-For more flexibility, there are additional builders provided in `MTAmazonDynamoDBBySharedTableBuilders` that allow you to provide custom mappings between "virtual" tables, those accessed by the application code that is using the AWS Dynamo Java API to multitenant physical tables.  See Javadoc for `MTAmazonDynamoDBBySharedTableBuilders` for details.
+For more flexibility, there are additional builders provided in `MtAmazonDynamoDbBySharedTableBuilders` that allow you to provide custom mappings between "virtual" tables, those accessed by the application code that is using the AWS Dynamo Java API to multitenant physical tables.  See Javadoc for `MtAmazonDynamoDbBySharedTableBuilders` for details.
 
 ## Table Prefixes
 
@@ -80,7 +80,7 @@ All builders support passing in a table prefix with a `withTablePrefix()` method
 
 Builders may also be chained, allowing you to combine storage schemes.  
 
-For example, you may want to split your tenants across 2 AWS accounts.  Within those accounts, you will store your tenant data in tables prefixed by table name.  In that case, you would create an account builder and pass it to a table builder.  The table name would get prefixed with the tenant ID and the request would be delegated to the appropriate AWS account based on the tenant ID and the `AWSCredentialProvider` returned by your `MTAccountCredentialsMapper`.
+For example, you may want to split your tenants across 2 AWS accounts.  Within those accounts, you will store your tenant data in tables prefixed by table name.  In that case, you would create an account builder and pass it to a table builder.  The table name would get prefixed with the tenant ID and the request would be delegated to the appropriate AWS account based on the tenant ID and the `AWSCredentialProvider` returned by your `MtAccountCredentialsMapper`.
 
 Below is a list of supported chaining sequences, each with a link to an example of how data looks in its persisted state for the configured chaining sequence.
 
