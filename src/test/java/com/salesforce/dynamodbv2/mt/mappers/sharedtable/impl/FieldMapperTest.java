@@ -30,18 +30,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 class FieldMapperTest {
 
-//    private static final String delimiter = random(); // TODO flip this back on when escaping is implemented
+    //    private static final String delimiter = random(); // TODO flip this back on when escaping is implemented
     private static final String delimiter = ".";
+
+    private static String random() {
+        return randomUUID().toString();
+    }
 
     @Test
     void applyTableIndex() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         String value = generateValue();
         assertMapper(S,
-                     TABLE,
-                     () -> new AttributeValue().withS(value),
-                     mtContext.getContext() + delimiter + "virtualtable" + delimiter + value,
-                     mtContext);
+            TABLE,
+            () -> new AttributeValue().withS(value),
+            mtContext.getContext() + delimiter + "virtualtable" + delimiter + value,
+            mtContext);
     }
 
     @Test
@@ -49,30 +53,30 @@ class FieldMapperTest {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         String value = generateValue();
         assertMapper(S,
-                     SECONDARYINDEX,
-                     () -> new AttributeValue().withS(value),
-                     mtContext.getContext() + delimiter + "virtualindex" + delimiter + value,
-                     mtContext);
+            SECONDARYINDEX,
+            () -> new AttributeValue().withS(value),
+            mtContext.getContext() + delimiter + "virtualindex" + delimiter + value,
+            mtContext);
     }
 
     @Test
     void applyTableIndexNumber() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         assertMapper(N,
-                     TABLE,
-                     () -> new AttributeValue().withN("123"),
-                     mtContext.getContext() + delimiter + "virtualtable" + delimiter + "123",
-                     mtContext);
+            TABLE,
+            () -> new AttributeValue().withN("123"),
+            mtContext.getContext() + delimiter + "virtualtable" + delimiter + "123",
+            mtContext);
     }
 
     @Test
     void applyTableIndexByteArray() {
         MTAmazonDynamoDBContextProvider mtContext = buildMTContext();
         assertMapper(B,
-                     TABLE,
-                     () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
-                     mtContext.getContext() + delimiter + "virtualtable" + delimiter + "bytebuffer",
-                     mtContext);
+            TABLE,
+            () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
+            mtContext.getContext() + delimiter + "virtualtable" + delimiter + "bytebuffer",
+            mtContext);
     }
 
     @Test
@@ -110,38 +114,34 @@ class FieldMapperTest {
 
     private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, IndexType indexType) {
         return new FieldMapping(
-                new Field("sourcefield", sourceFieldType),
-                new Field("targetfield", S),
-                "virtualindex",
-                "physicalindex",
-                indexType,
-                true);
+            new Field("sourcefield", sourceFieldType),
+            new Field("targetfield", S),
+            "virtualindex",
+            "physicalindex",
+            indexType,
+            true);
     }
-
 
     private FieldMapping reverseFieldMapping(FieldMapping fieldMapping) {
         return new FieldMapping(
-                fieldMapping.getTarget(),
-                fieldMapping.getSource(),
-                fieldMapping.getVirtualIndexName(),
-                fieldMapping.getPhysicalIndexName(),
-                fieldMapping.getIndexType(),
-                fieldMapping.isContextAware());
+            fieldMapping.getTarget(),
+            fieldMapping.getSource(),
+            fieldMapping.getVirtualIndexName(),
+            fieldMapping.getPhysicalIndexName(),
+            fieldMapping.getIndexType(),
+            fieldMapping.isContextAware());
     }
 
     private FieldMapper buildFieldMapper(MTAmazonDynamoDBContextProvider mtContext) {
         return new FieldMapper(mtContext,
-                               "virtualtable",
-                               new FieldPrefixFunction(delimiter));
-    }
-
-    private static String random() {
-        return randomUUID().toString();
+            "virtualtable",
+            new FieldPrefixFunction(delimiter));
     }
 
     private MTAmazonDynamoDBContextProvider buildMTContext() {
         return new MTAmazonDynamoDBContextProvider() {
             String context = random();
+
             @Override
             public String getContext() {
                 return context;

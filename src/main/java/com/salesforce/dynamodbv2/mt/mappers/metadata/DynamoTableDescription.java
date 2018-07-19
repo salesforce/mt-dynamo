@@ -23,15 +23,25 @@ import java.util.Optional;
 public interface DynamoTableDescription extends HasPrimaryKey {
 
     String getTableName();
+
     PrimaryKey getPrimaryKey();
+
     List<DynamoSecondaryIndex> getSIs();
+
     List<DynamoSecondaryIndex> getGSIs();
+
     Optional<DynamoSecondaryIndex> getGSI(String indexName);
+
     List<DynamoSecondaryIndex> getLSIs();
+
     Optional<DynamoSecondaryIndex> getLSI(String indexName);
+
     DynamoSecondaryIndex findSI(String indexName);
+
     StreamSpecification getStreamSpecification();
+
     String getLastStreamArn();
+
     CreateTableRequest getCreateTableRequest();
 
 }

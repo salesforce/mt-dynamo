@@ -27,25 +27,25 @@ class ItemMapperTest {
 
     private static final String prefix = "prefix-";
     private static final ItemMapper sut = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
-            virtualTableDescription1 -> new DynamoTableDescriptionImpl(
-                    CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            null,
-            null
+        CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
+        virtualTableDescription1 -> new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
+        new DynamoSecondaryIndexMapperByTypeImpl(),
+        null,
+        null
     ), new MockFieldMapper());
 
     @Test
     void applyAndReverse() {
         Map<String, AttributeValue> item = ImmutableMap.of(
-                "virtualhk", new AttributeValue().withS("hkvalue"),
-                "somefield", new AttributeValue().withS("somevalue"));
+            "virtualhk", new AttributeValue().withS("hkvalue"),
+            "somefield", new AttributeValue().withS("somevalue"));
 
         Map<String, AttributeValue> mappedItem = sut.apply(item);
 
         assertEquals(ImmutableMap.of(
-                "physicalhk", new AttributeValue().withS(prefix + "hkvalue"),
-                "somefield", new AttributeValue().withS("somevalue")), mappedItem);
+            "physicalhk", new AttributeValue().withS(prefix + "hkvalue"),
+            "somefield", new AttributeValue().withS("somevalue")), mappedItem);
 
         Map<String, AttributeValue> reversedItem = sut.reverse(mappedItem);
 

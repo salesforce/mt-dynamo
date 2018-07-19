@@ -26,10 +26,10 @@ public class DynamoSecondaryIndexMapperByTypeImpl implements DynamoSecondaryInde
     public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSI,
                                                              DynamoTableDescription physicalTable) throws MappingException {
         return (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSI.getPrimaryKey(),
-                physicalTable.getSIs().stream()
-                        .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSI.getType())
-                        .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)
-                        .collect(Collectors.toList()));
+            physicalTable.getSIs().stream()
+                .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSI.getType())
+                .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)
+                .collect(Collectors.toList()));
     }
 
 }

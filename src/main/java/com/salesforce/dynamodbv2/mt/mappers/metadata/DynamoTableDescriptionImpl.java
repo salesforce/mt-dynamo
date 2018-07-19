@@ -47,19 +47,20 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     private final String lastStreamArn;
 
     private final CreateTableRequest createTableRequest;
+
     public DynamoTableDescriptionImpl(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
         tableName = createTableRequest.getTableName();
         attributeDefinitions = createTableRequest.getAttributeDefinitions();
         primaryKey = getPrimaryKey(createTableRequest.getKeySchema());
         gsiMap = createTableRequest.getGlobalSecondaryIndexes() == null ? new HashMap<>() :
-                createTableRequest.getGlobalSecondaryIndexes().stream().map(gsi ->
-                        new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
-                        .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
+            createTableRequest.getGlobalSecondaryIndexes().stream().map(gsi ->
+                new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
+                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         lsiMap = createTableRequest.getLocalSecondaryIndexes() == null ? new HashMap<>() :
-                createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
-                        new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
-                        .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
+            createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
+                new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
+                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         provisionedThroughput = fromProvisionedThroughput(createTableRequest.getProvisionedThroughput());
         streamSpecification = createTableRequest.getStreamSpecification();
         lastStreamArn = null;
@@ -71,13 +72,13 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         attributeDefinitions = tableDescription.getAttributeDefinitions();
         primaryKey = getPrimaryKey(tableDescription.getKeySchema());
         gsiMap = tableDescription.getGlobalSecondaryIndexes() == null ? new HashMap<>() :
-                tableDescription.getGlobalSecondaryIndexes().stream().map(gsi ->
-                        new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
-                        .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
+            tableDescription.getGlobalSecondaryIndexes().stream().map(gsi ->
+                new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
+                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         lsiMap = tableDescription.getLocalSecondaryIndexes() == null ? new HashMap<>() :
-                tableDescription.getLocalSecondaryIndexes().stream().map(lsi ->
-                        new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
-                        .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
+            tableDescription.getLocalSecondaryIndexes().stream().map(lsi ->
+                new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
+                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         provisionedThroughput = tableDescription.getProvisionedThroughput();
         lastStreamArn = tableDescription.getLatestStreamArn();
         streamSpecification = tableDescription.getStreamSpecification();
@@ -85,25 +86,25 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
     private PrimaryKey getPrimaryKey(List<KeySchemaElement> keySchema) {
         KeySchemaElement hashKeySchema = getKeySchemaElement(keySchema, HASH)
-                .orElseThrow(() -> new IllegalArgumentException("no HASH found in " + keySchema));
+            .orElseThrow(() -> new IllegalArgumentException("no HASH found in " + keySchema));
         Optional<KeySchemaElement> rangeKeySchema = getKeySchemaElement(keySchema, RANGE);
         return new PrimaryKey(hashKeySchema.getAttributeName(),
-                                  getAttributeType(hashKeySchema.getAttributeName()),
-                                  rangeKeySchema.map(KeySchemaElement::getAttributeName),
-                                  rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName())));
+            getAttributeType(hashKeySchema.getAttributeName()),
+            rangeKeySchema.map(KeySchemaElement::getAttributeName),
+            rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName())));
     }
 
     private Optional<KeySchemaElement> getKeySchemaElement(List<KeySchemaElement> keySchema, KeyType keyType) {
         checkNotNull(keySchema, "keySchema is required");
         return keySchema.stream()
-                .filter(keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == keyType)
-                .findFirst();
+            .filter(keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == keyType)
+            .findFirst();
     }
 
     private ScalarAttributeType getAttributeType(String attributeName) {
         return ScalarAttributeType.valueOf(attributeDefinitions.stream()
-                .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-                .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
+            .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
+            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
     }
 
     @Override
@@ -172,35 +173,53 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     @Override
     public String toString() {
         return "DynamoTableDescriptionImpl{" +
-                "tableName='" + tableName + '\'' +
-                ", attributeDefinitions=" + attributeDefinitions +
-                ", primaryKey=" + primaryKey +
-                ", gsiMap=" + gsiMap.values() +
-                ", lsiMap=" + lsiMap.values() +
-                '}';
+            "tableName='" + tableName + '\'' +
+            ", attributeDefinitions=" + attributeDefinitions +
+            ", primaryKey=" + primaryKey +
+            ", gsiMap=" + gsiMap.values() +
+            ", lsiMap=" + lsiMap.values() +
+            '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
 
-        if (!tableName.equals(that.tableName)) return false;
-        if (!attributeDefinitions.equals(that.attributeDefinitions)) return false;
-        if (!primaryKey.equals(that.primaryKey)) return false;
-        if (!gsiMap.equals(that.gsiMap)) return false;
-        if (!lsiMap.equals(that.lsiMap)) return false;
-        if (!provisionedThroughput.getReadCapacityUnits().equals(that.provisionedThroughput.getReadCapacityUnits())) return false;
-        if (!provisionedThroughput.getWriteCapacityUnits().equals(that.provisionedThroughput.getWriteCapacityUnits())) return false;
+        if (!tableName.equals(that.tableName)) {
+            return false;
+        }
+        if (!attributeDefinitions.equals(that.attributeDefinitions)) {
+            return false;
+        }
+        if (!primaryKey.equals(that.primaryKey)) {
+            return false;
+        }
+        if (!gsiMap.equals(that.gsiMap)) {
+            return false;
+        }
+        if (!lsiMap.equals(that.lsiMap)) {
+            return false;
+        }
+        if (!provisionedThroughput.getReadCapacityUnits().equals(that.provisionedThroughput.getReadCapacityUnits())) {
+            return false;
+        }
+        if (!provisionedThroughput.getWriteCapacityUnits().equals(that.provisionedThroughput.getWriteCapacityUnits())) {
+            return false;
+        }
         return streamSpecification != null ? streamSpecification.equals(that.streamSpecification) : that.streamSpecification == null;
     }
 
     private ProvisionedThroughputDescription fromProvisionedThroughput(ProvisionedThroughput provisionedThroughput) {
         return new ProvisionedThroughputDescription()
-                .withReadCapacityUnits(provisionedThroughput.getReadCapacityUnits())
-                .withWriteCapacityUnits(provisionedThroughput.getWriteCapacityUnits());
+            .withReadCapacityUnits(provisionedThroughput.getReadCapacityUnits())
+            .withWriteCapacityUnits(provisionedThroughput.getWriteCapacityUnits());
     }
 
 }

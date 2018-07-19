@@ -7,11 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import static java.util.stream.Collectors.toList;
-
-import java.util.List;
-import java.util.Optional;
-
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
@@ -51,16 +46,16 @@ import static java.util.stream.Collectors.toList;
 /**
  * Allows for dividing tenants into their own tables by prefixing table names
  * with the multi-tenant context.
- *
+ * <p>
  * The multi-tenant context is separated from the table name by the delimiter,
  * which is '.' by default.
- *
+ * <p>
  * To use, call the static builder() method. The following parameters are
  * required ... - an AmazonDynamoDB instance - a multi-tenant context
- *
+ * <p>
  * The following are optional arguments ... - delimiter: a String delimiter used
  * to separate the tenant identifier prefix from the table name
- * 
+ * <p>
  * Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
@@ -71,10 +66,14 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
     private final Optional<String> tablePrefix;
 
     private MTAmazonDynamoDBByTable(MTAmazonDynamoDBContextProvider mtContext, AmazonDynamoDB amazonDynamoDB,
-            String delimiter, Optional<String> tablePrefix) {
+                                    String delimiter, Optional<String> tablePrefix) {
         super(mtContext, amazonDynamoDB);
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
+    }
+
+    public static MTAmazonDynamoDBBuilder builder() {
+        return new MTAmazonDynamoDBBuilder();
     }
 
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -145,15 +144,15 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
     public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         String prefix = tablePrefix.orElse("");
         return listAllTables().stream() //
-                .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
-                .map(n -> getAmazonDynamoDB().describeTable(n).getTable()) // TODO handle table not exists
-                .filter(d -> Optional.ofNullable(d.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
-                        .orElse(false)) // only include tables with streaming enabled
-                .map(d -> new MTStreamDescription() //
-                        .withLabel(d.getTableName()) // use raw name as label
-                        .withArn(d.getLatestStreamArn()) //
-                        .withRecordProcessorFactory(newAdapter(factory, d.getTableName().substring(prefix.length())))) //
-                .collect(toList());
+            .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
+            .map(n -> getAmazonDynamoDB().describeTable(n).getTable()) // TODO handle table not exists
+            .filter(d -> Optional.ofNullable(d.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
+                .orElse(false)) // only include tables with streaming enabled
+            .map(d -> new MTStreamDescription() //
+                .withLabel(d.getTableName()) // use raw name as label
+                .withArn(d.getLatestStreamArn()) //
+                .withRecordProcessorFactory(newAdapter(factory, d.getTableName().substring(prefix.length())))) //
+            .collect(toList());
     }
 
     private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, String tableName) {
@@ -161,6 +160,11 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
         String tenant = tableName.substring(0, idx);
         String name = tableName.substring(idx + delimiter.length(), tableName.length());
         return () -> new RecordProcessor(tenant, name, factory.createProcessor());
+    }
+
+    @VisibleForTesting
+    String buildPrefixedTablename(String virtualTablename) {
+        return (tablePrefix.orElse("")) + getMTContext().getContext() + delimiter + virtualTablename;
     }
 
     private static class RecordProcessor implements IRecordProcessor {
@@ -182,21 +186,21 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
         @Override
         public void processRecords(ProcessRecordsInput processRecordsInput) {
             List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
-                    .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
+                .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
             processor.processRecords(processRecordsInput.withRecords(records));
         }
 
         private com.amazonaws.services.kinesis.model.Record toMTRecord(RecordAdapter adapter) {
             Record r = adapter.getInternalObject();
             return new RecordAdapter(new MTRecord() //
-                    .withAwsRegion(r.getAwsRegion()) //
-                    .withDynamodb(r.getDynamodb()) //
-                    .withEventID(r.getEventID()) //
-                    .withEventName(r.getEventName()) //
-                    .withEventSource(r.getEventSource()) //
-                    .withEventVersion(r.getEventVersion()) //
-                    .withContext(tenant) //
-                    .withTableName(tableName));
+                .withAwsRegion(r.getAwsRegion()) //
+                .withDynamodb(r.getDynamodb()) //
+                .withEventID(r.getEventID()) //
+                .withEventName(r.getEventName()) //
+                .withEventSource(r.getEventSource()) //
+                .withEventVersion(r.getEventVersion()) //
+                .withContext(tenant) //
+                .withTableName(tableName));
         }
 
         @Override
@@ -204,10 +208,6 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
             processor.shutdown(shutdownInput);
         }
 
-    }
-
-    public static MTAmazonDynamoDBBuilder builder() {
-        return new MTAmazonDynamoDBBuilder();
     }
 
     public static class MTAmazonDynamoDBBuilder {
@@ -254,11 +254,6 @@ public class MTAmazonDynamoDBByTable extends MTAmazonDynamoDBBase {
             }
         }
 
-    }
-
-    @VisibleForTesting
-    String buildPrefixedTablename(String virtualTablename) {
-        return (tablePrefix.orElse("")) + getMTContext().getContext() + delimiter + virtualTablename;
     }
 
 }

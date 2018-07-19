@@ -16,7 +16,9 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 public interface MTTableDescriptionRepo {
 
     TableDescription createTable(CreateTableRequest createTableRequest);
+
     TableDescription getTableDescription(String tableName);
+
     TableDescription deleteTable(String tableName);
 
 }

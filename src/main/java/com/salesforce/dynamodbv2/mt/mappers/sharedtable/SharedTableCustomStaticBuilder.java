@@ -56,12 +56,14 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         this.createTableRequestsMap = Arrays.stream(createTableRequests)
-                .collect(Collectors.toMap(CreateTableRequest::getTableName, identity())); return this;
+            .collect(Collectors.toMap(CreateTableRequest::getTableName, identity()));
+        return this;
     }
 
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withTableMapper(TableMapper tableMapper) {
-        this.tableMapper = tableMapper; return this;
+        this.tableMapper = tableMapper;
+        return this;
     }
 
     public MTAmazonDynamoDBBySharedTable build() {
@@ -81,7 +83,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
         return super.build();
     }
-    
+
     public interface TableMapper {
         String mapToPhysicalTable(DynamoTableDescription virtualTableDescription);
     }
