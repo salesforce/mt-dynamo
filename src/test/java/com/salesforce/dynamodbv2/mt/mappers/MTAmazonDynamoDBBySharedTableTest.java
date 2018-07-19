@@ -44,8 +44,6 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static java.util.UUID.randomUUID;
 
 /**
- * m
- *
  * @author msgroi
  */
 class MTAmazonDynamoDBBySharedTableTest {

@@ -281,7 +281,6 @@ class TableMapping {
      * Validates that virtual and physical indexes have hash keys with matching types.  If there is a range key on the
      * virtual index, then it also validates that the physical index also has one and their types match.
      */
-
     @VisibleForTesting
     void validateCompatiblePrimaryKey(PrimaryKey virtualPrimaryKey, PrimaryKey physicalPrimaryKey) throws IllegalArgumentException, NullPointerException {
         checkNotNull(virtualPrimaryKey.getHashKey(), "hashkey is required on virtual table");

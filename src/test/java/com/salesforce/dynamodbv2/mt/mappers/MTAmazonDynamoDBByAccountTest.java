@@ -43,6 +43,9 @@ import static org.mockito.Mockito.when;
  */
 public class MTAmazonDynamoDBByAccountTest {
 
+    public static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
+    public static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
+
     // local by default because hosted dynamo depends on hosted AWS which is 1) slow, and 2) requires two sets of credentials.
     private static final boolean isLocalDynamo = true;
     private static final AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_1);
@@ -135,8 +138,5 @@ public class MTAmazonDynamoDBByAccountTest {
         }
 
     }
-
-    public static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
-    public static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
 
 }
