@@ -90,81 +90,92 @@ public class SharedTableCustomDynamicBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
+    public static SharedTableCustomDynamicBuilder builder() {
+        return new SharedTableCustomDynamicBuilder();
+    }
+
     public MTAmazonDynamoDBBySharedTable build() {
         setDefaults();
         validate();
         if (tableMappingFactory == null) {
             tableMappingFactory = new TableMappingFactory(
-                    createTableRequestFactory,
-                    mtContext,
-                    secondaryIndexMapper,
-                    delimiter,
-                    amazonDynamoDB,
-                    pollIntervalSeconds
+                createTableRequestFactory,
+                mtContext,
+                secondaryIndexMapper,
+                delimiter,
+                amazonDynamoDB,
+                pollIntervalSeconds
             );
         }
         return new MTAmazonDynamoDBBySharedTable(name,
-                mtContext,
-                amazonDynamoDB,
-                tableMappingFactory,
-                mtTableDescriptionRepo,
-                deleteTableAsync,
-                truncateOnDeleteTable);
-    }
-
-    public static SharedTableCustomDynamicBuilder builder() {
-        return new SharedTableCustomDynamicBuilder();
+            mtContext,
+            amazonDynamoDB,
+            tableMappingFactory,
+            mtTableDescriptionRepo,
+            deleteTableAsync,
+            truncateOnDeleteTable);
     }
 
     @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withName(String name) {
-        this.name = name; return this;
+        this.name = name;
+        return this;
     }
 
     public SharedTableCustomDynamicBuilder withAmazonDynamoDB(AmazonDynamoDB amazonDynamoDB) {
-        this.amazonDynamoDB = amazonDynamoDB; return this;
+        this.amazonDynamoDB = amazonDynamoDB;
+        return this;
     }
 
     public SharedTableCustomDynamicBuilder withContext(MTAmazonDynamoDBContextProvider mtContext) {
-        this.mtContext = mtContext; return this;
+        this.mtContext = mtContext;
+        return this;
     }
 
     @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withDelimiter(String delimiter) {
-        this.delimiter = delimiter; return this;
+        this.delimiter = delimiter;
+        return this;
     }
 
     @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withTablePrefix(String tablePrefix) {
-        this.tablePrefix = of(tablePrefix); return this;
+        this.tablePrefix = of(tablePrefix);
+        return this;
     }
 
     public SharedTableCustomDynamicBuilder withCreateTableRequestFactory(CreateTableRequestFactory createTableRequestFactory) {
-        this.createTableRequestFactory = createTableRequestFactory; return this;
+        this.createTableRequestFactory = createTableRequestFactory;
+        return this;
     }
 
     @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withDynamoSecondaryIndexMapper(DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
-        this.secondaryIndexMapper = dynamoSecondaryIndexMapper; return this;
+        this.secondaryIndexMapper = dynamoSecondaryIndexMapper;
+        return this;
     }
 
     @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withTableDescriptionRepo(MTTableDescriptionRepo mtTableDescriptionRepo) {
-        this.mtTableDescriptionRepo = mtTableDescriptionRepo; return this;
+        this.mtTableDescriptionRepo = mtTableDescriptionRepo;
+        return this;
     }
 
     @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withDeleteTableAsync(boolean dropAsync) {
-        deleteTableAsync = dropAsync; return this;
+        deleteTableAsync = dropAsync;
+        return this;
     }
 
     public SharedTableCustomDynamicBuilder withTruncateOnDeleteTable(Boolean truncateOnDrop) {
-        truncateOnDeleteTable = truncateOnDrop; return this;
+        truncateOnDeleteTable = truncateOnDrop;
+        return this;
     }
 
     @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
-        this.pollIntervalSeconds = pollIntervalSeconds; return this;
+        this.pollIntervalSeconds = pollIntervalSeconds;
+        return this;
     }
 
     private void validate() {

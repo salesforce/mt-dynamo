@@ -11,7 +11,6 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 /**
  * An implementation of {@link MTAmazonDynamoDBStreams} that simply delegates supported calls to the underlying
  * {@link AmazonDynamoDBStreams} instance.
- *
  */
 public class MTAmazonDynamoDBStreamsPassthrough extends MTAmazonDynamoDBStreamsBase {
 

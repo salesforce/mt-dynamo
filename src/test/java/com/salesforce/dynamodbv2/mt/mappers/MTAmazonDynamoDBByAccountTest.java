@@ -37,12 +37,14 @@ import static org.mockito.Mockito.when;
 
 /**
  * @author msgroi
- *
+ * <p>
  * This test requires that you have AWS credentials for 2 accounts, one default and one named 'personal' in
  * your ~/.aws/credentials file.  See http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html.
  */
 public class MTAmazonDynamoDBByAccountTest {
 
+    public static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
+    public static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
     // local by default because hosted dynamo depends on hosted AWS which is 1) slow, and 2) requires two sets of credentials.
     private static final boolean isLocalDynamo = true;
     private static final AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_1);
@@ -52,15 +54,15 @@ public class MTAmazonDynamoDBByAccountTest {
         MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
         if (isLocalDynamo) {
             MTAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.accountMapperBuilder()
-                    .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
-                    .withContext(mtContext);
+                .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
+                .withContext(mtContext);
             AmazonDynamoDB amazonDynamoDB = builder.build();
             new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB, null, false).runAll();
         } else {
             MTCredentialsBasedAmazonDynamoDBByAccountBuilder builder = MTAmazonDynamoDBByAccount.builder()
-                    .withAmazonDynamoDBClientBuilder(amazonDynamoDBClientBuilder)
-                    .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
-                    .withContext(mtContext);
+                .withAmazonDynamoDBClientBuilder(amazonDynamoDBClientBuilder)
+                .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
+                .withContext(mtContext);
             AmazonDynamoDB amazonDynamoDB = builder.build();
             new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB, null, false).runAll();
         }
@@ -87,7 +89,7 @@ public class MTAmazonDynamoDBByAccountTest {
     private static class TestAccountMapper implements MTAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
 
         private static final Map<String, AmazonDynamoDB> cache = ImmutableMap.of("ctx1", getNewAmazonDynamoDBLocal(),
-                                                                           "ctx2", getNewAmazonDynamoDBLocal());
+            "ctx2", getNewAmazonDynamoDBLocal());
 
         @Override
         public AmazonDynamoDB getAmazonDynamoDB(MTAmazonDynamoDBContextProvider context) {
@@ -131,12 +133,9 @@ public class MTAmazonDynamoDBByAccountTest {
         @Override
         public Map<String, AmazonDynamoDB> get() {
             return ImmutableMap.of("1", amazonDynamoDBClientBuilder.withCredentials(ctx1CredentialsProvider).build(),
-                                   "2", amazonDynamoDBClientBuilder.withCredentials(ctx2CredentialsProvider).build());
+                "2", amazonDynamoDBClientBuilder.withCredentials(ctx2CredentialsProvider).build());
         }
 
     }
-
-    public static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
-    public static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
 
 }

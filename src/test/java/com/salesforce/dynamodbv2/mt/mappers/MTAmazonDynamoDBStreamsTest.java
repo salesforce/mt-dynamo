@@ -20,7 +20,7 @@ class MTAmazonDynamoDBStreamsTest {
         AmazonDynamoDBStreams expected = mock(AmazonDynamoDBStreams.class);
 
         AmazonDynamoDBStreams actual =
-                MTAmazonDynamoDBStreams.createFromDynamo(mock(AmazonDynamoDB.class), expected);
+            MTAmazonDynamoDBStreams.createFromDynamo(mock(AmazonDynamoDB.class), expected);
 
         assertTrue(actual instanceof MTAmazonDynamoDBStreamsPassthrough);
     }
@@ -32,23 +32,23 @@ class MTAmazonDynamoDBStreamsTest {
     @Test
     void testCreateFromDynamoByTable() {
         AmazonDynamoDBStreams actual = MTAmazonDynamoDBStreams
-                .createFromDynamo(mock(MTAmazonDynamoDBByTable.class), mock(AmazonDynamoDBStreams.class));
+            .createFromDynamo(mock(MTAmazonDynamoDBByTable.class), mock(AmazonDynamoDBStreams.class));
 
         assertTrue(actual instanceof MTAmazonDynamoDBStreamsPassthrough,
-                "Expected an instance of MTAmazonDynamoDBStreamsPassthrough");
+            "Expected an instance of MTAmazonDynamoDBStreamsPassthrough");
     }
 
     @Test
     void testCreateFromDynamoByAccount() {
         // TODO Not implemented yet
         assertThrows(NotImplementedException.class, () -> MTAmazonDynamoDBStreams
-                .createFromDynamo(mock(MTAmazonDynamoDBByAccount.class), mock(AmazonDynamoDBStreams.class)));
+            .createFromDynamo(mock(MTAmazonDynamoDBByAccount.class), mock(AmazonDynamoDBStreams.class)));
     }
 
     @Test
     void testCreateFromDynamoByIndex() {
         // TODO Not implemented yet
         assertThrows(NotImplementedException.class, () -> MTAmazonDynamoDBStreams
-                .createFromDynamo(mock(MTAmazonDynamoDBBySharedTable.class), mock(AmazonDynamoDBStreams.class)));
+            .createFromDynamo(mock(MTAmazonDynamoDBBySharedTable.class), mock(AmazonDynamoDBStreams.class)));
     }
 }

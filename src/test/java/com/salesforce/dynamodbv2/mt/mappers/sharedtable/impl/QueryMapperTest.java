@@ -42,18 +42,18 @@ import static org.mockito.Mockito.when;
 class QueryMapperTest {
 
     private static final DynamoTableDescription virtualTableDescription = new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                    .withTableKeySchema("virtualhk", S)
-                    .addSI("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
+        CreateTableRequestBuilder.builder()
+            .withTableKeySchema("virtualhk", S)
+            .addSI("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
     private static final DynamoTableDescription physicalTableDescription = new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                    .withTableKeySchema("physicalhk", S)
-                    .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
+        CreateTableRequestBuilder.builder()
+            .withTableKeySchema("physicalhk", S)
+            .addSI("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
     private static final TableMapping tableMapping = new TableMapping(virtualTableDescription,
-            virtualTableDescription1 -> physicalTableDescription.getCreateTableRequest(),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            () -> "ctx",
-            "."
+        virtualTableDescription1 -> physicalTableDescription.getCreateTableRequest(),
+        new DynamoSecondaryIndexMapperByTypeImpl(),
+        () -> "ctx",
+        "."
     );
 
     private QueryMapper getMockQueryMapper(String fieldMapperReturnValue) {
@@ -65,68 +65,68 @@ class QueryMapperTest {
     @Test
     void nonIndexQuery() {
         QueryRequest queryRequest = new QueryRequest()
-                .withKeyConditionExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualhk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
+            .withKeyConditionExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualhk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
 
         getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalhk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+            .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalhk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
     }
 
     @Test
     void queryWithKeyConditions() {
         QueryRequest queryRequest = new QueryRequest().withKeyConditions(ImmutableMap.of(
-                "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))));
+            "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))));
 
         getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+            .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+            .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
     }
 
     @Test
     void nonIndexQueryWithLiterals() {
         QueryRequest queryRequest = new QueryRequest()
-                .withKeyConditionExpression("virtualhk = :value")
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
+            .withKeyConditionExpression("virtualhk = :value")
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkvalue")));
 
         getMockQueryMapper("prefixed-hkvalue").apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression("#field1 = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
+            .withKeyConditionExpression("#field1 = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalhk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkvalue"))), queryRequest);
     }
 
     @Test
     void indexQuery() {
         QueryRequest queryRequest = new QueryRequest()
-                .withIndexName("virtualgsi")
-                .withKeyConditionExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
+            .withIndexName("virtualgsi")
+            .withKeyConditionExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
 
         getMockQueryMapper("prefixed-hkgsivalue").apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withIndexName("physicalgsi")
-                        .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), queryRequest);
+            .withIndexName("physicalgsi")
+            .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), queryRequest);
     }
 
     @Test
     void queryWithKeyConditionExpressionAndKeyConditions() {
         try {
             getMockQueryMapper(null).apply(new QueryRequest().withKeyConditions(ImmutableMap.of(
-                    "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
-                    .withKeyConditionExpression("#field = :value"));
+                "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
+                .withKeyConditionExpression("#field = :value"));
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("ambiguous QueryRequest: both keyConditionExpression and keyConditions were provided", e.getMessage());
@@ -146,40 +146,40 @@ class QueryMapperTest {
     @Test
     void indexScan() {
         ScanRequest scanRequest = new ScanRequest()
-                .withIndexName("virtualgsi")
-                .withFilterExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
+            .withIndexName("virtualgsi")
+            .withFilterExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualgsihk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkgsivalue")));
 
         getMockQueryMapper("prefixed-hkgsivalue").apply(scanRequest);
 
         assertEquals(new ScanRequest()
-                .withIndexName("physicalgsi")
-                .withFilterExpression(scanRequest.getFilterExpression())
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), scanRequest);
+            .withIndexName("physicalgsi")
+            .withFilterExpression(scanRequest.getFilterExpression())
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("prefixed-hkgsivalue"))), scanRequest);
     }
 
     @Test
     void nonIndexScanMissingHKField() {
         ScanRequest scanRequest = new ScanRequest()
-                .withExpressionAttributeNames(new HashMap<>())
-                .withExpressionAttributeValues(new HashMap<>());
+            .withExpressionAttributeNames(new HashMap<>())
+            .withExpressionAttributeValues(new HashMap<>());
 
         getMockQueryMapper("prefixed").apply(scanRequest);
 
         assertEquals(new ScanRequest()
-                .withFilterExpression("begins_with(#___name___, :___value___)")
-                .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalhk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":___value___", new AttributeValue().withS("prefixed"))), scanRequest);
+            .withFilterExpression("begins_with(#___name___, :___value___)")
+            .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalhk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":___value___", new AttributeValue().withS("prefixed"))), scanRequest);
     }
 
     @Test
     void scanWithFilterExpressionAndScanFilter() {
         try {
             getMockQueryMapper(null).apply(new ScanRequest().withScanFilter(ImmutableMap.of(
-                    "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
-                    .withFilterExpression("#field = :value"));
+                "virtualhk", new Condition().withComparisonOperator(EQ).withAttributeValueList(new AttributeValue().withS("hkvalue"))))
+                .withFilterExpression("#field = :value"));
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("ambiguous ScanRequest: both filterExpression and scanFilter were provided", e.getMessage());
@@ -189,11 +189,11 @@ class QueryMapperTest {
     @Test
     void convertFieldNameLiteralsToExpressionNames() {
         List<FieldMapping> fieldMappings = ImmutableList.of(new FieldMapping(
-                new Field("field", S), new Field("field", S), null, null, TABLE, true));
+            new Field("field", S), new Field("field", S), null, null, TABLE, true));
         RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
-                .withKeyConditionExpression("field = :value")
-                .withExpressionAttributeNames(new HashMap<>())
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
+            .withKeyConditionExpression("field = :value")
+            .withExpressionAttributeNames(new HashMap<>())
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
         getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
         assertEquals("#field1 = :value", requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
@@ -202,11 +202,11 @@ class QueryMapperTest {
     @Test
     void convertFieldNameLiteralsToExpressionNamesMultiple() {
         List<FieldMapping> fieldMappings = ImmutableList.of(new FieldMapping(
-                new Field("field", S), new Field("field", S), null, null, TABLE, true));
+            new Field("field", S), new Field("field", S), null, null, TABLE, true));
         RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
-                .withKeyConditionExpression("field = :value and field2 = :value2 and field = :value3")
-                .withExpressionAttributeNames(new HashMap<>())
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
+            .withKeyConditionExpression("field = :value and field2 = :value2 and field = :value3")
+            .withExpressionAttributeNames(new HashMap<>())
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
         getMockQueryMapper(null).convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
         assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3", requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());

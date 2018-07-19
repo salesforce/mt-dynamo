@@ -35,6 +35,22 @@ class PrimaryKeyMapperByTypeImplTest {
     private static final PrimaryKeyMapperByTypeImpl sut = new PrimaryKeyMapperByTypeImpl(false);
     private static final PrimaryKeyMapperByTypeImpl sutStrict = new PrimaryKeyMapperByTypeImpl(true);
 
+    private static void assertMappingException(TestFunction test) {
+        try {
+            HasPrimaryKey hasPrimaryKey = test.run();
+            throw new RuntimeException("expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
+        } catch (MappingException ignored) { /* expected */ }
+    }
+
+    private static HasPrimaryKey primaryKeyWrapper(ScalarAttributeType hashKeyType) {
+        return () -> new PrimaryKey("", hashKeyType, Optional.empty(), Optional.empty());
+    }
+
+    @SuppressWarnings("all")
+    private static HasPrimaryKey primaryKeyWrapper(ScalarAttributeType hashKeyType, ScalarAttributeType rangeKeyType) {
+        return () -> new PrimaryKey("", hashKeyType, Optional.of(""), Optional.of(rangeKeyType));
+    }
+
     @Test
     void testS() throws MappingException {
         assertEquals(s, sut.mapPrimaryKey(s.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
@@ -95,39 +111,23 @@ class PrimaryKeyMapperByTypeImplTest {
         assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(ss, ss)));
     }
 
-    private static void assertMappingException(TestFunction test) {
-        try {
-            HasPrimaryKey hasPrimaryKey = test.run();
-            throw new RuntimeException("expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
-        } catch (MappingException ignored) { /* expected */ }
-    }
-
-    @FunctionalInterface
-    private interface TestFunction {
-        HasPrimaryKey run() throws MappingException;
-    }
-
-    private static HasPrimaryKey primaryKeyWrapper(ScalarAttributeType hashKeyType) {
-        return () -> new PrimaryKey("", hashKeyType, Optional.empty(), Optional.empty());
-    }
-
-    @SuppressWarnings("all")
-    private static HasPrimaryKey primaryKeyWrapper(ScalarAttributeType hashKeyType, ScalarAttributeType rangeKeyType) {
-        return () -> new PrimaryKey("", hashKeyType, Optional.of(""), Optional.of(rangeKeyType));
-    }
-
     private void assertEquals(HasPrimaryKey hasPrimaryKey1, HasPrimaryKey hasPrimaryKey2) {
         PrimaryKey pk1 = hasPrimaryKey1.getPrimaryKey();
         PrimaryKey pk2 = hasPrimaryKey2.getPrimaryKey();
         org.junit.jupiter.api.Assertions.assertEquals(pk1.getHashKeyType(), pk2.getHashKeyType());
         assertTrue((pk1.getRangeKey().isPresent() && pk2.getRangeKey().isPresent())
-                        || (!pk1.getRangeKey().isPresent() && !pk2.getRangeKey().isPresent()),
-                () -> "expected range key to be " + (pk1.getRangeKeyType().isPresent()
-                        ? "present with type=" + pk1.getRangeKeyType().get()
-                        : "NOT present but found with type=" + pk2.getRangeKeyType().get()));
+                || (!pk1.getRangeKey().isPresent() && !pk2.getRangeKey().isPresent()),
+            () -> "expected range key to be " + (pk1.getRangeKeyType().isPresent()
+                ? "present with type=" + pk1.getRangeKeyType().get()
+                : "NOT present but found with type=" + pk2.getRangeKeyType().get()));
         if (pk1.getRangeKeyType().isPresent()) {
             org.junit.jupiter.api.Assertions.assertEquals(pk1.getRangeKeyType().get(), pk2.getRangeKeyType().get());
         }
+    }
+
+    @FunctionalInterface
+    private interface TestFunction {
+        HasPrimaryKey run() throws MappingException;
     }
 
 }

@@ -7,10 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
 import com.amazonaws.regions.Region;
@@ -92,6 +88,10 @@ import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
@@ -175,10 +175,10 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     @Override
     public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions, String tableName, List<KeySchemaElement> keySchema, ProvisionedThroughput provisionedThroughput) {
         return createTable(new CreateTableRequest()
-                .withAttributeDefinitions(attributeDefinitions)
-                .withTableName(tableName)
-                .withKeySchema(keySchema)
-                .withProvisionedThroughput(provisionedThroughput));
+            .withAttributeDefinitions(attributeDefinitions)
+            .withTableName(tableName)
+            .withKeySchema(keySchema)
+            .withProvisionedThroughput(provisionedThroughput));
     }
 
     @Override
@@ -316,17 +316,18 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     List<String> listAllTables() {
         List<String> tables = new ArrayList<>();
         ListTablesResult result;
-        String lastEvaluated  = null;//Below loop is to iterate through pages
+        String lastEvaluated = null;//Below loop is to iterate through pages
         do {
-            result  = (lastEvaluated == null) ? getAmazonDynamoDB().listTables() : getAmazonDynamoDB().listTables(lastEvaluated);
+            result = (lastEvaluated == null) ? getAmazonDynamoDB().listTables() : getAmazonDynamoDB().listTables(lastEvaluated);
             if (result != null) {
                 tables.addAll(result.getTableNames());
-                lastEvaluated =  result.getLastEvaluatedTableName();
+                lastEvaluated = result.getLastEvaluatedTableName();
             }
         } while (lastEvaluated != null);
 
         return tables;
     }
+
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
         throw new UnsupportedOperationException();
     }
@@ -433,7 +434,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         AmazonDynamoDB dynamo = getAmazonDynamoDB();
         if (dynamo instanceof MTAmazonDynamoDB) {
-            return ((MTAmazonDynamoDB)getAmazonDynamoDB()).listStreams(factory);
+            return ((MTAmazonDynamoDB) getAmazonDynamoDB()).listStreams(factory);
         }
         throw new UnsupportedOperationException();
     }

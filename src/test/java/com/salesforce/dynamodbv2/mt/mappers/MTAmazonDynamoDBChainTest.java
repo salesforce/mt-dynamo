@@ -24,7 +24,7 @@ import static org.hamcrest.Matchers.is;
 /**
  * This tests that chaining works.  Note that this is a white-box test.  It inspects the calls to dynamo to see if
  * account, table, and index mapping has been applied.
- *
+ * <p>
  * Chain: amazonDynamoDBBySharedTable -> amazonDynamoDBByTable -> amazonDynamoDBLogger -> amazonDynamoDBByAccount
  *
  * @author msgroi
@@ -44,32 +44,33 @@ class MTAmazonDynamoDBChainTest {
 
         // create builders
         AmazonDynamoDB amazonDynamoDBByAccount = MTAmazonDynamoDBByAccount.accountMapperBuilder()
-                .withAccountMapper(mtContext1 -> {
-                    if (mtContext1.getContext().equals("ctx1")) {
-                        return new MockAmazonDynamoDB2(mtContext, amazonDynamoDB);
-                    } else {
-                        return new MockAmazonDynamoDB2(mtContext, amazonDynamoDB);
-                    }
-                })
-                .withContext(mtContext).build();
+            .withAccountMapper(mtContext1 -> {
+                if (mtContext1.getContext().equals("ctx1")) {
+                    return new MockAmazonDynamoDB2(mtContext, amazonDynamoDB);
+                } else {
+                    return new MockAmazonDynamoDB2(mtContext, amazonDynamoDB);
+                }
+            })
+            .withContext(mtContext).build();
         AmazonDynamoDB amazonDynamoDBLogger = MTAmazonDynamoDBLogger.builder()
-                .withAmazonDynamoDB(amazonDynamoDBByAccount)
-                .withContext(mtContext)
-                .withLogCallback(logAggregator)
-                .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "getItem",
-                                                   "putItem", "query", "scan", "updateItem")).build();
+            .withAmazonDynamoDB(amazonDynamoDBByAccount)
+            .withContext(mtContext)
+            .withLogCallback(logAggregator)
+            .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "getItem",
+                "putItem", "query", "scan", "updateItem")).build();
         AmazonDynamoDB amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(amazonDynamoDBLogger)
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(amazonDynamoDBLogger)
+            .withContext(mtContext).build();
         AmazonDynamoDB amazonDynamoDBBySharedTable = SharedTableBuilder.builder()
-                .withPrecreateTables(false)
-                .withAmazonDynamoDB(amazonDynamoDBByTable)
-                .withContext(mtContext)
-                .withTruncateOnDeleteTable(true).build();
+            .withPrecreateTables(false)
+            .withAmazonDynamoDB(amazonDynamoDBByTable)
+            .withContext(mtContext)
+            .withTruncateOnDeleteTable(true).build();
         MTAmazonDynamoDBTestRunner testRunner = new MTAmazonDynamoDBTestRunner(mtContext, amazonDynamoDBBySharedTable, amazonDynamoDB, null, true);
 
         // setup
-        testRunner.setup(); logAggregator.messages.clear();
+        testRunner.setup();
+        logAggregator.messages.clear();
 
         // run
         testRunner.run();

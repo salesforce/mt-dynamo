@@ -42,7 +42,7 @@ import java.util.function.Consumer;
 
 /**
  * Logs all calls.
- * 
+ * <p>
  * Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
@@ -63,6 +63,10 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
         this.logCallback = Optional.ofNullable(logCallback);
         this.methodsToLog = methodsToLog;
         this.logAll = logAll;
+    }
+
+    public static MTAmazonDynamoDBBuilder builder() {
+        return new MTAmazonDynamoDBBuilder();
     }
 
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -110,8 +114,47 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
         return super.updateItem(updateItemRequest);
     }
 
-    public static MTAmazonDynamoDBBuilder builder() {
-        return new MTAmazonDynamoDBBuilder();
+    private String table(String tableName) {
+        return "table=" + tableName;
+    }
+
+    private String key(Map<String, AttributeValue> key) {
+        return "key=" + key;
+    }
+
+    private String item(Map<String, AttributeValue> item) {
+        return "item=" + item;
+    }
+
+    private String queryRequest(QueryRequest queryRequest) {
+        return "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
+            (queryRequest.getFilterExpression() != null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
+            ", names=" + queryRequest.getExpressionAttributeNames() +
+            ", values=" + queryRequest.getExpressionAttributeValues() +
+            (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
+    }
+
+    private String scanRequest(ScanRequest scanRequest) {
+        return "filterExpression=" + scanRequest.getFilterExpression() +
+            ", names=" + scanRequest.getExpressionAttributeNames() +
+            ", values=" + scanRequest.getExpressionAttributeValues();
+    }
+
+    private String updateItemRequest(UpdateItemRequest updateRequest) {
+        return (updateRequest.getUpdateExpression() != null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
+            (updateRequest.getAttributeUpdates() != null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
+            ", key=" + updateRequest.getKey() +
+            (updateRequest.getConditionExpression() != null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
+            (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
+            (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
+    }
+
+    private void log(String method, String... messages) {
+        if (logAll || methodsToLog.contains(method)) {
+            String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
+            log.info(concatenatedMessage);
+            logCallback.ifPresent(listConsumer -> listConsumer.accept(ImmutableList.of(concatenatedMessage)));
+        }
     }
 
     public static class MTAmazonDynamoDBBuilder {
@@ -155,48 +198,6 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
             return new MTAmazonDynamoDBLogger(mtContext, amazonDynamoDB, logCallback, methodsToLog, logAll);
         }
 
-    }
-    private String table(String tableName) {
-        return "table=" + tableName;
-    }
-
-    private String key(Map<String, AttributeValue> key) {
-        return "key=" + key;
-    }
-
-    private String item(Map<String, AttributeValue> item) {
-        return "item=" + item;
-    }
-
-    private String queryRequest(QueryRequest queryRequest) {
-        return "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
-                        (queryRequest.getFilterExpression() !=null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
-                        ", names=" + queryRequest.getExpressionAttributeNames() +
-                        ", values=" + queryRequest.getExpressionAttributeValues() +
-                        (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
-    }
-
-    private String scanRequest(ScanRequest scanRequest) {
-        return "filterExpression=" + scanRequest.getFilterExpression() +
-                        ", names=" + scanRequest.getExpressionAttributeNames() +
-                        ", values=" + scanRequest.getExpressionAttributeValues();
-    }
-
-    private String updateItemRequest(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() !=null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
-               (updateRequest.getAttributeUpdates() !=null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
-               ", key=" + updateRequest.getKey() +
-               (updateRequest.getConditionExpression() !=null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
-               (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
-               (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
-    }
-
-    private void log(String method, String ... messages) {
-        if (logAll || methodsToLog.contains(method)) {
-            String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
-            log.info(concatenatedMessage);
-            logCallback.ifPresent(listConsumer -> listConsumer.accept(ImmutableList.of(concatenatedMessage)));
-        }
     }
 
 }

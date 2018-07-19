@@ -44,7 +44,7 @@ class MTAmazonDynamoDBByTableTest {
                         "putItem", "query", "scan", "updateItem")).build();
         AmazonDynamoDB amazonDynamoDB = loggingEnabled ? amazonDynamoDBLogger : localAmazonDynamoDB;
         AmazonDynamoDB amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(amazonDynamoDB)
+            .withAmazonDynamoDB(amazonDynamoDB)
                 .withContext(mtContext).build();
         new MTAmazonDynamoDBTestRunner(
                 mtContext,

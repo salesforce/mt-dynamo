@@ -47,8 +47,8 @@ public class AmazonDynamoDBAdminUtils {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(createTableRequest.getTableName()));
                 DynamoTableDescription createTableRequestDesc = new DynamoTableDescriptionImpl(createTableRequest);
                 checkArgument(existingTableDesc.equals(createTableRequestDesc),
-                              "existing table does not match create table request, " +
-                              "existing: " + existingTableDesc + ", createTableRequest=" + createTableRequestDesc);
+                    "existing table does not match create table request, " +
+                        "existing: " + existingTableDesc + ", createTableRequest=" + createTableRequestDesc);
             }
         } catch (TableInUseException e) {
             if (e.getStatus().toUpperCase().equals("CREATING")) {
@@ -63,8 +63,7 @@ public class AmazonDynamoDBAdminUtils {
         try {
             if (!tableExists(tableName)) {
                 return;
-            }
-            else {
+            } else {
                 amazonDynamoDB.deleteTable(new DeleteTableRequest().withTableName(tableName));
             }
         } catch (TableInUseException e) {
@@ -74,18 +73,18 @@ public class AmazonDynamoDBAdminUtils {
         }
         log.info("awaiting " + pollIntervalSeconds + "s for table=" + tableName + " to delete ...");
         await().pollInSameThread()
-                .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
-                .atMost(timeoutSeconds, SECONDS)
-                .until(() -> !tableExists(tableName));
+            .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
+            .atMost(timeoutSeconds, SECONDS)
+            .until(() -> !tableExists(tableName));
     }
 
     @SuppressWarnings("all")
     private void awaitTableActive(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
-                .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
-                .atMost(timeoutSeconds, SECONDS)
-                .until(() -> tableActive(tableName));
+            .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
+            .atMost(timeoutSeconds, SECONDS)
+            .until(() -> tableActive(tableName));
     }
 
     @SuppressWarnings("all")
@@ -112,6 +111,18 @@ public class AmazonDynamoDBAdminUtils {
         }
     }
 
+    private boolean tableActive(String tableName) throws TableInUseException {
+        try {
+            return getTableStatus(tableName).equals("ACTIVE");
+        } catch (ResourceNotFoundException e) {
+            return false;
+        }
+    }
+
+    private TableDescription describeTable(String tableName) {
+        return amazonDynamoDB.describeTable(tableName).getTable();
+    }
+
     private static class TableInUseException extends Exception {
         private final String tableName;
         private final String status;
@@ -129,19 +140,6 @@ public class AmazonDynamoDBAdminUtils {
             return status;
         }
     }
-
-    private boolean tableActive(String tableName) throws TableInUseException {
-        try {
-            return getTableStatus(tableName).equals("ACTIVE");
-        } catch (ResourceNotFoundException e) {
-            return false;
-        }
-    }
-
-    private TableDescription describeTable(String tableName) {
-        return amazonDynamoDB.describeTable(tableName).getTable();
-    }
-
 
 
 }
