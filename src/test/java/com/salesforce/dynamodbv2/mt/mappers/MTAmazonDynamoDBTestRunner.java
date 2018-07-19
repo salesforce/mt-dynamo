@@ -7,6 +7,32 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
+import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -33,7 +59,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.xspec.N;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.AmazonDynamoDBLocal;
@@ -41,34 +66,6 @@ import com.salesforce.dynamodbv2.TestAmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MTAmazonDynamoDB.MTRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static java.lang.Boolean.TRUE;
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * @author msgroi
@@ -521,14 +518,13 @@ public class MTAmazonDynamoDBTestRunner {
 
             if (items.isEmpty()) {
                 assertTrue(remaining.isEmpty());
-                assertTrue(exclusiveStartKey == null);
+                assertNull(exclusiveStartKey);
             } else {
                 assertTrue(items.stream() //
                     .map(i -> i.get(hashKeyField)) //
                     .map(this::getValue) //
                     .map(Integer::parseInt) //
-                    .map(remaining::remove) //
-                    .allMatch(TRUE::equals));
+                    .allMatch(remaining::remove));
             }
         } while (exclusiveStartKey != null);
         assertTrue(remaining.isEmpty());
