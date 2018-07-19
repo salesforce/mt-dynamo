@@ -36,17 +36,17 @@ class FieldMapper {
 
     AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
         return new AttributeValue(
-                fieldPrefixFunction.apply(mtContext,
-                                          fieldMapping.getIndexType() == TABLE
-                                                  ? virtualTableName
-                                                  : fieldMapping.getVirtualIndexName(),
-                                          convertToStringNotNull(fieldMapping.getSource().getType(),
-                                                                 unqualifiedAttribute)).getQualifiedValue());
+            fieldPrefixFunction.apply(mtContext,
+                fieldMapping.getIndexType() == TABLE
+                    ? virtualTableName
+                    : fieldMapping.getVirtualIndexName(),
+                convertToStringNotNull(fieldMapping.getSource().getType(),
+                    unqualifiedAttribute)).getQualifiedValue());
     }
 
     AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
         return convertFromString(fieldMapping.getTarget().getType(),
-                                 fieldPrefixFunction.reverse(qualifiedAttribute.getS()).getUnqualifiedValue());
+            fieldPrefixFunction.reverse(qualifiedAttribute.getS()).getUnqualifiedValue());
     }
 
     private String convertToStringNotNull(ScalarAttributeType type, AttributeValue attributeValue) {

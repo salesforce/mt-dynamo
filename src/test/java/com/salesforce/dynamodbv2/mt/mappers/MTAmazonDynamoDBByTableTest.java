@@ -38,20 +38,20 @@ class MTAmazonDynamoDBByTableTest {
     void test() {
         MTAmazonDynamoDBContextProvider mtContext = new MTAmazonDynamoDBContextProviderImpl();
         AmazonDynamoDB amazonDynamoDBLogger = MTAmazonDynamoDBLogger.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withContext(mtContext)
-                .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
-                        "putItem", "query", "scan", "updateItem")).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withContext(mtContext)
+            .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
+                "putItem", "query", "scan", "updateItem")).build();
         AmazonDynamoDB amazonDynamoDB = loggingEnabled ? amazonDynamoDBLogger : localAmazonDynamoDB;
         AmazonDynamoDB amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(amazonDynamoDB)
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(amazonDynamoDB)
+            .withContext(mtContext).build();
         new MTAmazonDynamoDBTestRunner(
-                mtContext,
-                amazonDynamoDBByTable,
-                amazonDynamoDB,
-                null,
-                true).runAll();
+            mtContext,
+            amazonDynamoDBByTable,
+            amazonDynamoDB,
+            null,
+            true).runAll();
     }
 
     @Test
@@ -61,18 +61,18 @@ class MTAmazonDynamoDBByTableTest {
          */
         MTAmazonDynamoDBContextProvider mtContext = mock(MTAmazonDynamoDBContextProvider.class);
         MTAmazonDynamoDBByTable amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withDelimiter("-")
-                .withTablePrefix("msgroi.")
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withDelimiter("-")
+            .withTablePrefix("msgroi.")
+            .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
         assertEquals("msgroi.ctx1-originalTableFoo", amazonDynamoDBByTable.buildPrefixedTablename("originalTableFoo"));
         when(mtContext.getContext()).thenReturn("ctx2");
         assertEquals("msgroi.ctx2-originalTableBar", amazonDynamoDBByTable.buildPrefixedTablename("originalTableBar"));
         MTAmazonDynamoDBByTable amazonDynamoDBByTable2 = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withTablePrefix("msgroi-")
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withTablePrefix("msgroi-")
+            .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx3");
         assertEquals("msgroi-ctx3.originalTableFooBar", amazonDynamoDBByTable2.buildPrefixedTablename("originalTableFooBar"));
 
@@ -80,16 +80,16 @@ class MTAmazonDynamoDBByTableTest {
          * w/out tablePrefix
          */
         amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withDelimiter("-")
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withDelimiter("-")
+            .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
         assertEquals("ctx1-originalTableFoo", amazonDynamoDBByTable.buildPrefixedTablename("originalTableFoo"));
         when(mtContext.getContext()).thenReturn("ctx2");
         assertEquals("ctx2-originalTableBar", amazonDynamoDBByTable.buildPrefixedTablename("originalTableBar"));
         amazonDynamoDBByTable2 = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx3");
         assertEquals("ctx3.originalTableFooBar", amazonDynamoDBByTable2.buildPrefixedTablename("originalTableFooBar"));
     }
@@ -98,17 +98,17 @@ class MTAmazonDynamoDBByTableTest {
     void listStreams() {
         MTAmazonDynamoDBContextProvider mtContext = mock(MTAmazonDynamoDBContextProvider.class);
         MTAmazonDynamoDBByTable amazonDynamoDBByTable = MTAmazonDynamoDBByTable.builder()
-                .withAmazonDynamoDB(localAmazonDynamoDB)
-                .withContext(mtContext).build();
+            .withAmazonDynamoDB(localAmazonDynamoDB)
+            .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
         int count = 110;
         for (int i = 1; i <= count; i++) { // create more than 100 tables with stream specs, since this exercises the listStreams default maxsize
             amazonDynamoDBByTable.createTable(new CreateTableRequest()
-                    .withAttributeDefinitions(new AttributeDefinition("hk", ScalarAttributeType.S))
-                    .withKeySchema(new KeySchemaElement("hk", KeyType.HASH))
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withTableName("table" + i)
-                    .withStreamSpecification(new StreamSpecification().withStreamEnabled(true).withStreamViewType(KEYS_ONLY)));
+                .withAttributeDefinitions(new AttributeDefinition("hk", ScalarAttributeType.S))
+                .withKeySchema(new KeySchemaElement("hk", KeyType.HASH))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                .withTableName("table" + i)
+                .withStreamSpecification(new StreamSpecification().withStreamEnabled(true).withStreamViewType(KEYS_ONLY)));
         }
         assertEquals(count, amazonDynamoDBByTable.listStreams(null).size());
     }

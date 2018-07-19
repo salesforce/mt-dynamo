@@ -45,9 +45,9 @@ class ItemMapper {
             List<FieldMapping> fieldMappings = virtualToPhysicalFieldMappings.get(field);
             if (!isNullOrEmpty(fieldMappings)) {
                 fieldMappings.forEach(fieldMapping -> qualifiedItem.put(fieldMapping.getTarget().getName(),
-                                                                        fieldMapping.isContextAware()
-                                                                                ? fieldMapper.apply(fieldMapping, attribute)
-                                                                                : attribute));
+                    fieldMapping.isContextAware()
+                        ? fieldMapper.apply(fieldMapping, attribute)
+                        : attribute));
             } else {
                 qualifiedItem.put(field, attribute);
             }
@@ -72,9 +72,9 @@ class ItemMapper {
             List<FieldMapping> fieldMappings = physicalToVirtualFieldMappings.get((field));
             if (fieldMappings != null && !fieldMappings.isEmpty()) {
                 fieldMappings.forEach(fieldMapping -> unqualifiedItem.put(fieldMapping.getTarget().getName(),
-                                                                          fieldMapping.isContextAware()
-                                                                                ? fieldMapper.reverse(fieldMapping, attribute)
-                                                                                : attribute));
+                    fieldMapping.isContextAware()
+                        ? fieldMapper.reverse(fieldMapping, attribute)
+                        : attribute));
             } else {
                 unqualifiedItem.put(field, attribute);
             }

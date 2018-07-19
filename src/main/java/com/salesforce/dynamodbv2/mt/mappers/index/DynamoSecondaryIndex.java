@@ -55,21 +55,21 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
         KeySchemaElement hashKeySchema = getKeySchemaElement(keySchema, HASH).orElseThrow(() -> new IllegalArgumentException("no HASH found in " + keySchema));
         Optional<KeySchemaElement> rangeKeySchema = getKeySchemaElement(keySchema, RANGE);
         return new PrimaryKey(hashKeySchema.getAttributeName(),
-                getAttributeType(hashKeySchema.getAttributeName(), attributeDefinitions),
-                rangeKeySchema.map(KeySchemaElement::getAttributeName),
-                rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName(), attributeDefinitions)));
+            getAttributeType(hashKeySchema.getAttributeName(), attributeDefinitions),
+            rangeKeySchema.map(KeySchemaElement::getAttributeName),
+            rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName(), attributeDefinitions)));
     }
 
     private Optional<KeySchemaElement> getKeySchemaElement(List<KeySchemaElement> keySchema, KeyType keyType) {
         return keySchema.stream()
-                .filter(keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == keyType)
-                .findFirst();
+            .filter(keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == keyType)
+            .findFirst();
     }
 
     private ScalarAttributeType getAttributeType(String attributeName, List<AttributeDefinition> attributeDefinitions) {
         return ScalarAttributeType.valueOf(attributeDefinitions.stream()
-                .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-                .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
+            .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
+            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
     }
 
     public enum DynamoSecondaryIndexType {
@@ -80,21 +80,29 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
     @Override
     public String toString() {
         return "{" +
-                "indexName='" + indexName + '\'' +
-                ", keySchema='" + getPrimaryKey() +
-                ", type=" + type.name() +
-                '}';
+            "indexName='" + indexName + '\'' +
+            ", keySchema='" + getPrimaryKey() +
+            ", type=" + type.name() +
+            '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         DynamoSecondaryIndex that = (DynamoSecondaryIndex) o;
 
-        if (!indexName.equals(that.indexName)) return false;
-        if (!primaryKey.equals(that.primaryKey)) return false;
+        if (!indexName.equals(that.indexName)) {
+            return false;
+        }
+        if (!primaryKey.equals(that.primaryKey)) {
+            return false;
+        }
         return type == that.type;
     }
 

@@ -99,12 +99,12 @@ public class MTAmazonDynamoDBTestRunner {
                                          AWSCredentialsProvider awsCredentialsProvider,
                                          boolean isLocalDynamo) {
         this(mtContext,
-             amazonDynamoDB,
-             rootAmazonDynamoDB,
-             null,
-             awsCredentialsProvider,
-             isLocalDynamo,
-             S);
+            amazonDynamoDB,
+            rootAmazonDynamoDB,
+            null,
+            awsCredentialsProvider,
+            isLocalDynamo,
+            S);
     }
 
     MTAmazonDynamoDBTestRunner(MTAmazonDynamoDBContextProvider mtContext,
@@ -125,36 +125,36 @@ public class MTAmazonDynamoDBTestRunner {
         tableName3 = buildTableName(3);
         tableName4 = buildTableName(5);
         createTableRequest1 = new CreateTableRequest()
-                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(tableName1);
+            .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
+            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withTableName(tableName1);
         createTableRequest2 = new CreateTableRequest()
-                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(tableName2);
+            .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
+            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withTableName(tableName2);
         createTableRequest3 = new CreateTableRequest()
-                .withTableName(tableName3)
-                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType),
-                        new AttributeDefinition(rangeKeyField, S),
-                        new AttributeDefinition(indexField, S))
-                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
+            .withTableName(tableName3)
+            .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType),
+                new AttributeDefinition(rangeKeyField, S),
+                new AttributeDefinition(indexField, S))
+            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                new KeySchemaElement(rangeKeyField, KeyType.RANGE))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                        .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                                new KeySchemaElement(indexField, KeyType.RANGE))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+            .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                    new KeySchemaElement(indexField, KeyType.RANGE))
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
         createTableRequest4 = new CreateTableRequest()
-                .withTableName(tableName4)
-                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, B))
-                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
+            .withTableName(tableName4)
+            .withAttributeDefinitions(new AttributeDefinition(hashKeyField, B))
+            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
         ctxTablePairs = new ArrayList<>(ImmutableList.of(
             ImmutableMap.of("ctx1", createTableRequest1),
             ImmutableMap.of("ctx2", createTableRequest1),
@@ -162,10 +162,10 @@ public class MTAmazonDynamoDBTestRunner {
             ImmutableMap.of("ctx1", createTableRequest3)
         ));
         this.streamTestRunner = new MTAmazonDynamoDBStreamTestRunner(amazonDynamoDBSupplier.get(),
-                                                                     rootAmazonDynamoDB,
-                                                                     rootAmazonDynamoDBStreams,
-                                                                     awsCredentialsProvider,
-                                                                     getExpectedMTRecords()
+            rootAmazonDynamoDB,
+            rootAmazonDynamoDBStreams,
+            awsCredentialsProvider,
+            getExpectedMTRecords()
         );
     }
 
@@ -237,8 +237,8 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, String> queryExpressionAttrNames = ImmutableMap.of("#name", hashKeyField);
         Map<String, AttributeValue> queryExpressionAttrValues = ImmutableMap.of(":value", createAttribute("hashKeyValue"));
         QueryRequest queryRequest = new QueryRequest().withTableName(tableName1).withKeyConditionExpression(keyConditionExpression)
-                .withExpressionAttributeNames(queryExpressionAttrNames)
-                .withExpressionAttributeValues(queryExpressionAttrValues);
+            .withExpressionAttributeNames(queryExpressionAttrNames)
+            .withExpressionAttributeValues(queryExpressionAttrValues);
         List<Map<String, AttributeValue>> queryItems1 = getAmazonDynamoDBSupplier().query(queryRequest).getItems();
         assertItemValue("someValue1", queryItems1.get(0));
         assertEquals(tableName1, queryRequest.getTableName());
@@ -248,7 +248,7 @@ public class MTAmazonDynamoDBTestRunner {
 
         // query item from ctx using keyConditions
         QueryRequest queryRequestKeyConditions = new QueryRequest().withTableName(tableName1).withKeyConditions(ImmutableMap.of(
-                hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+            hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
         List<Map<String, AttributeValue>> queryItemsKeyConditions = getAmazonDynamoDBSupplier().query(queryRequestKeyConditions).getItems();
         assertItemValue("someValue1", queryItemsKeyConditions.get(0));
 
@@ -258,16 +258,16 @@ public class MTAmazonDynamoDBTestRunner {
 
         // query item from ctx2 using attribute name placeholders
         List<Map<String, AttributeValue>> queryItems2 = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName1).withKeyConditionExpression("#name = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
-                          .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
+            new QueryRequest().withTableName(tableName1).withKeyConditionExpression("#name = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
         assertItemValue("someValue2", queryItems2.get(0));
 
         // query item from ctx2 using attribute name literals
         // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
         List<Map<String, AttributeValue>> queryItems3 = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName1).withKeyConditionExpression(hashKeyField + " = :value")
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
+            new QueryRequest().withTableName(tableName1).withKeyConditionExpression(hashKeyField + " = :value")
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
         assertItemValue("someValue2", queryItems3.get(0));
 
         // scan for an item using hk
@@ -275,8 +275,8 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, String> scanExpressionAttrNames1 = ImmutableMap.of("#name", hashKeyField);
         Map<String, AttributeValue> scanExpressionAttrValues1 = ImmutableMap.of(":value", createAttribute("hashKeyValue"));
         ScanRequest scanRequest = new ScanRequest().withTableName(tableName1).withFilterExpression(filterExpression1)
-                .withExpressionAttributeNames(scanExpressionAttrNames1)
-                .withExpressionAttributeValues(scanExpressionAttrValues1);
+            .withExpressionAttributeNames(scanExpressionAttrNames1)
+            .withExpressionAttributeValues(scanExpressionAttrValues1);
         assertItemValue("someValue2", getAmazonDynamoDBSupplier().scan(scanRequest).getItems().get(0));
         assertEquals(tableName1, queryRequest.getTableName());
         assertThat(scanRequest.getFilterExpression(), is(filterExpression1));
@@ -285,7 +285,7 @@ public class MTAmazonDynamoDBTestRunner {
 
         // scan item from ctx using scanFilter
         ScanRequest scanRequestKeyConditions = new ScanRequest().withTableName(tableName1).withScanFilter(ImmutableMap.of(
-                hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+            hashKeyField, new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
         List<Map<String, AttributeValue>> scanItemsScanFilter = getAmazonDynamoDBSupplier().scan(scanRequestKeyConditions).getItems();
         assertItemValue("someValue2", scanItemsScanFilter.get(0));
 
@@ -294,8 +294,8 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, String> scanExpressionAttrNames2 = ImmutableMap.of("#name", someField);
         Map<String, AttributeValue> scanExpressionAttrValues2 = ImmutableMap.of(":value", createStringAttribute("someValue2"));
         ScanRequest scanRequest2 = new ScanRequest().withTableName(tableName1).withFilterExpression(filterExpression2)
-                .withExpressionAttributeNames(scanExpressionAttrNames2)
-                .withExpressionAttributeValues(scanExpressionAttrValues2);
+            .withExpressionAttributeNames(scanExpressionAttrNames2)
+            .withExpressionAttributeValues(scanExpressionAttrValues2);
         assertItemValue("someValue2", getAmazonDynamoDBSupplier().scan(scanRequest2).getItems().get(0));
         assertEquals(tableName1, queryRequest.getTableName());
         assertThat(scanRequest2.getFilterExpression(), is(filterExpression2));
@@ -317,9 +317,9 @@ public class MTAmazonDynamoDBTestRunner {
         Map<String, AttributeValue> updateItemKey = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
         Map<String, AttributeValue> originalUpdateItemKey = new HashMap<>(updateItemKey);
         UpdateItemRequest updateItemRequest = new UpdateItemRequest()
-                .withTableName(tableName1)
-                .withKey(updateItemKey)
-                .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
+            .withTableName(tableName1)
+            .withKey(updateItemKey)
+            .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
         getAmazonDynamoDBSupplier().updateItem(updateItemRequest);
         assertItemValue("someValue1Updated", getItem(tableName1));
         assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
@@ -328,21 +328,21 @@ public class MTAmazonDynamoDBTestRunner {
         // update item in ctx2
         mtContext.setContext("ctx2");
         getAmazonDynamoDBSupplier().updateItem(new UpdateItemRequest()
-                .withTableName(tableName1)
-                .withKey(new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"))))
-                .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
+            .withTableName(tableName1)
+            .withKey(new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"))))
+            .addAttributeUpdatesEntry(someField, new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
         assertItemValue("someValue2Updated", getItem(tableName1));
 
         // conditional update, fail
         mtContext.setContext("ctx1");
         UpdateItemRequest condUpdateItemRequestFail = new UpdateItemRequest()
-                .withTableName(tableName1)
-                .withKey(updateItemKey)
-                .withUpdateExpression("set #name = :newValue")
-                .withConditionExpression("#name = :currentValue")
-                .addExpressionAttributeNamesEntry("#name", someField)
-                .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
-                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
+            .withTableName(tableName1)
+            .withKey(updateItemKey)
+            .withUpdateExpression("set #name = :newValue")
+            .withConditionExpression("#name = :currentValue")
+            .addExpressionAttributeNamesEntry("#name", someField)
+            .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
+            .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         try {
             getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestFail);
             throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
@@ -353,13 +353,13 @@ public class MTAmazonDynamoDBTestRunner {
         // conditional update, success
         mtContext.setContext("ctx1");
         UpdateItemRequest condUpdateItemRequestSuccess = new UpdateItemRequest()
-                .withTableName(tableName1)
-                .withKey(updateItemKey)
-                .withUpdateExpression("set #name = :newValue")
-                .withConditionExpression("#name = :currentValue")
-                .addExpressionAttributeNamesEntry("#name", someField)
-                .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
-                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
+            .withTableName(tableName1)
+            .withKey(updateItemKey)
+            .withUpdateExpression("set #name = :newValue")
+            .withConditionExpression("#name = :currentValue")
+            .addExpressionAttributeNamesEntry("#name", someField)
+            .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
+            .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         getAmazonDynamoDBSupplier().updateItem(condUpdateItemRequestSuccess);
         assertItemValue("someValue1UpdatedAgain", getItem(tableName1));
 
@@ -390,18 +390,18 @@ public class MTAmazonDynamoDBTestRunner {
 
         // put items, same hk, different rk
         Map<String, AttributeValue> table3item1 = ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
-                                                                  rangeKeyField, createStringAttribute("rangeKeyValue3a"),
-                                                                  someField, createStringAttribute("someValue3a"));
+            rangeKeyField, createStringAttribute("rangeKeyValue3a"),
+            someField, createStringAttribute("someValue3a"));
         Map<String, AttributeValue> table3item2 = ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
-                                                                  rangeKeyField, createStringAttribute("rangeKeyValue3b"),
-                                                                  someField, createStringAttribute("someValue3b"));
+            rangeKeyField, createStringAttribute("rangeKeyValue3b"),
+            someField, createStringAttribute("someValue3b"));
         getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item1));
         getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(new HashMap<>(table3item2)));
 
         // get item
         GetItemRequest getItemRequest4 = new GetItemRequest().withTableName(tableName3).withKey(new HashMap<>(
-                    ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
-                                    rangeKeyField, createStringAttribute("rangeKeyValue3a"))));
+            ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
+                rangeKeyField, createStringAttribute("rangeKeyValue3a"))));
         assertThat(getAmazonDynamoDBSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
 
         // delete and create table and verify no leftover data
@@ -413,44 +413,44 @@ public class MTAmazonDynamoDBTestRunner {
         // query hk and rk
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> table3item3 = new HashMap<>(ImmutableMap.of(
-                hashKeyField, createAttribute("hashKeyValue"),
-                rangeKeyField, createStringAttribute("rangeKeyValue"),
-                indexField, createStringAttribute("indexFieldValue")));
+            hashKeyField, createAttribute("hashKeyValue"),
+            rangeKeyField, createStringAttribute("rangeKeyValue"),
+            indexField, createStringAttribute("indexFieldValue")));
         getAmazonDynamoDBSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
         List<Map<String, AttributeValue>> queryItems6 = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value AND #name2 = :value2")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", rangeKeyField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
-                                                                       ":value2", createStringAttribute("rangeKeyValue")))).getItems();
+            new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value AND #name2 = :value2")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", rangeKeyField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
+                    ":value2", createStringAttribute("rangeKeyValue")))).getItems();
         assertEquals(1, queryItems6.size());
         Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
         assertThat(queryItem6, is(table3item3));
 
         // query hk with filter expression on someField
         List<Map<String, AttributeValue>> queryItemsFE = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
-                        .withFilterExpression("#name2 = :value2")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
-                                ":value2", createStringAttribute("someValue3a")))).getItems();
+            new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
+                .withFilterExpression("#name2 = :value2")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
+                    ":value2", createStringAttribute("someValue3a")))).getItems();
         assertEquals(1, queryItemsFE.size());
 
         // query on gsi
         List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))
-                        .withIndexName("testgsi")).getItems();
+            new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))
+                .withIndexName("testgsi")).getItems();
         assertEquals(1, queryItems4.size());
         Map<String, AttributeValue> queryItem4 = queryItems4.get(0);
         assertThat(queryItem4, is(table3item3));
 
         // query on lsi
         QueryRequest queryRequest5 = new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value and #name2 = :value2")
-                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", indexField))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
-                        ":value2", createStringAttribute("indexFieldValue")))
-                .withIndexName("testlsi");
+            .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", indexField))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
+                ":value2", createStringAttribute("indexFieldValue")))
+            .withIndexName("testlsi");
         List<Map<String, AttributeValue>> queryItems5 = getAmazonDynamoDBSupplier().query(queryRequest5).getItems();
         assertEquals(1, queryItems5.size());
         Map<String, AttributeValue> queryItem5 = queryItems5.get(0);
@@ -460,10 +460,10 @@ public class MTAmazonDynamoDBTestRunner {
         String filterExpressionHkRk = "#name1 = :value1 AND #name2 = :value2";
         Map<String, String> scanExpressionAttrNamesHkRk = ImmutableMap.of("#name1", hashKeyField, "#name2", rangeKeyField);
         Map<String, AttributeValue> scanExpressionAttrValuesHkRk = ImmutableMap.of(":value1", createAttribute("hashKeyValue"),
-                                                                                   ":value2", createStringAttribute("rangeKeyValue"));
+            ":value2", createStringAttribute("rangeKeyValue"));
         ScanRequest scanRequestHkRk = new ScanRequest().withTableName(tableName3).withFilterExpression(filterExpressionHkRk)
-                .withExpressionAttributeNames(scanExpressionAttrNamesHkRk)
-                .withExpressionAttributeValues(scanExpressionAttrValuesHkRk);
+            .withExpressionAttributeNames(scanExpressionAttrNamesHkRk)
+            .withExpressionAttributeValues(scanExpressionAttrValuesHkRk);
         List<Map<String, AttributeValue>> scanItemsHkRk = getAmazonDynamoDBSupplier().scan(scanRequestHkRk).getItems();
         assertEquals(1, scanItemsHkRk.size());
         Map<String, AttributeValue> scanItemHkRk = scanItemsHkRk.get(0);
@@ -472,9 +472,9 @@ public class MTAmazonDynamoDBTestRunner {
         // scan all on table with gsi and confirm fields with gsi is saved
         mtContext.setContext("ctx1");
         List<Map<String, AttributeValue>> scanItems4 = getAmazonDynamoDBSupplier().scan(
-                new ScanRequest().withTableName(tableName3).withFilterExpression("#name = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))).getItems();
+            new ScanRequest().withTableName(tableName3).withFilterExpression("#name = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", indexField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute("indexFieldValue")))).getItems();
         assertEquals(1, scanItems4.size());
         Map<String, AttributeValue> scanItem4 = scanItems4.get(0);
         assertThat(scanItem4, is(table3item3));
@@ -488,97 +488,97 @@ public class MTAmazonDynamoDBTestRunner {
     private List<MTRecord> getExpectedMTRecords() {
         return ImmutableList.of(
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
-                    .withEventName(INSERT.name())
-                    .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                          "someField", new AttributeValue().withS("someValue1")))),
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue1")))),
             new MTRecord()
-                    .withContext("ctx2")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
-                    .withEventName(INSERT.name())
-                    .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                      "someField", new AttributeValue().withS("someValue2")))),
+                .withContext("ctx2")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue2")))),
             new MTRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
                 .withEventName(MODIFY.name())
-                    .withDynamodb(new StreamRecord()
-                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                .withDynamodb(new StreamRecord()
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                          "someField", new AttributeValue().withS("someValue1")))
+                        "someField", new AttributeValue().withS("someValue1")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                            "someField", new AttributeValue().withS("someValue1Updated")))),
+                        "someField", new AttributeValue().withS("someValue1Updated")))),
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
-                    .withEventName(MODIFY.name())
-                    .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                            .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                    "someField", new AttributeValue().withS("someValue1Updated")))
-                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                    "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
+                .withEventName(MODIFY.name())
+                .withDynamodb(new StreamRecord()
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue1Updated")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
             new MTRecord()
                 .withContext("ctx2")
                 .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
                 .withEventName(MODIFY.name())
                 .withDynamodb(new StreamRecord()
-                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                          "someField", new AttributeValue().withS("someValue2")))
-                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                            "someField", new AttributeValue().withS("someValue2Updated")))),
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue2")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue2Updated")))),
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner2")
-                    .withEventName(INSERT.name())
-                    .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                            .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                    "someField", new AttributeValue().withS("someValueTable2")))),
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner2")
+                .withEventName(INSERT.name())
+                .withDynamodb(new StreamRecord()
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValueTable2")))),
             new MTRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner1")
                 .withEventName(REMOVE.name())
                 .withDynamodb(new StreamRecord()
-                                .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                          "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
+                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
-                    .withEventName(INSERT.name())
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a")))
-                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
-                                              "someField", new AttributeValue().withS("someValue3a")))),
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
+                        "someField", new AttributeValue().withS("someValue3a")))),
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
-                    .withEventName(INSERT.name())
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b")))
-                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b"),
-                                              "someField", new AttributeValue().withS("someValue3b")))),
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b"),
+                        "someField", new AttributeValue().withS("someValue3b")))),
             new MTRecord()
-                    .withContext("ctx1")
-                    .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
-                    .withEventName(INSERT.name())
+                .withContext("ctx1")
+                .withTableName(getPrefix() + "MTAmazonDynamoDBTestRunner3")
+                .withEventName(INSERT.name())
                 .withDynamodb(new StreamRecord()
-                            .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                                      "rangeKeyField", new AttributeValue().withS("rangeKeyValue")))
-                .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                                              "rangeKeyField", new AttributeValue().withS("rangeKeyValue"),
-                                              "indexField", new AttributeValue().withS("indexFieldValue"))))
+                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue")))
+                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
+                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue"),
+                        "indexField", new AttributeValue().withS("indexFieldValue"))))
         );
     }
 
@@ -588,15 +588,15 @@ public class MTAmazonDynamoDBTestRunner {
 
         // setup
         setup(ImmutableList.of(
-                ImmutableMap.of("ctx1", createTableRequest4),
-                ImmutableMap.of("ctx2", createTableRequest4)
+            ImmutableMap.of("ctx1", createTableRequest4),
+            ImmutableMap.of("ctx2", createTableRequest4)
         ));
 
         // test
         getAmazonDynamoDBSupplier().createTable(createTableRequest4);
         testWithHashKeyType(createTableRequest4,
-                tableName4,
-                value -> new AttributeValue().withB(UTF_8.encode(value))
+            tableName4,
+            value -> new AttributeValue().withB(UTF_8.encode(value))
         );
 
         // teardown
@@ -633,36 +633,36 @@ public class MTAmazonDynamoDBTestRunner {
         // get item from ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> item41get = getAmazonDynamoDBSupplier()
-                .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator1.get()))).getItem();
+            .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator1.get()))).getItem();
         assertThat(item41get, is(ImmutableMap.of(hashKeyField, generator1.get(),
-                someField, new AttributeValue().withS("someValue41"))));
+            someField, new AttributeValue().withS("someValue41"))));
 
         // get item from ctx2
         mtContext.setContext("ctx2");
         Map<String, AttributeValue> item42get = getAmazonDynamoDBSupplier()
-                .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator2.get()))).getItem();
+            .getItem(new GetItemRequest().withTableName(tableName).withKey(ImmutableMap.of(hashKeyField, generator2.get()))).getItem();
         assertThat(item42get, is(ImmutableMap.of(hashKeyField, generator2.get(),
-                someField, new AttributeValue().withS("someValue42"))));
+            someField, new AttributeValue().withS("someValue42"))));
 
         // query item from ctx1
         mtContext.setContext("ctx1");
         List<Map<String, AttributeValue>> item41query = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", generator1.get()))).getItems();
+            new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", generator1.get()))).getItems();
         assertEquals(1, item41query.size());
         assertThat(item41query.get(0), is(ImmutableMap.of(hashKeyField, generator1.get(),
-                someField, new AttributeValue().withS("someValue41"))));
+            someField, new AttributeValue().withS("someValue41"))));
 
         // query item from ctx2
         mtContext.setContext("ctx2");
         List<Map<String, AttributeValue>> item42query = getAmazonDynamoDBSupplier().query(
-                new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
-                        .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", generator2.get()))).getItems();
+            new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
+                .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
+                .withExpressionAttributeValues(ImmutableMap.of(":value", generator2.get()))).getItems();
         assertEquals(1, item42query.size());
         assertThat(item42query.get(0), is(ImmutableMap.of(hashKeyField, generator2.get(),
-                someField, new AttributeValue().withS("someValue42"))));
+            someField, new AttributeValue().withS("someValue42"))));
     }
 
     void teardown() {
@@ -677,16 +677,16 @@ public class MTAmazonDynamoDBTestRunner {
 
     private Map<String, AttributeValue> createItem(AttributeValue hashKeyValue, String someFieldValue) {
         return new HashMap<>(ImmutableMap.of(hashKeyField, hashKeyValue,
-                someField, createStringAttribute(someFieldValue)));
+            someField, createStringAttribute(someFieldValue)));
     }
 
     private Map<String, AttributeValue> createItem(String someFieldValue) {
-        return createItem(hashKeyField, "hashKeyValue" , someField, someFieldValue);
+        return createItem(hashKeyField, "hashKeyValue", someField, someFieldValue);
     }
 
     protected Map<String, AttributeValue> createItem(String hashKeyField, String hashKeyValue, String someField, String someFieldValue) {
         return new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(hashKeyValue),
-                                             someField, createStringAttribute(someFieldValue)));
+            someField, createStringAttribute(someFieldValue)));
     }
 
     private AttributeValue createStringAttribute(String value) {
@@ -697,11 +697,14 @@ public class MTAmazonDynamoDBTestRunner {
         AttributeValue attr = new AttributeValue();
         switch (hashKeyAttrType) {
             case S:
-                attr.setS(value); return attr;
+                attr.setS(value);
+                return attr;
             case N:
-                attr.setN(value); return attr;
+                attr.setN(value);
+                return attr;
             case B:
-                attr.setB(UTF_8.encode(value)); return attr;
+                attr.setB(UTF_8.encode(value));
+                return attr;
             default:
                 throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
         }
@@ -723,7 +726,7 @@ public class MTAmazonDynamoDBTestRunner {
 
     private void assertItemValue(String expectedValue, Map<String, AttributeValue> actualItem) {
         assertThat(actualItem, is(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"),
-                                                  someField, createStringAttribute(expectedValue))));
+            someField, createStringAttribute(expectedValue))));
     }
 
     protected void deleteTable(String tenantId, String tableName) {
@@ -734,10 +737,10 @@ public class MTAmazonDynamoDBTestRunner {
     protected void createTable(String context, String tableName) {
         mtContext.setContext(context);
         createTable(context, new CreateTableRequest()
-                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(tableName));
+            .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
+            .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withTableName(tableName));
     }
 
     private void createTable(String context, CreateTableRequest createTableRequest) {

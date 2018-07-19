@@ -62,22 +62,32 @@ public class PrimaryKey {
     @Override
     public String toString() {
         return "{" +
-                "hashKey='" + hashKey + '\'' +
-                ", hashKeyType=" + hashKeyType +
-                (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType=" + rangeKeyType.get()).orElse("")) +
-                '}';
+            "hashKey='" + hashKey + '\'' +
+            ", hashKeyType=" + hashKeyType +
+            (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType=" + rangeKeyType.get()).orElse("")) +
+            '}';
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         PrimaryKey that = (PrimaryKey) o;
 
-        if (!hashKey.equals(that.hashKey)) return false;
-        if (hashKeyType != that.hashKeyType) return false;
-        if (!rangeKey.equals(that.rangeKey)) return false;
+        if (!hashKey.equals(that.hashKey)) {
+            return false;
+        }
+        if (hashKeyType != that.hashKeyType) {
+            return false;
+        }
+        if (!rangeKey.equals(that.rangeKey)) {
+            return false;
+        }
         return rangeKeyType.equals(that.rangeKeyType);
     }
 

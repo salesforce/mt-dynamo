@@ -94,9 +94,9 @@ class MTAmazonDynamoDBStreamTestRunner {
         this.mtAmazonDynamoDB = mtAmazonDynamoDB;
         if (rootAmazonDynamoDBStreams != null) {
             streamWorker = new StreamWorker(rootAmazonDynamoDB,
-                                            rootAmazonDynamoDBStreams,
-                                            awsCredentialsProvider,
-                                            expectedMTRecords.size());
+                rootAmazonDynamoDBStreams,
+                awsCredentialsProvider,
+                expectedMTRecords.size());
             this.expectedMTRecords = new ArrayList<>(expectedMTRecords);
         }
     }
@@ -104,10 +104,10 @@ class MTAmazonDynamoDBStreamTestRunner {
     void startStreamWorker() {
         if (streamWorker != null) {
             Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                    new StreamWorkerStarter(streamWorker, mtAmazonDynamoDB),
-                    0,
-                    1,
-                    TimeUnit.SECONDS);
+                new StreamWorkerStarter(streamWorker, mtAmazonDynamoDB),
+                0,
+                1,
+                TimeUnit.SECONDS);
         }
     }
 
@@ -123,7 +123,7 @@ class MTAmazonDynamoDBStreamTestRunner {
             streamWorker.await(timeoutSeconds);
             List<MTRecord> recordsReceived = new ArrayList<>(streamWorker.getRecordsReceived());
             assertEquals(expectedMTRecords.size(), recordsReceived.size(),
-                        recordsReceived.size() + " of " + expectedMTRecords.size() + " records received");
+                recordsReceived.size() + " of " + expectedMTRecords.size() + " records received");
             for (MTRecord recordReceived : recordsReceived) {
                 assertMTRecord(recordReceived, expectedMTRecords);
             }
@@ -133,7 +133,7 @@ class MTAmazonDynamoDBStreamTestRunner {
 
     private void assertMTRecord(MTRecord receivedRecord, List<MTRecord> expectedMTRecords) {
         Optional<MTRecord> mtRecordFound = expectedMTRecords.stream().filter(
-                mtRecord -> new MTRecordComparator().compare(receivedRecord, mtRecord) == 0).findFirst();
+            mtRecord -> new MTRecordComparator().compare(receivedRecord, mtRecord) == 0).findFirst();
         if (mtRecordFound.isPresent()) {
             expectedMTRecords.remove(mtRecordFound.get());
         } else {
@@ -158,15 +158,18 @@ class MTAmazonDynamoDBStreamTestRunner {
                 @Override
                 public void initialize(InitializationInput initializationInput) {
                 }
+
                 @Override
                 public void processRecords(ProcessRecordsInput processRecordsInput) {
                     processRecordsInput.getRecords().forEach(record -> {
-                        MTRecord mtRecord = ((MTRecord)((RecordAdapter) record).getInternalObject());
+                        MTRecord mtRecord = ((MTRecord) ((RecordAdapter) record).getInternalObject());
                         streamWorker.recordReceived(mtRecord);
                     });
                 }
+
                 @Override
-                public void shutdown(ShutdownInput shutdownInput) {}
+                public void shutdown(ShutdownInput shutdownInput) {
+                }
             }).forEach(streamWorker::start);
         }
 
@@ -198,23 +201,23 @@ class MTAmazonDynamoDBStreamTestRunner {
             if (workers.get(streamArn) == null) {
                 String applicationName = streamDescription.getLabel();
                 Worker worker = new Builder()
-                        .config(new KinesisClientLibConfiguration(
-                                applicationName,
-                                streamArn,
-                                awsCredentialsProvider,
-                                applicationName + "_" + System.currentTimeMillis())
-                                .withIdleTimeBetweenReadsInMillis(1)
-                                .withCallProcessRecordsEvenForEmptyRecordList(true)
-                                .withInitialLeaseTableReadCapacity(10)
-                                .withInitialLeaseTableWriteCapacity(10)
-                                .withTableName("oktodelete-LEASE_TABLE." + applicationName)
-                                .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON))
-                        .recordProcessorFactory(streamDescription.getRecordProcessorFactory())
-                        .dynamoDBClient(amazonDynamoDB)
-                        .cloudWatchClient(new DummyCloudWatch())
-                        .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDBStreams))
-                        .execService(workerPool)
-                        .build();
+                    .config(new KinesisClientLibConfiguration(
+                        applicationName,
+                        streamArn,
+                        awsCredentialsProvider,
+                        applicationName + "_" + System.currentTimeMillis())
+                        .withIdleTimeBetweenReadsInMillis(1)
+                        .withCallProcessRecordsEvenForEmptyRecordList(true)
+                        .withInitialLeaseTableReadCapacity(10)
+                        .withInitialLeaseTableWriteCapacity(10)
+                        .withTableName("oktodelete-LEASE_TABLE." + applicationName)
+                        .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON))
+                    .recordProcessorFactory(streamDescription.getRecordProcessorFactory())
+                    .dynamoDBClient(amazonDynamoDB)
+                    .cloudWatchClient(new DummyCloudWatch())
+                    .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDBStreams))
+                    .execService(workerPool)
+                    .build();
                 workerPool.submit(worker);
                 workers.put(streamArn, worker);
                 log.info("started stream listener on " + streamArn);
@@ -237,7 +240,8 @@ class MTAmazonDynamoDBStreamTestRunner {
             log.info("waiting " + timeoutSeconds + "s for " + this.countDownLatch.getCount() + " records to arrive ...");
             try {
                 this.countDownLatch.await(timeoutSeconds, TimeUnit.SECONDS);
-            } catch (InterruptedException ignore) {}
+            } catch (InterruptedException ignore) {
+            }
         }
 
         List<MTRecord> getRecordsReceived() {
@@ -250,18 +254,30 @@ class MTAmazonDynamoDBStreamTestRunner {
 
         @Override
         public int compare(MTRecord r1, MTRecord r2) {
-            if (!r1.getContext().equals(r2.getContext())) return 1;
-            if (!r1.getTableName().equals(r2.getTableName())) return 1;
-            if (!r1.getEventName().equals(r2.getEventName())) return 1;
-            if (!r1.getDynamodb().getKeys().equals(r2.getDynamodb().getKeys())) return 1;
+            if (!r1.getContext().equals(r2.getContext())) {
+                return 1;
+            }
+            if (!r1.getTableName().equals(r2.getTableName())) {
+                return 1;
+            }
+            if (!r1.getEventName().equals(r2.getEventName())) {
+                return 1;
+            }
+            if (!r1.getDynamodb().getKeys().equals(r2.getDynamodb().getKeys())) {
+                return 1;
+            }
             if ((r1.getDynamodb().getOldImage() == null && r2.getDynamodb().getOldImage() != null) ||
-                    (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() == null) || (
-                    (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() != null)
-                            && !r1.getDynamodb().getOldImage().equals(r2.getDynamodb().getOldImage()))) return 1;
+                (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() == null) || (
+                (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() != null)
+                    && !r1.getDynamodb().getOldImage().equals(r2.getDynamodb().getOldImage()))) {
+                return 1;
+            }
             if ((r1.getDynamodb().getNewImage() == null && r2.getDynamodb().getNewImage() != null) ||
-                    (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() == null) || (
-                    (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() != null)
-                            && !r1.getDynamodb().getNewImage().equals(r2.getDynamodb().getNewImage()))) return 1;
+                (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() == null) || (
+                (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() != null)
+                    && !r1.getDynamodb().getNewImage().equals(r2.getDynamodb().getNewImage()))) {
+                return 1;
+            }
             return 0;
         }
     }
@@ -289,7 +305,7 @@ class MTAmazonDynamoDBStreamTestRunner {
 
         @Override
         public DescribeAlarmHistoryResult describeAlarmHistory(
-                DescribeAlarmHistoryRequest describeAlarmHistoryRequest) {
+            DescribeAlarmHistoryRequest describeAlarmHistoryRequest) {
             return new DescribeAlarmHistoryResult();
         }
 
@@ -310,19 +326,19 @@ class MTAmazonDynamoDBStreamTestRunner {
 
         @Override
         public DescribeAlarmsForMetricResult describeAlarmsForMetric(
-                DescribeAlarmsForMetricRequest describeAlarmsForMetricRequest) {
+            DescribeAlarmsForMetricRequest describeAlarmsForMetricRequest) {
             return new DescribeAlarmsForMetricResult();
         }
 
         @Override
         public DisableAlarmActionsResult disableAlarmActions(
-                DisableAlarmActionsRequest disableAlarmActionsRequest) {
+            DisableAlarmActionsRequest disableAlarmActionsRequest) {
             return new DisableAlarmActionsResult();
         }
 
         @Override
         public EnableAlarmActionsResult enableAlarmActions(
-                EnableAlarmActionsRequest enableAlarmActionsRequest) {
+            EnableAlarmActionsRequest enableAlarmActionsRequest) {
             return new EnableAlarmActionsResult();
         }
 
@@ -338,7 +354,7 @@ class MTAmazonDynamoDBStreamTestRunner {
 
         @Override
         public GetMetricStatisticsResult getMetricStatistics(
-                GetMetricStatisticsRequest getMetricStatisticsRequest) {
+            GetMetricStatisticsRequest getMetricStatisticsRequest) {
             return new GetMetricStatisticsResult();
         }
 

@@ -65,16 +65,16 @@ import static java.util.stream.Collectors.toList;
  * context to be added to table and index hash key fields.  Throughout this documentation, virtual tables are meant to
  * represent tables as they are understood by the developer using the DynamoDB Java API.  Physical tables represent the
  * tables that store the data in AWS.
- *
+ * <p>
  * SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
  * preconfigured to support a number of common mappings.  See Javadoc for each provided builder for details.
- *
+ * <p>
  * Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
- *
+ * <p>
  * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
  * ** Only EQ conditions are supported.
- *
+ * <p>
  * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
  *
  * @author msgroi
@@ -162,7 +162,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
     private TableMapping getTableMapping(String virtualTableName) {
         try {
             return tableMappingCache.get(virtualTableName, () ->
-                    tableMappingFactory.getTableMapping(new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
+                tableMappingFactory.getTableMapping(new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
         } catch (ExecutionException e) {
             throw new RuntimeException("exception mapping virtual table " + virtualTableName, e);
         }
@@ -240,12 +240,12 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
     @Override
     public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
         return tableMappingCache.asMap().values().stream()
-                .map(TableMapping::getPhysicalTable).filter(physicalTable -> Optional.ofNullable(physicalTable.getStreamSpecification())
+            .map(TableMapping::getPhysicalTable).filter(physicalTable -> Optional.ofNullable(physicalTable.getStreamSpecification())
                 .map(StreamSpecification::isStreamEnabled).orElse(false))
-                .map(physicalTable -> new MTStreamDescription()
-                        .withLabel(physicalTable.getTableName())
-                        .withArn(physicalTable.getLastStreamArn())
-                        .withRecordProcessorFactory(newAdapter(factory, physicalTable))).collect(toList());
+            .map(physicalTable -> new MTStreamDescription()
+                .withLabel(physicalTable.getTableName())
+                .withArn(physicalTable.getLastStreamArn())
+                .withRecordProcessorFactory(newAdapter(factory, physicalTable))).collect(toList());
     }
 
     private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, DynamoTableDescription physicalTable) {
@@ -269,7 +269,7 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
         @Override
         public void processRecords(ProcessRecordsInput processRecordsInput) {
             List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
-                    .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
+                .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
             processor.processRecords(processRecordsInput.withRecords(records));
         }
 
@@ -290,14 +290,14 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
             streamRecord.setOldImage(itemMapper.reverse(streamRecord.getOldImage()));
             streamRecord.setNewImage(itemMapper.reverse(streamRecord.getNewImage()));
             return new RecordAdapter(new MTRecord()
-                    .withAwsRegion(r.getAwsRegion())
-                    .withDynamodb(streamRecord)
-                    .withEventID(r.getEventID())
-                    .withEventName(r.getEventName())
-                    .withEventSource(r.getEventSource())
-                    .withEventVersion(r.getEventVersion())
-                    .withContext(fieldValue.getMtContext())
-                    .withTableName(fieldValue.getTableIndex()));
+                .withAwsRegion(r.getAwsRegion())
+                .withDynamodb(streamRecord)
+                .withEventID(r.getEventID())
+                .withEventName(r.getEventName())
+                .withEventSource(r.getEventSource())
+                .withEventVersion(r.getEventVersion())
+                .withContext(fieldValue.getMtContext())
+                .withTableName(fieldValue.getTableIndex()));
         }
 
         @Override
@@ -332,8 +332,8 @@ public class MTAmazonDynamoDBBySharedTable extends MTAmazonDynamoDBBase {
 
     private Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item, String tableName) {
         return describeTable(new DescribeTableRequest().withTableName(tableName)).getTable().getKeySchema().stream()
-                .collect(Collectors.toMap(KeySchemaElement::getAttributeName,
-                        keySchemaElement -> item.get(keySchemaElement.getAttributeName())));
+            .collect(Collectors.toMap(KeySchemaElement::getAttributeName,
+                keySchemaElement -> item.get(keySchemaElement.getAttributeName())));
     }
 
 }

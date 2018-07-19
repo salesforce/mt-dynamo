@@ -1,13 +1,13 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import java.util.List;
-
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.Identity;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
+
+import java.util.List;
 
 /**
  * This interface (including all contained interfaces and methods) is
@@ -99,10 +99,10 @@ public interface MTAmazonDynamoDB extends AmazonDynamoDB {
         @Override
         public String toString() {
             return "MTRecord{" +
-                    "context='" + context + '\'' +
-                    ", tableName='" + tableName + '\'' +
-                    ", recordFields=" + super.toString() +
-                    '}';
+                "context='" + context + '\'' +
+                ", tableName='" + tableName + '\'' +
+                ", recordFields=" + super.toString() +
+                '}';
         }
     }
 

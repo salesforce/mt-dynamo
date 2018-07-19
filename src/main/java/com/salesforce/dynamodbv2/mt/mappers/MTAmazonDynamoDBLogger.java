@@ -42,7 +42,7 @@ import java.util.function.Consumer;
 
 /**
  * Logs all calls.
- * 
+ * <p>
  * Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
@@ -156,6 +156,7 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
         }
 
     }
+
     private String table(String tableName) {
         return "table=" + tableName;
     }
@@ -170,28 +171,28 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
 
     private String queryRequest(QueryRequest queryRequest) {
         return "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
-                        (queryRequest.getFilterExpression() !=null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
-                        ", names=" + queryRequest.getExpressionAttributeNames() +
-                        ", values=" + queryRequest.getExpressionAttributeValues() +
-                        (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
+            (queryRequest.getFilterExpression() != null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
+            ", names=" + queryRequest.getExpressionAttributeNames() +
+            ", values=" + queryRequest.getExpressionAttributeValues() +
+            (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
     }
 
     private String scanRequest(ScanRequest scanRequest) {
         return "filterExpression=" + scanRequest.getFilterExpression() +
-                        ", names=" + scanRequest.getExpressionAttributeNames() +
-                        ", values=" + scanRequest.getExpressionAttributeValues();
+            ", names=" + scanRequest.getExpressionAttributeNames() +
+            ", values=" + scanRequest.getExpressionAttributeValues();
     }
 
     private String updateItemRequest(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() !=null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
-               (updateRequest.getAttributeUpdates() !=null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
-               ", key=" + updateRequest.getKey() +
-               (updateRequest.getConditionExpression() !=null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
-               (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
-               (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
+        return (updateRequest.getUpdateExpression() != null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
+            (updateRequest.getAttributeUpdates() != null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
+            ", key=" + updateRequest.getKey() +
+            (updateRequest.getConditionExpression() != null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
+            (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
+            (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
     }
 
-    private void log(String method, String ... messages) {
+    private void log(String method, String... messages) {
         if (logAll || methodsToLog.contains(method)) {
             String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
             log.info(concatenatedMessage);

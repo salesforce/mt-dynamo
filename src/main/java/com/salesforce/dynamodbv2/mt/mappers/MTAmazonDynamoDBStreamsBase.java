@@ -7,8 +7,8 @@ import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 
 public abstract class MTAmazonDynamoDBStreamsBase extends AbstractAmazonDynamoDBStreams
-        implements MTAmazonDynamoDBStreams {
-    
+    implements MTAmazonDynamoDBStreams {
+
     private final AmazonDynamoDBStreams amazonDynamoDBStreams;
 
     MTAmazonDynamoDBStreamsBase(AmazonDynamoDBStreams amazonDynamoDBStreams) {

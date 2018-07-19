@@ -65,6 +65,7 @@ class FieldMapping {
     boolean isContextAware() {
         return isContextAware;
     }
+
     static class Field {
 
         private final String name;
@@ -85,28 +86,48 @@ class FieldMapping {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             Field field = (Field) o;
 
-            if (!name.equals(field.name)) return false;
+            if (!name.equals(field.name)) {
+                return false;
+            }
             return type == field.type;
         }
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
 
         FieldMapping that = (FieldMapping) o;
 
-        if (isContextAware != that.isContextAware) return false;
-        if (!source.equals(that.source)) return false;
-        if (!target.equals(that.target)) return false;
-        if (!virtualIndexName.equals(that.virtualIndexName)) return false;
-        if (!physicalIndexName.equals(that.physicalIndexName)) return false;
+        if (isContextAware != that.isContextAware) {
+            return false;
+        }
+        if (!source.equals(that.source)) {
+            return false;
+        }
+        if (!target.equals(that.target)) {
+            return false;
+        }
+        if (!virtualIndexName.equals(that.virtualIndexName)) {
+            return false;
+        }
+        if (!physicalIndexName.equals(that.physicalIndexName)) {
+            return false;
+        }
         return indexType == that.indexType;
     }
 
