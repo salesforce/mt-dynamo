@@ -211,7 +211,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // Projection must include primary key, since we use it for paging.
         // (We could add key fields into projection and filter result in the future)
         Preconditions.checkArgument(projectionContainsKey(scanRequest, key),
-            cd zer  "Multitenant scans must include key in projection expression");
+            "Multitenant scans must include key in projection expression");
 
         // map table name
         ScanRequest clonedScanRequest = scanRequest.clone();
