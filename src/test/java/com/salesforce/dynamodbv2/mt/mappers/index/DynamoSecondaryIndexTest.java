@@ -31,10 +31,10 @@ class DynamoSecondaryIndexTest {
     @Test
     void hk() {
         DynamoSecondaryIndex sut = new DynamoSecondaryIndex(
-                ImmutableList.of(new AttributeDefinition().withAttributeName("hk").withAttributeType(S)),
-                "index1",
-                ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
-                GSI);
+            ImmutableList.of(new AttributeDefinition().withAttributeName("hk").withAttributeType(S)),
+            "index1",
+            ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
+            GSI);
         PrimaryKey primaryKey = sut.getPrimaryKey();
         assertEquals("hk", primaryKey.getHashKey());
         assertEquals(S, primaryKey.getHashKeyType());
@@ -47,12 +47,12 @@ class DynamoSecondaryIndexTest {
     @Test
     void hashKeyAndRangeKey() {
         DynamoSecondaryIndex sut = new DynamoSecondaryIndex(
-                ImmutableList.of(new AttributeDefinition().withAttributeName("hk").withAttributeType(S),
-                                 new AttributeDefinition().withAttributeName("rk").withAttributeType(N)),
-                "index2",
-                ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH),
-                                 new KeySchemaElement().withAttributeName("rk").withKeyType(RANGE)),
-                LSI);
+            ImmutableList.of(new AttributeDefinition().withAttributeName("hk").withAttributeType(S),
+                new AttributeDefinition().withAttributeName("rk").withAttributeType(N)),
+            "index2",
+            ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH),
+                new KeySchemaElement().withAttributeName("rk").withKeyType(RANGE)),
+            LSI);
         PrimaryKey primaryKey = sut.getPrimaryKey();
         assertEquals("hk", primaryKey.getHashKey());
         assertEquals(S, primaryKey.getHashKeyType());

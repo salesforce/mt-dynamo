@@ -23,13 +23,13 @@ public class DynamoSecondaryIndexMapperByTypeImpl implements DynamoSecondaryInde
     private static final PrimaryKeyMapper primaryKeyMapper = new PrimaryKeyMapperByTypeImpl(true);
 
     @Override
-    public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSI,
+    public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi,
                                                              DynamoTableDescription physicalTable) throws MappingException {
-        return (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSI.getPrimaryKey(),
-                physicalTable.getSIs().stream()
-                        .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSI.getType())
-                        .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)
-                        .collect(Collectors.toList()));
+        return (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSi.getPrimaryKey(),
+            physicalTable.getSis().stream()
+                .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSi.getType())
+                .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)
+                .collect(Collectors.toList()));
     }
 
 }

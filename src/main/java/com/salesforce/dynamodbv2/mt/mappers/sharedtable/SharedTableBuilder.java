@@ -22,7 +22,7 @@ import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -109,19 +109,22 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.createTableRequests == null) {
             this.createTableRequests = new ArrayList<>();
         }
-        this.createTableRequests.addAll(Arrays.asList(createTableRequests)); return this;
+        this.createTableRequests.addAll(Arrays.asList(createTableRequests));
+        return this;
     }
 
     public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
-        this.precreateTables = precreateTables; return this;
+        this.precreateTables = precreateTables;
+        return this;
     }
 
     @SuppressWarnings("unused")
     public SharedTableBuilder withDefaultProvisionedThroughput(long defaultProvisionedThroughput) {
-        this.defaultProvisionedThroughput = defaultProvisionedThroughput; return this;
+        this.defaultProvisionedThroughput = defaultProvisionedThroughput;
+        return this;
     }
 
-    public MTAmazonDynamoDBBySharedTable build() {
+    public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
         withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests, precreateTables));
@@ -148,79 +151,79 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput) {
 
         CreateTableRequestBuilder mt_sharedtablestatic_s_s = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_s")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
+            .withTableName("mt_sharedtablestatic_s_s")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
         CreateTableRequestBuilder mt_sharedtablestatic_s_n = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_n")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
+            .withTableName("mt_sharedtablestatic_s_n")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
         CreateTableRequestBuilder mt_sharedtablestatic_s_b = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_b")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
+            .withTableName("mt_sharedtablestatic_s_b")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
         CreateTableRequestBuilder mt_sharedtablestatic_s_nolsi = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_nolsi")
-                .withTableKeySchema(hashKeyField, S);
+            .withTableName("mt_sharedtablestatic_s_nolsi")
+            .withTableKeySchema(hashKeyField, S);
         CreateTableRequestBuilder mt_sharedtablestatic_s_s_nolsi = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_s_nolsi")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
+            .withTableName("mt_sharedtablestatic_s_s_nolsi")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
         CreateTableRequestBuilder mt_sharedtablestatic_s_n_nolsi = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_n_nolsi")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
+            .withTableName("mt_sharedtablestatic_s_n_nolsi")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
         CreateTableRequestBuilder mt_sharedtablestatic_s_b_nolsi = CreateTableRequestBuilder.builder()
-                .withTableName("mt_sharedtablestatic_s_b_nolsi")
-                .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
+            .withTableName("mt_sharedtablestatic_s_b_nolsi")
+            .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
 
         return ImmutableList.of(mt_sharedtablestatic_s_s,
-                                mt_sharedtablestatic_s_n,
-                                mt_sharedtablestatic_s_b,
-                                mt_sharedtablestatic_s_nolsi,
-                                mt_sharedtablestatic_s_s_nolsi,
-                                mt_sharedtablestatic_s_n_nolsi,
-                                mt_sharedtablestatic_s_b_nolsi
-                                ).stream().map(createTableRequestBuilder -> {
-            addSIs(createTableRequestBuilder);
+            mt_sharedtablestatic_s_n,
+            mt_sharedtablestatic_s_b,
+            mt_sharedtablestatic_s_nolsi,
+            mt_sharedtablestatic_s_s_nolsi,
+            mt_sharedtablestatic_s_n_nolsi,
+            mt_sharedtablestatic_s_b_nolsi
+        ).stream().map(createTableRequestBuilder -> {
+            addSis(createTableRequestBuilder);
             addStreamSpecification(createTableRequestBuilder);
             return createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput,
-                    provisionedThroughput).build();
+                provisionedThroughput).build();
         }).collect(Collectors.toList());
     }
 
-    private void addSIs(CreateTableRequestBuilder createTableRequestBuilder) {
-        addSI(createTableRequestBuilder, GSI, S, empty());
-        addSI(createTableRequestBuilder, GSI, S, of(S));
-        addSI(createTableRequestBuilder, GSI, S, of(N));
-        addSI(createTableRequestBuilder, GSI, S, of(B));
-        if (!createTableRequestBuilder.getTableName().toLowerCase().endsWith( "nolsi")) {
-            addSI(createTableRequestBuilder, LSI, S, of(S));
-            addSI(createTableRequestBuilder, LSI, S, of(N));
-            addSI(createTableRequestBuilder, LSI, S, of(B));
+    private void addSis(CreateTableRequestBuilder createTableRequestBuilder) {
+        addSi(createTableRequestBuilder, GSI, S, empty());
+        addSi(createTableRequestBuilder, GSI, S, of(S));
+        addSi(createTableRequestBuilder, GSI, S, of(N));
+        addSi(createTableRequestBuilder, GSI, S, of(B));
+        if (!createTableRequestBuilder.getTableName().toLowerCase().endsWith("nolsi")) {
+            addSi(createTableRequestBuilder, LSI, S, of(S));
+            addSi(createTableRequestBuilder, LSI, S, of(N));
+            addSi(createTableRequestBuilder, LSI, S, of(B));
         }
     }
 
     private void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder) {
         createTableRequestBuilder.withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true));
+            .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+            .withStreamEnabled(true));
     }
 
-    private void addSI(CreateTableRequestBuilder createTableRequestBuilder,
+    private void addSi(CreateTableRequestBuilder createTableRequestBuilder,
                        DynamoSecondaryIndexType indexType,
                        @SuppressWarnings("all")
-                               ScalarAttributeType hashKeyType,
+                           ScalarAttributeType hashKeyType,
                        Optional<ScalarAttributeType> rangeKeyType) {
         String indexName = indexType.name().toLowerCase() + "_" +
             hashKeyType.name().toLowerCase() +
             rangeKeyType.map(type -> "_" + type.name().toLowerCase()).orElse("").toLowerCase();
         PrimaryKey primaryKey = rangeKeyType.map(
-                scalarAttributeType -> new PrimaryKey(indexType == LSI ? "hk" : indexName + "_hk",
-                                                      hashKeyType,
-                                                      indexName + "_rk",
-                                                      scalarAttributeType))
-                .orElseGet(() -> new PrimaryKey(indexName + "_hk",
-                                                hashKeyType));
-        createTableRequestBuilder.addSI(indexName,
-                                        indexType,
-                                        primaryKey,
-                                        defaultProvisionedThroughput);
+            scalarAttributeType -> new PrimaryKey(indexType == LSI ? "hk" : indexName + "_hk",
+                hashKeyType,
+                indexName + "_rk",
+                scalarAttributeType))
+            .orElseGet(() -> new PrimaryKey(indexName + "_hk",
+                hashKeyType));
+        createTableRequestBuilder.addSi(indexName,
+            indexType,
+            primaryKey,
+            defaultProvisionedThroughput);
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
@@ -251,20 +254,20 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         SharedTableCreateTableRequestFactory(List<CreateTableRequest> createTableRequests,
                                              boolean precreateTables) {
             this.createTableRequests = createTableRequests.stream()
-                    .map(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())))
-                    .collect(Collectors.toList());
+                .map(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())))
+                .collect(Collectors.toList());
             this.precreateTables = precreateTables;
         }
 
         @Override
         public CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
             try {
-                boolean hasLSIs = !isEmpty(virtualTableDescription.getLSIs());
+                boolean hasLsis = !isEmpty(virtualTableDescription.getLsis());
                 return ((CreateTableRequestWrapper) primaryKeyMapper
-                        .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
-                                .filter(createTableRequest1 -> hasLSIs == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
-                                .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new).collect(Collectors.toList())))
-                        .getCreateTableRequest();
+                    .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
+                        .filter(createTableRequest1 -> hasLsis == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
+                        .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new).collect(Collectors.toList())))
+                    .getCreateTableRequest();
             } catch (MappingException e) {
                 throw new RuntimeException(e);
             }

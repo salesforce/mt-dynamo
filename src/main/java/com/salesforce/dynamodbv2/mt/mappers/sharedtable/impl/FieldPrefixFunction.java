@@ -8,7 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.google.common.base.Splitter;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
@@ -24,20 +24,20 @@ class FieldPrefixFunction {
         this.delimiter = delimiter;
     }
 
-    FieldValue apply(MTAmazonDynamoDBContextProvider mtContext, String tableIndex, String value) {
+    FieldValue apply(MtAmazonDynamoDbContextProvider mtContext, String tableIndex, String value) {
         return new FieldValue(mtContext.getContext(),
-                              tableIndex,
-                             mtContext.getContext() + delimiter + tableIndex + delimiter + value,
-                              value);
+            tableIndex,
+            mtContext.getContext() + delimiter + tableIndex + delimiter + value,
+            value);
     }
 
     FieldValue reverse(String qualifiedValue) {
-        int prefixSeparatorIndex = StringUtils.ordinalIndexOf(qualifiedValue, delimiter,2);
+        int prefixSeparatorIndex = StringUtils.ordinalIndexOf(qualifiedValue, delimiter, 2);
         List<String> prefixList = Splitter.on(delimiter).splitToList(qualifiedValue.substring(0, prefixSeparatorIndex));
         return new FieldValue(prefixList.get(0),
-                              prefixList.get(1),
-                              qualifiedValue,
-                              qualifiedValue.substring(prefixSeparatorIndex + 1));
+            prefixList.get(1),
+            qualifiedValue,
+            qualifiedValue.substring(prefixSeparatorIndex + 1));
 
     }
 
@@ -72,14 +72,24 @@ class FieldPrefixFunction {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
 
             FieldValue that = (FieldValue) o;
 
-            if (!mtContext.equals(that.mtContext)) return false;
-            if (!tableIndex.equals(that.tableIndex)) return false;
-            if (!qualifiedValue.equals(that.qualifiedValue)) return false;
+            if (!mtContext.equals(that.mtContext)) {
+                return false;
+            }
+            if (!tableIndex.equals(that.tableIndex)) {
+                return false;
+            }
+            if (!qualifiedValue.equals(that.qualifiedValue)) {
+                return false;
+            }
             return unqualifiedValue.equals(that.unqualifiedValue);
         }
     }

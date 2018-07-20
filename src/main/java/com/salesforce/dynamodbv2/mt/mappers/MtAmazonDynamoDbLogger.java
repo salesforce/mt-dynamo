@@ -30,7 +30,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,24 +42,24 @@ import java.util.function.Consumer;
 
 /**
  * Logs all calls.
- * 
+ * <p>
  * Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
  */
-public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
+public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
 
-    private static final Logger log = LoggerFactory.getLogger(MTAmazonDynamoDBLogger.class);
+    private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbLogger.class);
     private final List<String> methodsToLog;
     private final Optional<Consumer<List<String>>> logCallback;
     private final boolean logAll;
 
-    private MTAmazonDynamoDBLogger(MTAmazonDynamoDBContextProvider mtContext,
-                                   AmazonDynamoDB amazonDynamoDB,
+    private MtAmazonDynamoDbLogger(MtAmazonDynamoDbContextProvider mtContext,
+                                   AmazonDynamoDB amazonDynamoDb,
                                    Consumer<List<String>> logCallback,
                                    List<String> methodsToLog,
                                    boolean logAll) {
-        super(mtContext, amazonDynamoDB);
+        super(mtContext, amazonDynamoDb);
         this.logCallback = Optional.ofNullable(logCallback);
         this.methodsToLog = methodsToLog;
         this.logAll = logAll;
@@ -110,52 +110,53 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
         return super.updateItem(updateItemRequest);
     }
 
-    public static MTAmazonDynamoDBBuilder builder() {
-        return new MTAmazonDynamoDBBuilder();
+    public static MtAmazonDynamoDbBuilder builder() {
+        return new MtAmazonDynamoDbBuilder();
     }
 
-    public static class MTAmazonDynamoDBBuilder {
+    public static class MtAmazonDynamoDbBuilder {
 
-        private AmazonDynamoDB amazonDynamoDB;
-        private MTAmazonDynamoDBContextProvider mtContext;
+        private AmazonDynamoDB amazonDynamoDb;
+        private MtAmazonDynamoDbContextProvider mtContext;
         private Consumer<List<String>> logCallback;
         private List<String> methodsToLog = new ArrayList<>();
         private boolean logAll;
 
-        public MTAmazonDynamoDBBuilder withAmazonDynamoDB(AmazonDynamoDB amazonDynamoDB) {
-            this.amazonDynamoDB = amazonDynamoDB;
+        public MtAmazonDynamoDbBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
+            this.amazonDynamoDb = amazonDynamoDb;
             return this;
         }
 
-        public MTAmazonDynamoDBBuilder withContext(MTAmazonDynamoDBContextProvider mtContext) {
+        public MtAmazonDynamoDbBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
             return this;
         }
 
         @SuppressWarnings("WeakerAccess")
-        public MTAmazonDynamoDBBuilder withLogCallback(Consumer<List<String>> logCallback) {
+        public MtAmazonDynamoDbBuilder withLogCallback(Consumer<List<String>> logCallback) {
             this.logCallback = logCallback;
             return this;
         }
 
-        public MTAmazonDynamoDBBuilder withMethodsToLog(List<String> methodsToLog) {
+        public MtAmazonDynamoDbBuilder withMethodsToLog(List<String> methodsToLog) {
             this.methodsToLog = methodsToLog;
             return this;
         }
 
         @SuppressWarnings("unused")
-        public MTAmazonDynamoDBBuilder withLogAll() {
+        public MtAmazonDynamoDbBuilder withLogAll() {
             this.logAll = true;
             return this;
         }
 
-        public MTAmazonDynamoDBLogger build() {
-            Preconditions.checkNotNull(amazonDynamoDB, "amazonDynamoDB is required");
+        public MtAmazonDynamoDbLogger build() {
+            Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
-            return new MTAmazonDynamoDBLogger(mtContext, amazonDynamoDB, logCallback, methodsToLog, logAll);
+            return new MtAmazonDynamoDbLogger(mtContext, amazonDynamoDb, logCallback, methodsToLog, logAll);
         }
 
     }
+
     private String table(String tableName) {
         return "table=" + tableName;
     }
@@ -170,28 +171,28 @@ public class MTAmazonDynamoDBLogger extends MTAmazonDynamoDBBase {
 
     private String queryRequest(QueryRequest queryRequest) {
         return "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
-                        (queryRequest.getFilterExpression() !=null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
-                        ", names=" + queryRequest.getExpressionAttributeNames() +
-                        ", values=" + queryRequest.getExpressionAttributeValues() +
-                        (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
+            (queryRequest.getFilterExpression() != null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
+            ", names=" + queryRequest.getExpressionAttributeNames() +
+            ", values=" + queryRequest.getExpressionAttributeValues() +
+            (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
     }
 
     private String scanRequest(ScanRequest scanRequest) {
         return "filterExpression=" + scanRequest.getFilterExpression() +
-                        ", names=" + scanRequest.getExpressionAttributeNames() +
-                        ", values=" + scanRequest.getExpressionAttributeValues();
+            ", names=" + scanRequest.getExpressionAttributeNames() +
+            ", values=" + scanRequest.getExpressionAttributeValues();
     }
 
     private String updateItemRequest(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() !=null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
-               (updateRequest.getAttributeUpdates() !=null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
-               ", key=" + updateRequest.getKey() +
-               (updateRequest.getConditionExpression() !=null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
-               (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
-               (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
+        return (updateRequest.getUpdateExpression() != null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
+            (updateRequest.getAttributeUpdates() != null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
+            ", key=" + updateRequest.getKey() +
+            (updateRequest.getConditionExpression() != null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
+            (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
+            (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
     }
 
-    private void log(String method, String ... messages) {
+    private void log(String method, String... messages) {
         if (logAll || methodsToLog.contains(method)) {
             String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
             log.info(concatenatedMessage);

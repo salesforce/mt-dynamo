@@ -59,34 +59,34 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
         }
         for (Optional<ScalarAttributeType> rangeKeyType : rangeKeyTypePrecedence) {
             Optional<HasPrimaryKey> primaryKeysFound = mapPrimaryKeyExactMatch(new PrimaryKey(primaryKeyToFind.getHashKey(),
-                                                                                              S,
-                                                                                              rangeKeyType.map((Function<ScalarAttributeType, String>) Enum::name),
-                                                                                              rangeKeyType),
-                                                                                primaryKeys);
+                    S,
+                    rangeKeyType.map((Function<ScalarAttributeType, String>) Enum::name),
+                    rangeKeyType),
+                primaryKeys);
             if (primaryKeysFound.isPresent()) {
                 return primaryKeysFound.get();
             }
         }
         throw new MappingException("no key schema compatible with " + primaryKeyToFind + " found in list of available keys [" +
-                                   Joiner.on(", ").join(primaryKeys.stream().map(hasPrimaryKey ->
-                                   hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
+            Joiner.on(", ").join(primaryKeys.stream().map(hasPrimaryKey ->
+                hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
     }
 
     private Optional<HasPrimaryKey> mapPrimaryKeyExactMatch(PrimaryKey primaryKeyToFind, List<HasPrimaryKey> primaryKeys) throws MappingException {
-        List<HasPrimaryKey> primaryKeysFound =  primaryKeys.stream().filter(hasPrimaryKey -> {
-                    // hash key types must match
-                    PrimaryKey primaryKey = hasPrimaryKey.getPrimaryKey();
-                    return primaryKey.getHashKeyType().equals(primaryKeyToFind.getHashKeyType()) &&
-                            // either range key doesn't exist on both
-                            ((!primaryKeyToFind.getRangeKey().isPresent() && !primaryKey.getRangeKey().isPresent())
-                                    // or they are present on both and equal
-                                    || ((primaryKeyToFind.getRangeKeyType().isPresent() && primaryKey.getRangeKeyType().isPresent()) &&
-                                        (primaryKeyToFind.getRangeKeyType().get().equals(primaryKey.getRangeKeyType().get()))));
-                }
+        List<HasPrimaryKey> primaryKeysFound = primaryKeys.stream().filter(hasPrimaryKey -> {
+                // hash key types must match
+                PrimaryKey primaryKey = hasPrimaryKey.getPrimaryKey();
+                return primaryKey.getHashKeyType().equals(primaryKeyToFind.getHashKeyType()) &&
+                    // either range key doesn't exist on both
+                    ((!primaryKeyToFind.getRangeKey().isPresent() && !primaryKey.getRangeKey().isPresent())
+                        // or they are present on both and equal
+                        || ((primaryKeyToFind.getRangeKeyType().isPresent() && primaryKey.getRangeKeyType().isPresent()) &&
+                        (primaryKeyToFind.getRangeKeyType().get().equals(primaryKey.getRangeKeyType().get()))));
+            }
         ).collect(Collectors.toList());
         if (primaryKeysFound.size() > 1) {
             throw new MappingException("when attempting to map from primary key: " + primaryKeyToFind + ", found multiple compatible primary keys: " +
-                    "[" + Joiner.on(", ").join(primaryKeysFound.stream().map(hasPrimaryKey -> hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
+                "[" + Joiner.on(", ").join(primaryKeysFound.stream().map(hasPrimaryKey -> hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
         }
         return primaryKeysFound.size() == 1 ? of(primaryKeysFound.get(0)) : Optional.empty();
     }

@@ -10,7 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,15 +56,17 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         this.createTableRequestsMap = Arrays.stream(createTableRequests)
-                .collect(Collectors.toMap(CreateTableRequest::getTableName, identity())); return this;
+            .collect(Collectors.toMap(CreateTableRequest::getTableName, identity()));
+        return this;
     }
 
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withTableMapper(TableMapper tableMapper) {
-        this.tableMapper = tableMapper; return this;
+        this.tableMapper = tableMapper;
+        return this;
     }
 
-    public MTAmazonDynamoDBBySharedTable build() {
+    public MtAmazonDynamoDbBySharedTable build() {
         withName("SharedTableCustomStaticBuilder");
         createTableRequestsMap.values().forEach(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())));
         withCreateTableRequestFactory(new CreateTableRequestFactory() {
@@ -81,7 +83,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
         return super.build();
     }
-    
+
     public interface TableMapper {
         String mapToPhysicalTable(DynamoTableDescription virtualTableDescription);
     }

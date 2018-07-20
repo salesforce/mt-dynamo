@@ -6,23 +6,23 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 
-public abstract class MTAmazonDynamoDBStreamsBase extends AbstractAmazonDynamoDBStreams
-        implements MTAmazonDynamoDBStreams {
-    
-    private final AmazonDynamoDBStreams amazonDynamoDBStreams;
+public abstract class MtAmazonDynamoDbStreamsBase extends AbstractAmazonDynamoDBStreams
+    implements MtAmazonDynamoDbStreams {
 
-    MTAmazonDynamoDBStreamsBase(AmazonDynamoDBStreams amazonDynamoDBStreams) {
-        this.amazonDynamoDBStreams = amazonDynamoDBStreams;
+    private final AmazonDynamoDBStreams amazonDynamoDbStreams;
+
+    MtAmazonDynamoDbStreamsBase(AmazonDynamoDBStreams amazonDynamoDbStreams) {
+        this.amazonDynamoDbStreams = amazonDynamoDbStreams;
     }
 
     @Override
     public final void shutdown() {
-        amazonDynamoDBStreams.shutdown();
+        amazonDynamoDbStreams.shutdown();
     }
 
     @Override
-    public final AmazonDynamoDBStreams getAmazonDynamoDBStreams() {
-        return amazonDynamoDBStreams;
+    public final AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+        return amazonDynamoDbStreams;
     }
 
     @Override
@@ -37,7 +37,7 @@ public abstract class MTAmazonDynamoDBStreamsBase extends AbstractAmazonDynamoDB
 
     @Override
     public final DescribeStreamResult describeStream(DescribeStreamRequest request) {
-        return amazonDynamoDBStreams.describeStream(request);
+        return amazonDynamoDbStreams.describeStream(request);
     }
 
     private void deprecated() {

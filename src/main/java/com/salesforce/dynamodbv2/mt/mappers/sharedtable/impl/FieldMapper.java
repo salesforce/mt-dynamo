@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
@@ -22,11 +22,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 class FieldMapper {
 
-    private final MTAmazonDynamoDBContextProvider mtContext;
+    private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
     private final FieldPrefixFunction fieldPrefixFunction;
 
-    FieldMapper(MTAmazonDynamoDBContextProvider mtContext,
+    FieldMapper(MtAmazonDynamoDbContextProvider mtContext,
                 String virtualTableName,
                 FieldPrefixFunction fieldPrefixFunction) {
         this.mtContext = mtContext;
@@ -36,17 +36,17 @@ class FieldMapper {
 
     AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
         return new AttributeValue(
-                fieldPrefixFunction.apply(mtContext,
-                                          fieldMapping.getIndexType() == TABLE
-                                                  ? virtualTableName
-                                                  : fieldMapping.getVirtualIndexName(),
-                                          convertToStringNotNull(fieldMapping.getSource().getType(),
-                                                                 unqualifiedAttribute)).getQualifiedValue());
+            fieldPrefixFunction.apply(mtContext,
+                fieldMapping.getIndexType() == TABLE
+                    ? virtualTableName
+                    : fieldMapping.getVirtualIndexName(),
+                convertToStringNotNull(fieldMapping.getSource().getType(),
+                    unqualifiedAttribute)).getQualifiedValue());
     }
 
     AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
         return convertFromString(fieldMapping.getTarget().getType(),
-                                 fieldPrefixFunction.reverse(qualifiedAttribute.getS()).getUnqualifiedValue());
+            fieldPrefixFunction.reverse(qualifiedAttribute.getS()).getUnqualifiedValue());
     }
 
     private String convertToStringNotNull(ScalarAttributeType type, AttributeValue attributeValue) {

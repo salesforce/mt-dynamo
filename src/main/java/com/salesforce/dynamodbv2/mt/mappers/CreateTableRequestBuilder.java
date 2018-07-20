@@ -65,38 +65,38 @@ public class CreateTableRequestBuilder {
     }
 
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField,
-                                                 ScalarAttributeType hashKeyType,
-                                                 String rangeKeyField,
-                                                 ScalarAttributeType rangeKeyType) {
+                                                        ScalarAttributeType hashKeyType,
+                                                        String rangeKeyField,
+                                                        ScalarAttributeType rangeKeyType) {
         addAttributeDefinition(hashKeyField, hashKeyType);
         addAttributeDefinition(rangeKeyField, rangeKeyType);
         createTableRequest.withKeySchema(new KeySchemaElement(hashKeyField, HASH),
-                                         new KeySchemaElement(rangeKeyField, RANGE));
+            new KeySchemaElement(rangeKeyField, RANGE));
         return this;
     }
 
     @SuppressWarnings("all")
-    public CreateTableRequestBuilder addSI(String indexName,
-                                    DynamoSecondaryIndexType indexType,
-                                    PrimaryKey secondaryIndexKey,
-                                    Long provisionedThroughput) {
+    public CreateTableRequestBuilder addSi(String indexName,
+                                           DynamoSecondaryIndexType indexType,
+                                           PrimaryKey secondaryIndexKey,
+                                           Long provisionedThroughput) {
         if (indexType == GSI) {
             if (this.createTableRequest.getGlobalSecondaryIndexes() == null) {
                 this.createTableRequest.setGlobalSecondaryIndexes(new ArrayList<>());
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(
-                    new GlobalSecondaryIndex().withIndexName(indexName)
-                            .withKeySchema(buildKeySchema(secondaryIndexKey))
-                            .withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                new GlobalSecondaryIndex().withIndexName(indexName)
+                    .withKeySchema(buildKeySchema(secondaryIndexKey))
+                    .withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
         } else {
             if (this.createTableRequest.getLocalSecondaryIndexes() == null) {
                 this.createTableRequest.setLocalSecondaryIndexes(new ArrayList<>());
             }
             this.createTableRequest.getLocalSecondaryIndexes().add(
-                    new LocalSecondaryIndex().withIndexName(indexName)
-                            .withKeySchema(buildKeySchema(secondaryIndexKey))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                new LocalSecondaryIndex().withIndexName(indexName)
+                    .withKeySchema(buildKeySchema(secondaryIndexKey))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
         }
         return this;
     }
@@ -117,7 +117,7 @@ public class CreateTableRequestBuilder {
             createTableRequest.setAttributeDefinitions(new ArrayList<>());
         }
         if (createTableRequest.getAttributeDefinitions().stream()
-                .noneMatch(attributeDefinition -> field.equals(attributeDefinition.getAttributeName()))) {
+            .noneMatch(attributeDefinition -> field.equals(attributeDefinition.getAttributeName()))) {
             this.createTableRequest.getAttributeDefinitions().add(new AttributeDefinition(field, fieldType));
         }
     }
