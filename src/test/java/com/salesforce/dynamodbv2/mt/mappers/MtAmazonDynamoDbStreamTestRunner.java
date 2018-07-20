@@ -90,7 +90,7 @@ class MtAmazonDynamoDbStreamTestRunner {
                                      AmazonDynamoDB rootAmazonDynamoDb,
                                      AmazonDynamoDBStreams rootAmazonDynamoDbStreams,
                                      AWSCredentialsProvider awsCredentialsProvider,
-                                     List<MtAmazonDynamoDb.MtRecord> expectedMtRecords) {
+                                     List<MtRecord> expectedMtRecords) {
         this.mtAmazonDynamoDb = mtAmazonDynamoDb;
         if (rootAmazonDynamoDbStreams != null) {
             streamWorker = new StreamWorker(rootAmazonDynamoDb,
@@ -124,7 +124,7 @@ class MtAmazonDynamoDbStreamTestRunner {
             List<MtRecord> recordsReceived = new ArrayList<>(streamWorker.getRecordsReceived());
             assertEquals(expectedMtRecords.size(), recordsReceived.size(),
                 recordsReceived.size() + " of " + expectedMtRecords.size() + " records received");
-            for (MtAmazonDynamoDb.MtRecord recordReceived : recordsReceived) {
+            for (MtRecord recordReceived : recordsReceived) {
                 assertMtRecord(recordReceived, expectedMtRecords);
             }
             assertEquals(0, expectedMtRecords.size(), "records not encountered: " + expectedMtRecords);
@@ -183,7 +183,7 @@ class MtAmazonDynamoDbStreamTestRunner {
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private final AWSCredentialsProvider awsCredentialsProvider;
         private final CountDownLatch countDownLatch;
-        private final List<MtAmazonDynamoDb.MtRecord> recordsReceived;
+        private final List<MtRecord> recordsReceived;
 
         StreamWorker(AmazonDynamoDB amazonDynamoDb,
                      AmazonDynamoDBStreams amazonDynamoDbStreams,

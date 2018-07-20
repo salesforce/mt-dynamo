@@ -485,9 +485,9 @@ public class MtAmazonDynamoDbTestRunner {
         log.info("END test " + testDescription);
     }
 
-    private List<MtAmazonDynamoDb.MtRecord> getExpectedMtRecords() {
+    private List<MtRecord> getExpectedMtRecords() {
         return ImmutableList.of(
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(INSERT.name())
@@ -495,7 +495,7 @@ public class MtAmazonDynamoDbTestRunner {
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx2")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(INSERT.name())
@@ -503,7 +503,7 @@ public class MtAmazonDynamoDbTestRunner {
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue2")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(MODIFY.name())
@@ -513,7 +513,7 @@ public class MtAmazonDynamoDbTestRunner {
                         "someField", new AttributeValue().withS("someValue1")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1Updated")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(MODIFY.name())
@@ -533,7 +533,7 @@ public class MtAmazonDynamoDbTestRunner {
                         "someField", new AttributeValue().withS("someValue2")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue2Updated")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner2")
                 .withEventName(INSERT.name())
@@ -541,7 +541,7 @@ public class MtAmazonDynamoDbTestRunner {
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValueTable2")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
                 .withEventName(REMOVE.name())
@@ -549,7 +549,7 @@ public class MtAmazonDynamoDbTestRunner {
                     .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
                     .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
                         "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
                 .withEventName(INSERT.name())
@@ -559,7 +559,7 @@ public class MtAmazonDynamoDbTestRunner {
                     .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
                         "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
                         "someField", new AttributeValue().withS("someValue3a")))),
-            new MtAmazonDynamoDb.MtRecord()
+            new MtRecord()
                 .withContext("ctx1")
                 .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
                 .withEventName(INSERT.name())
