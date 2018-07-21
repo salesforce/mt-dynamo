@@ -82,7 +82,6 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-@SuppressWarnings("CheckStyle")
 class DocGeneratorRunner {
 
     private static final boolean skipAccountTest = false;

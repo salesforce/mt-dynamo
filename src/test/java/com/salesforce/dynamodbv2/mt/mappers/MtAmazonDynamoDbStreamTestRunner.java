@@ -117,7 +117,6 @@ class MtAmazonDynamoDbStreamTestRunner {
         }
     }
 
-    @SuppressWarnings("all")
     void await(int timeoutSeconds) {
         if (streamWorker != null) {
             streamWorker.await(timeoutSeconds);
@@ -238,9 +237,8 @@ class MtAmazonDynamoDbStreamTestRunner {
             log.info("record received, outstanding=" + countDownLatch.getCount() + ", record=" + mtRecord);
         }
 
-        @SuppressWarnings("all")
         void await(int timeoutSeconds) {
-            log.info("waiting " + timeoutSeconds + "s for " + this.countDownLatch.getCount() + " records to arrive ...");
+            log.info("waiting " + timeoutSeconds + "s for " + this.countDownLatch.getCount() + " records to arrive...");
             try {
                 this.countDownLatch.await(timeoutSeconds, TimeUnit.SECONDS);
             } catch (InterruptedException ignore) {
@@ -410,7 +408,5 @@ class MtAmazonDynamoDbStreamTestRunner {
         public AmazonCloudWatchWaiters waiters() {
             return new AmazonCloudWatchWaiters(null);
         }
-
     }
-
 }
