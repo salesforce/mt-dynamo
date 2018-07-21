@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
 import com.amazonaws.auth.AWSCredentialsProvider;
@@ -59,8 +61,6 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -73,8 +73,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /*
  * @author msgroi
@@ -94,9 +94,9 @@ class MtAmazonDynamoDbStreamTestRunner {
         this.mtAmazonDynamoDb = mtAmazonDynamoDb;
         if (rootAmazonDynamoDbStreams != null) {
             streamWorker = new StreamWorker(rootAmazonDynamoDb,
-                rootAmazonDynamoDbStreams,
-                awsCredentialsProvider,
-                expectedMtRecords.size());
+                    rootAmazonDynamoDbStreams,
+                    awsCredentialsProvider,
+                    expectedMtRecords.size());
             this.expectedMtRecords = new ArrayList<>(expectedMtRecords);
         }
     }
@@ -104,10 +104,10 @@ class MtAmazonDynamoDbStreamTestRunner {
     void startStreamWorker() {
         if (streamWorker != null) {
             Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
-                new StreamWorkerStarter(streamWorker, mtAmazonDynamoDb),
-                0,
-                1,
-                TimeUnit.SECONDS);
+                    new StreamWorkerStarter(streamWorker, mtAmazonDynamoDb),
+                    0,
+                    1,
+                    TimeUnit.SECONDS);
         }
     }
 
@@ -123,7 +123,7 @@ class MtAmazonDynamoDbStreamTestRunner {
             streamWorker.await(timeoutSeconds);
             List<MtRecord> recordsReceived = new ArrayList<>(streamWorker.getRecordsReceived());
             assertEquals(expectedMtRecords.size(), recordsReceived.size(),
-                recordsReceived.size() + " of " + expectedMtRecords.size() + " records received");
+                    recordsReceived.size() + " of " + expectedMtRecords.size() + " records received");
             for (MtRecord recordReceived : recordsReceived) {
                 assertMtRecord(recordReceived, expectedMtRecords);
             }
@@ -132,8 +132,10 @@ class MtAmazonDynamoDbStreamTestRunner {
     }
 
     private void assertMtRecord(MtRecord receivedRecord, List<MtRecord> expectedMtRecords) {
-        Optional<MtRecord> mtRecordFound = expectedMtRecords.stream().filter(
-            mtRecord -> new MtRecordComparator().compare(receivedRecord, mtRecord) == 0).findFirst();
+        Optional<MtRecord> mtRecordFound = expectedMtRecords
+                .stream()
+                .filter(mtRecord -> new MtRecordComparator().compare(receivedRecord, mtRecord) == 0)
+                .findFirst();
         if (mtRecordFound.isPresent()) {
             expectedMtRecords.remove(mtRecordFound.get());
         } else {
@@ -176,7 +178,8 @@ class MtAmazonDynamoDbStreamTestRunner {
     }
 
     static class StreamWorker {
-        private final ExecutorService workerPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+        private final ExecutorService workerPool = Executors
+                .newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
         private final Map<String, Worker> workers = new HashMap<>();
 
         private final AmazonDynamoDB amazonDynamoDb;
@@ -201,23 +204,23 @@ class MtAmazonDynamoDbStreamTestRunner {
             if (workers.get(streamArn) == null) {
                 String applicationName = streamDescription.getLabel();
                 Worker worker = new Builder()
-                    .config(new KinesisClientLibConfiguration(
-                        applicationName,
-                        streamArn,
-                        awsCredentialsProvider,
-                        applicationName + "_" + System.currentTimeMillis())
-                        .withIdleTimeBetweenReadsInMillis(1)
-                        .withCallProcessRecordsEvenForEmptyRecordList(true)
-                        .withInitialLeaseTableReadCapacity(10)
-                        .withInitialLeaseTableWriteCapacity(10)
-                        .withTableName("oktodelete-LEASE_TABLE." + applicationName)
-                        .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON))
-                    .recordProcessorFactory(streamDescription.getRecordProcessorFactory())
-                    .dynamoDBClient(amazonDynamoDb)
-                    .cloudWatchClient(new DummyCloudWatch())
-                    .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDbStreams))
-                    .execService(workerPool)
-                    .build();
+                        .config(new KinesisClientLibConfiguration(
+                                applicationName,
+                                streamArn,
+                                awsCredentialsProvider,
+                                applicationName + "_" + System.currentTimeMillis())
+                                .withIdleTimeBetweenReadsInMillis(1)
+                                .withCallProcessRecordsEvenForEmptyRecordList(true)
+                                .withInitialLeaseTableReadCapacity(10)
+                                .withInitialLeaseTableWriteCapacity(10)
+                                .withTableName("oktodelete-LEASE_TABLE." + applicationName)
+                                .withInitialPositionInStream(InitialPositionInStream.TRIM_HORIZON))
+                        .recordProcessorFactory(streamDescription.getRecordProcessorFactory())
+                        .dynamoDBClient(amazonDynamoDb)
+                        .cloudWatchClient(new DummyCloudWatch())
+                        .kinesisClient(new AmazonDynamoDBStreamsAdapterClient(amazonDynamoDbStreams))
+                        .execService(workerPool)
+                        .build();
                 workerPool.submit(worker);
                 workers.put(streamArn, worker);
                 log.info("started stream listener on " + streamArn);
@@ -266,15 +269,15 @@ class MtAmazonDynamoDbStreamTestRunner {
             if (!r1.getDynamodb().getKeys().equals(r2.getDynamodb().getKeys())) {
                 return 1;
             }
-            if ((r1.getDynamodb().getOldImage() == null && r2.getDynamodb().getOldImage() != null) ||
-                (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() == null) || (
-                (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() != null)
+            if ((r1.getDynamodb().getOldImage() == null && r2.getDynamodb().getOldImage() != null)
+                    || (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() == null)
+                    || ((r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() != null)
                     && !r1.getDynamodb().getOldImage().equals(r2.getDynamodb().getOldImage()))) {
                 return 1;
             }
-            if ((r1.getDynamodb().getNewImage() == null && r2.getDynamodb().getNewImage() != null) ||
-                (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() == null) || (
-                (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() != null)
+            if ((r1.getDynamodb().getNewImage() == null && r2.getDynamodb().getNewImage() != null)
+                    || (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() == null)
+                    || ((r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() != null)
                     && !r1.getDynamodb().getNewImage().equals(r2.getDynamodb().getNewImage()))) {
                 return 1;
             }
@@ -305,7 +308,7 @@ class MtAmazonDynamoDbStreamTestRunner {
 
         @Override
         public DescribeAlarmHistoryResult describeAlarmHistory(
-            DescribeAlarmHistoryRequest describeAlarmHistoryRequest) {
+                DescribeAlarmHistoryRequest describeAlarmHistoryRequest) {
             return new DescribeAlarmHistoryResult();
         }
 
@@ -326,19 +329,19 @@ class MtAmazonDynamoDbStreamTestRunner {
 
         @Override
         public DescribeAlarmsForMetricResult describeAlarmsForMetric(
-            DescribeAlarmsForMetricRequest describeAlarmsForMetricRequest) {
+                DescribeAlarmsForMetricRequest describeAlarmsForMetricRequest) {
             return new DescribeAlarmsForMetricResult();
         }
 
         @Override
         public DisableAlarmActionsResult disableAlarmActions(
-            DisableAlarmActionsRequest disableAlarmActionsRequest) {
+                DisableAlarmActionsRequest disableAlarmActionsRequest) {
             return new DisableAlarmActionsResult();
         }
 
         @Override
         public EnableAlarmActionsResult enableAlarmActions(
-            EnableAlarmActionsRequest enableAlarmActionsRequest) {
+                EnableAlarmActionsRequest enableAlarmActionsRequest) {
             return new EnableAlarmActionsResult();
         }
 
@@ -354,7 +357,7 @@ class MtAmazonDynamoDbStreamTestRunner {
 
         @Override
         public GetMetricStatisticsResult getMetricStatistics(
-            GetMetricStatisticsRequest getMetricStatisticsRequest) {
+                GetMetricStatisticsRequest getMetricStatisticsRequest) {
             return new GetMetricStatisticsResult();
         }
 

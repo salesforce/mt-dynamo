@@ -7,6 +7,12 @@
 
 package com.salesforce.dynamodbv2;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.HOSTED_DYNAMO_ACCOUNT_MAPPER;
+import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.LOCAL_DYNAMO_ACCOUNT_MAPPER;
+import static java.nio.file.StandardOpenOption.APPEND;
+import static java.nio.file.StandardOpenOption.CREATE;
+
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
@@ -19,13 +25,13 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbTestRunner;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import dnl.utils.text.table.TextTable;
-import org.junit.jupiter.api.Test;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -44,19 +50,14 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.HOSTED_DYNAMO_ACCOUNT_MAPPER;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.LOCAL_DYNAMO_ACCOUNT_MAPPER;
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
+import org.junit.jupiter.api.Test;
 
 /**
  * Dumps table contents for allowable permutation of implementation chains.
- * <p>
- * Supported permutations ...
- * <p>
- * account
+ *
+ * <p>Supported permutations ...
+ *
+ * <p>account
  * table
  * sharedtable
  * table -> account
@@ -65,26 +66,32 @@ import static java.nio.file.StandardOpenOption.CREATE;
  * sharedtable -> table
  * table -> sharedtable -> account
  * sharedtable -> table -> account
- * <p>
- * MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end of the chain when it is used.
- * <p>
- * There is also a logger mapper that is used purely to log all requests.  It may be added wherever chaining is supported.
- * For these tests it is always at the lowest level available.  That is, it is always at the end of the chain unless
- * the account mapper is at the end of the chain in which case it is immediately before the account mapper in the chain.
- * <p>
- * See javadoc for each test for the chain sequence that each test implements.
- * <p>
- * Note that all tests that involve the account mapper depend on having set up local credentials profiles.See TestAccountCredentialsMapper for details.
+ *
+ * <p>MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end of the
+ * chain when it is used.
+ *
+ * <p>There is also a logger mapper that is used purely to log all requests.  It may be added wherever chaining is
+ * supported.  For these tests it is always at the lowest level available.  That is, it is always at the end of the
+ * chain unless the account mapper is at the end of the chain in which case it is immediately before the account mapper
+ * in the chain.
+ *
+ * <p>See Javadoc for each test for the chain sequence that each test implements.
+ *
+ * <p>Note that all tests that involve the account mapper depend on having set up local credentials profiles. See
+ * {@link MtAmazonDynamoDbByAccountTest.TestAccountCredentialsMapper} for details.
  *
  * @author msgroi
  */
+@SuppressWarnings("CheckStyle")
 class DocGeneratorRunner {
 
     private static final boolean skipAccountTest = false;
     private static final boolean isLocalDynamo = true;
     private static final String docsDir = "docs";
     private static final String docsChainsDir = "docs/chains";
-    private static final AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder = AmazonDynamoDBClientBuilder.standard().withRegion(Regions.US_EAST_1);
+    private static final AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
+            .standard()
+            .withRegion(Regions.US_EAST_1);
     private static final MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
     private static final AmazonDynamoDB localAmazonDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
@@ -97,16 +104,16 @@ class DocGeneratorRunner {
             return;
         }
         AmazonDynamoDB amazonDynamoDb =
-            getLoggerBuilder().withAmazonDynamoDb(
-                getAccountBuilder()).build();
+                getLoggerBuilder().withAmazonDynamoDb(
+                        getAccountBuilder()).build();
         new DocGenerator(
-            "byAccount",
-            docsDir + "/byAccount",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            true,
-            getAccounts()).runAll();
+                "byAccount",
+                docsDir + "/byAccount",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                true,
+                getAccounts()).runAll();
     }
 
     /*
@@ -116,16 +123,16 @@ class DocGeneratorRunner {
     void byTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(isLocalDynamo);
         AmazonDynamoDB amazonDynamoDb =
-            getTableBuilder().withAmazonDynamoDb(
-                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
+                getTableBuilder().withAmazonDynamoDb(
+                        getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
         new DocGenerator(
-            "byTable",
-            docsDir + "/byTable",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                "byTable",
+                docsDir + "/byTable",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
     }
 
     /*
@@ -135,16 +142,16 @@ class DocGeneratorRunner {
     void bySharedTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(isLocalDynamo);
         AmazonDynamoDB amazonDynamoDb =
-            getBySharedTableBuilder().withAmazonDynamoDb(
-                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
+                getBySharedTableBuilder().withAmazonDynamoDb(
+                        getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
         new DocGenerator(
-            "bySharedTable",
-            docsDir + "/bySharedTable",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                "bySharedTable",
+                docsDir + "/bySharedTable",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
     }
 
     /*
@@ -156,17 +163,17 @@ class DocGeneratorRunner {
             return;
         }
         AmazonDynamoDB amazonDynamoDb =
-            getTableBuilder().withAmazonDynamoDb(
-                getLoggerBuilder().withAmazonDynamoDb(
-                    getAccountBuilder()).build()).build();
+                getTableBuilder().withAmazonDynamoDb(
+                        getLoggerBuilder().withAmazonDynamoDb(
+                                getAccountBuilder()).build()).build();
         new DocGenerator(
-            "byTableByAccount",
-            docsChainsDir + "/byTableByAccount",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            getAccounts()).runAll();
+                "byTableByAccount",
+                docsChainsDir + "/byTableByAccount",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                getAccounts()).runAll();
     }
 
     /*
@@ -179,17 +186,17 @@ class DocGeneratorRunner {
         }
         AmazonDynamoDB accountAmazonDynamoDb = getAccountBuilder();
         AmazonDynamoDB amazonDynamoDb =
-            getBySharedTableBuilder().withAmazonDynamoDb(
-                getLoggerBuilder().withAmazonDynamoDb(
-                    accountAmazonDynamoDb).build()).build();
+                getBySharedTableBuilder().withAmazonDynamoDb(
+                        getLoggerBuilder().withAmazonDynamoDb(
+                                accountAmazonDynamoDb).build()).build();
         new DocGenerator(
-            "bySharedTableByAccount",
-            docsChainsDir + "/bySharedTableByAccount",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            getAccounts()).runAll();
+                "bySharedTableByAccount",
+                docsChainsDir + "/bySharedTableByAccount",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                getAccounts()).runAll();
     }
 
     /*
@@ -199,17 +206,17 @@ class DocGeneratorRunner {
     void byTableBySharedTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(isLocalDynamo);
         AmazonDynamoDB amazonDynamoDb =
-            getTableBuilder().withAmazonDynamoDb(
-                getBySharedTableBuilder().withAmazonDynamoDb(
-                    getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
+                getTableBuilder().withAmazonDynamoDb(
+                        getBySharedTableBuilder().withAmazonDynamoDb(
+                                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
         new DocGenerator(
-            "byTableBySharedTable",
-            docsChainsDir + "/byTableBySharedTable",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                "byTableBySharedTable",
+                docsChainsDir + "/byTableBySharedTable",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
     }
 
     /*
@@ -219,17 +226,17 @@ class DocGeneratorRunner {
     void bySharedTableByTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(isLocalDynamo);
         AmazonDynamoDB amazonDynamoDb =
-            getBySharedTableBuilder().withAmazonDynamoDb(
-                getTableBuilder().withAmazonDynamoDb(
-                    getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
+                getBySharedTableBuilder().withAmazonDynamoDb(
+                        getTableBuilder().withAmazonDynamoDb(
+                                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
         new DocGenerator(
-            "bySharedTableByTable",
-            docsChainsDir + "/bySharedTableByTable",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                "bySharedTableByTable",
+                docsChainsDir + "/bySharedTableByTable",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
     }
 
     /*
@@ -242,18 +249,18 @@ class DocGeneratorRunner {
         }
         AmazonDynamoDB accountAmazonDynamoDb = getAccountBuilder();
         AmazonDynamoDB amazonDynamoDb =
-            getTableBuilder().withAmazonDynamoDb(
-                getBySharedTableBuilder().withAmazonDynamoDb(
-                    getLoggerBuilder().withAmazonDynamoDb(
-                        accountAmazonDynamoDb).build()).build()).build();
+                getTableBuilder().withAmazonDynamoDb(
+                        getBySharedTableBuilder().withAmazonDynamoDb(
+                                getLoggerBuilder().withAmazonDynamoDb(
+                                        accountAmazonDynamoDb).build()).build()).build();
         new DocGenerator(
-            "byTableBySharedTableByAccount",
-            docsChainsDir + "/byTableBySharedTableByAccount",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            getAccounts()).runAll();
+                "byTableBySharedTableByAccount",
+                docsChainsDir + "/byTableBySharedTableByAccount",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                getAccounts()).runAll();
     }
 
     /*
@@ -265,28 +272,28 @@ class DocGeneratorRunner {
             return;
         }
         AmazonDynamoDB table =
-            getTableBuilder().withAmazonDynamoDb(
-                getLoggerBuilder().withAmazonDynamoDb(
-                    getAccountBuilder()).build()).build();
+                getTableBuilder().withAmazonDynamoDb(
+                        getLoggerBuilder().withAmazonDynamoDb(
+                                getAccountBuilder()).build()).build();
         AmazonDynamoDB amazonDynamoDb =
-            getBySharedTableBuilder().withAmazonDynamoDb(table).build();
+                getBySharedTableBuilder().withAmazonDynamoDb(table).build();
         new DocGenerator(
-            "bySharedTableByTableByAccount",
-            docsChainsDir + "/bySharedTableByTableByAccount",
-            mtContext,
-            () -> amazonDynamoDb,
-            isLocalDynamo,
-            false,
-            getAccounts()).runAll();
+                "bySharedTableByTableByAccount",
+                docsChainsDir + "/bySharedTableByTableByAccount",
+                mtContext,
+                () -> amazonDynamoDb,
+                isLocalDynamo,
+                false,
+                getAccounts()).runAll();
     }
 
     public class DocGenerator extends MtAmazonDynamoDbTestRunner {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
-            .put("_tablemetadata", ImmutableList.of("table", "data"))
-            .put("table1", ImmutableList.of("hashKeyField", "someField"))
-            .put("table2", ImmutableList.of("hashKeyField", "someField"))
-            .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
+                .put("_tablemetadata", ImmutableList.of("table", "data"))
+                .put("table1", ImmutableList.of("hashKeyField", "someField"))
+                .put("table2", ImmutableList.of("hashKeyField", "someField"))
+                .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
 
         private final String test;
         private final Path outputFile;
@@ -303,7 +310,11 @@ class DocGeneratorRunner {
                      boolean isLocalDynamo,
                      boolean prefixTablenames,
                      Map<String, AmazonDynamoDB> targetAmazonDynamoDbs) {
-            super(mtContext, amazonDynamoDbSupplier.get(), getPhysicalAmazonDynamoDb(isLocalDynamo), null, isLocalDynamo);
+            super(mtContext,
+                    amazonDynamoDbSupplier.get(),
+                    getPhysicalAmazonDynamoDb(isLocalDynamo),
+                    null,
+                    isLocalDynamo);
             this.test = test;
             this.outputFile = getOutputFile(outputFilePath);
             this.manuallyPrefixTablenames = prefixTablenames;
@@ -320,9 +331,9 @@ class DocGeneratorRunner {
             tableName1 = buildTableName("table", 1);
             tableName2 = buildTableName("table", 2);
             ctxTablePairs = ImmutableList.of(
-                ImmutableMap.of("ctx1", tableName1),
-                ImmutableMap.of("ctx1", tableName2),
-                ImmutableMap.of("ctx2", tableName1));
+                    ImmutableMap.of("ctx1", tableName1),
+                    ImmutableMap.of("ctx1", tableName2),
+                    ImmutableMap.of("ctx2", tableName1));
             ctxTablePairs.forEach(ctxTablePair -> {
                 Entry<String, String> ctxTablePairEntry = ctxTablePair.entrySet().iterator().next();
                 recreateTable(ctxTablePairEntry.getKey(), ctxTablePairEntry.getValue());
@@ -352,11 +363,15 @@ class DocGeneratorRunner {
 
         void teardown() {
             deleteTables(ctxTablePairs);
-            targetAmazonDynamoDbs.forEach((s, amazonDynamoDb) -> amazonDynamoDb.listTables().getTableNames().forEach(tableName -> {
-                if (tableName.startsWith(DocGeneratorRunner.getTablePrefix(true))) {
-                    new TestAmazonDynamoDbAdminUtils(amazonDynamoDb).deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
-                }
-            }));
+            targetAmazonDynamoDbs.forEach((s, amazonDynamoDb) -> amazonDynamoDb
+                    .listTables()
+                    .getTableNames()
+                    .forEach(tableName -> {
+                        if (tableName.startsWith(DocGeneratorRunner.getTablePrefix(true))) {
+                            new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
+                                    .deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
+                        }
+                    }));
         }
 
         void deleteTables(List<Map<String, String>> ctxPairs) {
@@ -368,15 +383,21 @@ class DocGeneratorRunner {
 
         void populateTable(String tenantId, String tableName) {
             mtContext.setContext(tenantId);
-            amazonDynamoDbSupplier.get().putItem(new PutItemRequest().withTableName(tableName).withItem(createItem("1")));
-            amazonDynamoDbSupplier.get().putItem(new PutItemRequest().withTableName(tableName).withItem(createItem("2")));
+            amazonDynamoDbSupplier.get().putItem(new PutItemRequest()
+                    .withTableName(tableName)
+                    .withItem(createItem("1")));
+            amazonDynamoDbSupplier.get().putItem(new PutItemRequest()
+                    .withTableName(tableName)
+                    .withItem(createItem("2")));
         }
 
         void dumpTablePretty(AmazonDynamoDB amazonDynamoDb, String tableName) {
             List<String> columnNames = new ArrayList<>();
             List<Object[]> rows = new ArrayList<>();
             if (tableName.startsWith(DocGeneratorRunner.getTablePrefix(true))) {
-                List<Map<String, AttributeValue>> items = amazonDynamoDb.scan(new ScanRequest().withTableName(tableName)).getItems();
+                List<Map<String, AttributeValue>> items = amazonDynamoDb.scan(new ScanRequest()
+                        .withTableName(tableName))
+                        .getItems();
                 appendToFile(new String(new char[5]).replace('\0', ' ') + tableName + "\n");
                 if (!items.isEmpty()) {
                     items.forEach(item -> {
@@ -400,7 +421,7 @@ class DocGeneratorRunner {
             String unqualifiedTableName = dotPos == -1 ? qualifiedTablename : qualifiedTablename.substring(dotPos + 1);
             List<String> targetColumnOrder = targetColumnOrderMap.get(unqualifiedTableName);
             checkArgument(targetColumnOrder != null && !targetColumnOrder.isEmpty(),
-                "no column ordering found for " + unqualifiedTableName);
+                    "no column ordering found for " + unqualifiedTableName);
             return targetColumnOrder;
         }
 
@@ -412,12 +433,15 @@ class DocGeneratorRunner {
                         return i;
                     }
                 }
-                throw new RuntimeException("targetColumn=" + targetColumn + " not found in currentColumns=" + currentColumns);
+                throw new RuntimeException("targetColumn="
+                        + targetColumn
+                        + " not found in currentColumns="
+                        + currentColumns);
             }).collect(Collectors.toList());
             // build a list of rows that contain properly ordered column data
             List<Object[]> rowsWithSortedColumns = rows.stream()
-                .map(row -> indices.stream()
-                    .map(index -> row[index]).collect(Collectors.toList()).toArray()).collect(Collectors.toList());
+                    .map(row -> indices.stream().map(index -> row[index]).collect(Collectors.toList()).toArray())
+                    .collect(Collectors.toList());
             // clear the original row list
             rows.clear();
             // add the properly order column data to the original row list
@@ -485,12 +509,12 @@ class DocGeneratorRunner {
     private AmazonDynamoDB getAccountBuilder() {
         if (isLocalDynamo) {
             return MtAmazonDynamoDbByAccount.accountMapperBuilder()
-                .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
-                .withContext(mtContext).build();
+                    .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
+                    .withContext(mtContext).build();
         } else {
             return MtAmazonDynamoDbByAccount.builder().withAmazonDynamoDbClientBuilder(amazonDynamoDbClientBuilder)
-                .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
-                .withContext(mtContext).build();
+                    .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
+                    .withContext(mtContext).build();
         }
     }
 
@@ -504,20 +528,30 @@ class DocGeneratorRunner {
 
     private MtAmazonDynamoDbLogger.MtAmazonDynamoDbBuilder getLoggerBuilder() {
         return MtAmazonDynamoDbLogger.builder()
-            .withContext(mtContext)
-            .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
-                "putItem", "query", "scan", "updateItem"));
+                .withContext(mtContext)
+                .withMethodsToLog(ImmutableList.of("createTable",
+                        "deleteItem",
+                        "deleteTable",
+                        "describeTable",
+                        "getItem",
+                        "putItem",
+                        "query",
+                        "scan",
+                        "updateItem"));
     }
 
     private SharedTableCustomDynamicBuilder getBySharedTableBuilder() {
         return SharedTableBuilder.builder()
-            .withPrecreateTables(false)
-            .withContext(mtContext)
-            .withTruncateOnDeleteTable(true);
+                .withPrecreateTables(false)
+                .withContext(mtContext)
+                .withTruncateOnDeleteTable(true);
     }
 
     private static String getTablePrefix(boolean prefixTablenames) {
-        return isLocalDynamo ? "" : (prefixTablenames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "");
+        if (isLocalDynamo) {
+            return "";
+        }
+        return prefixTablenames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
     }
 
     private AmazonDynamoDB getPhysicalAmazonDynamoDb(boolean isLocalDynamo) {

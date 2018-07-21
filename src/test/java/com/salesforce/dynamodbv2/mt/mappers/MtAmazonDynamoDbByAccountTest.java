@@ -35,14 +35,15 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 /**
- * @author msgroi
- *
  * This test requires that you have AWS credentials for 2 accounts, one default and one named 'personal' in your
  * ~/.aws/credentials file.  See http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html.
+ *
+ * @author msgroi
  */
 public class MtAmazonDynamoDbByAccountTest {
 
-    // local by default because hosted dynamo depends on hosted AWS which is 1) slow, and 2) requires two sets of credentials.
+    // local by default because hosted dynamo depends on hosted AWS, which is (1) slow and (2) requires two sets of
+    // credentials.
     private static final boolean isLocalDynamo = true;
     private static final AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder
         .standard().withRegion(Regions.US_EAST_1);
@@ -54,15 +55,15 @@ public class MtAmazonDynamoDbByAccountTest {
             MtAmazonDynamoDbByAccountBuilder builder = MtAmazonDynamoDbByAccount.accountMapperBuilder()
                 .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
                 .withContext(mtContext);
-            AmazonDynamoDB amazonDynamoDB = builder.build();
-            new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB, null, false).runAll();
+            AmazonDynamoDB amazonDynamoDb = builder.build();
+            new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDb, amazonDynamoDb, null, false).runAll();
         } else {
             MtCredentialsBasedAmazonDynamoDbByAccountBuilder builder = MtAmazonDynamoDbByAccount.builder()
                 .withAmazonDynamoDbClientBuilder(amazonDynamoDBClientBuilder)
                 .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
                 .withContext(mtContext);
-            AmazonDynamoDB amazonDynamoDB = builder.build();
-            new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDB, amazonDynamoDB, null, false).runAll();
+            AmazonDynamoDB amazonDynamoDb = builder.build();
+            new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDb, amazonDynamoDb, null, false).runAll();
         }
     }
 

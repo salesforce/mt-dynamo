@@ -1,5 +1,11 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -9,15 +15,8 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.Mockito.mock;
-
-class MtAmazonDynamoDbStreamsPassthroughTest extends MtAmazonDynamoDbStreamsBaseTest<MtAmazonDynamoDbStreamsPassthrough> {
-
-
+class MtAmazonDynamoDbStreamsPassthroughTest
+        extends MtAmazonDynamoDbStreamsBaseTest<MtAmazonDynamoDbStreamsPassthrough> {
     @Override
     protected MtAmazonDynamoDbStreamsPassthrough instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDbStreams) {
         return new MtAmazonDynamoDbStreamsPassthrough(dynamoDbStreams);

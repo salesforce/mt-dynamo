@@ -7,16 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
-import org.junit.jupiter.api.Test;
-
-import java.nio.charset.Charset;
-import java.util.function.Supplier;
-
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
@@ -24,6 +14,16 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
+
+import java.nio.charset.Charset;
+import java.util.function.Supplier;
+import org.junit.jupiter.api.Test;
 
 /*
  * @author msgroi
@@ -88,7 +88,8 @@ class FieldMapperTest {
     @Test
     void invalidType() {
         try {
-            buildFieldMapper(buildMtContext()).apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
+            buildFieldMapper(buildMtContext())
+                    .apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
         } catch (NullPointerException e) {
             // expected
             assertEquals("null attribute type", e.getMessage());
@@ -104,7 +105,8 @@ class FieldMapperTest {
         FieldMapper fieldMapper = buildFieldMapper(mtContext);
         AttributeValue qualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue.get());
         assertEquals(expectedStringValue, qualifiedAttributeValue.getS());
-        AttributeValue actualAttributeValue = fieldMapper.reverse(reverseFieldMapping(fieldMapping), qualifiedAttributeValue);
+        AttributeValue actualAttributeValue = fieldMapper
+                .reverse(reverseFieldMapping(fieldMapping), qualifiedAttributeValue);
         assertEquals(attributeValue.get(), actualAttributeValue);
     }
 

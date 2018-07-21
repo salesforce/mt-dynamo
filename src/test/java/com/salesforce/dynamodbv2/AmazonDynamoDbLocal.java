@@ -10,8 +10,11 @@ package com.salesforce.dynamodbv2;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.local.embedded.DynamoDBEmbedded;
+import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class AmazonDynamoDbLocal {
@@ -31,7 +34,7 @@ public class AmazonDynamoDbLocal {
 
     private static void initialize() {
         if (localAmazonDynamoDb == null) {
-            com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
+            AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
             localAmazonDynamoDb = amazonDynamoDbLocalClient.amazonDynamoDB();
             localAmazonDynamoDbStreams = amazonDynamoDbLocalClient.amazonDynamoDBStreams();
         }
@@ -41,7 +44,7 @@ public class AmazonDynamoDbLocal {
         return getNewAmazonDynamoDbLocalClient().amazonDynamoDB();
     }
 
-    private static com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal getNewAmazonDynamoDbLocalClient() {
+    private static AmazonDynamoDBLocal getNewAmazonDynamoDbLocalClient() {
         System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
         return DynamoDBEmbedded.create();
     }

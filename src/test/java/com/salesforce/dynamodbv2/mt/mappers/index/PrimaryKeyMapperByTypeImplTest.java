@@ -7,18 +7,18 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.index;
 
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.mappers.MappingException;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.collect.ImmutableList.of;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
 
 /*
  * @author msgroi
@@ -98,7 +98,8 @@ class PrimaryKeyMapperByTypeImplTest {
     private static void assertMappingException(TestFunction test) {
         try {
             HasPrimaryKey hasPrimaryKey = test.run();
-            throw new RuntimeException("expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
+            throw new RuntimeException("expected MappingException not encountered, found:"
+                    + hasPrimaryKey.getPrimaryKey());
         } catch (MappingException ignored) { /* expected */ }
     }
 

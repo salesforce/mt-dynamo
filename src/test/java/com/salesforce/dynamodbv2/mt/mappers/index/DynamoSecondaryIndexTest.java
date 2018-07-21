@@ -7,12 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.index;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import org.junit.jupiter.api.Test;
-
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
@@ -22,6 +16,12 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import org.junit.jupiter.api.Test;
 
 /*
  * @author msgroi
