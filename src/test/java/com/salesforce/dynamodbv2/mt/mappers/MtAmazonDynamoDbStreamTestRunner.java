@@ -244,6 +244,7 @@ class MtAmazonDynamoDbStreamTestRunner {
             try {
                 this.countDownLatch.await(timeoutSeconds, TimeUnit.SECONDS);
             } catch (InterruptedException ignore) {
+                // OK to ignore(?)
             }
         }
 
