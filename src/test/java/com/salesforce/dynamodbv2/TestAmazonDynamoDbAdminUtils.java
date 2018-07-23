@@ -14,6 +14,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class TestAmazonDynamoDbAdminUtils extends AmazonDynamoDbAdminUtils {
@@ -22,6 +24,9 @@ public class TestAmazonDynamoDbAdminUtils extends AmazonDynamoDbAdminUtils {
         super(amazonDynamoDb);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public static String getLocalHost() {
         try {
             String fqname = InetAddress.getLocalHost().getHostName();

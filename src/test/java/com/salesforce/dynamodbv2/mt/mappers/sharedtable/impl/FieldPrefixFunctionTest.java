@@ -7,10 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /*
  * @author msgroi

@@ -7,6 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.StreamViewType.KEYS_ONLY;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -20,12 +25,9 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import org.junit.jupiter.api.Test;
 
-import static com.amazonaws.services.dynamodbv2.model.StreamViewType.KEYS_ONLY;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class MtAmazonDynamoDbByTableTest {
@@ -66,15 +68,18 @@ class MtAmazonDynamoDbByTableTest {
             .withTablePrefix("msgroi.")
             .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
-        assertEquals("msgroi.ctx1-originalTableFoo", amazonDynamoDbByTable.buildPrefixedTablename("originalTableFoo"));
+        assertEquals("msgroi.ctx1-originalTableFoo",
+                amazonDynamoDbByTable.buildPrefixedTablename("originalTableFoo"));
         when(mtContext.getContext()).thenReturn("ctx2");
-        assertEquals("msgroi.ctx2-originalTableBar", amazonDynamoDbByTable.buildPrefixedTablename("originalTableBar"));
+        assertEquals("msgroi.ctx2-originalTableBar",
+                amazonDynamoDbByTable.buildPrefixedTablename("originalTableBar"));
         MtAmazonDynamoDbByTable amazonDynamoDbByTable2 = MtAmazonDynamoDbByTable.builder()
             .withAmazonDynamoDb(localAmazonDynamoDb)
             .withTablePrefix("msgroi-")
             .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx3");
-        assertEquals("msgroi-ctx3.originalTableFooBar", amazonDynamoDbByTable2.buildPrefixedTablename("originalTableFooBar"));
+        assertEquals("msgroi-ctx3.originalTableFooBar",
+                amazonDynamoDbByTable2.buildPrefixedTablename("originalTableFooBar"));
 
         /*
          * w/out tablePrefix
@@ -84,14 +89,17 @@ class MtAmazonDynamoDbByTableTest {
             .withDelimiter("-")
             .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
-        assertEquals("ctx1-originalTableFoo", amazonDynamoDbByTable.buildPrefixedTablename("originalTableFoo"));
+        assertEquals("ctx1-originalTableFoo",
+                amazonDynamoDbByTable.buildPrefixedTablename("originalTableFoo"));
         when(mtContext.getContext()).thenReturn("ctx2");
-        assertEquals("ctx2-originalTableBar", amazonDynamoDbByTable.buildPrefixedTablename("originalTableBar"));
+        assertEquals("ctx2-originalTableBar",
+                amazonDynamoDbByTable.buildPrefixedTablename("originalTableBar"));
         amazonDynamoDbByTable2 = MtAmazonDynamoDbByTable.builder()
             .withAmazonDynamoDb(localAmazonDynamoDb)
             .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx3");
-        assertEquals("ctx3.originalTableFooBar", amazonDynamoDbByTable2.buildPrefixedTablename("originalTableFooBar"));
+        assertEquals("ctx3.originalTableFooBar",
+                amazonDynamoDbByTable2.buildPrefixedTablename("originalTableFooBar"));
     }
 
     @Test
@@ -102,13 +110,16 @@ class MtAmazonDynamoDbByTableTest {
             .withContext(mtContext).build();
         when(mtContext.getContext()).thenReturn("ctx1");
         int count = 110;
-        for (int i = 1; i <= count; i++) { // create more than 100 tables with stream specs, since this exercises the listStreams default maxsize
+        // create more than 100 tables with stream specs, since this exercises thelistStreams default maxsize
+        for (int i = 1; i <= count; i++) {
             amazonDynamoDbByTable.createTable(new CreateTableRequest()
                 .withAttributeDefinitions(new AttributeDefinition("hk", ScalarAttributeType.S))
                 .withKeySchema(new KeySchemaElement("hk", KeyType.HASH))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                 .withTableName("table" + i)
-                .withStreamSpecification(new StreamSpecification().withStreamEnabled(true).withStreamViewType(KEYS_ONLY)));
+                .withStreamSpecification(new StreamSpecification()
+                        .withStreamEnabled(true)
+                        .withStreamViewType(KEYS_ONLY)));
         }
         assertEquals(count, amazonDynamoDbByTable.listStreams(null).size());
     }

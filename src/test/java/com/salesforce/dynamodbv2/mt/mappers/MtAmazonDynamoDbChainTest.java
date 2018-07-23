@@ -7,25 +7,25 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
+import org.junit.jupiter.api.Test;
 
 /**
  * This tests that chaining works.  Note that this is a white-box test.  It inspects the calls to dynamo to see if
  * account, table, and index mapping has been applied.
- * <p>
- * Chain: amazonDynamoDbBySharedTable -> amazonDynamoDbByTable -> amazonDynamoDbLogger -> amazonDynamoDbByAccount
+ *
+ * <p>Chain: amazonDynamoDbBySharedTable -> amazonDynamoDbByTable -> amazonDynamoDbLogger -> amazonDynamoDbByAccount
  *
  * @author msgroi
  */
@@ -66,7 +66,11 @@ class MtAmazonDynamoDbChainTest {
             .withAmazonDynamoDb(amazonDynamoDbByTable)
             .withContext(mtContext)
             .withTruncateOnDeleteTable(true).build();
-        MtAmazonDynamoDbTestRunner testRunner = new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDbBySharedTable, amazonDynamoDb, null, true);
+        MtAmazonDynamoDbTestRunner testRunner = new MtAmazonDynamoDbTestRunner(mtContext,
+                amazonDynamoDbBySharedTable,
+                amazonDynamoDb,
+                null,
+                true);
 
         // setup
         testRunner.setup();
@@ -80,6 +84,7 @@ class MtAmazonDynamoDbChainTest {
 
         // assert
         assertThat(logAggregator.messages, is(ImmutableList.of(
+            // TODO: read this from a file
             "method=createTable(), table=ctx1.mt_sharedtablestatic_s_nolsi, {AttributeDefinitions: [{AttributeName: hk,AttributeType: S}, {AttributeName: gsi_s_hk,AttributeType: S}, {AttributeName: gsi_s_s_hk,AttributeType: S}, {AttributeName: gsi_s_s_rk,AttributeType: S}, {AttributeName: gsi_s_n_hk,AttributeType: S}, {AttributeName: gsi_s_n_rk,AttributeType: N}, {AttributeName: gsi_s_b_hk,AttributeType: S}, {AttributeName: gsi_s_b_rk,AttributeType: B}],TableName: ctx1.mt_sharedtablestatic_s_nolsi,KeySchema: [{AttributeName: hk,KeyType: HASH}],GlobalSecondaryIndexes: [{IndexName: gsi_s,KeySchema: [{AttributeName: gsi_s_hk,KeyType: HASH}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_s,KeySchema: [{AttributeName: gsi_s_s_hk,KeyType: HASH}, {AttributeName: gsi_s_s_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_n,KeySchema: [{AttributeName: gsi_s_n_hk,KeyType: HASH}, {AttributeName: gsi_s_n_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_b,KeySchema: [{AttributeName: gsi_s_b_hk,KeyType: HASH}, {AttributeName: gsi_s_b_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}],ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1},StreamSpecification: {StreamEnabled: true,StreamViewType: NEW_AND_OLD_IMAGES},}",
             "method=putItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, item={hk={S: ctx1.MtAmazonDynamoDbTestRunner1.hashKeyValue,}, someField={S: someValue1,}}",
             "method=createTable(), table=ctx2.mt_sharedtablestatic_s_nolsi, {AttributeDefinitions: [{AttributeName: hk,AttributeType: S}, {AttributeName: gsi_s_hk,AttributeType: S}, {AttributeName: gsi_s_s_hk,AttributeType: S}, {AttributeName: gsi_s_s_rk,AttributeType: S}, {AttributeName: gsi_s_n_hk,AttributeType: S}, {AttributeName: gsi_s_n_rk,AttributeType: N}, {AttributeName: gsi_s_b_hk,AttributeType: S}, {AttributeName: gsi_s_b_rk,AttributeType: B}],TableName: ctx2.mt_sharedtablestatic_s_nolsi,KeySchema: [{AttributeName: hk,KeyType: HASH}],GlobalSecondaryIndexes: [{IndexName: gsi_s,KeySchema: [{AttributeName: gsi_s_hk,KeyType: HASH}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_s,KeySchema: [{AttributeName: gsi_s_s_hk,KeyType: HASH}, {AttributeName: gsi_s_s_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_n,KeySchema: [{AttributeName: gsi_s_n_hk,KeyType: HASH}, {AttributeName: gsi_s_n_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}, {IndexName: gsi_s_b,KeySchema: [{AttributeName: gsi_s_b_hk,KeyType: HASH}, {AttributeName: gsi_s_b_rk,KeyType: RANGE}],Projection: {ProjectionType: ALL,},ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1}}],ProvisionedThroughput: {ReadCapacityUnits: 1,WriteCapacityUnits: 1},StreamSpecification: {StreamEnabled: true,StreamViewType: NEW_AND_OLD_IMAGES},}",

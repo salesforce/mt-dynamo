@@ -7,18 +7,18 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
-import org.junit.jupiter.api.Test;
 
 import java.util.Map;
-
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import org.junit.jupiter.api.Test;
 
 /*
  * @author msgroi

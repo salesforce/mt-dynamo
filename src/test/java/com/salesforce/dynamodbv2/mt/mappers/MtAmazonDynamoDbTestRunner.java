@@ -66,6 +66,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class MtAmazonDynamoDbTestRunner {
@@ -369,6 +371,7 @@ public class MtAmazonDynamoDbTestRunner {
             getAmazonDynamoDbSupplier().updateItem(condUpdateItemRequestFail);
             throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
         } catch (ConditionalCheckFailedException ignore) {
+            // OK to ignore(?)
         }
         assertItemValue("someValue1Updated", getItem(tableName1));
 
@@ -399,7 +402,7 @@ public class MtAmazonDynamoDbTestRunner {
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> deleteItemKey = new HashMap<>(
             ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
-        Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
+        final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1).withKey(deleteItemKey);
         getAmazonDynamoDbSupplier().deleteItem(deleteItemRequest);
         assertNull(getItem(tableName1, "someValue1Updated"));
@@ -454,13 +457,13 @@ public class MtAmazonDynamoDbTestRunner {
         assertThat(queryItem6, is(table3item3));
 
         // query hk with filter expression on someField
-        List<Map<String, AttributeValue>> queryItemsFE = getAmazonDynamoDbSupplier().query(
+        List<Map<String, AttributeValue>> queryItemsFe = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
                 .withFilterExpression("#name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
                     ":value2", createStringAttribute("someValue3a")))).getItems();
-        assertEquals(1, queryItemsFE.size());
+        assertEquals(1, queryItemsFe.size());
 
         // query on gsi
         List<Map<String, AttributeValue>> queryItems4 = getAmazonDynamoDbSupplier().query(
@@ -676,8 +679,8 @@ public class MtAmazonDynamoDbTestRunner {
 
     /*
      * This test is independent of run() test because run() does not work with table hashkey type of B(binary).
-     * Because AttributeType's containing binary content can only be decoded once, we get false assertion failures.  This
-     * can be fixed with some refactoring.
+     * Because AttributeType's containing binary content can only be decoded once, we get false assertion failures.
+     * This can be fixed with some refactoring.
      */
     private void testWithHashKeyType(CreateTableRequest createTableRequest,
         String tableName,
@@ -686,8 +689,8 @@ public class MtAmazonDynamoDbTestRunner {
          * The attributeValueGeneratorFunction is necessary because the ByteBuffer contained in a AttributeType
          * can only be decoded once and thus can't be reused across tests
          */
-        Supplier<AttributeValue> generator1 = () -> attributeValueGeneratorFunction.apply("41");
-        Supplier<AttributeValue> generator2 = () -> attributeValueGeneratorFunction.apply("42");
+        final Supplier<AttributeValue> generator1 = () -> attributeValueGeneratorFunction.apply("41");
+        final Supplier<AttributeValue> generator2 = () -> attributeValueGeneratorFunction.apply("42");
 
         getAmazonDynamoDbSupplier().createTable(createTableRequest);
         mtContext.setContext("ctx1");
