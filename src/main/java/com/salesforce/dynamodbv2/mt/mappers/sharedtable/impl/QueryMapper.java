@@ -54,7 +54,8 @@ class QueryMapper {
     }
 
     /*
-     * Takes a QueryRequest representing a query against a virtual table and mutates it so it can be applied to its physical table counterpart.
+     * Takes a QueryRequest representing a query against a virtual table and mutates it so it can be applied to its
+     * physical table counterpart.
      */
     void apply(QueryRequest queryRequest) {
         validateQueryRequest(queryRequest);
@@ -62,7 +63,8 @@ class QueryMapper {
     }
 
     /*
-     * Takes a ScanRequest representing a scan against a virtual table and mutates it so it can be applied to its physical table counterpart.
+     * Takes a ScanRequest representing a scan against a virtual table and mutates it so it can be applied to its
+     * physical table counterpart.
      */
     void apply(ScanRequest scanRequest) {
         validateScanRequest(scanRequest);
@@ -95,7 +97,10 @@ class QueryMapper {
         convertFieldNameLiteralsToExpressionNames(fieldMappings, request);
 
         if (!queryContainsHashKeyCondition(request, virtualHashKey)) {
-            // the expression does not contain the table or index key that's being used in the query, add begins_with clause
+            /*
+             * the expression does not contain the table or index key that's being used in the
+             * query, add begins_with clause
+             */
             String physicalHashKey = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping ->
                 fieldMapping.getSource().getName().equals(virtualHashKey)).findFirst()
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
@@ -122,9 +127,9 @@ class QueryMapper {
      *
      * This method is called for any query or scan request that does not specify an index.
      *
-     * It is an effective no-op, meaning, there are no duplicates to remove, except when a scan is performed against a table
-     * that maps a given virtual field to multiple physical fields.  In that case, it doesn't matter which field we use
-     * in the query, the results should be the same, so we choose one of the physical fields arbitrarily.
+     * It is an effective no-op, meaning, there are no duplicates to remove, except when a scan is performed against
+     * a table that maps a given virtual field to multiple physical fields.  In that case, it doesn't matter which
+     * field we use in the query, the results should be the same, so we choose one of the physical fields arbitrarily.
      */
     private Map<String, FieldMapping> dedupeFieldMappings(Map<String, List<FieldMapping>> fieldMappings) {
         return fieldMappings.entrySet().stream().collect(Collectors.toMap(
@@ -134,7 +139,11 @@ class QueryMapper {
     }
 
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
-        // TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with by adding an OR condition
+        /*
+         * TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals
+         * condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with
+         * by adding an OR condition
+         */
         FieldMapping fieldMappingForPrefix = new FieldMapping(new Field(null, S),
             null,
             fieldMapping.getVirtualIndexName(),
@@ -145,8 +154,8 @@ class QueryMapper {
         request.putExpressionAttributeName(namePlaceholder, hashKey);
         request.putExpressionAttributeValue(valuePlaceholder, physicalValuePrefixAttribute);
         request.setPrimaryExpression(
-            (request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "") +
-                "begins_with(" + namePlaceholder + ", " + valuePlaceholder + ")");
+            (request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "")
+                + "begins_with(" + namePlaceholder + ", " + valuePlaceholder + ")");
     }
 
     private void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) {
@@ -188,15 +197,15 @@ class QueryMapper {
     }
 
     /*
-     * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the primary
-     * expression, then in the filterExpression.
+     * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the
+     * primary expression, then in the filterExpression.
      */
     private String findVirtualValuePlaceholder(String primaryExpression, String filterExpression, String keyFieldName) {
         return findVirtualValuePlaceholder(primaryExpression, keyFieldName)
             .orElseGet((Supplier<String>) () -> findVirtualValuePlaceholder(filterExpression, keyFieldName)
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field " + keyFieldName + " not found in either conditionExpression=" +
-                        primaryExpression + ", or filterExpression=" + filterExpression)));
+                    new IllegalArgumentException("field " + keyFieldName + " not found in either conditionExpression="
+                        + primaryExpression + ", or filterExpression=" + filterExpression)));
     }
 
     /*
@@ -466,10 +475,10 @@ class QueryMapper {
     }
 
     /*
-     * Converts QueryRequest's containing keyConditions to keyConditionExpression and ScanRequest's containing scanFilters.
-     * According to the DynamoDB docs, QueryRequest keyConditions and ScanRequest scanFilter's are considered 'legacy parameters'.
-     * However, since we support them by converting them to keyConditionExpressions and filterExpression's respectively
-     * because they are used by the DynamoDB document API
+     * Converts QueryRequest's containing keyConditions to keyConditionExpression and ScanRequest's containing
+     * scanFilters.  According to the DynamoDB docs, QueryRequest keyConditions and ScanRequest scanFilter's are
+     * considered 'legacy parameters'.  However, since we support them by converting them to keyConditionExpressions
+     * and filterExpression's respectively because they are used by the DynamoDB document API
      * (https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/dynamodbv2/document/DynamoDB.html).
      */
     private void convertLegacyExpression(RequestWrapper request) {

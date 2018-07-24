@@ -31,19 +31,18 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Logs all calls.
- * <p>
- * Supported: create|describe|delete Table, get|putItem, scan, query
+ *
+ * <p>Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
  */
@@ -149,6 +148,9 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        /**
+         * TODO: write Javadoc.
+         */
         public MtAmazonDynamoDbLogger build() {
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
@@ -170,26 +172,38 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     private String queryRequest(QueryRequest queryRequest) {
-        return "keyConditionExpression=" + queryRequest.getKeyConditionExpression() +
-            (queryRequest.getFilterExpression() != null ? ", filterExpression=" + queryRequest.getFilterExpression() : "") +
-            ", names=" + queryRequest.getExpressionAttributeNames() +
-            ", values=" + queryRequest.getExpressionAttributeValues() +
-            (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
+        return "keyConditionExpression=" + queryRequest.getKeyConditionExpression()
+            + (queryRequest.getFilterExpression() != null
+            ? ", filterExpression=" + queryRequest.getFilterExpression()
+            : "")
+            + ", names=" + queryRequest.getExpressionAttributeNames()
+            + ", values=" + queryRequest.getExpressionAttributeValues()
+            + (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
     }
 
     private String scanRequest(ScanRequest scanRequest) {
-        return "filterExpression=" + scanRequest.getFilterExpression() +
-            ", names=" + scanRequest.getExpressionAttributeNames() +
-            ", values=" + scanRequest.getExpressionAttributeValues();
+        return "filterExpression=" + scanRequest.getFilterExpression()
+            + ", names=" + scanRequest.getExpressionAttributeNames()
+            + ", values=" + scanRequest.getExpressionAttributeValues();
     }
 
     private String updateItemRequest(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() != null ? ", updateExpression=" + updateRequest.getUpdateExpression() : "") +
-            (updateRequest.getAttributeUpdates() != null ? ", attributeUpdates=" + updateRequest.getAttributeUpdates() : "") +
-            ", key=" + updateRequest.getKey() +
-            (updateRequest.getConditionExpression() != null ? ", conditionExpression=" + updateRequest.getConditionExpression() : "") +
-            (updateRequest.getExpressionAttributeNames() != null ? ", names=" + updateRequest.getExpressionAttributeNames() : "") +
-            (updateRequest.getExpressionAttributeValues() != null ? ", values=" + updateRequest.getExpressionAttributeValues() : "");
+        return (updateRequest.getUpdateExpression() != null
+                ? ", updateExpression=" + updateRequest.getUpdateExpression()
+                : "")
+            + (updateRequest.getAttributeUpdates() != null
+                ? ", attributeUpdates=" + updateRequest.getAttributeUpdates()
+                : "")
+            + ", key=" + updateRequest.getKey()
+            + (updateRequest.getConditionExpression() != null
+                ? ", conditionExpression=" + updateRequest.getConditionExpression()
+                : "")
+            + (updateRequest.getExpressionAttributeNames() != null
+                ? ", names=" + updateRequest.getExpressionAttributeNames()
+                : "")
+            + (updateRequest.getExpressionAttributeValues() != null
+                ? ", values=" + updateRequest.getExpressionAttributeValues()
+                : "");
     }
 
     private void log(String method, String... messages) {

@@ -7,6 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.index;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static java.util.Optional.of;
+
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -18,11 +23,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static java.util.Optional.of;
 
 /*
  * Searches the list of primary keys returning the one that is compatible with the provided primary key according to its
@@ -47,7 +47,8 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
     }
 
     @Override
-    public HasPrimaryKey mapPrimaryKey(PrimaryKey primaryKeyToFind, List<HasPrimaryKey> primaryKeys) throws MappingException {
+    public HasPrimaryKey mapPrimaryKey(PrimaryKey primaryKeyToFind,
+                                       List<HasPrimaryKey> primaryKeys) throws MappingException {
         List<Optional<ScalarAttributeType>> rangeKeyTypePrecedence;
         if (primaryKeyToFind.getRangeKeyType().isPresent()) {
             rangeKeyTypePrecedence = ImmutableList.of(primaryKeyToFind.getRangeKeyType());
@@ -58,7 +59,8 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
             }
         }
         for (Optional<ScalarAttributeType> rangeKeyType : rangeKeyTypePrecedence) {
-            Optional<HasPrimaryKey> primaryKeysFound = mapPrimaryKeyExactMatch(new PrimaryKey(primaryKeyToFind.getHashKey(),
+            Optional<HasPrimaryKey> primaryKeysFound = mapPrimaryKeyExactMatch(
+                new PrimaryKey(primaryKeyToFind.getHashKey(),
                     S,
                     rangeKeyType.map((Function<ScalarAttributeType, String>) Enum::name),
                     rangeKeyType),
@@ -67,26 +69,32 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
                 return primaryKeysFound.get();
             }
         }
-        throw new MappingException("no key schema compatible with " + primaryKeyToFind + " found in list of available keys [" +
-            Joiner.on(", ").join(primaryKeys.stream().map(hasPrimaryKey ->
-                hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
+        throw new MappingException("no key schema compatible with " + primaryKeyToFind
+            + " found in list of available keys ["
+            + Joiner.on(", ").join(primaryKeys.stream().map(hasPrimaryKey ->
+            hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
     }
 
-    private Optional<HasPrimaryKey> mapPrimaryKeyExactMatch(PrimaryKey primaryKeyToFind, List<HasPrimaryKey> primaryKeys) throws MappingException {
+    private Optional<HasPrimaryKey> mapPrimaryKeyExactMatch(PrimaryKey primaryKeyToFind,
+                                                            List<HasPrimaryKey> primaryKeys) throws MappingException {
         List<HasPrimaryKey> primaryKeysFound = primaryKeys.stream().filter(hasPrimaryKey -> {
                 // hash key types must match
                 PrimaryKey primaryKey = hasPrimaryKey.getPrimaryKey();
-                return primaryKey.getHashKeyType().equals(primaryKeyToFind.getHashKeyType()) &&
-                    // either range key doesn't exist on both
-                    ((!primaryKeyToFind.getRangeKey().isPresent() && !primaryKey.getRangeKey().isPresent())
+                return primaryKey.getHashKeyType().equals(primaryKeyToFind.getHashKeyType())
+                    && // either range key doesn't exist on both
+                    ((!primaryKeyToFind.getRangeKey().isPresent()
+                        && !primaryKey.getRangeKey().isPresent())
                         // or they are present on both and equal
-                        || ((primaryKeyToFind.getRangeKeyType().isPresent() && primaryKey.getRangeKeyType().isPresent()) &&
-                        (primaryKeyToFind.getRangeKeyType().get().equals(primaryKey.getRangeKeyType().get()))));
+                        || ((primaryKeyToFind.getRangeKeyType().isPresent()
+                            && primaryKey.getRangeKeyType().isPresent())
+                        && (primaryKeyToFind.getRangeKeyType().get().equals(primaryKey.getRangeKeyType().get()))));
             }
         ).collect(Collectors.toList());
         if (primaryKeysFound.size() > 1) {
-            throw new MappingException("when attempting to map from primary key: " + primaryKeyToFind + ", found multiple compatible primary keys: " +
-                "[" + Joiner.on(", ").join(primaryKeysFound.stream().map(hasPrimaryKey -> hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
+            throw new MappingException("when attempting to map from primary key: "
+                                       + primaryKeyToFind + ", found multiple compatible primary keys: "
+                                       + "[" + Joiner.on(", ").join(primaryKeysFound.stream()
+                .map(hasPrimaryKey -> hasPrimaryKey.getPrimaryKey().toString()).collect(Collectors.toList())) + "]");
         }
         return primaryKeysFound.size() == 1 ? of(primaryKeysFound.get(0)) : Optional.empty();
     }

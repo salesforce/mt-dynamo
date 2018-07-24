@@ -173,7 +173,10 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions, String tableName, List<KeySchemaElement> keySchema, ProvisionedThroughput provisionedThroughput) {
+    public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions,
+                                         String tableName,
+                                         List<KeySchemaElement> keySchema,
+                                         ProvisionedThroughput provisionedThroughput) {
         return createTable(new CreateTableRequest()
             .withAttributeDefinitions(attributeDefinitions)
             .withTableName(tableName)
@@ -217,7 +220,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public DescribeContinuousBackupsResult describeContinuousBackups(DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
+    public DescribeContinuousBackupsResult describeContinuousBackups(
+        DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -272,22 +276,26 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
+    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(
+        DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
+    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(
+        UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public RestoreTableToPointInTimeResult restoreTableToPointInTime(RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
+    public RestoreTableToPointInTimeResult restoreTableToPointInTime(
+        RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public UpdateContinuousBackupsResult updateContinuousBackups(UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
+    public UpdateContinuousBackupsResult updateContinuousBackups(
+        UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -318,7 +326,9 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         ListTablesResult result;
         String lastEvaluated = null;//Below loop is to iterate through pages
         do {
-            result = (lastEvaluated == null) ? getAmazonDynamoDb().listTables() : getAmazonDynamoDb().listTables(lastEvaluated);
+            result = (lastEvaluated == null)
+                ? getAmazonDynamoDb().listTables()
+                : getAmazonDynamoDb().listTables(lastEvaluated);
             if (result != null) {
                 tables.addAll(result.getTableNames());
                 lastEvaluated = result.getLastEvaluatedTableName();
@@ -348,7 +358,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         return getAmazonDynamoDb().query(queryRequest);
     }
 
-    public RestoreTableFromBackupResult restoreTableFromBackup(RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
+    public RestoreTableFromBackupResult restoreTableFromBackup(
+        RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -368,7 +379,10 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet, Map<String, Condition> scanFilter) {
-        return scan(new ScanRequest().withTableName(tableName).withAttributesToGet(attributesToGet).withScanFilter(scanFilter));
+        return scan(new ScanRequest()
+            .withTableName(tableName)
+            .withAttributesToGet(attributesToGet)
+            .withScanFilter(scanFilter));
     }
 
     @Override
@@ -392,13 +406,25 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates) {
-        return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates));
+    public UpdateItemResult updateItem(String tableName,
+                                       Map<String, AttributeValue> key,
+                                       Map<String, AttributeValueUpdate> attributeUpdates) {
+        return updateItem(new UpdateItemRequest()
+            .withTableName(tableName)
+            .withKey(key)
+            .withAttributeUpdates(attributeUpdates));
     }
 
     @Override
-    public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates, String returnValues) {
-        return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates).withReturnValues(returnValues));
+    public UpdateItemResult updateItem(String tableName,
+                                       Map<String, AttributeValue> key,
+                                       Map<String, AttributeValueUpdate> attributeUpdates,
+                                       String returnValues) {
+        return updateItem(
+            new UpdateItemRequest()
+                .withTableName(tableName).withKey(key)
+                .withAttributeUpdates(attributeUpdates)
+                .withReturnValues(returnValues));
     }
 
     @Override

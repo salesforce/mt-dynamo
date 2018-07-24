@@ -69,15 +69,15 @@ import org.slf4j.LoggerFactory;
  * represent tables as they are understood by the developer using the DynamoDB Java API.  Physical tables represent the
  * tables that store the data in AWS.
  *
- * SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are preconfigured to
- * support a number of common mappings.  See Javadoc for each provided builder for details.
+ * <p>SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
+ * preconfigured to support a number of common mappings.  See Javadoc for each provided builder for details.
  *
- * Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
+ * <p>Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
  *
- * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to control
- * behavior that is specific to deleteTable. ** Only EQ conditions are supported.
+ * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
+ * control behavior that is specific to deleteTable. ** Only EQ conditions are supported.
  *
- * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
+ * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
  * results.
  *
  * @author msgroi
@@ -94,14 +94,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
 
+    /**
+     * TODO: write Javadoc.
+     */
     public MtAmazonDynamoDbBySharedTable(String name,
-        MtAmazonDynamoDbContextProvider mtContext,
-        AmazonDynamoDB amazonDynamoDB,
-        TableMappingFactory tableMappingFactory,
-        MtTableDescriptionRepo mtTableDescriptionRepo,
-        boolean deleteTableAsync,
-        boolean truncateOnDeleteTable) {
-        super(mtContext, amazonDynamoDB);
+                                         MtAmazonDynamoDbContextProvider mtContext,
+                                         AmazonDynamoDB amazonDynamoDb,
+                                         TableMappingFactory tableMappingFactory,
+                                         MtTableDescriptionRepo mtTableDescriptionRepo,
+                                         boolean deleteTableAsync,
+                                         boolean truncateOnDeleteTable) {
+        super(mtContext, amazonDynamoDb);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext);
@@ -110,10 +113,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.truncateOnDeleteTable = truncateOnDeleteTable;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         return new CreateTableResult().withTableDescription(mtTableDescriptionRepo.createTable(createTableRequest));
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         // map table name
         deleteItemRequest = deleteItemRequest.clone();
@@ -127,7 +136,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
-    @SuppressWarnings("Duplicates")
+    /**
+     * TODO: write Javadoc.
+     */
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         if (deleteTableAsync) {
             Executors.newSingleThreadExecutor().submit(() -> {
@@ -145,6 +156,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE"));
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         // map table name
         getItemRequest = getItemRequest.clone();
@@ -173,6 +187,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
         putItemRequest = putItemRequest.clone();
@@ -186,6 +203,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public QueryResult query(QueryRequest queryRequest) {
         // map table name
         queryRequest = queryRequest.clone();
@@ -203,6 +223,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return queryResult;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public ScanResult scan(ScanRequest scanRequest) {
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
@@ -260,7 +283,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private boolean projectionContainsKey(String projection, Map<String, String> expressionNames,
-        List<String> legacyProjection, String key) {
+                                          List<String> legacyProjection, String key) {
         if (projection != null) {
             // TODO we should probably parse expressions or use more sophisticated matching
             if (expressionNames != null) {
@@ -276,6 +299,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return legacyProjection != null && legacyProjection.contains(key);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         // map table name
         updateItemRequest = updateItemRequest.clone();
@@ -332,11 +358,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         @Override
         public void processRecords(ProcessRecordsInput processRecordsInput) {
             List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
-                .map(RecordAdapter.class::cast).map(this::toMTRecord).collect(toList());
+                .map(RecordAdapter.class::cast).map(this::toMtRecord).collect(toList());
             processor.processRecords(processRecordsInput.withRecords(records));
         }
 
-        private com.amazonaws.services.kinesis.model.Record toMTRecord(RecordAdapter adapter) {
+        private com.amazonaws.services.kinesis.model.Record toMtRecord(RecordAdapter adapter) {
             Record r = adapter.getInternalObject();
             StreamRecord streamRecord = r.getDynamodb();
             FieldValue fieldValue = new FieldPrefixFunction(".")
