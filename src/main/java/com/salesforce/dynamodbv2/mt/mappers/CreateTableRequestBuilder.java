@@ -44,8 +44,8 @@ public class CreateTableRequestBuilder {
 
     private void setDefaults() {
         if (createTableRequest.getProvisionedThroughput() == null) {
-            createTableRequest.setProvisionedThroughput(
-                new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
+            createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L)
+                .withWriteCapacityUnits(1L));
         }
     }
 
@@ -114,8 +114,8 @@ public class CreateTableRequestBuilder {
      * TODO: write Javadoc.
      */
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
-        this.createTableRequest.withProvisionedThroughput(
-            new ProvisionedThroughput(readCapacityUnits, writeCapacityUnits));
+        this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits,
+            writeCapacityUnits));
         return this;
     }
 

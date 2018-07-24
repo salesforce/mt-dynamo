@@ -31,6 +31,7 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -83,10 +84,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @Override
     public TableDescription createTable(CreateTableRequest createTableRequest) {
-        amazonDynamoDb.putItem(
-            new PutItemRequest()
-                .withTableName(getTableDescriptionTableName())
-                .withItem(createItem(createTableRequest)));
+        amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName())
+            .withItem(createItem(createTableRequest)));
         return getTableDescription(createTableRequest.getTableName());
     }
 
@@ -157,10 +156,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             new CreateTableRequest().withTableName(tableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
-                .withAttributeDefinitions(
-                    new AttributeDefinition()
-                        .withAttributeName(tableDescriptionTableHashKeyField)
-                        .withAttributeType(ScalarAttributeType.S))
+                .withAttributeDefinitions(new AttributeDefinition()
+                    .withAttributeName(tableDescriptionTableHashKeyField)
+                    .withAttributeType(ScalarAttributeType.S))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
             pollIntervalSeconds);
     }

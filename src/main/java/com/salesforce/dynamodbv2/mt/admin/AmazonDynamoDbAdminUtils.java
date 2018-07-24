@@ -49,8 +49,8 @@ public class AmazonDynamoDbAdminUtils {
                 amazonDynamoDb.createTable(createTableRequest);
                 awaitTableActive(tableName, pollIntervalSeconds, tableDDLOperationTimeoutSeconds);
             } else {
-                DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(
-                    describeTable(createTableRequest.getTableName()));
+                DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
+                    createTableRequest.getTableName()));
                 DynamoTableDescription createTableRequestDesc = new DynamoTableDescriptionImpl(createTableRequest);
                 checkArgument(existingTableDesc.equals(createTableRequestDesc),
                     "existing table does not match create table request, "

@@ -379,8 +379,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet, Map<String, Condition> scanFilter) {
-        return scan(new ScanRequest()
-            .withTableName(tableName)
+        return scan(new ScanRequest().withTableName(tableName)
             .withAttributesToGet(attributesToGet)
             .withScanFilter(scanFilter));
     }
@@ -409,8 +408,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public UpdateItemResult updateItem(String tableName,
                                        Map<String, AttributeValue> key,
                                        Map<String, AttributeValueUpdate> attributeUpdates) {
-        return updateItem(new UpdateItemRequest()
-            .withTableName(tableName)
+        return updateItem(new UpdateItemRequest().withTableName(tableName)
             .withKey(key)
             .withAttributeUpdates(attributeUpdates));
     }
@@ -421,8 +419,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
                                        Map<String, AttributeValueUpdate> attributeUpdates,
                                        String returnValues) {
         return updateItem(
-            new UpdateItemRequest()
-                .withTableName(tableName).withKey(key)
+            new UpdateItemRequest().withTableName(tableName).withKey(key)
                 .withAttributeUpdates(attributeUpdates)
                 .withReturnValues(returnValues));
     }
