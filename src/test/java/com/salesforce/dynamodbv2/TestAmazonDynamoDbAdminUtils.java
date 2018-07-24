@@ -8,20 +8,25 @@
 package com.salesforce.dynamodbv2;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDBAdminUtils;
+import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
-public class TestAmazonDynamoDBAdminUtils extends AmazonDynamoDBAdminUtils {
+public class TestAmazonDynamoDbAdminUtils extends AmazonDynamoDbAdminUtils {
 
-    public TestAmazonDynamoDBAdminUtils(AmazonDynamoDB amazonDynamoDB) {
-        super(amazonDynamoDB);
+    public TestAmazonDynamoDbAdminUtils(AmazonDynamoDB amazonDynamoDb) {
+        super(amazonDynamoDb);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public static String getLocalHost() {
         try {
             String fqname = InetAddress.getLocalHost().getHostName();

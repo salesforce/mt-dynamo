@@ -7,10 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
 import com.amazonaws.regions.Region;
@@ -91,32 +87,36 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
  * - throwing UnsupportedOperationException's for all methods that are collectively unsupported
- * - providing pass-through to an AmazonDynamoDB and MTAmazonDynamoDBContextProvider passed into the constructor
+ * - providing pass-through to an AmazonDynamoDB and MtAmazonDynamoDbContextProvider passed into the constructor
  * - providing the ability to override the method that returns said AmazonDynamoDB
  *
  * @author msgroi
  */
-public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
+public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
-    private final MTAmazonDynamoDBContextProvider mtContext;
-    private final AmazonDynamoDB amazonDynamoDB;
+    private final MtAmazonDynamoDbContextProvider mtContext;
+    private final AmazonDynamoDB amazonDynamoDb;
 
-    public MTAmazonDynamoDBBase(MTAmazonDynamoDBContextProvider mtContext,
-                                AmazonDynamoDB amazonDynamoDB) {
+    public MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
+                                AmazonDynamoDB amazonDynamoDb) {
         this.mtContext = mtContext;
-        this.amazonDynamoDB = amazonDynamoDB;
+        this.amazonDynamoDb = amazonDynamoDb;
     }
 
-    public AmazonDynamoDB getAmazonDynamoDB() {
-        return amazonDynamoDB;
+    public AmazonDynamoDB getAmazonDynamoDb() {
+        return amazonDynamoDb;
     }
 
-    protected MTAmazonDynamoDBContextProvider getMTContext() {
+    protected MtAmazonDynamoDbContextProvider getMtContext() {
         return mtContext;
     }
 
@@ -169,16 +169,19 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        return getAmazonDynamoDB().createTable(createTableRequest);
+        return getAmazonDynamoDb().createTable(createTableRequest);
     }
 
     @Override
-    public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions, String tableName, List<KeySchemaElement> keySchema, ProvisionedThroughput provisionedThroughput) {
+    public CreateTableResult createTable(List<AttributeDefinition> attributeDefinitions,
+                                         String tableName,
+                                         List<KeySchemaElement> keySchema,
+                                         ProvisionedThroughput provisionedThroughput) {
         return createTable(new CreateTableRequest()
-                .withAttributeDefinitions(attributeDefinitions)
-                .withTableName(tableName)
-                .withKeySchema(keySchema)
-                .withProvisionedThroughput(provisionedThroughput));
+            .withAttributeDefinitions(attributeDefinitions)
+            .withTableName(tableName)
+            .withKeySchema(keySchema)
+            .withProvisionedThroughput(provisionedThroughput));
     }
 
     @Override
@@ -188,7 +191,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
-        return getAmazonDynamoDB().deleteItem(deleteItemRequest);
+        return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
     @Override
@@ -203,7 +206,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
-        return getAmazonDynamoDB().deleteTable(deleteTableRequest);
+        return getAmazonDynamoDb().deleteTable(deleteTableRequest);
     }
 
     @Override
@@ -217,7 +220,8 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     @Override
-    public DescribeContinuousBackupsResult describeContinuousBackups(DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
+    public DescribeContinuousBackupsResult describeContinuousBackups(
+        DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -233,7 +237,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
-        return getAmazonDynamoDB().describeTable(describeTableRequest);
+        return getAmazonDynamoDb().describeTable(describeTableRequest);
     }
 
     @Override
@@ -248,7 +252,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
-        return getAmazonDynamoDB().getItem(getItemRequest);
+        return getAmazonDynamoDb().getItem(getItemRequest);
     }
 
     @Override
@@ -272,22 +276,26 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     @Override
-    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
+    public DescribeGlobalTableSettingsResult describeGlobalTableSettings(
+        DescribeGlobalTableSettingsRequest describeGlobalTableSettingsRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
+    public UpdateGlobalTableSettingsResult updateGlobalTableSettings(
+        UpdateGlobalTableSettingsRequest updateGlobalTableSettingsRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public RestoreTableToPointInTimeResult restoreTableToPointInTime(RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
+    public RestoreTableToPointInTimeResult restoreTableToPointInTime(
+        RestoreTableToPointInTimeRequest restoreTableToPointInTimeRequest) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public UpdateContinuousBackupsResult updateContinuousBackups(UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
+    public UpdateContinuousBackupsResult updateContinuousBackups(
+        UpdateContinuousBackupsRequest updateContinuousBackupsRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -297,7 +305,7 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     public ListTablesResult listTables() {
-        return getAmazonDynamoDB().listTables();
+        return getAmazonDynamoDb().listTables();
     }
 
     public ListTablesResult listTables(String exclusiveStartTableName) {
@@ -316,23 +324,26 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     List<String> listAllTables() {
         List<String> tables = new ArrayList<>();
         ListTablesResult result;
-        String lastEvaluated  = null;//Below loop is to iterate through pages
+        String lastEvaluated = null;//Below loop is to iterate through pages
         do {
-            result  = (lastEvaluated == null) ? getAmazonDynamoDB().listTables() : getAmazonDynamoDB().listTables(lastEvaluated);
+            result = (lastEvaluated == null)
+                ? getAmazonDynamoDb().listTables()
+                : getAmazonDynamoDb().listTables(lastEvaluated);
             if (result != null) {
                 tables.addAll(result.getTableNames());
-                lastEvaluated =  result.getLastEvaluatedTableName();
+                lastEvaluated = result.getLastEvaluatedTableName();
             }
         } while (lastEvaluated != null);
 
         return tables;
     }
+
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
         throw new UnsupportedOperationException();
     }
 
     public PutItemResult putItem(PutItemRequest putItemRequest) {
-        return getAmazonDynamoDB().putItem(putItemRequest);
+        return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
     public PutItemResult putItem(String tableName, Map<String, AttributeValue> item) {
@@ -344,15 +355,16 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     public QueryResult query(QueryRequest queryRequest) {
-        return getAmazonDynamoDB().query(queryRequest);
+        return getAmazonDynamoDb().query(queryRequest);
     }
 
-    public RestoreTableFromBackupResult restoreTableFromBackup(RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
+    public RestoreTableFromBackupResult restoreTableFromBackup(
+        RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         throw new UnsupportedOperationException();
     }
 
     public ScanResult scan(ScanRequest scanRequest) {
-        return getAmazonDynamoDB().scan(scanRequest);
+        return getAmazonDynamoDb().scan(scanRequest);
     }
 
     @Override
@@ -367,7 +379,9 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet, Map<String, Condition> scanFilter) {
-        return scan(new ScanRequest().withTableName(tableName).withAttributesToGet(attributesToGet).withScanFilter(scanFilter));
+        return scan(new ScanRequest().withTableName(tableName)
+            .withAttributesToGet(attributesToGet)
+            .withScanFilter(scanFilter));
     }
 
     @Override
@@ -387,17 +401,28 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
 
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
-        return getAmazonDynamoDB().updateItem(updateItemRequest);
+        return getAmazonDynamoDb().updateItem(updateItemRequest);
     }
 
     @Override
-    public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates) {
-        return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates));
+    public UpdateItemResult updateItem(String tableName,
+                                       Map<String, AttributeValue> key,
+                                       Map<String, AttributeValueUpdate> attributeUpdates) {
+        return updateItem(new UpdateItemRequest().withTableName(tableName)
+            .withKey(key)
+            .withAttributeUpdates(attributeUpdates));
     }
 
     @Override
-    public UpdateItemResult updateItem(String tableName, Map<String, AttributeValue> key, Map<String, AttributeValueUpdate> attributeUpdates, String returnValues) {
-        return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key).withAttributeUpdates(attributeUpdates).withReturnValues(returnValues));
+    public UpdateItemResult updateItem(String tableName,
+                                       Map<String, AttributeValue> key,
+                                       Map<String, AttributeValueUpdate> attributeUpdates,
+                                       String returnValues) {
+        return updateItem(new UpdateItemRequest()
+            .withTableName(tableName)
+            .withKey(key)
+            .withAttributeUpdates(attributeUpdates)
+            .withReturnValues(returnValues));
     }
 
     @Override
@@ -430,10 +455,10 @@ public class MTAmazonDynamoDBBase implements MTAmazonDynamoDB {
     }
 
     @Override
-    public List<MTStreamDescription> listStreams(IRecordProcessorFactory factory) {
-        AmazonDynamoDB dynamo = getAmazonDynamoDB();
-        if (dynamo instanceof MTAmazonDynamoDB) {
-            return ((MTAmazonDynamoDB)getAmazonDynamoDB()).listStreams(factory);
+    public List<MtStreamDescription> listStreams(IRecordProcessorFactory factory) {
+        AmazonDynamoDB dynamo = getAmazonDynamoDb();
+        if (dynamo instanceof MtAmazonDynamoDb) {
+            return ((MtAmazonDynamoDb) getAmazonDynamoDb()).listStreams(factory);
         }
         throw new UnsupportedOperationException();
     }

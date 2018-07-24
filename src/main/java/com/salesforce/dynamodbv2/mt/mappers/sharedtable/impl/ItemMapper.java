@@ -7,18 +7,19 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
-
 /*
- * Maps items representing records in virtual tables so they can be read from and written to their physical table counterpart
- * according to the provided TableMapping, delegating field prefixing to the provided FieldMapper.  The apply() method is
- * used to map keys in getItem, putItem, updateItem, deleteItem and for mapping item responses in query and scan.
+ * Maps items representing records in virtual tables so they can be read from and written to their physical table
+ * counterpart according to the provided TableMapping, delegating field prefixing to the provided FieldMapper.
+ * The apply() method is used to map keys in getItem, putItem, updateItem, deleteItem and for mapping item responses
+ * in query and scan.
  *
  * @author msgroi
  */
@@ -34,20 +35,22 @@ class ItemMapper {
 
     /*
      * Takes a map representing a record in a virtual table that is effectively unqualified with respect to multi-tenant
-     * context and returns a map representing a record in the physical table that is qualified with multi-tenant context appropriately.
+     * context and returns a map representing a record in the physical table that is qualified with multi-tenant
+     * context appropriately.
      *
      * Used for adding context to GetItemRequest, PutItemRequest, UpdateItemRequest, or DeleteItemRequest's.
      */
     Map<String, AttributeValue> apply(Map<String, AttributeValue> unqualifiedItem) {
         Map<String, AttributeValue> qualifiedItem = new HashMap<>();
-        Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = tableMapping.getAllVirtualToPhysicalFieldMappings();
+        Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings =
+            tableMapping.getAllVirtualToPhysicalFieldMappings();
         unqualifiedItem.forEach((field, attribute) -> {
             List<FieldMapping> fieldMappings = virtualToPhysicalFieldMappings.get(field);
             if (!isNullOrEmpty(fieldMappings)) {
                 fieldMappings.forEach(fieldMapping -> qualifiedItem.put(fieldMapping.getTarget().getName(),
-                                                                        fieldMapping.isContextAware()
-                                                                                ? fieldMapper.apply(fieldMapping, attribute)
-                                                                                : attribute));
+                    fieldMapping.isContextAware()
+                        ? fieldMapper.apply(fieldMapping, attribute)
+                        : attribute));
             } else {
                 qualifiedItem.put(field, attribute);
             }
@@ -67,14 +70,15 @@ class ItemMapper {
             return null;
         }
         Map<String, AttributeValue> unqualifiedItem = new HashMap<>();
-        Map<String, List<FieldMapping>> physicalToVirtualFieldMappings = tableMapping.getAllPhysicalToVirtualFieldMappings();
+        Map<String, List<FieldMapping>> physicalToVirtualFieldMappings =
+            tableMapping.getAllPhysicalToVirtualFieldMappings();
         qualifiedItem.forEach((field, attribute) -> {
             List<FieldMapping> fieldMappings = physicalToVirtualFieldMappings.get((field));
             if (fieldMappings != null && !fieldMappings.isEmpty()) {
                 fieldMappings.forEach(fieldMapping -> unqualifiedItem.put(fieldMapping.getTarget().getName(),
-                                                                          fieldMapping.isContextAware()
-                                                                                ? fieldMapper.reverse(fieldMapping, attribute)
-                                                                                : attribute));
+                    fieldMapping.isContextAware()
+                        ? fieldMapper.reverse(fieldMapping, attribute)
+                        : attribute));
             } else {
                 unqualifiedItem.put(field, attribute);
             }

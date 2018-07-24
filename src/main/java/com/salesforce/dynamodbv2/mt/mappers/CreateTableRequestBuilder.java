@@ -7,6 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
@@ -19,13 +23,8 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 
 /*
  * @author msgroi
@@ -45,7 +44,8 @@ public class CreateTableRequestBuilder {
 
     private void setDefaults() {
         if (createTableRequest.getProvisionedThroughput() == null) {
-            createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
+            createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L)
+                .withWriteCapacityUnits(1L));
         }
     }
 
@@ -58,51 +58,64 @@ public class CreateTableRequestBuilder {
         return createTableRequest.getTableName();
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField, ScalarAttributeType hashKeyType) {
         addAttributeDefinition(hashKeyField, hashKeyType);
         createTableRequest.withKeySchema(new KeySchemaElement(hashKeyField, HASH));
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField,
-                                                 ScalarAttributeType hashKeyType,
-                                                 String rangeKeyField,
-                                                 ScalarAttributeType rangeKeyType) {
+                                                        ScalarAttributeType hashKeyType,
+                                                        String rangeKeyField,
+                                                        ScalarAttributeType rangeKeyType) {
         addAttributeDefinition(hashKeyField, hashKeyType);
         addAttributeDefinition(rangeKeyField, rangeKeyType);
         createTableRequest.withKeySchema(new KeySchemaElement(hashKeyField, HASH),
-                                         new KeySchemaElement(rangeKeyField, RANGE));
+            new KeySchemaElement(rangeKeyField, RANGE));
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     @SuppressWarnings("all")
-    public CreateTableRequestBuilder addSI(String indexName,
-                                    DynamoSecondaryIndexType indexType,
-                                    PrimaryKey secondaryIndexKey,
-                                    Long provisionedThroughput) {
+    public CreateTableRequestBuilder addSi(String indexName,
+                                           DynamoSecondaryIndexType indexType,
+                                           PrimaryKey secondaryIndexKey,
+                                           Long provisionedThroughput) {
         if (indexType == GSI) {
             if (this.createTableRequest.getGlobalSecondaryIndexes() == null) {
                 this.createTableRequest.setGlobalSecondaryIndexes(new ArrayList<>());
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(
-                    new GlobalSecondaryIndex().withIndexName(indexName)
-                            .withKeySchema(buildKeySchema(secondaryIndexKey))
-                            .withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                new GlobalSecondaryIndex().withIndexName(indexName)
+                    .withKeySchema(buildKeySchema(secondaryIndexKey))
+                    .withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
         } else {
             if (this.createTableRequest.getLocalSecondaryIndexes() == null) {
                 this.createTableRequest.setLocalSecondaryIndexes(new ArrayList<>());
             }
             this.createTableRequest.getLocalSecondaryIndexes().add(
-                    new LocalSecondaryIndex().withIndexName(indexName)
-                            .withKeySchema(buildKeySchema(secondaryIndexKey))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                new LocalSecondaryIndex().withIndexName(indexName)
+                    .withKeySchema(buildKeySchema(secondaryIndexKey))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
         }
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
-        this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits, writeCapacityUnits));
+        this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits,
+            writeCapacityUnits));
         return this;
     }
 
@@ -117,7 +130,7 @@ public class CreateTableRequestBuilder {
             createTableRequest.setAttributeDefinitions(new ArrayList<>());
         }
         if (createTableRequest.getAttributeDefinitions().stream()
-                .noneMatch(attributeDefinition -> field.equals(attributeDefinition.getAttributeName()))) {
+            .noneMatch(attributeDefinition -> field.equals(attributeDefinition.getAttributeName()))) {
             this.createTableRequest.getAttributeDefinitions().add(new AttributeDefinition(field, fieldType));
         }
     }

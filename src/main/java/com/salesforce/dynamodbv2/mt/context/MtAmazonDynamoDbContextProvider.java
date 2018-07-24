@@ -8,10 +8,12 @@
 package com.salesforce.dynamodbv2.mt.context;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 @FunctionalInterface
-public interface MTAmazonDynamoDBContextProvider {
+public interface MtAmazonDynamoDbContextProvider {
 
     String getContext();
 

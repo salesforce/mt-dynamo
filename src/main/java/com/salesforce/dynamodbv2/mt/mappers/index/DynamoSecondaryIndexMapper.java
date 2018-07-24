@@ -18,9 +18,10 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 public interface DynamoSecondaryIndexMapper {
 
     /*
-     * Takes a virtual secondary index and the physical secondary index and returns the appropriate physical secondary index.
+     * Takes a virtual secondary index and the physical secondary index and returns the appropriate physical
+     * secondary index.
      */
-    DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSI,
+    DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi,
                                                       DynamoTableDescription physicalTable) throws MappingException;
 
 }

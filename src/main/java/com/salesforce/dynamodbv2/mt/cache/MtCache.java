@@ -11,7 +11,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.context.MTAmazonDynamoDBContextProvider;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -24,13 +24,13 @@ import java.util.stream.StreamSupport;
  * @author msgroi
  */
 @SuppressWarnings("all")
-public class MTCache<V> implements Cache<String, V> {
+public class MtCache<V> implements Cache<String, V> {
 
     private static final String delimiter = "-";
-    private final MTAmazonDynamoDBContextProvider contextProvider;
+    private final MtAmazonDynamoDbContextProvider contextProvider;
     private final Cache<Object, V> cache;
 
-    public MTCache(MTAmazonDynamoDBContextProvider contextProvider) {
+    public MtCache(MtAmazonDynamoDbContextProvider contextProvider) {
         this.contextProvider = contextProvider;
         this.cache = CacheBuilder.newBuilder().build();
     }
@@ -66,7 +66,8 @@ public class MTCache<V> implements Cache<String, V> {
 
     @Override
     public void invalidateAll(Iterable<?> keys) {
-        cache.invalidateAll(StreamSupport.stream(keys.spliterator(), false).map(this::getKey).collect(Collectors.toList()));
+        cache.invalidateAll(StreamSupport.stream(keys.spliterator(), false)
+            .map(this::getKey).collect(Collectors.toList()));
     }
 
     @Override

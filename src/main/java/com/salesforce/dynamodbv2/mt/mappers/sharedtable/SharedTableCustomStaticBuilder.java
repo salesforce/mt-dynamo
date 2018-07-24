@@ -7,18 +7,18 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
+import static java.util.function.Function.identity;
+
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MTAmazonDynamoDBBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static java.util.function.Function.identity;
 
 /*
  * Maps virtual tables to a set of physical tables by comparing the types of the elements of the virtual table'
@@ -37,7 +37,8 @@ import static java.util.function.Function.identity;
  *
  * - an AmazonDynamoDB instance
  * - a multi-tenant context
- * - array of CreateTableRequest's: CreateTableRequest's representing the physical tables to be created when build() is called.
+ * - array of CreateTableRequest's: CreateTableRequest's representing the physical tables to be created when
+ *   build() is called.
  * - a TableMapper implementation: implementation of the TableMapper interface that takes a DynamoTableDescription
  *   representing the virtual table being referenced by the API client and returns the name of a physical table.
  *   The table name returned must match one of the names of the tables passed in in the array of CreateTableRequest's.
@@ -53,20 +54,29 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
         return new SharedTableCustomStaticBuilder();
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         this.createTableRequestsMap = Arrays.stream(createTableRequests)
-                .collect(Collectors.toMap(CreateTableRequest::getTableName, identity())); return this;
+            .collect(Collectors.toMap(CreateTableRequest::getTableName, identity()));
+        return this;
     }
 
     @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withTableMapper(TableMapper tableMapper) {
-        this.tableMapper = tableMapper; return this;
+        this.tableMapper = tableMapper;
+        return this;
     }
 
-    public MTAmazonDynamoDBBySharedTable build() {
+    /**
+     * TODO: write Javadoc.
+     */
+    public MtAmazonDynamoDbBySharedTable build() {
         withName("SharedTableCustomStaticBuilder");
-        createTableRequestsMap.values().forEach(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())));
+        createTableRequestsMap.values().forEach(
+            createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())));
         withCreateTableRequestFactory(new CreateTableRequestFactory() {
             @Override
             public CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
@@ -81,7 +91,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
         return super.build();
     }
-    
+
     public interface TableMapper {
         String mapToPhysicalTable(DynamoTableDescription virtualTableDescription);
     }

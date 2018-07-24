@@ -1,5 +1,11 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -9,18 +15,11 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-
-class MTAmazonDynamoDBStreamsPassthroughTest extends MTAmazonDynamoDBStreamsBaseTest<MTAmazonDynamoDBStreamsPassthrough> {
-
-
+class MtAmazonDynamoDbStreamsPassthroughTest
+        extends MtAmazonDynamoDbStreamsBaseTest<MtAmazonDynamoDbStreamsPassthrough> {
     @Override
-    protected MTAmazonDynamoDBStreamsPassthrough instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDBStreams) {
-        return new MTAmazonDynamoDBStreamsPassthrough(dynamoDBStreams);
+    protected MtAmazonDynamoDbStreamsPassthrough instantiateUnitUnderTest(AmazonDynamoDBStreams dynamoDbStreams) {
+        return new MtAmazonDynamoDbStreamsPassthrough(dynamoDbStreams);
     }
 
     @Test
@@ -29,7 +28,7 @@ class MTAmazonDynamoDBStreamsPassthroughTest extends MTAmazonDynamoDBStreamsBase
         given(getMockedDynamoStreams().getRecords(any())).willReturn(expected);
 
         GetRecordsRequest request = mock(GetRecordsRequest.class);
-        GetRecordsResult actual = getMTStreamsInstance().getRecords(request);
+        GetRecordsResult actual = getMtStreamsInstance().getRecords(request);
 
         assertEquals(expected, actual);
         then(getMockedDynamoStreams()).should().getRecords(request);
@@ -41,7 +40,7 @@ class MTAmazonDynamoDBStreamsPassthroughTest extends MTAmazonDynamoDBStreamsBase
         given(getMockedDynamoStreams().getShardIterator(any())).willReturn(expected);
 
         GetShardIteratorRequest request = mock(GetShardIteratorRequest.class);
-        GetShardIteratorResult actual = getMTStreamsInstance().getShardIterator(request);
+        GetShardIteratorResult actual = getMtStreamsInstance().getShardIterator(request);
 
         assertEquals(expected, actual);
         then(getMockedDynamoStreams()).should().getShardIterator(request);
@@ -53,7 +52,7 @@ class MTAmazonDynamoDBStreamsPassthroughTest extends MTAmazonDynamoDBStreamsBase
         given(getMockedDynamoStreams().listStreams(any())).willReturn(expected);
 
         ListStreamsRequest request = mock(ListStreamsRequest.class);
-        ListStreamsResult actual = getMTStreamsInstance().listStreams(request);
+        ListStreamsResult actual = getMtStreamsInstance().listStreams(request);
 
         assertEquals(expected, actual);
         then(getMockedDynamoStreams()).should().listStreams(request);

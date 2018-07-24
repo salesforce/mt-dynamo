@@ -7,18 +7,18 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.index;
 
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.mappers.MappingException;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.collect.ImmutableList.of;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
 
 /*
  * @author msgroi
@@ -75,21 +75,21 @@ class PrimaryKeyMapperByTypeImplTest {
     }
 
     @Test
-    void testSS() throws MappingException {
+    void testSs() throws MappingException {
         assertEquals(ss, sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(ss, ss)));
     }
 
     @Test
-    void testSN() throws MappingException {
+    void testSn() throws MappingException {
         assertEquals(sn, sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(ss, ss)));
     }
 
     @Test
-    void testSB() throws MappingException {
+    void testSb() throws MappingException {
         assertEquals(sb, sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
         assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn)));
         assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(ss, ss)));
@@ -98,7 +98,8 @@ class PrimaryKeyMapperByTypeImplTest {
     private static void assertMappingException(TestFunction test) {
         try {
             HasPrimaryKey hasPrimaryKey = test.run();
-            throw new RuntimeException("expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
+            throw new RuntimeException("expected MappingException not encountered, found:"
+                    + hasPrimaryKey.getPrimaryKey());
         } catch (MappingException ignored) { /* expected */ }
     }
 
@@ -121,10 +122,10 @@ class PrimaryKeyMapperByTypeImplTest {
         PrimaryKey pk2 = hasPrimaryKey2.getPrimaryKey();
         org.junit.jupiter.api.Assertions.assertEquals(pk1.getHashKeyType(), pk2.getHashKeyType());
         assertTrue((pk1.getRangeKey().isPresent() && pk2.getRangeKey().isPresent())
-                        || (!pk1.getRangeKey().isPresent() && !pk2.getRangeKey().isPresent()),
-                () -> "expected range key to be " + (pk1.getRangeKeyType().isPresent()
-                        ? "present with type=" + pk1.getRangeKeyType().get()
-                        : "NOT present but found with type=" + pk2.getRangeKeyType().get()));
+                || (!pk1.getRangeKey().isPresent() && !pk2.getRangeKey().isPresent()),
+            () -> "expected range key to be " + (pk1.getRangeKeyType().isPresent()
+                ? "present with type=" + pk1.getRangeKeyType().get()
+                : "NOT present but found with type=" + pk2.getRangeKeyType().get()));
         if (pk1.getRangeKeyType().isPresent()) {
             org.junit.jupiter.api.Assertions.assertEquals(pk1.getRangeKeyType().get(), pk2.getRangeKeyType().get());
         }
