@@ -7,7 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
@@ -16,6 +15,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
@@ -59,21 +59,21 @@ import java.util.stream.Collectors;
  * See SharedTableCustomDynamicBuilder for optional arguments and limitations.
  *
  * Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi tables
- * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical counterpart
- * based on the rules described in PrimaryKeyMapperByTypeImpl.
+ * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
+ * counterpart based on the rules described in PrimaryKeyMapperByTypeImpl.
  *
  *                                  table           gsi                                                                                             lsi
  *                                  hash    range   hash        range       hash        range       hash        range       hash        range       hash    range       hash    range       hash        range
- *                                                  1                       2                       3		                4			            1		2		    3
- * 	                                                gsi_s_s		            gsi_s_n		            gsi_s_b		            gsi_s	    -		    lsi_s_s	            lsi_s_n	            lsi_s_ b
- * 	                                hk	    rk		gsi_s_s_hk	gsi_s_s_rk	gsi_s_n_hk	gsi_s_n_rk	gsi_s_b_hk	gsi_s_b_rk	gsi_s_hk	-		    hk	    lsi_s_s_rk	hk	    lsi_s_n_rk	hk	        lsi_s_b_rk
- * 	mt_sharedtablestatic_s_s	    S	    S		S	        S	        S	        N	        S	        B	        S	        -		    S	    S	        S	    N	        S	        B
- * 	mt_sharedtablestatic_s_n	    S	    N		S	        S	        S	        N	        S	        B	        S	        -		    S	    S	        S	    N	        S	        B
- * 	mt_sharedtablestatic_s_b	    S	    B		S	        S	        S	        N	        S	        B	        S	        -		    S	    S	        S	    N	        S	        B
- * 	mt_sharedtablestatic_s_nolsi	S	    -		S	        S	        S	        N	        S	        B	        S	        -
- * 	mt_sharedtablestatic_s_s_nolsi	S	    S		S	        S	        S	        N	        S	        B	        S	        -
- * 	mt_sharedtablestatic_s_n_nolsi	S	    N		S	        S	        S	        N	        S	        B	        S	        -
- * 	mt_sharedtablestatic_s_b_nolsi	S	    B		S	        S	        S	        N	        S	        B	        S	        -
+ *                                                  1                       2                       3                       4                       1       2           3
+ *                                                  gsi_s_s                 gsi_s_n                 gsi_s_b                 gsi_s       -           lsi_s_s             lsi_s_n             lsi_s_ b
+ *                                  hk      rk      gsi_s_s_hk  gsi_s_s_rk  gsi_s_n_hk  gsi_s_n_rk  gsi_s_b_hk  gsi_s_b_rk  gsi_s_hk    -           hk      lsi_s_s_rk  hk      lsi_s_n_rk  hk          lsi_s_b_rk
+ *  mt_sharedtablestatic_s_s        S       S       S           S           S           N           S           B           S           -           S       S           S       N           S           B
+ *  mt_sharedtablestatic_s_n        S       N       S           S           S           N           S           B           S           -           S       S           S       N           S           B
+ *  mt_sharedtablestatic_s_b        S       B       S           S           S           N           S           B           S           -           S       S           S       N           S           B
+ *  mt_sharedtablestatic_s_nolsi    S       -       S           S           S           N           S           B           S           -
+ *  mt_sharedtablestatic_s_s_nolsi  S       S       S           S           S           N           S           B           S           -
+ *  mt_sharedtablestatic_s_n_nolsi  S       N       S           S           S           N           S           B           S           -
+ *  mt_sharedtablestatic_s_b_nolsi  S       B       S           S           S           N           S           B           S           -
  *
  * Design constraints:
  *
@@ -272,7 +272,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
                 return ((CreateTableRequestWrapper) primaryKeyMapper
                     .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
                         .filter(createTableRequest1 -> hasLsis
-                                == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
+                            == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
                         .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new)
                         .collect(Collectors.toList())))
                     .getCreateTableRequest();
