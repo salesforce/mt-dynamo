@@ -7,6 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.admin;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.awaitility.Awaitility.await;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
@@ -20,11 +24,9 @@ import org.awaitility.pollinterval.FixedPollInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.awaitility.Awaitility.await;
-
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class AmazonDynamoDbAdminUtils {
@@ -37,6 +39,9 @@ public class AmazonDynamoDbAdminUtils {
         this.amazonDynamoDb = amazonDynamoDb;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public void createTableIfNotExists(CreateTableRequest createTableRequest, int pollIntervalSeconds) {
         try {
             if (!tableExists(createTableRequest.getTableName())) {
@@ -44,21 +49,27 @@ public class AmazonDynamoDbAdminUtils {
                 amazonDynamoDb.createTable(createTableRequest);
                 awaitTableActive(tableName, pollIntervalSeconds, tableDDLOperationTimeoutSeconds);
             } else {
-                DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(createTableRequest.getTableName()));
+                DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
+                    createTableRequest.getTableName()));
                 DynamoTableDescription createTableRequestDesc = new DynamoTableDescriptionImpl(createTableRequest);
                 checkArgument(existingTableDesc.equals(createTableRequestDesc),
-                    "existing table does not match create table request, " +
-                        "existing: " + existingTableDesc + ", createTableRequest=" + createTableRequestDesc);
+                    "existing table does not match create table request, "
+                        + "existing: " + existingTableDesc + ", createTableRequest=" + createTableRequestDesc);
             }
         } catch (TableInUseException e) {
             if (e.getStatus().toUpperCase().equals("CREATING")) {
-                awaitTableActive(createTableRequest.getTableName(), pollIntervalSeconds, tableDDLOperationTimeoutSeconds);
+                awaitTableActive(createTableRequest.getTableName(),
+                                 pollIntervalSeconds,
+                                 tableDDLOperationTimeoutSeconds);
             } else {
                 throw new ResourceInUseException("table=" + e.getTableName() + " is in " + e.getStatus() + " status");
             }
         }
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public void deleteTableIfExists(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         try {
             if (!tableExists(tableName)) {
@@ -68,7 +79,8 @@ public class AmazonDynamoDbAdminUtils {
             }
         } catch (TableInUseException e) {
             if (!e.getStatus().toUpperCase().equals("DELETING")) {
-                throw new ResourceInUseException("table=" + e.getTableName() + " being deleted has status=" + e.getStatus());
+                throw new ResourceInUseException(
+                    "table=" + e.getTableName() + " being deleted has status=" + e.getStatus());
             }
         }
         log.info("awaiting " + pollIntervalSeconds + "s for table=" + tableName + " to delete ...");

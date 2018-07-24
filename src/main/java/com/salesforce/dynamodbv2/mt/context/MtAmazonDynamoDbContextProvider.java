@@ -8,6 +8,8 @@
 package com.salesforce.dynamodbv2.mt.context;
 
 /**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 @FunctionalInterface

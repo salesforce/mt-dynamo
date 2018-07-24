@@ -17,7 +17,8 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 public class DynamoSecondaryIndexMapperByNameImpl implements DynamoSecondaryIndexMapper {
 
     @Override
-    public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi, DynamoTableDescription physicalTable) {
+    public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi,
+                                                             DynamoTableDescription physicalTable) {
         return physicalTable.findSi(virtualSi.getIndexName());
     }
 

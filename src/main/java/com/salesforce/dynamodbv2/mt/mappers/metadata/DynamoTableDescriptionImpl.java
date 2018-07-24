@@ -7,6 +7,12 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -26,12 +32,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
-
 /*
  * @author msgroi
  */
@@ -48,6 +48,9 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
     private final CreateTableRequest createTableRequest;
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DynamoTableDescriptionImpl(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
         tableName = createTableRequest.getTableName();
@@ -66,6 +69,9 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         lastStreamArn = null;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DynamoTableDescriptionImpl(TableDescription tableDescription) {
         this.createTableRequest = null;
         tableName = tableDescription.getTableName();
@@ -94,6 +100,11 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName())));
     }
 
+    @Override
+    public PrimaryKey getPrimaryKey() {
+        return primaryKey;
+    }
+
     private Optional<KeySchemaElement> getKeySchemaElement(List<KeySchemaElement> keySchema, KeyType keyType) {
         checkNotNull(keySchema, "keySchema is required");
         return keySchema.stream()
@@ -104,17 +115,13 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     private ScalarAttributeType getAttributeType(String attributeName) {
         return ScalarAttributeType.valueOf(attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
+            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName
+                + "' not found in " + attributeDefinitions)).getAttributeType());
     }
 
     @Override
     public String getTableName() {
         return tableName;
-    }
-
-    @Override
-    public PrimaryKey getPrimaryKey() {
-        return primaryKey;
     }
 
     @Override
@@ -172,13 +179,13 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
     @Override
     public String toString() {
-        return "DynamoTableDescriptionImpl{" +
-            "tableName='" + tableName + '\'' +
-            ", attributeDefinitions=" + attributeDefinitions +
-            ", primaryKey=" + primaryKey +
-            ", gsiMap=" + gsiMap.values() +
-            ", lsiMap=" + lsiMap.values() +
-            '}';
+        return "DynamoTableDescriptionImpl{"
+            + "tableName='" + tableName + '\''
+            + ", attributeDefinitions=" + attributeDefinitions
+            + ", primaryKey=" + primaryKey
+            + ", gsiMap=" + gsiMap.values()
+            + ", lsiMap=" + lsiMap.values()
+            + "}";
     }
 
     @Override
@@ -213,7 +220,9 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         if (!provisionedThroughput.getWriteCapacityUnits().equals(that.provisionedThroughput.getWriteCapacityUnits())) {
             return false;
         }
-        return streamSpecification != null ? streamSpecification.equals(that.streamSpecification) : that.streamSpecification == null;
+        return streamSpecification != null
+            ? streamSpecification.equals(that.streamSpecification)
+            : that.streamSpecification == null;
     }
 
     private ProvisionedThroughputDescription fromProvisionedThroughput(ProvisionedThroughput provisionedThroughput) {

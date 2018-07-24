@@ -33,6 +33,9 @@ public class PrimaryKey {
         this(hashKey, hashKeyType, Optional.ofNullable(rangeKey), Optional.ofNullable(rangeKeyType));
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public PrimaryKey(String hashKey,
                       ScalarAttributeType hashKeyType,
                       Optional<String> rangeKey,
@@ -61,11 +64,11 @@ public class PrimaryKey {
 
     @Override
     public String toString() {
-        return "{" +
-            "hashKey='" + hashKey + '\'' +
-            ", hashKeyType=" + hashKeyType +
-            (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType=" + rangeKeyType.get()).orElse("")) +
-            '}';
+        return "{"
+            + "hashKey='" + hashKey + '\''
+            + ", hashKeyType=" + hashKeyType
+            + (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType=" + rangeKeyType.get()).orElse(""))
+            + "}";
     }
 
     @Override

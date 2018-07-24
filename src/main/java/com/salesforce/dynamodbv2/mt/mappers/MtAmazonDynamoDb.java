@@ -98,11 +98,11 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
 
         @Override
         public String toString() {
-            return "MtRecord{" +
-                "context='" + context + '\'' +
-                ", tableName='" + tableName + '\'' +
-                ", recordFields=" + super.toString() +
-                '}';
+            return "MtRecord{"
+                + "context='" + context + '\''
+                + ", tableName='" + tableName + '\''
+                + ", recordFields=" + super.toString()
+                + '}';
         }
     }
 
