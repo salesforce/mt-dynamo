@@ -418,9 +418,11 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
                                        Map<String, AttributeValue> key,
                                        Map<String, AttributeValueUpdate> attributeUpdates,
                                        String returnValues) {
-        return updateItem(new UpdateItemRequest().withTableName(tableName).withKey(key)
-                .withAttributeUpdates(attributeUpdates)
-                .withReturnValues(returnValues));
+        return updateItem(new UpdateItemRequest()
+            .withTableName(tableName)
+            .withKey(key)
+            .withAttributeUpdates(attributeUpdates)
+            .withReturnValues(returnValues));
     }
 
     @Override
