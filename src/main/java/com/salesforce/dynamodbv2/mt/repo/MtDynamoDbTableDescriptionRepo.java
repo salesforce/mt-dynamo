@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.repo;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -29,19 +31,17 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 /*
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
  *
- * The AmazonDynamoDb that it uses must not, itself, be a MtAmazonDynamoDb* instance.  MtAmazonDynamoDbLogger is supported.
+ * The AmazonDynamoDb that it uses must not, itself, be a MtAmazonDynamoDb* instance.  MtAmazonDynamoDbLogger
+ * is supported.
  *
  * @author msgroi
  */
@@ -83,7 +83,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @Override
     public TableDescription createTable(CreateTableRequest createTableRequest) {
-        amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName()).withItem(createItem(createTableRequest)));
+        amazonDynamoDb.putItem(
+            new PutItemRequest()
+                .withTableName(getTableDescriptionTableName())
+                .withItem(createItem(createTableRequest)));
         return getTableDescription(createTableRequest.getTableName());
     }
 
@@ -113,9 +116,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private TableDescription getTableDescriptionNoCache(String tableName) {
         Map<String, AttributeValue> item = amazonDynamoDb.getItem(new GetItemRequest()
             .withTableName(getTableDescriptionTableName())
-            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(tableName)))))).getItem();
+            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                new AttributeValue(addPrefix(tableName)))))).getItem();
         if (item == null) {
-            throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in " + tableDescriptionTableName);
+            throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
+                + tableDescriptionTableName);
         }
         String tableDataJson = item.get(tableDescriptionTableDataField).getS();
         return jsonToTableData(tableDataJson);
@@ -129,7 +134,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         amazonDynamoDb.deleteItem(new DeleteItemRequest()
             .withTableName(getTableDescriptionTableName())
-            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(tableName))))));
+            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                new AttributeValue(addPrefix(tableName))))));
 
         return tableDescription;
     }
@@ -151,7 +157,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             new CreateTableRequest().withTableName(tableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
-                .withAttributeDefinitions(new AttributeDefinition().withAttributeName(tableDescriptionTableHashKeyField).withAttributeType(ScalarAttributeType.S))
+                .withAttributeDefinitions(
+                    new AttributeDefinition()
+                        .withAttributeName(tableDescriptionTableHashKeyField)
+                        .withAttributeType(ScalarAttributeType.S))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
             pollIntervalSeconds);
     }
@@ -161,7 +170,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             .withTableName(createTableRequest.getTableName())
             .withKeySchema(createTableRequest.getKeySchema())
             .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-            .withProvisionedThroughput(new ProvisionedThroughputDescription().withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
+            .withProvisionedThroughput(new ProvisionedThroughputDescription()
+                .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
                 .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()))
             .withStreamSpecification(createTableRequest.getStreamSpecification());
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
@@ -171,12 +181,14 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                     .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
-            tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(gsi ->
-                new GlobalSecondaryIndexDescription().withIndexName(gsi.getIndexName())
+            tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
+                gsi -> new GlobalSecondaryIndexDescription().withIndexName(gsi.getIndexName())
                     .withKeySchema(gsi.getKeySchema())
                     .withProjection(gsi.getProjection())
-                    .withProvisionedThroughput(new ProvisionedThroughputDescription().withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
-                        .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits()))).collect(Collectors.toList()));
+                    .withProvisionedThroughput(new ProvisionedThroughputDescription()
+                        .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
+                        .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits())))
+                .collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
@@ -226,13 +238,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         }
 
         @SuppressWarnings("unused")
-        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(String tableDescriptionTableHashKeyField) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(
+            String tableDescriptionTableHashKeyField) {
             this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
             return this;
         }
 
         @SuppressWarnings("unused")
-        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(String tableDescriptionTableDataField) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(
+            String tableDescriptionTableDataField) {
             this.tableDescriptionTableDataField = tableDescriptionTableDataField;
             return this;
         }
@@ -253,6 +267,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
+        /**
+         * TODO: write Javadoc.
+         */
         public MtDynamoDbTableDescriptionRepo build() {
             setDefaults();
             validate();

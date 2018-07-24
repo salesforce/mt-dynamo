@@ -24,7 +24,8 @@ public class DynamoSecondaryIndexMapperByTypeImpl implements DynamoSecondaryInde
 
     @Override
     public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi,
-                                                             DynamoTableDescription physicalTable) throws MappingException {
+                                                             DynamoTableDescription physicalTable)
+        throws MappingException {
         return (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSi.getPrimaryKey(),
             physicalTable.getSis().stream()
                 .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSi.getType())

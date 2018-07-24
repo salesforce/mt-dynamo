@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static java.util.stream.Collectors.toList;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
@@ -37,26 +39,23 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.List;
 import java.util.Optional;
-
-import static java.util.stream.Collectors.toList;
 
 /**
  * Allows for dividing tenants into their own tables by prefixing table names
  * with the multi-tenant context.
- * <p>
- * The multi-tenant context is separated from the table name by the delimiter,
+ *
+ * <p>The multi-tenant context is separated from the table name by the delimiter,
  * which is '.' by default.
- * <p>
- * To use, call the static builder() method. The following parameters are
+ *
+ * <p>To use, call the static builder() method. The following parameters are
  * required ... - an AmazonDynamoDB instance - a multi-tenant context
- * <p>
- * The following are optional arguments ... - delimiter: a String delimiter used
+ *
+ * <p>The following are optional arguments ... - delimiter: a String delimiter used
  * to separate the tenant identifier prefix from the table name
- * <p>
- * Supported: create|describe|delete Table, get|putItem, scan, query
+ *
+ * <p>Supported: create|describe|delete Table, get|putItem, scan, query
  *
  * @author msgroi
  */
@@ -72,18 +71,27 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         this.tablePrefix = tablePrefix;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         createTableRequest = createTableRequest.clone();
         createTableRequest.withTableName(buildPrefixedTablename(createTableRequest.getTableName()));
         return getAmazonDynamoDb().createTable(createTableRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         deleteItemRequest = deleteItemRequest.clone();
         deleteItemRequest.withTableName(buildPrefixedTablename(deleteItemRequest.getTableName()));
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         String virtualTableName = deleteTableRequest.getTableName();
         deleteTableRequest = deleteTableRequest.clone();
@@ -93,6 +101,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return deleteTableResult;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         String virtualTableName = describeTableRequest.getTableName();
         describeTableRequest = describeTableRequest.clone();
@@ -102,6 +113,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return describeTableResult;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         getItemRequest = getItemRequest.clone();
         String prefixedTableName = buildPrefixedTablename(getItemRequest.getTableName());
@@ -109,24 +123,36 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().getItem(getItemRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         putItemRequest = putItemRequest.clone();
         putItemRequest.withTableName(buildPrefixedTablename(putItemRequest.getTableName()));
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public QueryResult query(QueryRequest queryRequest) {
         queryRequest = queryRequest.clone();
         queryRequest.withTableName(buildPrefixedTablename(queryRequest.getTableName()));
         return getAmazonDynamoDb().query(queryRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public ScanResult scan(ScanRequest scanRequest) {
         scanRequest = scanRequest.clone();
         scanRequest.withTableName(buildPrefixedTablename(scanRequest.getTableName()));
         return getAmazonDynamoDb().scan(scanRequest);
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         updateItemRequest = updateItemRequest.clone();
         updateItemRequest.withTableName(buildPrefixedTablename(updateItemRequest.getTableName()));
@@ -233,6 +259,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        /**
+         * TODO: write Javadoc.
+         */
         public MtAmazonDynamoDbByTable build() {
             setDefaults();
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");

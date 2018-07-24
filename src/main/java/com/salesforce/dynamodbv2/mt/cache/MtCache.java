@@ -66,7 +66,8 @@ public class MtCache<V> implements Cache<String, V> {
 
     @Override
     public void invalidateAll(Iterable<?> keys) {
-        cache.invalidateAll(StreamSupport.stream(keys.spliterator(), false).map(this::getKey).collect(Collectors.toList()));
+        cache.invalidateAll(StreamSupport.stream(keys.spliterator(), false)
+            .map(this::getKey).collect(Collectors.toList()));
     }
 
     @Override

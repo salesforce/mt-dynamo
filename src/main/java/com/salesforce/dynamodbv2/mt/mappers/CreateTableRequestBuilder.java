@@ -7,6 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
@@ -19,13 +23,8 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 
 /*
  * @author msgroi
@@ -45,7 +44,8 @@ public class CreateTableRequestBuilder {
 
     private void setDefaults() {
         if (createTableRequest.getProvisionedThroughput() == null) {
-            createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
+            createTableRequest.setProvisionedThroughput(
+                new ProvisionedThroughput().withReadCapacityUnits(1L).withWriteCapacityUnits(1L));
         }
     }
 
@@ -58,12 +58,18 @@ public class CreateTableRequestBuilder {
         return createTableRequest.getTableName();
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField, ScalarAttributeType hashKeyType) {
         addAttributeDefinition(hashKeyField, hashKeyType);
         createTableRequest.withKeySchema(new KeySchemaElement(hashKeyField, HASH));
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField,
                                                         ScalarAttributeType hashKeyType,
                                                         String rangeKeyField,
@@ -75,6 +81,9 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     @SuppressWarnings("all")
     public CreateTableRequestBuilder addSi(String indexName,
                                            DynamoSecondaryIndexType indexType,
@@ -101,8 +110,12 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
-        this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits, writeCapacityUnits));
+        this.createTableRequest.withProvisionedThroughput(
+            new ProvisionedThroughput(readCapacityUnits, writeCapacityUnits));
         return this;
     }
 

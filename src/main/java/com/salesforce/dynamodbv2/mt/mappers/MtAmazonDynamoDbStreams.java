@@ -30,7 +30,7 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
     }
 
     /**
-     * Gets the underlying {@link AmazonDynamoDBStreams} instance
+     * Gets the underlying {@link AmazonDynamoDBStreams} instance.
      *
      * @return the underlying {@link AmazonDynamoDBStreams} instance
      */

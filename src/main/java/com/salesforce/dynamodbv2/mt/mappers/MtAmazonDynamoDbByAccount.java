@@ -20,20 +20,21 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 /**
- * @author msgroi
- * <p>
- * Allows for dividing tenants into different AWS accounts.  To use, pass in AmazonDynamoDBClientBuilder and MtAccountCredentialsMapper.
- * At run-time, a String representing the multi-tenant will be passed to your credentials mapper, allowing you map
- * the context to different AWS credentials implementations.
- * <p>
- * MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end of the chain when it is used.
- * <p>
- * To use, call the static builder() method.  The following parameters are required ...
+ * Allows for dividing tenants into different AWS accounts.  To use, pass in AmazonDynamoDBClientBuilder and
+ * MtAccountCredentialsMapper.  At run-time, a String representing the multi-tenant will be passed to your
+ * credentials mapper, allowing you map the context to different AWS credentials implementations.
+ *
+ * <p>MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end
+ * of the chain when it is used.
+ *
+ * <p>To use, call the static builder() method.  The following parameters are required ...
  * - a multi-tenant context
  * - a MtAccountCredentialsMapper implementation that maps context to AWSCredentialsProvider's
- * <p>
- * Supported:
+ *
+ * <p>Supported:
  * - methods: create|describe|delete Table, get|putItem, scan|query
+ *
+ * @author msgroi
  */
 public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
 
@@ -55,19 +56,25 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             return this;
         }
 
-        public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withAmazonDynamoDbClientBuilder(AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder) {
+        public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withAmazonDynamoDbClientBuilder(
+            AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder) {
             this.amazonDynamoDbClientBuilder = amazonDynamoDbClientBuilder;
             return this;
         }
 
-        public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withAccountCredentialsMapper(MtAccountCredentialsMapper credentialsMapper) {
+        public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withAccountCredentialsMapper(
+            MtAccountCredentialsMapper credentialsMapper) {
             this.credentialsMapper = credentialsMapper;
             return this;
         }
 
+        /**
+         * TODO: write Javadoc.
+         */
         public AmazonDynamoDB build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");
-            Preconditions.checkNotNull(amazonDynamoDbClientBuilder, "amazonDynamoDbClientBuilder is required");
+            Preconditions.checkNotNull(amazonDynamoDbClientBuilder,
+                "amazonDynamoDbClientBuilder is required");
             Preconditions.checkNotNull(credentialsMapper, "credentialsMapper is required");
             return new MtAmazonDynamoDbByAccount(mtContext, amazonDynamoDbClientBuilder, credentialsMapper);
         }
@@ -120,6 +127,9 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        /**
+         * TODO: write Javadoc.
+         */
         public AmazonDynamoDB build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");
             Preconditions.checkNotNull(accountMapper, "accountMapper is required");
@@ -166,7 +176,8 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
             return cache.getAmazonDynamoDb(
                 mtContext.getContext(),
-                context -> amazonDynamoDbClientBuilder.withCredentials(credentialsMapper.getAwsCredentialsProvider(context)).build());
+                context -> amazonDynamoDbClientBuilder.withCredentials(
+                    credentialsMapper.getAwsCredentialsProvider(context)).build());
         }
 
     }

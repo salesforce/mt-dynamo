@@ -7,13 +7,13 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.nio.charset.StandardCharsets.UTF_8;
+
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 /*
  * Adds and removes prefixes to fields based on the tenant context.
@@ -51,7 +51,8 @@ class FieldMapper {
 
     private String convertToStringNotNull(ScalarAttributeType type, AttributeValue attributeValue) {
         String convertedString = convertToString(type, attributeValue);
-        checkNotNull(convertedString, "attributeValue=" + attributeValue + " of type=" + type.name() + " could not be converted");
+        checkNotNull(convertedString, "attributeValue=" + attributeValue
+                     + " of type=" + type.name() + " could not be converted");
         return convertedString;
     }
 

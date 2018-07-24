@@ -7,6 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Optional.empty;
+import static java.util.Optional.of;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -15,12 +19,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
-
 import java.util.Optional;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static java.util.Optional.empty;
-import static java.util.Optional.of;
 
 /*
  * Allows a developer to control the mapping of virtual to physical tables by providing a CreateTableRequestFactory.
@@ -53,15 +52,19 @@ import static java.util.Optional.of;
  *
  * - DynamoSecondaryIndexMapper: Allows customization of mapping of virtual to physical
  *   secondary indexes.  Two implementations are provided, DynamoSecondaryIndexMapperByNameImpl and
- *   DynamoSecondaryIndexMapperByTypeImpl.  See Javadoc there for details.  Default: DynamoSecondaryIndexMapperByNameImpl.
+ *   DynamoSecondaryIndexMapperByTypeImpl.  See Javadoc there for details.
+ *   Default: DynamoSecondaryIndexMapperByNameImpl.
  * - delimiter: a String delimiter used to separate the tenant identifier prefix from the hashkey value.  Default: '-'.
  *   See Javadoc below.  Default: true.
  * - tablePrefix: a String used to prefix all tables with, independently of multi-tenant context, to provide the
  *   ability to support multiple environments within an account.
- * - MtTableDescriptionRepo: Responsible for storing and retrieving table descriptions.  Default: MtDynamoDbTableDescriptionRepo
+ * - MtTableDescriptionRepo: Responsible for storing and retrieving table descriptions.
+ *   Default: MtDynamoDbTableDescriptionRepo
  *   which stores table definitions in DynamoDB itself.
- * - deleteTableAsync: a boolean to indicate whether table data deletion may happen asynchronously after the table is dropped, default: FALSE
- * - truncateOnDeleteTable: a boolean to indicate whether all of a table's data should be deleted when a table is dropped, default: FALSE
+ * - deleteTableAsync: a boolean to indicate whether table data deletion may happen asynchronously after the table is
+ *   dropped, default: FALSE
+ * - truncateOnDeleteTable: a boolean to indicate whether all of a table's data should be deleted when a table is
+ *   dropped, default: FALSE
  *
  * Limitations ...
  *
@@ -72,7 +75,8 @@ import static java.util.Optional.of;
  * ** Updates on gsi hashkey's are unsupported
  * *** Only EQ conditions are supported.
  *
- * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected results.
+ * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield
+ * unexpected results.
  */
 public class SharedTableCustomDynamicBuilder {
 
@@ -90,6 +94,9 @@ public class SharedTableCustomDynamicBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
+    /**
+     * TODO: write Javadoc.
+     */
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         validate();
@@ -144,13 +151,15 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    public SharedTableCustomDynamicBuilder withCreateTableRequestFactory(CreateTableRequestFactory createTableRequestFactory) {
+    public SharedTableCustomDynamicBuilder withCreateTableRequestFactory(
+        CreateTableRequestFactory createTableRequestFactory) {
         this.createTableRequestFactory = createTableRequestFactory;
         return this;
     }
 
     @SuppressWarnings("all")
-    public SharedTableCustomDynamicBuilder withDynamoSecondaryIndexMapper(DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
+    public SharedTableCustomDynamicBuilder withDynamoSecondaryIndexMapper(
+        DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
         this.secondaryIndexMapper = dynamoSecondaryIndexMapper;
         return this;
     }

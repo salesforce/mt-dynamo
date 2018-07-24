@@ -7,6 +7,9 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.index;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
@@ -15,9 +18,6 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 
 import java.util.List;
 import java.util.Optional;
-
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 
 /*
  * Model class representing secondary index.
@@ -30,6 +30,9 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
     private final PrimaryKey primaryKey;
     private final DynamoSecondaryIndexType type;
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DynamoSecondaryIndex(List<AttributeDefinition> attributeDefinitions,
                                 String indexName,
                                 List<KeySchemaElement> primaryKey,
@@ -43,21 +46,26 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
         return indexName;
     }
 
-    public PrimaryKey getPrimaryKey() {
-        return primaryKey;
-    }
-
     public DynamoSecondaryIndexType getType() {
         return type;
     }
 
+    public PrimaryKey getPrimaryKey() {
+        return primaryKey;
+    }
+
+    /**
+     * TODO: write Javadoc.
+     */
     private PrimaryKey getPrimaryKey(List<KeySchemaElement> keySchema, List<AttributeDefinition> attributeDefinitions) {
-        KeySchemaElement hashKeySchema = getKeySchemaElement(keySchema, HASH).orElseThrow(() -> new IllegalArgumentException("no HASH found in " + keySchema));
+        KeySchemaElement hashKeySchema = getKeySchemaElement(keySchema, HASH)
+            .orElseThrow(() -> new IllegalArgumentException("no HASH found in " + keySchema));
         Optional<KeySchemaElement> rangeKeySchema = getKeySchemaElement(keySchema, RANGE);
         return new PrimaryKey(hashKeySchema.getAttributeName(),
             getAttributeType(hashKeySchema.getAttributeName(), attributeDefinitions),
             rangeKeySchema.map(KeySchemaElement::getAttributeName),
-            rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName(), attributeDefinitions)));
+            rangeKeySchema.map(keySchemaElement -> getAttributeType(keySchemaElement.getAttributeName(),
+                attributeDefinitions)));
     }
 
     private Optional<KeySchemaElement> getKeySchemaElement(List<KeySchemaElement> keySchema, KeyType keyType) {
@@ -69,7 +77,9 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
     private ScalarAttributeType getAttributeType(String attributeName, List<AttributeDefinition> attributeDefinitions) {
         return ScalarAttributeType.valueOf(attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName + "' not found in " + attributeDefinitions)).getAttributeType());
+            .findFirst().orElseThrow(() ->
+                new IllegalArgumentException("attribute with name '" + attributeName + "' not found in "
+                    + attributeDefinitions)).getAttributeType());
     }
 
     public enum DynamoSecondaryIndexType {
@@ -79,11 +89,11 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
 
     @Override
     public String toString() {
-        return "{" +
-            "indexName='" + indexName + '\'' +
-            ", keySchema='" + getPrimaryKey() +
-            ", type=" + type.name() +
-            '}';
+        return "{"
+            + "indexName='" + indexName + '\''
+            + ", keySchema='" + getPrimaryKey()
+            + ", type=" + type.name()
+            + '}';
     }
 
     @Override
