@@ -25,8 +25,8 @@ import org.junit.jupiter.api.Test;
  */
 class ItemMapperTest {
 
-    private static final String prefix = "prefix-";
-    private static final ItemMapper sut = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
+    private static final String PREFIX = "PREFIX-";
+    private static final ItemMapper SUT = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
         virtualTableDescription1 -> new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
@@ -41,20 +41,20 @@ class ItemMapperTest {
             "virtualhk", new AttributeValue().withS("hkvalue"),
             "somefield", new AttributeValue().withS("somevalue"));
 
-        Map<String, AttributeValue> mappedItem = sut.apply(item);
+        Map<String, AttributeValue> mappedItem = SUT.apply(item);
 
         assertEquals(ImmutableMap.of(
-            "physicalhk", new AttributeValue().withS(prefix + "hkvalue"),
+            "physicalhk", new AttributeValue().withS(PREFIX + "hkvalue"),
             "somefield", new AttributeValue().withS("somevalue")), mappedItem);
 
-        Map<String, AttributeValue> reversedItem = sut.reverse(mappedItem);
+        Map<String, AttributeValue> reversedItem = SUT.reverse(mappedItem);
 
         assertEquals(item, reversedItem);
     }
 
     @Test
     void reverseNull() {
-        assertNull(sut.reverse(null));
+        assertNull(SUT.reverse(null));
     }
 
     private static class MockFieldMapper extends FieldMapper {
@@ -66,12 +66,12 @@ class ItemMapperTest {
         @Override
         AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
             if (unqualifiedAttribute.getS() != null) {
-                return new AttributeValue().withS(prefix + unqualifiedAttribute.getS());
+                return new AttributeValue().withS(PREFIX + unqualifiedAttribute.getS());
             }
             if (unqualifiedAttribute.getN() != null) {
-                return new AttributeValue().withS(prefix + unqualifiedAttribute.getN());
+                return new AttributeValue().withS(PREFIX + unqualifiedAttribute.getN());
             }
-            return new AttributeValue().withS(prefix + unqualifiedAttribute.getB());
+            return new AttributeValue().withS(PREFIX + unqualifiedAttribute.getB());
         }
 
         @Override

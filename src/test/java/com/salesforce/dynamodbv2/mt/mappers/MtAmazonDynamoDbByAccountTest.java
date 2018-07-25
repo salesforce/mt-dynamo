@@ -44,14 +44,14 @@ public class MtAmazonDynamoDbByAccountTest {
 
     // local by default because hosted dynamo depends on hosted AWS, which is (1) slow and (2) requires two sets of
     // credentials.
-    private static final boolean isLocalDynamo = true;
-    private static final AmazonDynamoDBClientBuilder amazonDynamoDBClientBuilder = AmazonDynamoDBClientBuilder
+    private static final boolean IS_LOCAL_DYNAMO = true;
+    private static final AmazonDynamoDBClientBuilder AMAZON_DYNAMO_DB_CLIENT_BUILDER = AmazonDynamoDBClientBuilder
         .standard().withRegion(Regions.US_EAST_1);
 
     @Test
     void test() {
         MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
-        if (isLocalDynamo) {
+        if (IS_LOCAL_DYNAMO) {
             MtAmazonDynamoDbByAccountBuilder builder = MtAmazonDynamoDbByAccount.accountMapperBuilder()
                 .withAccountMapper(LOCAL_DYNAMO_ACCOUNT_MAPPER)
                 .withContext(mtContext);
@@ -59,7 +59,7 @@ public class MtAmazonDynamoDbByAccountTest {
             new MtAmazonDynamoDbTestRunner(mtContext, amazonDynamoDb, amazonDynamoDb, null, false).runAll();
         } else {
             MtCredentialsBasedAmazonDynamoDbByAccountBuilder builder = MtAmazonDynamoDbByAccount.builder()
-                .withAmazonDynamoDbClientBuilder(amazonDynamoDBClientBuilder)
+                .withAmazonDynamoDbClientBuilder(AMAZON_DYNAMO_DB_CLIENT_BUILDER)
                 .withAccountCredentialsMapper(HOSTED_DYNAMO_ACCOUNT_MAPPER)
                 .withContext(mtContext);
             AmazonDynamoDB amazonDynamoDb = builder.build();
@@ -87,20 +87,20 @@ public class MtAmazonDynamoDbByAccountTest {
 
     private static class TestAccountMapper implements MtAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
 
-        private static final Map<String, AmazonDynamoDB> cache = ImmutableMap.of("ctx1", getNewAmazonDynamoDbLocal(),
+        private static final Map<String, AmazonDynamoDB> CACHE = ImmutableMap.of("ctx1", getNewAmazonDynamoDbLocal(),
             "ctx2", getNewAmazonDynamoDbLocal(),
             "ctx3", getNewAmazonDynamoDbLocal(),
             "ctx4", getNewAmazonDynamoDbLocal());
 
         @Override
         public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider context) {
-            checkArgument(cache.containsKey(context.getContext()), "invalid context '" + context + "'");
-            return cache.get(context.getContext());
+            checkArgument(CACHE.containsKey(context.getContext()), "invalid context '" + context + "'");
+            return CACHE.get(context.getContext());
         }
 
         @Override
         public Map<String, AmazonDynamoDB> get() {
-            return cache;
+            return CACHE;
         }
 
     }
@@ -139,10 +139,11 @@ public class MtAmazonDynamoDbByAccountTest {
 
         @Override
         public Map<String, AmazonDynamoDB> get() {
-            return ImmutableMap.of("1", amazonDynamoDBClientBuilder.withCredentials(ctx1CredentialsProvider).build(),
-                "2", amazonDynamoDBClientBuilder.withCredentials(ctx2CredentialsProvider).build(),
-                "3", amazonDynamoDBClientBuilder.withCredentials(ctx3CredentialsProvider).build(),
-                "4", amazonDynamoDBClientBuilder.withCredentials(ctx4CredentialsProvider).build());
+            return ImmutableMap.of("1",
+                    AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx1CredentialsProvider).build(),
+                "2", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx2CredentialsProvider).build(),
+                "3", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx3CredentialsProvider).build(),
+                "4", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx4CredentialsProvider).build());
         }
 
     }

@@ -26,7 +26,7 @@ import java.util.stream.StreamSupport;
 @SuppressWarnings("all")
 public class MtCache<V> implements Cache<String, V> {
 
-    private static final String delimiter = "-";
+    private static final String DELIMITER = "-";
     private final MtAmazonDynamoDbContextProvider contextProvider;
     private final Cache<Object, V> cache;
 
@@ -36,7 +36,7 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     private String getKey(Object key) {
-        return contextProvider.getContext() + delimiter + key;
+        return contextProvider.getContext() + DELIMITER + key;
     }
 
     @Override

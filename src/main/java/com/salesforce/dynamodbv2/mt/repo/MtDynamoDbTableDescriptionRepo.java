@@ -52,7 +52,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private static final String TABLEMETADATA_DATAFIELD = "data";
     private static final String DELIMITER = ".";
 
-    private static final Gson gson = new Gson();
+    private static final Gson GSON = new Gson();
     private final AmazonDynamoDB amazonDynamoDb;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
@@ -195,11 +195,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private String tableDataToJson(TableDescription tableDescription) {
-        return gson.toJson(tableDescription);
+        return GSON.toJson(tableDescription);
     }
 
     private TableDescription jsonToTableData(String tableDataString) {
-        return gson.fromJson(tableDataString, TableDescription.class);
+        return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
     private String addPrefix(String tableName) {

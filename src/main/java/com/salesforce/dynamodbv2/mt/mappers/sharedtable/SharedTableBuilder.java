@@ -151,32 +151,32 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         super.setDefaults();
     }
 
-    private static final String hashKeyField = "hk";
-    private static final String rangeKeyField = "rk";
+    private static final String HASH_KEY_FIELD = "hk";
+    private static final String RANGE_KEY_FIELD = "rk";
 
     private List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_s")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSn = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_n")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSb = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_b")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, B);
         CreateTableRequestBuilder mtSharedTableStaticsNoLsi = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_nolsi")
-            .withTableKeySchema(hashKeyField, S);
+            .withTableKeySchema(HASH_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSsNoLsi = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_s_nolsi")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, S);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSnNoLsi = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_n_nolsi")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, N);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSbNoLsi = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_b_nolsi")
-            .withTableKeySchema(hashKeyField, S, rangeKeyField, B);
+            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, B);
 
         return ImmutableList.of(mtSharedTableStaticSs,
             mtSharedTableStaticSn,

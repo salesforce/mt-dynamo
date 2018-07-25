@@ -17,17 +17,17 @@ import org.junit.jupiter.api.Test;
  */
 class FieldPrefixFunctionTest {
 
-    private static final FieldPrefixFunction sut = new FieldPrefixFunction(".");
+    private static final FieldPrefixFunction SUT = new FieldPrefixFunction(".");
 
     @Test
     void applyAndReverse() {
         FieldValue expected = new FieldValue("ctx", "table", "ctx.table.value", "value");
 
-        FieldValue applied = sut.apply(() -> "ctx", "table", "value");
+        FieldValue applied = SUT.apply(() -> "ctx", "table", "value");
 
         assertEquals(expected, applied);
 
-        assertEquals(expected, sut.reverse(applied.getQualifiedValue()));
+        assertEquals(expected, SUT.reverse(applied.getQualifiedValue()));
     }
 
 }
