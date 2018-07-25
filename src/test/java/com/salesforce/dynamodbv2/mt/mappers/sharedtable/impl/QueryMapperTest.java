@@ -41,16 +41,16 @@ import org.junit.jupiter.api.Test;
  */
 class QueryMapperTest {
 
-    private static final DynamoTableDescription virtualTableDescription = new DynamoTableDescriptionImpl(
+    private static final DynamoTableDescription VIRTUAL_TABLE_DESCRIPTION = new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                     .withTableKeySchema("virtualhk", S)
                     .addSi("virtualgsi", GSI, new PrimaryKey("virtualgsihk", S), 1L).build());
-    private static final DynamoTableDescription physicalTableDescription = new DynamoTableDescriptionImpl(
+    private static final DynamoTableDescription PHYSICAL_TABLE_DESCRIPTION = new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                     .withTableKeySchema("physicalhk", S)
                     .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
-    private static final TableMapping tableMapping = new TableMapping(virtualTableDescription,
-            virtualTableDescription1 -> physicalTableDescription.getCreateTableRequest(),
+    private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
+            virtualTableDescription1 -> PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest(),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             () -> "ctx",
             "."
@@ -59,7 +59,7 @@ class QueryMapperTest {
     private QueryMapper getMockQueryMapper(String fieldMapperReturnValue) {
         FieldMapper fieldMapper = mock(FieldMapper.class);
         when(fieldMapper.apply(any(), any())).thenReturn(new AttributeValue().withS(fieldMapperReturnValue));
-        return new QueryMapper(tableMapping, fieldMapper);
+        return new QueryMapper(TABLE_MAPPING, fieldMapper);
     }
 
     @Test

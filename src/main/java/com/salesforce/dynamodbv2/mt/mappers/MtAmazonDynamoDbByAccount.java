@@ -163,7 +163,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
      */
     private static class CredentialBasedAccountMapperImpl implements MtAccountMapper {
 
-        private static final AmazonDynamoDbCache cache = new AmazonDynamoDbCache();
+        private static final AmazonDynamoDbCache CACHE = new AmazonDynamoDbCache();
         private final AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder;
         private final MtAccountCredentialsMapper credentialsMapper;
 
@@ -174,7 +174,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         }
 
         public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
-            return cache.getAmazonDynamoDb(
+            return CACHE.getAmazonDynamoDb(
                 mtContext.getContext(),
                 context -> amazonDynamoDbClientBuilder.withCredentials(
                     credentialsMapper.getAwsCredentialsProvider(context)).build());

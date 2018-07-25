@@ -25,74 +25,86 @@ import org.junit.jupiter.api.Test;
  */
 class PrimaryKeyMapperByTypeImplTest {
 
-    private static final HasPrimaryKey s = primaryKeyWrapper(S);
-    private static final HasPrimaryKey n = primaryKeyWrapper(N);
-    private static final HasPrimaryKey b = primaryKeyWrapper(B);
-    private static final HasPrimaryKey ss = primaryKeyWrapper(S, S);
-    private static final HasPrimaryKey sn = primaryKeyWrapper(S, N);
-    private static final HasPrimaryKey sb = primaryKeyWrapper(S, B);
+    private static final HasPrimaryKey HPK_S = primaryKeyWrapper(S);
+    private static final HasPrimaryKey HPK_N = primaryKeyWrapper(N);
+    private static final HasPrimaryKey HPK_B = primaryKeyWrapper(B);
+    private static final HasPrimaryKey HPK_SS = primaryKeyWrapper(S, S);
+    private static final HasPrimaryKey HPK_SN = primaryKeyWrapper(S, N);
+    private static final HasPrimaryKey HPK_SB = primaryKeyWrapper(S, B);
 
-    private static final PrimaryKeyMapperByTypeImpl sut = new PrimaryKeyMapperByTypeImpl(false);
-    private static final PrimaryKeyMapperByTypeImpl sutStrict = new PrimaryKeyMapperByTypeImpl(true);
+    private static final PrimaryKeyMapperByTypeImpl SUT = new PrimaryKeyMapperByTypeImpl(false);
+    private static final PrimaryKeyMapperByTypeImpl SUT_STRICT = new PrimaryKeyMapperByTypeImpl(true);
 
     @Test
     void testS() throws MappingException {
-        assertEquals(s, sut.mapPrimaryKey(s.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertEquals(ss, sut.mapPrimaryKey(s.getPrimaryKey(), of(b, n, ss, sn, sb)));
-        assertEquals(sn, sut.mapPrimaryKey(s.getPrimaryKey(), of(b, n, sn, sb)));
-        assertEquals(sb, sut.mapPrimaryKey(s.getPrimaryKey(), of(b, n, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(s.getPrimaryKey(), of(n, b)));
-        assertMappingException(() -> sut.mapPrimaryKey(s.getPrimaryKey(), of(s, s)));
-        assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(ss, ss)));
-        assertEquals(s, sutStrict.mapPrimaryKey(s.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sutStrict.mapPrimaryKey(s.getPrimaryKey(), of(b, n, ss, sn, sb)));
-        assertMappingException(() -> sutStrict.mapPrimaryKey(s.getPrimaryKey(), of(b, n, sn, sb)));
-        assertMappingException(() -> sutStrict.mapPrimaryKey(s.getPrimaryKey(), of(b, n, sb)));
+        assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_SS, SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_SN, SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SN, HPK_SB)));
+        assertEquals(HPK_SB, SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_N, HPK_B)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_S, HPK_S)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SS.getPrimaryKey(), of(HPK_SS, HPK_SS)));
+        assertEquals(HPK_S,
+                SUT_STRICT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_S.getPrimaryKey(),
+                of(HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SB)));
     }
 
     @SuppressWarnings("Duplicates")
     @Test
     void testN() throws MappingException {
-        assertEquals(s, sut.mapPrimaryKey(n.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertEquals(s, sut.mapPrimaryKey(n.getPrimaryKey(), of(s, b, ss, sn, sb)));
-        assertEquals(ss, sut.mapPrimaryKey(n.getPrimaryKey(), of(b, ss, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(n.getPrimaryKey(), of(n, b)));
-        assertMappingException(() -> sut.mapPrimaryKey(n.getPrimaryKey(), of(s, s)));
-        assertEquals(s, sutStrict.mapPrimaryKey(n.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sutStrict.mapPrimaryKey(n.getPrimaryKey(), of(b, ss, sn, sb)));
+        assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_S, HPK_B, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_SS, SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_B, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_N, HPK_B)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_S, HPK_S)));
+        assertEquals(HPK_S,
+                SUT_STRICT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_N.getPrimaryKey(),
+                of(HPK_B, HPK_SS, HPK_SN, HPK_SB)));
     }
 
     @SuppressWarnings("Duplicates")
     @Test
     void testB() throws MappingException {
-        assertEquals(s, sut.mapPrimaryKey(b.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertEquals(s, sut.mapPrimaryKey(b.getPrimaryKey(), of(s, n, ss, sn, sb)));
-        assertEquals(ss, sut.mapPrimaryKey(b.getPrimaryKey(), of(n, ss, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(n.getPrimaryKey(), of(n, b)));
-        assertMappingException(() -> sut.mapPrimaryKey(b.getPrimaryKey(), of(s, s)));
-        assertEquals(s, sutStrict.mapPrimaryKey(b.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sutStrict.mapPrimaryKey(b.getPrimaryKey(), of(n, ss, sn, sb)));
+        assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_S, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertEquals(HPK_SS, SUT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_N, HPK_B)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_S, HPK_S)));
+        assertEquals(HPK_S,
+                SUT_STRICT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_B.getPrimaryKey(),
+                of(HPK_N, HPK_SS, HPK_SN, HPK_SB)));
     }
 
     @Test
     void testSs() throws MappingException {
-        assertEquals(ss, sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(s, b, n, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(ss.getPrimaryKey(), of(ss, ss)));
+        assertEquals(HPK_SS,
+                SUT.mapPrimaryKey(HPK_SS.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SS.getPrimaryKey(),
+                of(HPK_S, HPK_B, HPK_N, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SS.getPrimaryKey(), of(HPK_SS, HPK_SS)));
     }
 
     @Test
     void testSn() throws MappingException {
-        assertEquals(sn, sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(s, b, n, ss, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(sn.getPrimaryKey(), of(ss, ss)));
+        assertEquals(HPK_SN,
+                SUT.mapPrimaryKey(HPK_SN.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SN.getPrimaryKey(),
+                of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SN.getPrimaryKey(), of(HPK_SS, HPK_SS)));
     }
 
     @Test
     void testSb() throws MappingException {
-        assertEquals(sb, sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn, sb)));
-        assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(s, b, n, ss, sn)));
-        assertMappingException(() -> sut.mapPrimaryKey(sb.getPrimaryKey(), of(ss, ss)));
+        assertEquals(HPK_SB,
+                SUT.mapPrimaryKey(HPK_SB.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SB.getPrimaryKey(),
+                of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN)));
+        assertMappingException(() -> SUT.mapPrimaryKey(HPK_SB.getPrimaryKey(), of(HPK_SS, HPK_SS)));
     }
 
     private static void assertMappingException(TestFunction test) {

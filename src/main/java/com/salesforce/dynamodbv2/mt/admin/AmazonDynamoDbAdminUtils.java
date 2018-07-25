@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  */
 public class AmazonDynamoDbAdminUtils {
 
-    private static final int tableDDLOperationTimeoutSeconds = 600;
+    private static final int TABLE_DDL_OPERATION_TIMEOUT_SECONDS = 600;
     private static final Logger log = LoggerFactory.getLogger(AmazonDynamoDbAdminUtils.class);
     private final AmazonDynamoDB amazonDynamoDb;
 
@@ -47,7 +47,7 @@ public class AmazonDynamoDbAdminUtils {
             if (!tableExists(createTableRequest.getTableName())) {
                 String tableName = createTableRequest.getTableName();
                 amazonDynamoDb.createTable(createTableRequest);
-                awaitTableActive(tableName, pollIntervalSeconds, tableDDLOperationTimeoutSeconds);
+                awaitTableActive(tableName, pollIntervalSeconds, TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
                     createTableRequest.getTableName()));
@@ -60,7 +60,7 @@ public class AmazonDynamoDbAdminUtils {
             if (e.getStatus().toUpperCase().equals("CREATING")) {
                 awaitTableActive(createTableRequest.getTableName(),
                                  pollIntervalSeconds,
-                                 tableDDLOperationTimeoutSeconds);
+                        TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
                 throw new ResourceInUseException("table=" + e.getTableName() + " is in " + e.getStatus() + " status");
             }

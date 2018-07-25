@@ -20,13 +20,13 @@ import java.util.stream.Collectors;
  */
 public class DynamoSecondaryIndexMapperByTypeImpl implements DynamoSecondaryIndexMapper {
 
-    private static final PrimaryKeyMapper primaryKeyMapper = new PrimaryKeyMapperByTypeImpl(true);
+    private static final PrimaryKeyMapper PRIMARY_KEY_MAPPER = new PrimaryKeyMapperByTypeImpl(true);
 
     @Override
     public DynamoSecondaryIndex lookupPhysicalSecondaryIndex(DynamoSecondaryIndex virtualSi,
                                                              DynamoTableDescription physicalTable)
         throws MappingException {
-        return (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSi.getPrimaryKey(),
+        return (DynamoSecondaryIndex) PRIMARY_KEY_MAPPER.mapPrimaryKey(virtualSi.getPrimaryKey(),
             physicalTable.getSis().stream()
                 .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSi.getType())
                 .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)

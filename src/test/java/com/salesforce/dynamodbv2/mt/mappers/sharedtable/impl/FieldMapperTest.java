@@ -30,8 +30,8 @@ import org.junit.jupiter.api.Test;
  */
 class FieldMapperTest {
 
-    //    private static final String delimiter = random(); // TODO flip this back on when escaping is implemented
-    private static final String delimiter = ".";
+    //    private static final String DELIMITER = random(); // TODO flip this back on when escaping is implemented
+    private static final String DELIMITER = ".";
 
     @Test
     void applyTableIndex() {
@@ -40,7 +40,7 @@ class FieldMapperTest {
         assertMapper(S,
             TABLE,
             () -> new AttributeValue().withS(value),
-            mtContext.getContext() + delimiter + "virtualtable" + delimiter + value,
+            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + value,
             mtContext);
     }
 
@@ -51,7 +51,7 @@ class FieldMapperTest {
         assertMapper(S,
             SECONDARYINDEX,
             () -> new AttributeValue().withS(value),
-            mtContext.getContext() + delimiter + "virtualindex" + delimiter + value,
+            mtContext.getContext() + DELIMITER + "virtualindex" + DELIMITER + value,
             mtContext);
     }
 
@@ -61,7 +61,7 @@ class FieldMapperTest {
         assertMapper(N,
             TABLE,
             () -> new AttributeValue().withN("123"),
-            mtContext.getContext() + delimiter + "virtualtable" + delimiter + "123",
+            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + "123",
             mtContext);
     }
 
@@ -71,7 +71,7 @@ class FieldMapperTest {
         assertMapper(B,
             TABLE,
             () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
-            mtContext.getContext() + delimiter + "virtualtable" + delimiter + "bytebuffer",
+            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + "bytebuffer",
             mtContext);
     }
 
@@ -134,7 +134,7 @@ class FieldMapperTest {
     private FieldMapper buildFieldMapper(MtAmazonDynamoDbContextProvider mtContext) {
         return new FieldMapper(mtContext,
             "virtualtable",
-            new FieldPrefixFunction(delimiter));
+            new FieldPrefixFunction(DELIMITER));
     }
 
     private static String random() {

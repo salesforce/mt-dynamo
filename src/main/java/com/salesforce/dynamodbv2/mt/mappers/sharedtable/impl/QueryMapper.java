@@ -42,8 +42,8 @@ import java.util.stream.Collectors;
  */
 class QueryMapper {
 
-    private static final String namePlaceholder = "#___name___";
-    private static final String valuePlaceholder = ":___value___";
+    private static final String NAME_PLACEHOLDER = "#___name___";
+    private static final String VALUE_PLACEHOLDER = ":___value___";
 
     private final FieldMapper fieldMapper;
     private final TableMapping tableMapping;
@@ -151,11 +151,11 @@ class QueryMapper {
             fieldMapping.getIndexType(),
             fieldMapping.isContextAware());
         AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
-        request.putExpressionAttributeName(namePlaceholder, hashKey);
-        request.putExpressionAttributeValue(valuePlaceholder, physicalValuePrefixAttribute);
+        request.putExpressionAttributeName(NAME_PLACEHOLDER, hashKey);
+        request.putExpressionAttributeValue(VALUE_PLACEHOLDER, physicalValuePrefixAttribute);
         request.setPrimaryExpression(
             (request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "")
-                + "begins_with(" + namePlaceholder + ", " + valuePlaceholder + ")");
+                + "begins_with(" + NAME_PLACEHOLDER + ", " + VALUE_PLACEHOLDER + ")");
     }
 
     private void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) {
@@ -177,7 +177,7 @@ class QueryMapper {
             Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny()
                 : Optional.empty();
-            if (keyFieldName.isPresent() && !keyFieldName.get().equals(namePlaceholder)) {
+            if (keyFieldName.isPresent() && !keyFieldName.get().equals(NAME_PLACEHOLDER)) {
                 String virtualValuePlaceholder = findVirtualValuePlaceholder(primaryExpression, filterExpression,
                     keyFieldName.get());
                 AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
