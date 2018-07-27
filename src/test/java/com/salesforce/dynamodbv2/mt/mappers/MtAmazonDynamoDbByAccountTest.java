@@ -68,7 +68,6 @@ public class MtAmazonDynamoDbByAccountTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void testCache() {
         AmazonDynamoDbCache cache = new AmazonDynamoDbCache();
         Function<String, AmazonDynamoDB> function = mock(Function.class);

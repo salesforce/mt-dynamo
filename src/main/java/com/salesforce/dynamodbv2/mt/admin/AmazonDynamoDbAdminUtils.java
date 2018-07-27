@@ -90,7 +90,6 @@ public class AmazonDynamoDbAdminUtils {
             .until(() -> !tableExists(tableName));
     }
 
-    @SuppressWarnings("all")
     private void awaitTableActive(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
@@ -99,7 +98,6 @@ public class AmazonDynamoDbAdminUtils {
             .until(() -> tableActive(tableName));
     }
 
-    @SuppressWarnings("all")
     private boolean tableExists(String tableName) throws TableInUseException {
         try {
             getTableStatus(tableName);

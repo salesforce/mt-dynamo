@@ -99,7 +99,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
 
-    @SuppressWarnings("WeakerAccess")
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
     }
@@ -107,7 +106,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     /**
      * TODO: write Javadoc.
      */
-    @SuppressWarnings("unused")
     public SharedTableBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         if (this.createTableRequests == null) {
             this.createTableRequests = new ArrayList<>();
@@ -121,7 +119,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    @SuppressWarnings("unused")
     public SharedTableBuilder withDefaultProvisionedThroughput(long defaultProvisionedThroughput) {
         this.defaultProvisionedThroughput = defaultProvisionedThroughput;
         return this;
@@ -213,8 +210,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     private void addSi(CreateTableRequestBuilder createTableRequestBuilder,
                        DynamoSecondaryIndexType indexType,
-                       @SuppressWarnings("all")
-                           ScalarAttributeType hashKeyType,
+                       ScalarAttributeType hashKeyType,
                        Optional<ScalarAttributeType> rangeKeyType) {
         String indexName = indexType.name().toLowerCase() + "_"
             + hashKeyType.name().toLowerCase()
@@ -281,7 +277,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             }
         }
 
-        @SuppressWarnings("all")
         private boolean isEmpty(List lsis) {
             return lsis == null || lsis.isEmpty();
         }

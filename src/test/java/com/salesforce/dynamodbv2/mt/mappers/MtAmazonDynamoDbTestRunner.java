@@ -83,11 +83,8 @@ public class MtAmazonDynamoDbTestRunner {
     private final AmazonDynamoDB rootAmazonDynamoDb;
     protected final int timeoutSeconds = 600;
     private final boolean isLocalDynamo;
-    @SuppressWarnings("FieldCanBeLocal")
     private final CreateTableRequest createTableRequest1;
-    @SuppressWarnings("FieldCanBeLocal")
     private final CreateTableRequest createTableRequest2;
-    @SuppressWarnings("FieldCanBeLocal")
     private final CreateTableRequest createTableRequest3;
     private final CreateTableRequest createTableRequest4;
     private final String tableName1;

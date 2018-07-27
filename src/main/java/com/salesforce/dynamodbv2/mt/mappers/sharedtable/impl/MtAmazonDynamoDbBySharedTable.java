@@ -409,7 +409,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return deleteTableResult;
     }
 
-    @SuppressWarnings("Duplicates")
     private void truncateTable(String tableName) {
         if (truncateOnDeleteTable) {
             ScanResult scanResult = scan(new ScanRequest().withTableName(tableName));

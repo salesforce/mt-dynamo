@@ -57,14 +57,12 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
     /**
      * TODO: write Javadoc.
      */
-    @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         this.createTableRequestsMap = Arrays.stream(createTableRequests)
             .collect(Collectors.toMap(CreateTableRequest::getTableName, identity()));
         return this;
     }
 
-    @SuppressWarnings("WeakerAccess")
     public SharedTableCustomStaticBuilder withTableMapper(TableMapper tableMapper) {
         this.tableMapper = tableMapper;
         return this;

@@ -52,7 +52,6 @@ class PrimaryKeyMapperByTypeImplTest {
         assertMappingException(() -> SUT_STRICT.mapPrimaryKey(HPK_S.getPrimaryKey(), of(HPK_B, HPK_N, HPK_SB)));
     }
 
-    @SuppressWarnings("Duplicates")
     @Test
     void testN() throws MappingException {
         assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_N.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
@@ -66,7 +65,6 @@ class PrimaryKeyMapperByTypeImplTest {
                 of(HPK_B, HPK_SS, HPK_SN, HPK_SB)));
     }
 
-    @SuppressWarnings("Duplicates")
     @Test
     void testB() throws MappingException {
         assertEquals(HPK_S, SUT.mapPrimaryKey(HPK_B.getPrimaryKey(), of(HPK_S, HPK_B, HPK_N, HPK_SS, HPK_SN, HPK_SB)));
@@ -124,7 +122,6 @@ class PrimaryKeyMapperByTypeImplTest {
         return () -> new PrimaryKey("", hashKeyType, Optional.empty(), Optional.empty());
     }
 
-    @SuppressWarnings("all")
     private static HasPrimaryKey primaryKeyWrapper(ScalarAttributeType hashKeyType, ScalarAttributeType rangeKeyType) {
         return () -> new PrimaryKey("", hashKeyType, Optional.of(""), Optional.of(rangeKeyType));
     }

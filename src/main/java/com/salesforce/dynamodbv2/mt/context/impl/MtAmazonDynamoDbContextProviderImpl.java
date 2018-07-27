@@ -37,7 +37,6 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
         }
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, String> getContextMap() {
         Map<String, String> context = (Map<String, String>) threadLocal.get();
         if (context == null) {

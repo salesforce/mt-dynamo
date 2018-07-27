@@ -235,21 +235,18 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        @SuppressWarnings("unused")
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(
             String tableDescriptionTableHashKeyField) {
             this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
             return this;
         }
 
-        @SuppressWarnings("unused")
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(
             String tableDescriptionTableDataField) {
             this.tableDescriptionTableDataField = tableDescriptionTableDataField;
             return this;
         }
 
-        @SuppressWarnings("unused")
         public MtDynamoDbTableDescriptionRepoBuilder withDelimiter(String delimiter) {
             this.delimiter = delimiter;
             return this;

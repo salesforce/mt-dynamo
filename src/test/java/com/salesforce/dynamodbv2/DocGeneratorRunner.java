@@ -472,7 +472,6 @@ class DocGeneratorRunner {
             return createItem(hashKeyField, value, "someField", "value-" + value);
         }
 
-        @SuppressWarnings("all")
         private String buildTableName(String table, int ordinal) {
             return buildTableName(table + ordinal);
         }
@@ -481,7 +480,6 @@ class DocGeneratorRunner {
             return getTablePrefix() + table;
         }
 
-        @SuppressWarnings("ResultOfMethodCallIgnored")
         private Path getOutputFile(String outputFilePath) {
             new File(outputFilePath).getParentFile().mkdirs();
             Path outputFile = Paths.get(outputFilePath);

@@ -84,7 +84,6 @@ public class CreateTableRequestBuilder {
     /**
      * TODO: write Javadoc.
      */
-    @SuppressWarnings("all")
     public CreateTableRequestBuilder addSi(String indexName,
                                            DynamoSecondaryIndexType indexType,
                                            PrimaryKey secondaryIndexKey,
@@ -119,7 +118,6 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
-    @SuppressWarnings("all")
     public CreateTableRequestBuilder withStreamSpecification(StreamSpecification streamSpecification) {
         this.createTableRequest.withStreamSpecification(streamSpecification);
         return this;
