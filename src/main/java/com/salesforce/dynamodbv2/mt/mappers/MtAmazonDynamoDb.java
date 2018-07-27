@@ -112,7 +112,7 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
         private String arn;
         private IRecordProcessorFactory recordProcessorFactory;
 
-            public String getLabel() {
+        public String getLabel() {
             return label;
         }
 
@@ -125,7 +125,7 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
             return this;
         }
 
-            public String getArn() {
+        public String getArn() {
             return arn;
         }
 
@@ -138,7 +138,7 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
             return this;
         }
 
-            public IRecordProcessorFactory getRecordProcessorFactory() {
+        public IRecordProcessorFactory getRecordProcessorFactory() {
             return recordProcessorFactory;
         }
 

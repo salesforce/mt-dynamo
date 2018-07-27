@@ -472,7 +472,7 @@ class DocGeneratorRunner {
             return createItem(hashKeyField, value, "someField", "value-" + value);
         }
 
-            private String buildTableName(String table, int ordinal) {
+        private String buildTableName(String table, int ordinal) {
             return buildTableName(table + ordinal);
         }
 

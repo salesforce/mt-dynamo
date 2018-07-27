@@ -131,7 +131,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             return this;
         }
 
-            public MtAmazonDynamoDbBuilder withLogCallback(Consumer<List<String>> logCallback) {
+        public MtAmazonDynamoDbBuilder withLogCallback(Consumer<List<String>> logCallback) {
             this.logCallback = logCallback;
             return this;
         }
@@ -141,7 +141,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             return this;
         }
 
-            public MtAmazonDynamoDbBuilder withLogAll() {
+        public MtAmazonDynamoDbBuilder withLogAll() {
             this.logAll = true;
             return this;
         }

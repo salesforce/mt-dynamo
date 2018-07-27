@@ -235,19 +235,19 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-            public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableHashKeyField(
             String tableDescriptionTableHashKeyField) {
             this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
             return this;
         }
 
-            public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableDataField(
             String tableDescriptionTableDataField) {
             this.tableDescriptionTableDataField = tableDescriptionTableDataField;
             return this;
         }
 
-            public MtDynamoDbTableDescriptionRepoBuilder withDelimiter(String delimiter) {
+        public MtDynamoDbTableDescriptionRepoBuilder withDelimiter(String delimiter) {
             this.delimiter = delimiter;
             return this;
         }

@@ -277,7 +277,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             }
         }
 
-            private boolean isEmpty(List lsis) {
+        private boolean isEmpty(List lsis) {
             return lsis == null || lsis.isEmpty();
         }
 
