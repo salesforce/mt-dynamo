@@ -59,12 +59,12 @@ import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker.Builder;
 import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
+import com.google.common.base.Objects;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -133,13 +133,22 @@ class MtAmazonDynamoDbStreamTestRunner {
     private void assertMtRecord(MtRecord receivedRecord, List<MtRecord> expectedMtRecords) {
         Optional<MtRecord> mtRecordFound = expectedMtRecords
                 .stream()
-                .filter(mtRecord -> new MtRecordComparator().compare(receivedRecord, mtRecord) == 0)
+                .filter(mtRecord -> weakMtRecordEquals(mtRecord, receivedRecord))
                 .findFirst();
         if (mtRecordFound.isPresent()) {
             expectedMtRecords.remove(mtRecordFound.get());
         } else {
             throw new IllegalArgumentException("unexpected MtRecord encountered: " + receivedRecord);
         }
+    }
+
+    private boolean weakMtRecordEquals(MtRecord r1, MtRecord r2) {
+        return Objects.equal(r1.getContext(), r2.getContext())
+                && Objects.equal(r1.getTableName(), r2.getTableName())
+                && Objects.equal(r1.getEventName(), r2.getEventName())
+                && Objects.equal(r1.getDynamodb().getKeys(), r2.getDynamodb().getKeys())
+                && Objects.equal(r1.getDynamodb().getOldImage(), r2.getDynamodb().getOldImage())
+                && Objects.equal(r1.getDynamodb().getNewImage(), r2.getDynamodb().getNewImage());
     }
 
     private static class StreamWorkerStarter implements Runnable {
@@ -250,38 +259,6 @@ class MtAmazonDynamoDbStreamTestRunner {
             return recordsReceived;
         }
 
-    }
-
-    private static class MtRecordComparator implements Comparator<MtRecord> {
-
-        @Override
-        public int compare(MtRecord r1, MtRecord r2) {
-            if (!r1.getContext().equals(r2.getContext())) {
-                return 1;
-            }
-            if (!r1.getTableName().equals(r2.getTableName())) {
-                return 1;
-            }
-            if (!r1.getEventName().equals(r2.getEventName())) {
-                return 1;
-            }
-            if (!r1.getDynamodb().getKeys().equals(r2.getDynamodb().getKeys())) {
-                return 1;
-            }
-            if ((r1.getDynamodb().getOldImage() == null && r2.getDynamodb().getOldImage() != null)
-                    || (r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() == null)
-                    || ((r1.getDynamodb().getOldImage() != null && r2.getDynamodb().getOldImage() != null)
-                    && !r1.getDynamodb().getOldImage().equals(r2.getDynamodb().getOldImage()))) {
-                return 1;
-            }
-            if ((r1.getDynamodb().getNewImage() == null && r2.getDynamodb().getNewImage() != null)
-                    || (r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() == null)
-                    || ((r1.getDynamodb().getNewImage() != null && r2.getDynamodb().getNewImage() != null)
-                    && !r1.getDynamodb().getNewImage().equals(r2.getDynamodb().getNewImage()))) {
-                return 1;
-            }
-            return 0;
-        }
     }
 
     private static class DummyCloudWatch implements AmazonCloudWatch {
