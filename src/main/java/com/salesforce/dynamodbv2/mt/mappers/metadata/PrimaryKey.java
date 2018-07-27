@@ -82,16 +82,10 @@ public class PrimaryKey {
 
         PrimaryKey that = (PrimaryKey) o;
 
-        if (!hashKey.equals(that.hashKey)) {
-            return false;
-        }
-        if (hashKeyType != that.hashKeyType) {
-            return false;
-        }
-        if (!rangeKey.equals(that.rangeKey)) {
-            return false;
-        }
-        return rangeKeyType.equals(that.rangeKeyType);
+        return hashKey.equals(that.hashKey)
+                && hashKeyType == that.hashKeyType
+                && rangeKey.equals(that.rangeKey)
+                && rangeKeyType.equals(that.rangeKeyType);
     }
 
     @Override

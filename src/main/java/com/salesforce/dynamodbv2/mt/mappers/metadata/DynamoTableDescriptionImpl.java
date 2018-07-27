@@ -199,30 +199,21 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
         DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
 
-        if (!tableName.equals(that.tableName)) {
+        if (streamSpecification != null
+                ? !streamSpecification.equals(that.streamSpecification)
+                : that.streamSpecification != null) {
             return false;
         }
-        if (!attributeDefinitions.equals(that.attributeDefinitions)) {
-            return false;
-        }
-        if (!primaryKey.equals(that.primaryKey)) {
-            return false;
-        }
-        if (!gsiMap.equals(that.gsiMap)) {
-            return false;
-        }
-        if (!lsiMap.equals(that.lsiMap)) {
-            return false;
-        }
-        if (!provisionedThroughput.getReadCapacityUnits().equals(that.provisionedThroughput.getReadCapacityUnits())) {
-            return false;
-        }
-        if (!provisionedThroughput.getWriteCapacityUnits().equals(that.provisionedThroughput.getWriteCapacityUnits())) {
-            return false;
-        }
-        return streamSpecification != null
-            ? streamSpecification.equals(that.streamSpecification)
-            : that.streamSpecification == null;
+
+        return tableName.equals(that.tableName)
+            && attributeDefinitions.equals(that.attributeDefinitions)
+            && primaryKey.equals(that.primaryKey)
+            && gsiMap.equals(that.gsiMap)
+            && lsiMap.equals(that.lsiMap)
+            && provisionedThroughput.getReadCapacityUnits()
+                .equals(that.provisionedThroughput.getReadCapacityUnits())
+            && provisionedThroughput.getWriteCapacityUnits()
+                .equals(that.provisionedThroughput.getWriteCapacityUnits());
     }
 
     private ProvisionedThroughputDescription fromProvisionedThroughput(ProvisionedThroughput provisionedThroughput) {

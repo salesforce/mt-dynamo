@@ -80,16 +80,10 @@ class FieldPrefixFunction {
 
             FieldValue that = (FieldValue) o;
 
-            if (!mtContext.equals(that.mtContext)) {
-                return false;
-            }
-            if (!tableIndex.equals(that.tableIndex)) {
-                return false;
-            }
-            if (!qualifiedValue.equals(that.qualifiedValue)) {
-                return false;
-            }
-            return unqualifiedValue.equals(that.unqualifiedValue);
+            return mtContext.equals(that.mtContext)
+                    && tableIndex.equals(that.tableIndex)
+                    && qualifiedValue.equals(that.qualifiedValue)
+                    && unqualifiedValue.equals(that.unqualifiedValue);
         }
     }
 
