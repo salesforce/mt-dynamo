@@ -107,13 +107,9 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
 
         DynamoSecondaryIndex that = (DynamoSecondaryIndex) o;
 
-        if (!indexName.equals(that.indexName)) {
-            return false;
-        }
-        if (!primaryKey.equals(that.primaryKey)) {
-            return false;
-        }
-        return type == that.type;
+        return indexName.equals(that.indexName)
+                && primaryKey.equals(that.primaryKey)
+                && type == that.type;
     }
 
     @Override
