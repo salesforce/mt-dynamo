@@ -233,7 +233,7 @@
                         <configuration>
                             <configLocation>src/test/resources/checkstyle.xml</configLocation>
                             <linkXRef>false</linkXRef>
-                            <failsOnError>false</failsOnError>
+                            <failsOnError>true</failsOnError>
                             <consoleOutput>true</consoleOutput>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
                         </configuration>

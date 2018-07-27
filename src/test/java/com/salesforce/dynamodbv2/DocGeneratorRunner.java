@@ -100,6 +100,7 @@ class DocGeneratorRunner {
     /*
      * logger -> account
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -121,6 +122,7 @@ class DocGeneratorRunner {
     /*
      * table -> logger
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
@@ -140,6 +142,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> logger
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
@@ -159,6 +162,7 @@ class DocGeneratorRunner {
     /*
      * table -> logger -> account
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -181,6 +185,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> logger -> account
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -204,6 +209,7 @@ class DocGeneratorRunner {
     /*
      * table -> sharedtable -> logger
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
@@ -224,6 +230,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> table -> logger
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTable() {
         AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
@@ -244,6 +251,7 @@ class DocGeneratorRunner {
     /*
      * table -> sharedtable -> logger -> account
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -268,6 +276,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> table -> logger -> account
      */
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {

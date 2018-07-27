@@ -64,6 +64,7 @@ class TableMappingTest {
                     new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                     1L)
             .build());
+    @SuppressWarnings("checkstyle:Indentation")
     private final TableMapping sut = new TableMapping(virtualTable,
             virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
             new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -154,6 +155,7 @@ class TableMappingTest {
                         false))), sut.getAllPhysicalToVirtualFieldMappings());
     }
 
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void getIndexPrimaryKeyFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings.entrySet().stream()
@@ -209,6 +211,7 @@ class TableMappingTest {
                 "virtual and physical rangekey types mismatch");
     }
 
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
         DynamoSecondaryIndexMapper spyIndexMapper = spy(DynamoSecondaryIndexMapperByTypeImpl.class);
@@ -239,6 +242,7 @@ class TableMappingTest {
                 "failure mapping virtual to physical GSI: incompatible index mapping");
     }
 
+    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateLsiMappings() {
         DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
