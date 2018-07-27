@@ -248,8 +248,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             return this;
         }
 
-        @SuppressWarnings("all")
-        MtAmazonDynamoDbBuilder withDelimiter(String delimiter) {
+            MtAmazonDynamoDbBuilder withDelimiter(String delimiter) {
             this.delimiter = delimiter;
             return this;
         }

@@ -32,7 +32,6 @@ import org.junit.jupiter.api.Test;
  */
 class MtAmazonDynamoDbByTableTest {
 
-    @SuppressWarnings("FieldCanBeLocal")
     private final boolean loggingEnabled = true;
     private final AmazonDynamoDB localAmazonDynamoDb = MtAmazonDynamoDbTestRunner.getLocalAmazonDynamoDb();
 

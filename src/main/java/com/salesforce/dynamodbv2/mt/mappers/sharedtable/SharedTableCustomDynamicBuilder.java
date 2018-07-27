@@ -123,7 +123,6 @@ public class SharedTableCustomDynamicBuilder {
         return new SharedTableCustomDynamicBuilder();
     }
 
-    @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withName(String name) {
         this.name = name;
         return this;
@@ -139,13 +138,11 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withDelimiter(String delimiter) {
         this.delimiter = delimiter;
         return this;
     }
 
-    @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withTablePrefix(String tablePrefix) {
         this.tablePrefix = of(tablePrefix);
         return this;
@@ -157,20 +154,17 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withDynamoSecondaryIndexMapper(
         DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
         this.secondaryIndexMapper = dynamoSecondaryIndexMapper;
         return this;
     }
 
-    @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withTableDescriptionRepo(MtTableDescriptionRepo mtTableDescriptionRepo) {
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         return this;
     }
 
-    @SuppressWarnings("unused")
     public SharedTableCustomDynamicBuilder withDeleteTableAsync(boolean dropAsync) {
         deleteTableAsync = dropAsync;
         return this;
@@ -181,7 +175,6 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    @SuppressWarnings("all")
     public SharedTableCustomDynamicBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
         this.pollIntervalSeconds = pollIntervalSeconds;
         return this;

@@ -23,7 +23,6 @@ import java.util.stream.StreamSupport;
 /*
  * @author msgroi
  */
-@SuppressWarnings("all")
 public class MtCache<V> implements Cache<String, V> {
 
     private static final String DELIMITER = "-";

@@ -312,7 +312,6 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         throw new UnsupportedOperationException();
     }
 
-    @SuppressWarnings("WeakerAccess")
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         throw new UnsupportedOperationException();
     }
