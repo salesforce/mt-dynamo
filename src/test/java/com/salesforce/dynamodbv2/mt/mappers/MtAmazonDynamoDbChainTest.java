@@ -7,15 +7,14 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
-
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import jdk.nashorn.internal.ir.annotations.Ignore;
+import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -25,7 +24,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 /**
  * This tests that chaining works.  Note that this is a white-box test.  It inspects the calls to dynamo to see if
@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
+@Ignore
 class MtAmazonDynamoDbChainTest {
 
     @Test
