@@ -13,7 +13,7 @@ import com.google.common.io.Resources;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import jdk.nashorn.internal.ir.annotations.Ignore;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -35,7 +35,7 @@ import static org.hamcrest.Matchers.is;
  *
  * @author msgroi
  */
-@Ignore
+@Disabled
 class MtAmazonDynamoDbChainTest {
 
     @Test
