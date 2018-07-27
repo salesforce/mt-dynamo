@@ -210,7 +210,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     private void addSi(CreateTableRequestBuilder createTableRequestBuilder,
                        DynamoSecondaryIndexType indexType,
-                                              ScalarAttributeType hashKeyType,
+                       ScalarAttributeType hashKeyType,
                        Optional<ScalarAttributeType> rangeKeyType) {
         String indexName = indexType.name().toLowerCase() + "_"
             + hashKeyType.name().toLowerCase()
