@@ -49,6 +49,8 @@ class QueryMapperTest {
             CreateTableRequestBuilder.builder()
                     .withTableKeySchema("physicalhk", S)
                     .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
+    @SuppressWarnings("checkstyle:Indentation")
     private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
             virtualTableDescription1 -> PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest(),
             new DynamoSecondaryIndexMapperByTypeImpl(),
