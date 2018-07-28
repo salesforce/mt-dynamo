@@ -39,6 +39,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /*
+ * Suppresses "Line is longer than 120 characters [LineLengthCheck]" warning.  The line length violation was deemed
+ * acceptable in this case for the sake of making the table more readable.
+ */
+@SuppressWarnings("checkstyle:LineLength")
+/*
  * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
  * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
