@@ -1,4 +1,6 @@
 [![Build Status](https://travis-ci.org/salesforce/mt-dynamo.svg?branch=master)](https://travis-ci.org/salesforce/mt-dynamo)
+![Coveralls github branch](https://img.shields.io/coveralls/github/salesforce/mt-dynamo/master.svg)
+
 
 
 # Multitenant AWS Dynamo SDK (mt-dynamodb)

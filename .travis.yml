@@ -4,3 +4,5 @@ install:
   - make
 script:
   - make test
+after_success:
+  - make coveralls
