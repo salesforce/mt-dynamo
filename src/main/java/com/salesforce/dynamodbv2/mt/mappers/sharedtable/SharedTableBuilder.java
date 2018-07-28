@@ -38,6 +38,10 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/*
+ * Suppresses "Line is longer than 120 characters [LineLengthCheck]" warning.  The line length violation was deemed
+ * acceptable in this case for the sake of making the table more readable.
+ */
 @SuppressWarnings("checkstyle:LineLength")
 /*
  * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements

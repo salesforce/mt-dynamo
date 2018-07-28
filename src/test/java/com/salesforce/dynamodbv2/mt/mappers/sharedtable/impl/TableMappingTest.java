@@ -64,6 +64,7 @@ class TableMappingTest {
                     new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                     1L)
             .build());
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     private final TableMapping sut = new TableMapping(virtualTable,
             virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
@@ -155,6 +156,7 @@ class TableMappingTest {
                         false))), sut.getAllPhysicalToVirtualFieldMappings());
     }
 
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void getIndexPrimaryKeyFieldMappings() {
@@ -211,6 +213,7 @@ class TableMappingTest {
                 "virtual and physical rangekey types mismatch");
     }
 
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
@@ -242,6 +245,7 @@ class TableMappingTest {
                 "failure mapping virtual to physical GSI: incompatible index mapping");
     }
 
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateLsiMappings() {

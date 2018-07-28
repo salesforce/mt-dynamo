@@ -100,8 +100,9 @@ class DocGeneratorRunner {
     /*
      * logger -> account
      */
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
+    @SuppressWarnings("checkstyle:Indentation")
     void byAccount() {
         if (SKIP_ACCOUNT_TEST) {
             return;
@@ -122,6 +123,7 @@ class DocGeneratorRunner {
     /*
      * table -> logger
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTable() {
@@ -142,6 +144,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> logger
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTable() {
@@ -162,6 +165,7 @@ class DocGeneratorRunner {
     /*
      * table -> logger -> account
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableByAccount() {
@@ -185,6 +189,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> logger -> account
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByAccount() {
@@ -209,6 +214,7 @@ class DocGeneratorRunner {
     /*
      * table -> sharedtable -> logger
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTable() {
@@ -230,6 +236,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> table -> logger
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTable() {
@@ -251,6 +258,7 @@ class DocGeneratorRunner {
     /*
      * table -> sharedtable -> logger -> account
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTableByAccount() {
@@ -276,6 +284,7 @@ class DocGeneratorRunner {
     /*
      * sharedtable -> table -> logger -> account
      */
+    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTableByAccount() {
