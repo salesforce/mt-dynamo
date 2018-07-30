@@ -103,6 +103,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private Boolean precreateTables;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
+    private Boolean streamsEnabled = true;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -121,6 +122,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
         this.precreateTables = precreateTables;
+        return this;
+    }
+
+    public SharedTableBuilder withStreamsEnabled(boolean streamsEnabled) {
+        this.streamsEnabled = streamsEnabled;
         return this;
     }
 
@@ -208,9 +214,10 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     }
 
     private void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder) {
-        createTableRequestBuilder.withStreamSpecification(new StreamSpecification()
-            .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-            .withStreamEnabled(true));
+        createTableRequestBuilder.withStreamSpecification(streamsEnabled
+                ? new StreamSpecification().withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                           .withStreamEnabled(true)
+                : new StreamSpecification().withStreamEnabled(false));
     }
 
     private void addSi(CreateTableRequestBuilder createTableRequestBuilder,
