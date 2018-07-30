@@ -150,14 +150,14 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
         }
+        if (streamsEnabled == null) {
+            streamsEnabled = true;
+        }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput);
         }
         if (precreateTables == null) {
             precreateTables = true;
-        }
-        if (streamsEnabled == null) {
-            streamsEnabled = true;
         }
         super.setDefaults();
     }
