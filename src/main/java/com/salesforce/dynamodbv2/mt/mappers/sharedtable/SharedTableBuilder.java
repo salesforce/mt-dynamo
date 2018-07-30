@@ -103,7 +103,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private Boolean precreateTables;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
-    private Boolean streamsEnabled = true;
+    private Boolean streamsEnabled;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -155,6 +155,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         }
         if (precreateTables == null) {
             precreateTables = true;
+        }
+        if (streamsEnabled == null) {
+            streamsEnabled = true;
         }
         super.setDefaults();
     }
