@@ -1,8 +1,33 @@
 language: java
-jdk: oraclejdk8
-install:
-  - make
-script:
-  - make test
+
+env:
+  global:
+    - secure: "SBFaqeIoYHJKwwV8NWBrGfA2vuTho1mqAJlz8cxxb03YdebXFicn1entCWfTdRC/7ramvErd5s+3VDaMyEw7oqtN+YGeazgCf0H0G363HL7E/HdDoJ4mDtqhDyHpKHcASoG09zUbbkaPvhFXkArIDpUC/z1ioJ0FIaSeF4DYgtB+O//hkLz+R2XO0a/vz7U2q+10wvYyLo9wAHYFiyDDdFhJ9w7VxiHbarpv41k3IUJgGZg7extuTDXUccveT4gdQ5sqrErej3d2qAn4cyT1uXg+J5qYGJmjLYpXc/ns7yHHC7gGD1krvgWAZD6KVsFhYRm3fYTWnyzrWbMhO+pShNulMroQaI4qa94JKmEwK2cs3nQiiwww+87bNi/7FLJC+ClM8jIHxSfG2gAHIkLYsW5OYzUtEASSfr4akCEQxjGoRxMgrVMez4dPa2b60QA2roRQ6H25ByS3l4cl2CrDp223oLYCJ1bKj9vwG2T6jT93w3IF44UXmTwa7RUmXSHP2eJh+srbRQH7uQMUeanwG4D37bARGqIn7MZMa7OGG+T+fpL7J/mV8D6+IZWgNKM4truPYpMzWcT9Ps2q+KJRhAwn7e/MAkZ+RhUNZTUDQh4GL8J3K9VUZvkGjW1RipFm+VDHhUDWeZkTJnUpRwgTnThGEKdKzpMuh5qbrFNIGjo="
+    - # ^^ OSSRH_JIRA_USERNAME
+    - secure: "R/fsiGn/NARVgHo2Ugtozl/uXsizGRJjDkzFGOw488VXEvoW+kFGxRZYTElspNXA+hCTR4LuXODUrCsavhnZmvgaYNceIVC0KJB6jpKvP/CiAdDMLhLjK18KC/Dt0827fZAN3KtyTYhqP4kMcFpRxCwAvSP/CFE2lrHl0Xkb6NdQTJAvvY66SJJvlHUF4KiKZkUhD1nWo9bfi5VSSkGGDYLcVqdxINkB09X3BBJK7slDrzXrksmx4GUjMeitasX46f3U+bqqyMsjIUgoVRRnQQK/c1BdtjEy5ZTugWlVv7UbzZSNQAK2rz3vL9SSxcPt7+lqZyZlUHgQGxc241ILWhmIGBu4oVB8oEwdwTBxX0l+wnBDFl8DaoDzHfi/ySoVQ0eX/ra0Cg2QNP3xf29U3hrFpeiz4N/QfySHULrKWfeL+jvP7Q+oRXH1h0csR3v72uADN1hA+2xuJxSPJjj43RvUEadNaYxVN2gJhYvfA+b3bm5J2vSo1OfMuBFNYK/V5tip1hkLOwkFzYqsFaiyIqBReN2zp8sb8wP8YTih5/SY1BXjQQe6OSQiHFJW8TRS7neCoBkKq0GAEYD8kLZlEpCvu8d7/+oe4YtWKekfJOBG6R5S0ZA4PtPVxzRFpiWXKNzenKaqj5waScJCM/5/NlGG5fV/jAduQO+KgafrXgc="
+    - # ^^ OSSRH_JIRA_PASSWORD
+    - secure: "2s6kLEefpg5xQXzPbyRGYfb6IOpc7s1jz7NHiRrjeUn8uPV3UD1031jx2JKRBK/kDyx1oAzyJRF8KRCEkIaeMqZ4ZCYu5Ybhu7pf9OHYDFtre6BSDoBmGQWKOnZZiMf6GuVF0sGiRvNIPUPy+0g1MEzInNqlImBCl7jwJPwnzaKrKgcMUoanlMY/Kudbq81vF+TmnjjHMO5L1gl5IpiGRhEnzosbtbo4llvdMWBXlg0w4eAQ853zlBx9yjf9zI2dPL7HoOqXJoHbyRvsJ/wZlMt5wwQ+8Lyo093AAeE3pupsu+TF326aVWPHupKp8fZdPfpc/xpJVv05HBaACx4AAAEHCdiKb2IqnmiSJ49zCnVkQL4QIjC60L325DAkCpCyyIcHZBM5IF8bhWuqqXXLXzvLkE1kA+BuXHO+vcsddJO1/DNV5umjHIigFyN8JqlqpmEaFfCI4hpmmQI7wjh0aQDcNVlAYmIRhv0V20PRbCgqTVm7uUIED+BBAI2/e3zzuCyy1jr4LJPp/m4oIHH1CXQ1LzwgTrUx5Un1EyJ63EZ4loNw9r99TjlIj/+IaPAHhbvu0cY9++bmOVHHV5DHNlbRQIqRRybUJonlWO19TeK8tZmpwgFvSbsEeUyUyAjDkESO/CKb7h2TEfdKANiKBXR1McW9kVM4QmHGD/oo2u4="
+    - # ^^ GPG_KEY_NAME
+    - secure: "Sgl6IsUZSypJiNdoGNW8DvJ/e6qxzC5SGcb6ckNhOXNnLdF7M3EBq68Zs4DzBktmbk9viLHgXODcZVdwjS1yPTo7to0NeEVAj3q5i0v0KjBi9IQL8RPyPg7NbJo+5RelK18HRxuKhlRY+QiLQZb3gYjGoiAa2rEqOLQt3GzJaVuCPvWXE0VqGKqLMniFfMkrF9bmWuDkzrNk/eYPuVQBBtd/D0C8p4buvfzOOLqBsa5daLLLvoFbXx/oVwKn7buSEzCPpz7qUDJg9eRPFhrg/25DlQgO4PrH+SF5gi9G+o3BUOc6JgIS4Tk+A8iGlLjCGW7KcqnxGNWt/WSVv+oWi/aNBrcnqhUlXqHpKTkq5T9WOaoIG/aBgEXvEhIvJlxPJNfNk94wrQxZwlnuMRk3D9QH1w3XR8hJE/AzXe1XvlfRHR/gcrIsvkGjOGCEJhQePIODSKb/IJjN5ZJYfL8w0XCfD6RRQLUVQJzAt8LTUu3cHiRc/JkBZ90L9YcTettjHtocAfyBzTHrsej8ERthGPDLQ0C00sdM8C2mPLDefjIloSQK5f7TbT66t+CGvXf4uhIKVvAHk1B5MUUh8HjZI8Xo4xaKzw4DSPQzLvyOx3KsAquw8FUtI6TO6F/2Lt5wYeRXzwtsSuv0lv24ykMIa1TMnBGATVttBq5hDe7h9xE="
+    - # ^^ GPG_PASSPHRASE
+
+cache:
+  directories:
+    - ~/.m2/repository
+
 after_success:
+
+jdk: oraclejdk8
+
+install: mvn install -P !build-extras -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+#install:
+#  - make
+
+script: mvn test -P !build-extras -B
+#script:
+#  - make test
+
+after_success:
+  - ./cd/before-deploy.sh
+  - ./cd/deploy.sh
   - make coveralls
