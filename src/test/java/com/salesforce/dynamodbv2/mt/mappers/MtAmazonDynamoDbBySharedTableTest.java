@@ -41,6 +41,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamic
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
 
 import java.util.function.Supplier;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -48,7 +49,8 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-class MtAmazonDynamoDbBySharedTableTest {
+@Disabled
+class MtAmazonDynamoDbBySharedTableTest { // TODO msgroi delete this test
 
     private static final boolean RANDOM_TABLE_NAME = false;
     private static final Regions REGION = Regions.US_EAST_1;
