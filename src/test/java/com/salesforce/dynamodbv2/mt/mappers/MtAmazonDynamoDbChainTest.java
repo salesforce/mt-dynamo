@@ -7,8 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.google.common.collect.ImmutableList;
@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
  * @author msgroi
  */
 class MtAmazonDynamoDbChainTest {
+
+    private static final String GOLD_FILE = "MtAmazonDynamoDbChainTest-expectedLogMessages.txt";
 
     @Test
     void test() throws Exception {
@@ -84,16 +86,18 @@ class MtAmazonDynamoDbChainTest {
         // run
         testRunner.run();
 
-        // log
-        logAggregator.messages.forEach(message -> System.out.println("\"" + message + "\","));
-
         // assert
         final List<String> expectedLogMessages;
         try (Stream<String> stream = Files.lines(Paths.get(Resources
-                .getResource("MtAmazonDynamoDbChainTest-expectedLogMessages.txt").toURI()))) {
+                .getResource(GOLD_FILE).toURI()))) {
             expectedLogMessages = stream.collect(Collectors.toList());
         }
-        assertThat(logAggregator.messages, is(expectedLogMessages));
+        if (!is(expectedLogMessages).matches(logAggregator.messages)) {
+            // log
+            logAggregator.messages.forEach(message -> System.out.println("\"" + message + "\","));
+            fail("Expected output does not match gold file.  To troubleshoot, diff the above"
+                 + " console output against " + GOLD_FILE);
+        }
 
         // run
         testRunner.runWithoutLogging();
