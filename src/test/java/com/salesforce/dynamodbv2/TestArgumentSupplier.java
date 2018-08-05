@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -49,7 +50,6 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
     private static final int DYNAMO_BASE_PORT = 8001;
     private static List<DynamoDBServer> servers;
     static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
-    static final boolean IS_LOCAL_DYNAMO = true; // TODO msgroi should test running against hosted dynamo
 
     @Override
     public List<Arguments> get() {

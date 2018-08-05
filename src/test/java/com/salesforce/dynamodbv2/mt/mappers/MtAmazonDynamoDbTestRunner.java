@@ -430,7 +430,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         assertThat(getAmazonDynamoDbSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
 
         // delete and create table and verify no leftover data
-        deleteTable("ctx1", tableName1); // TODO msgroi convert this to isolated test
+        deleteTable("ctx1", tableName1);
         createTable("ctx1", createTableRequest1);
         List<Map<String, AttributeValue>> scanItems3 = getAmazonDynamoDbSupplier()
             .scan(new ScanRequest().withTableName(tableName1)).getItems();
