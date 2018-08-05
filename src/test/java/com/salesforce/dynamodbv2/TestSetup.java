@@ -6,6 +6,7 @@ import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.INDEX_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
 import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
@@ -44,7 +45,6 @@ import java.util.stream.Collectors;
 public class TestSetup {
 
     private static final MtAmazonDynamoDbContextProvider mtContext = TestArgumentSupplier.MT_CONTEXT;
-    private static final boolean IS_LOCAL_DYNAMO = TestArgumentSupplier.IS_LOCAL_DYNAMO;
     private static final ScalarAttributeType hashKeyAttrType = ScalarAttributeType.S; // TODO msgroi parameterize this
     static final String TABLE1 = "Table1";
     static final String TABLE2 = "Table2";

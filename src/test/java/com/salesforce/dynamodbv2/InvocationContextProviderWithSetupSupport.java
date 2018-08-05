@@ -21,13 +21,17 @@ import org.slf4j.LoggerFactory;
  * multiple times depending on the number of invocation contexts returned by your provider.  This class is dependent
  * only on the JUnit 5 API.  To use ...
  *
- * 1) declare a class that extends this class and pass values into the constructor as follows ...
+ * 1) Declare a class that extends this class and pass values into the constructor as follows ...
  *     - argumentType: the Class that encapsulates the object that you want to pass to your test
  *     - arguments: List of objects of type argumentType that will be used to invoke your test
  *     - beforeEachCallback: a implementation class that takes an argument of type argumentType that will be called
- * before each test invocation
- * 2) annotate your test method or test class with @ExtendWith(<yourclass that extends InvocationContextProviderWithSetupSupport>.class)
- * 3) annotate your test method with @TestTemplate
+ *     before each test invocation
+ *     - afterEachCallback: a implementation class that takes an argument of type argumentType that will be called
+ *     after each test invocation
+ * 2) If you want to share a set of test arguments across all methods in a test class, then annotate your test class
+ * with @ExtendWith(<yourclass that extends InvocationContextProviderWithSetupSupport>.class).  If you want a set
+ * of test arguments per test method, then annotate your test method(and don't annotate at the class level).
+ * 3) Annotate your test method with @TestTemplate.
  *
  * @author msgroi
  */

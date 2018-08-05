@@ -30,12 +30,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * @author msgroi
  */
-@ExtendWith(TestSetupInvocationContextProvider.class)
 class UpdateTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void update(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -53,6 +53,7 @@ class UpdateTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -71,6 +72,7 @@ class UpdateTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void updateConditionalFail(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -94,6 +96,7 @@ class UpdateTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void updateHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -112,6 +115,7 @@ class UpdateTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -130,6 +134,7 @@ class UpdateTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

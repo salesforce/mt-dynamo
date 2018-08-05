@@ -20,6 +20,8 @@ import java.util.Optional;
  */
 class TestSupport {
 
+    static final boolean IS_LOCAL_DYNAMO = true; // TODO msgroi should test running against hosted dynamo
+    static final int TIMEOUT_SECONDS = 60;
     static final String HASH_KEY_FIELD = "hashKeyField";
     static final String HASH_KEY_VALUE = "hashKeyValue";
     static final String RANGE_KEY_FIELD = "rangeKeyField";
@@ -57,6 +59,13 @@ class TestSupport {
         assertEquals(tableName, getItemRequest.getTableName()); // assert no side effects
         assertThat(getItemRequest.getKey(), is(originalKeys)); // assert no side effects
         return getItemResult.getItem();
+    }
+
+    /*
+     * Poll interval and timeout for DDL operations
+     */
+    static int getPollInterval() {
+        return (IS_LOCAL_DYNAMO ? 0 : 5);
     }
 
     /*

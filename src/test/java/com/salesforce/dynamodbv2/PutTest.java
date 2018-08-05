@@ -28,7 +28,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * @author msgroi
  */
-@ExtendWith(TestSetupInvocationContextProvider.class)
 class PutTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
@@ -38,6 +37,7 @@ class PutTest {
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void put(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -54,6 +54,7 @@ class PutTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void putOverwrite(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -69,6 +70,7 @@ class PutTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void putHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -88,6 +90,7 @@ class PutTest {
     }
 
     @TestTemplate
+    @ExtendWith(TestSetupInvocationContextProvider.class)
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
