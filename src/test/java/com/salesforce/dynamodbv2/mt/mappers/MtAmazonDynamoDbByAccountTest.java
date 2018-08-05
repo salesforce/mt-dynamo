@@ -32,6 +32,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtCredenti
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -40,7 +41,8 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-public class MtAmazonDynamoDbByAccountTest {
+@Disabled
+public class MtAmazonDynamoDbByAccountTest { // TODO msgroi delete this test
 
     // local by default because hosted dynamo depends on hosted AWS, which is (1) slow and (2) requires two sets of
     // credentials.

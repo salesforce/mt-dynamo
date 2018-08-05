@@ -70,7 +70,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author msgroi
  */
-public class MtAmazonDynamoDbTestRunner {
+public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc generator once all functional tests have been moved out
 
     private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbTestRunner.class);
     private final MtAmazonDynamoDbContextProvider mtContext;
@@ -169,7 +169,7 @@ public class MtAmazonDynamoDbTestRunner {
             rootAmazonDynamoDb,
             rootAmazonDynamoDbStreams,
             awsCredentialsProvider,
-            getExpectedMtRecords()
+            getExpectedMtRecords() // TODO msgroi convert this to isolated test
         );
     }
 
@@ -290,7 +290,7 @@ public class MtAmazonDynamoDbTestRunner {
             .withExpressionAttributeNames(scanExpressionAttrNames1)
             .withExpressionAttributeValues(scanExpressionAttrValues1);
         assertItemValue("someValue2", getAmazonDynamoDbSupplier().scan(scanRequest).getItems().get(0));
-        assertEquals(tableName1, queryRequest.getTableName());
+        assertEquals(tableName1, scanRequest.getTableName());
         assertThat(scanRequest.getFilterExpression(), is(filterExpression1));
         assertThat(scanRequest.getExpressionAttributeNames(), is(scanExpressionAttrNames1));
         assertThat(scanRequest.getExpressionAttributeValues(), is(scanExpressionAttrValues1));
@@ -430,7 +430,7 @@ public class MtAmazonDynamoDbTestRunner {
         assertThat(getAmazonDynamoDbSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
 
         // delete and create table and verify no leftover data
-        deleteTable("ctx1", tableName1);
+        deleteTable("ctx1", tableName1); // TODO msgroi convert this to isolated test
         createTable("ctx1", createTableRequest1);
         List<Map<String, AttributeValue>> scanItems3 = getAmazonDynamoDbSupplier()
             .scan(new ScanRequest().withTableName(tableName1)).getItems();
@@ -651,7 +651,7 @@ public class MtAmazonDynamoDbTestRunner {
         );
     }
 
-    void runBinaryTest() {
+    void runBinaryTest() { // TODO msgroi convert this to isolated test
         String testDescription = getAmazonDynamoDbSupplier() + " with hashkey type=B";
         log.info("START test " + testDescription);
 
@@ -749,7 +749,7 @@ public class MtAmazonDynamoDbTestRunner {
         }
     }
 
-    private Map<String, AttributeValue> createItem(AttributeValue hashKeyValue, String someFieldValue) {
+    private Map<String, AttributeValue> createItem(AttributeValue hashKeyValue, String someFieldValue) { // TODO msgroi switch these to use TestSetupSupport
         return new HashMap<>(ImmutableMap.of(hashKeyField, hashKeyValue,
             someField, createStringAttribute(someFieldValue)));
     }

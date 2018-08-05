@@ -86,6 +86,12 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         return accountMapper.getAmazonDynamoDb(getMtContext());
     }
 
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        accountMapper.shutdown();
+    }
+
     @VisibleForTesting
     static class AmazonDynamoDbCache {
         final ConcurrentHashMap<String, AmazonDynamoDB> cache = new ConcurrentHashMap<>();
@@ -96,7 +102,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
     }
 
     /*
-     * Everything that is @VisibleForTesting below is exposed to allow MtAmazonDynamoDbChain to be tested without
+     * Everything that is @VisibleForTesting below is exposed to be able to run tests without
      * connecting to AWS-hosted DynamoDB.
      */
     @VisibleForTesting
@@ -108,8 +114,9 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
      * Takes a context provider and returns an AmazonDynamoDB to be used to store tenant data.
      */
     @VisibleForTesting
-    interface MtAccountMapper {
+    public interface MtAccountMapper {
         AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext);
+        default void shutdown() {}
     }
 
     @VisibleForTesting

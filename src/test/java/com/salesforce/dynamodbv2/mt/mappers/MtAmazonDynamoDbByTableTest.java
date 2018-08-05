@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,7 +31,8 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-class MtAmazonDynamoDbByTableTest {
+@Disabled
+class MtAmazonDynamoDbByTableTest { // TODO msgroi delete this test
 
     private final boolean loggingEnabled = true;
     private final AmazonDynamoDB localAmazonDynamoDb = MtAmazonDynamoDbTestRunner.getLocalAmazonDynamoDb();
