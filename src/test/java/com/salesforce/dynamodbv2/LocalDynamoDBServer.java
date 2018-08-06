@@ -7,17 +7,35 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.local.main.ServerRunner;
 import com.amazonaws.services.dynamodbv2.local.server.DynamoDBProxyServer;
+import java.io.IOException;
+import java.net.ServerSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author msgroi
  */
-class DynamoDBServer {
+class LocalDynamoDBServer {
 
+    private static final Logger log = LoggerFactory.getLogger(LocalDynamoDBServer.class);
     private DynamoDBProxyServer server;
     private int port;
     private boolean running;
 
-    DynamoDBServer(int port) {
+    LocalDynamoDBServer() {
+        this.port = getRandomPort();
+    }
+
+    static int getRandomPort() {
+        try (ServerSocket socket = new ServerSocket(0)) {
+            socket.setReuseAddress(true);
+            return socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    LocalDynamoDBServer(int port) {
         this.port = port;
     }
 
@@ -29,7 +47,7 @@ class DynamoDBServer {
                     .createServerFromCommandLineArgs(new String[]{"-inMemory", "-port", String.valueOf(port)});
                 server.start();
                 running = true;
-                System.out.println("started dynamodblocal on port " + port);
+                log.info("started dynamodblocal on port " + port);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -42,11 +60,15 @@ class DynamoDBServer {
             try {
                 server.stop();
                 running = false;
-                System.out.println("stopped dynamodblocal on port " + port);
+                log.info("stopped dynamodblocal on port " + port);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    public int getPort() {
+        return port;
     }
 
     private AmazonDynamoDB getClient() {

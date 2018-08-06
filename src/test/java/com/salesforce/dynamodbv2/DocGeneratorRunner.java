@@ -8,11 +8,12 @@
 package com.salesforce.dynamodbv2;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.HOSTED_DYNAMO_ACCOUNT_MAPPER;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.LOCAL_DYNAMO_ACCOUNT_MAPPER;
+import static com.salesforce.dynamodbv2.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
@@ -25,7 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountCredentialsMapper;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbTestRunner;
@@ -80,13 +82,15 @@ import org.junit.jupiter.api.Test;
  * <p>See Javadoc for each test for the chain sequence that each test implements.
  *
  * <p>Note that all tests that involve the account mapper depend on having set up local credentials profiles. See
- * {@link MtAmazonDynamoDbByAccountTest.TestAccountCredentialsMapper} for details.
+ * TestAccountCredentialsMapper for details.
  *
  * @author msgroi
  */
 @Disabled
 class DocGeneratorRunner {
 
+    public static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
+    public static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
     private static final boolean SKIP_ACCOUNT_TEST = false;
     private static final boolean IS_LOCAL_DYNAMO = true;
     private static final String DOCS_DIR = "docs";
@@ -574,6 +578,69 @@ class DocGeneratorRunner {
 
     private AmazonDynamoDB getPhysicalAmazonDynamoDb(boolean isLocalDynamo) {
         return isLocalDynamo ? LOCAL_AMAZON_DYNAMO_DB : AMAZON_DYNAMO_DB_CLIENT_BUILDER.build();
+    }
+
+    private static class TestAccountMapper implements MtAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
+
+        private static final Map<String, AmazonDynamoDB> CACHE = ImmutableMap.of("ctx1", getNewAmazonDynamoDbLocal(),
+            "ctx2", getNewAmazonDynamoDbLocal(),
+            "ctx3", getNewAmazonDynamoDbLocal(),
+            "ctx4", getNewAmazonDynamoDbLocal());
+
+        @Override
+        public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider context) {
+            checkArgument(CACHE.containsKey(context.getContext()), "invalid context '" + context + "'");
+            return CACHE.get(context.getContext());
+        }
+
+        @Override
+        public Map<String, AmazonDynamoDB> get() {
+            return CACHE;
+        }
+
+    }
+
+    private static class TestAccountCredentialsMapper implements MtAccountCredentialsMapper,
+        Supplier<Map<String, AmazonDynamoDB>> {
+
+        AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
+        AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
+        AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
+        AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
+
+        @Override
+        public AWSCredentialsProvider getAwsCredentialsProvider(String context) {
+            switch (context) {
+                case "1":
+                    /*
+                     * loads default profile
+                     */
+                    return ctx1CredentialsProvider;
+                case "2":
+                    /*
+                     * loads 'personal' profile
+                     *
+                     * http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html
+                     */
+                    return ctx2CredentialsProvider;
+                case "3":
+                    return ctx3CredentialsProvider;
+                case "4":
+                    return ctx4CredentialsProvider;
+                default:
+                    throw new IllegalArgumentException("invalid context '" + context + "'");
+            }
+        }
+
+        @Override
+        public Map<String, AmazonDynamoDB> get() {
+            return ImmutableMap.of("1",
+                AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx1CredentialsProvider).build(),
+                "2", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx2CredentialsProvider).build(),
+                "3", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx3CredentialsProvider).build(),
+                "4", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx4CredentialsProvider).build());
+        }
+
     }
 
 }

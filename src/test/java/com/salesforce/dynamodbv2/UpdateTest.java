@@ -35,7 +35,7 @@ class UpdateTest {
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void update(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -53,7 +53,7 @@ class UpdateTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -72,7 +72,7 @@ class UpdateTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void updateConditionalFail(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -96,7 +96,7 @@ class UpdateTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void updateHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -115,7 +115,7 @@ class UpdateTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -134,7 +134,7 @@ class UpdateTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

@@ -35,7 +35,7 @@ class DeleteTest {
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
@@ -56,7 +56,7 @@ class DeleteTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void deleteHkRkTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);

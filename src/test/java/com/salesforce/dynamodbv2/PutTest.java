@@ -37,7 +37,7 @@ class PutTest {
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void put(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -54,7 +54,7 @@ class PutTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void putOverwrite(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -70,7 +70,7 @@ class PutTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void putHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -90,7 +90,7 @@ class PutTest {
     }
 
     @TestTemplate
-    @ExtendWith(TestSetupInvocationContextProvider.class)
+    @ExtendWith(TestTemplateWithDataSetup.class)
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
