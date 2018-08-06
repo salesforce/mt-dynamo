@@ -10,8 +10,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
-import com.salesforce.dynamodbv2.AmazonDynamoDbLocal.DynamoDbClients;
 import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
 
 /**
  * Requirements ...
@@ -50,7 +50,7 @@ import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
  *
  * @author msgroi
  */
-class TestTemplateWithDataSetup extends InvocationContextProviderWithSetupSupport<TestArgument> {
+class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<TestArgument> {
 
     private static TestSetup testSetup = new TestSetup();
 
@@ -67,7 +67,7 @@ class TestTemplateWithDataSetup extends InvocationContextProviderWithSetupSuppor
     }
 
     /*
-     * Disables all table setup.
+     * Alternate implementation that disables all table setup but still feeds TestArgument's as supplied by the TestArgumentSupplier.
      */
     static class TestTemplatewithNoSetup extends TestTemplateWithDataSetup {
         TestTemplatewithNoSetup() {
@@ -76,15 +76,18 @@ class TestTemplateWithDataSetup extends InvocationContextProviderWithSetupSuppor
     }
 
     /*
-     * Run with an independent, isolated DynamoDB instance when run locally.  Also disables all table setup.
+     * Run with an independent, isolated DynamoDB instance when run locally.  Also disables all table setup but still
+     * feeds TestArgument's as supplied by the TestArgumentSupplier.  DynamoDB will start up as an external process
+     * that can be accessed via the local network.  It picks an open port randomly, then will restart the DynamoDB
+     * server process between each test run, effectively dropping the database.
      *
      * Note that tests that running such tests in the same surefire run as other tests that use the default
-     * embedded DynamoDB typically fail with sqlite related errors.  The workaround is to run with these tests
+     * locally-networked DynamoDB typically fail with sqlite related errors.  The workaround is to run with these tests
      * with forkCount=1/reuseForks=false.  There are existing tests set up this way and are annotated with
-     * @Tag("isolated-tests").  The default surefire configuration excludes these tests.  There is a separate
-     * Maven profile 'isolated-tests' where these are run.
+     * @Tag("isolated-tests").  The default surefire configuration excludes tests with this annotation.  There is a
+     * separate Maven profile, 'isolated-tests', that runs just these tests.
      */
-    static class TestTemplateWithIsolatedDynamoDb extends InvocationContextProviderWithSetupSupport<TestArgument> {
+    static class TestTemplateWithIsolatedDynamoDb extends TestTemplateSupportingParameterizedTest<TestArgument> {
 
         private static AmazonDynamoDB amazonDynamoDb;
         private static AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -98,6 +101,7 @@ class TestTemplateWithDataSetup extends InvocationContextProviderWithSetupSuppor
                 new TestArgumentSupplier(getAmazonDynamoDb()).get(),
                 testArgument -> initializeDynamoDBClients(), // before callback
                 testArgument -> { // after callback
+                    ((MtAmazonDynamoDb) testArgument.getAmazonDynamoDB()).invalidateCaches();
                     if (server != null) {
                         server.stop();
                         initialized = false;
@@ -120,7 +124,8 @@ class TestTemplateWithDataSetup extends InvocationContextProviderWithSetupSuppor
             if (!initialized) {
                 if (IS_LOCAL_DYNAMO) {
                     /*
-                     * Normally don't like to commit commented out code but this may come in handy.
+                     * Normally don't like to commit commented out code but this may come in handy as it allows for
+                     * running DynamoDB in embedded mode as opposed to locally via a network port.
                      */
 //                    if (USE_EMBEDDED_DYNAMO) {
 //                        DynamoDbClients localDynamoDbClients = AmazonDynamoDbLocal.getNewAmazonDynamoDBLocalWithStreams();

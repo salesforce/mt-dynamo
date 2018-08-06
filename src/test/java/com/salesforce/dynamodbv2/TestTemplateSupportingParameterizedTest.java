@@ -29,21 +29,21 @@ import org.slf4j.LoggerFactory;
  *     - afterEachCallback: a implementation class that takes an argument of type argumentType that will be called
  *     after each test invocation
  * 2) If you want to share a set of test arguments across all methods in a test class, then annotate your test class
- * with @ExtendWith(<yourclass that extends InvocationContextProviderWithSetupSupport>.class).  If you want a set
+ * with @ExtendWith(<yourclass that extends TestTemplateSupportingParameterizedTest>.class).  If you want a set
  * of test arguments per test method, then annotate your test method(and don't annotate at the class level).
  * 3) Annotate your test method with @TestTemplate.
  *
  * @author msgroi
  */
-public class InvocationContextProviderWithSetupSupport<T> implements TestTemplateInvocationContextProvider {
+public class TestTemplateSupportingParameterizedTest<T> implements TestTemplateInvocationContextProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(InvocationContextProviderWithSetupSupport.class);
+    private static final Logger log = LoggerFactory.getLogger(TestTemplateSupportingParameterizedTest.class);
     private Class<T> argumentType;
     private Consumer<T> beforeEachCallback;
     private Consumer<T> afterEachCallback;
     private List<Arguments> arguments;
 
-    InvocationContextProviderWithSetupSupport(Class<T> argumentType,
+    TestTemplateSupportingParameterizedTest(Class<T> argumentType,
         List<Arguments> arguments,
         Consumer<T> beforeEachCallback,
         Consumer<T> afterEachCallback) {

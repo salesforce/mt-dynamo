@@ -398,6 +398,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     }
 
+    @Override
+    public void invalidateCaches() {
+        tableMappingCache.invalidateAll();
+        mtTableDescriptionRepo.invalidateCaches();
+    }
+
     private DeleteTableResult deleteTableInternal(DeleteTableRequest deleteTableRequest) {
         String tableDesc = "table=" + deleteTableRequest.getTableName() + " " + (deleteTableAsync ? "asynchronously"
             : "synchronously");
