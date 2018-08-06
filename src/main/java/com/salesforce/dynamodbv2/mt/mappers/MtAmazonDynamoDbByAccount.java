@@ -99,6 +99,10 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         AmazonDynamoDB getAmazonDynamoDb(String mtContext, Function<String, AmazonDynamoDB> amazonDynamoDbCreator) {
             return cache.computeIfAbsent(mtContext, amazonDynamoDbCreator);
         }
+
+        void invalidateCaches() {
+            cache.clear();
+        }
     }
 
     /*
@@ -187,6 +191,11 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
                     credentialsMapper.getAwsCredentialsProvider(context)).build());
         }
 
+    }
+
+    @Override
+    public void invalidateCaches() {
+        CredentialBasedAccountMapperImpl.CACHE.invalidateCaches();
     }
 
 }

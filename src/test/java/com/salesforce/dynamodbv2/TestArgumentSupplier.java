@@ -215,8 +215,8 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
         return ImmutableList.of(
             /*
-             * The byAccount works by itself and with byTable, but sqlite failures occur when it runs concurrently with any of
-             * the sharedTable* strategies.
+             * The byAccount works by itself and with byTable, but sqlite failures occur when it runs concurrently
+             * with any of the sharedTable* strategies.
              */
 //            byAccount,
             byTable,
