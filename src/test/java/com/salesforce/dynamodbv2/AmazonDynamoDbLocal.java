@@ -17,7 +17,7 @@ import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal
  *
  * @author msgroi
  */
-public class AmazonDynamoDbLocal {
+public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in here
 
     private static AmazonDynamoDB localAmazonDynamoDb;
     private static AmazonDynamoDBStreams localAmazonDynamoDbStreams;
@@ -41,12 +41,38 @@ public class AmazonDynamoDbLocal {
     }
 
     public static AmazonDynamoDB getNewAmazonDynamoDbLocal() {
-        return getNewAmazonDynamoDbLocalClient().amazonDynamoDB();
+        return getNewAmazonDynamoDBLocalWithStreams().getAmazonDynamoDb();
     }
 
     private static AmazonDynamoDBLocal getNewAmazonDynamoDbLocalClient() {
         System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
         return DynamoDBEmbedded.create();
+    }
+
+    public static DynamoDbClients getNewAmazonDynamoDBLocalWithStreams() {
+        AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
+        localAmazonDynamoDb = amazonDynamoDbLocalClient.amazonDynamoDB();
+        localAmazonDynamoDbStreams = amazonDynamoDbLocalClient.amazonDynamoDBStreams();
+        return new DynamoDbClients(localAmazonDynamoDb, localAmazonDynamoDbStreams);
+    }
+
+    public static class DynamoDbClients {
+        private AmazonDynamoDB amazonDynamoDb;
+        private AmazonDynamoDBStreams amazonDynamoDbStreams;
+
+        public DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
+            AmazonDynamoDBStreams amazonDynamoDbStreams) {
+            this.amazonDynamoDb = amazonDynamoDb;
+            this.amazonDynamoDbStreams = amazonDynamoDbStreams;
+        }
+
+        public AmazonDynamoDB getAmazonDynamoDb() {
+            return amazonDynamoDb;
+        }
+
+        public AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+            return amazonDynamoDbStreams;
+        }
     }
 
 }

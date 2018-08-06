@@ -165,6 +165,11 @@
                         <version>1.2.0</version>
                     </dependency>
                 </dependencies>
+                <configuration>
+                    <properties>
+                        <excludeTags>isolated-tests</excludeTags>
+                    </properties>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -269,5 +274,47 @@
             <url>${release.repo.url}</url>
         </repository>
     </distributionManagement>
+
+    <profiles>
+        <profile>
+            <!-- These tests are separated because they just be run with forkCount=1/reuseForks=false. -->
+            <id>isolated-tests</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <version>2.22.0</version>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.junit.platform</groupId>
+                                <artifactId>junit-platform-surefire-provider</artifactId>
+                                <version>1.2.0</version>
+                            </dependency>
+                            <!--
+                                 This dependency works around this(https://github.com/junit-team/junit5/issues/1367) bug
+                                 which alleviates this error ...
+                                 Execution default-test of goal org.apache.maven.plugins:maven-surefire-plugin:2.22.0:test
+                                 failed: java.lang.ClassNotFoundException: org.apache.maven.plugin.surefire.log.api.ConsoleLogger
+                            -->
+                            <dependency>
+                                <groupId>org.apache.maven.surefire</groupId>
+                                <artifactId>surefire-logger-api</artifactId>
+                                <version>2.21.0</version>
+                                <optional>true</optional>
+                            </dependency>
+                        </dependencies>
+                        <configuration>
+                            <properties>
+                                <excludeTags>all</excludeTags>
+                                <includeTags>isolated-tests</includeTags>
+                            </properties>
+                            <forkCount>1</forkCount>
+                            <reuseForks>false</reuseForks>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

@@ -3,7 +3,9 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
 
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
@@ -43,33 +45,46 @@ import org.junit.jupiter.params.provider.Arguments;
  */
 class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
-    private static final AmazonDynamoDB LOCAL_AMAZON_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    static final Regions REGION = Regions.US_EAST_1;
+    private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
+        ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
+        : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
     private static final int ORGS_PER_TEST = 3; // TODO msgroi 2?
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     private static final int DYNAMO_BASE_PORT = 8001;
-    private static List<DynamoDBServer> servers;
+    private static List<LocalDynamoDBServer> servers;
     static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
+
+    private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
+
+    public TestArgumentSupplier() {
+    }
+
+    public TestArgumentSupplier(AmazonDynamoDB rootAmazonDynamoDb) {
+        this.rootAmazonDynamoDb = rootAmazonDynamoDb;
+    }
 
     @Override
     public List<Arguments> get() {
         return getAmazonDynamoDBStrategies().stream()
-            .map(amazonDynamoDB -> Arguments.of(new TestArgument(amazonDynamoDB, getOrgs()
-                .collect(Collectors.toList())))).collect(Collectors.toList());
+            .map(amazonDynamoDB -> Arguments.of(new TestArgument(
+                amazonDynamoDB,
+                getOrgs().collect(Collectors.toList())))).collect(Collectors.toList());
     }
 
     /*
      * Returns a list of orgs to be used for a test.
      */
-    private static Stream<String> getOrgs() {
+    private Stream<String> getOrgs() {
         return IntStream.rangeClosed(1, ORGS_PER_TEST).mapToObj(i -> "Org-" + ORG_COUNTER.incrementAndGet());
     }
 
     /*
      * Returns a list of AmazonDynamoDB instances to be tested.
      */
-    private static List<AmazonDynamoDB> getAmazonDynamoDBStrategies() {
-        AmazonDynamoDB amazonDynamoDB = wrapWithLogger(LOCAL_AMAZON_DYNAMO_DB);
+    private List<AmazonDynamoDB> getAmazonDynamoDBStrategies() {
+        AmazonDynamoDB amazonDynamoDB = wrapWithLogger(rootAmazonDynamoDb);
 
         /*
          * byAccount
@@ -82,7 +97,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
                 }
                 @Override
                 public void shutdown() {
-                    getServers().forEach(DynamoDBServer::stop);
+                    getServers().forEach(LocalDynamoDBServer::stop);
                 }
             })
             .withContext(MT_CONTEXT).build();
@@ -224,10 +239,10 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
                     "putItem", "query", "scan", "updateItem")).build() : amazonDynamoDB;
     }
 
-    private static List<DynamoDBServer> getServers() {
+    private static List<LocalDynamoDBServer> getServers() {
         if (servers == null) {
             servers = IntStream.rangeClosed(DYNAMO_BASE_PORT, DYNAMO_BASE_PORT + ORGS_PER_TEST)
-                .mapToObj(DynamoDBServer::new).collect(Collectors.toList());
+                .mapToObj(LocalDynamoDBServer::new).collect(Collectors.toList());
         }
         return servers;
     }
@@ -240,7 +255,8 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
         private AmazonDynamoDB amazonDynamoDB;
         List<String> orgs;
 
-        TestArgument(AmazonDynamoDB amazonDynamoDB, List<String> orgs) {
+        public TestArgument(AmazonDynamoDB amazonDynamoDB,
+            List<String> orgs) {
             this.amazonDynamoDB = amazonDynamoDB;
             this.orgs = orgs;
         }

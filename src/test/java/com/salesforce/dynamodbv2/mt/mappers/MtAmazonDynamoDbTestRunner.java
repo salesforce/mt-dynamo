@@ -93,7 +93,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
     private final String tableName4;
     private final List<Map<String, CreateTableRequest>> ctxTablePairs;
     private final ScalarAttributeType hashKeyAttrType;
-    private final MtAmazonDynamoDbStreamTestRunner streamTestRunner;
 
     protected MtAmazonDynamoDbTestRunner(MtAmazonDynamoDbContextProvider mtContext,
         AmazonDynamoDB amazonDynamoDb,
@@ -165,12 +164,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
             ImmutableMap.of("ctx3", createTableRequest1),
             ImmutableMap.of("ctx4", createTableRequest1)
         ));
-        this.streamTestRunner = new MtAmazonDynamoDbStreamTestRunner(amazonDynamoDbSupplier.get(),
-            rootAmazonDynamoDb,
-            rootAmazonDynamoDbStreams,
-            awsCredentialsProvider,
-            getExpectedMtRecords() // TODO msgroi convert this to isolated test
-        );
     }
 
     static AmazonDynamoDB getLocalAmazonDynamoDb() {
@@ -194,7 +187,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
 
     void setup() {
         setup(ctxTablePairs);
-        streamTestRunner.startStreamWorker();
     }
 
     private void setup(List<Map<String, CreateTableRequest>> ctxTablePairs) {
@@ -511,8 +503,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         Map<String, AttributeValue> scanItem4 = scanItems4.get(0);
         assertThat(scanItem4, is(table3item3));
 
-        streamTestRunner.await(30);
-
         // log end
         log.info("END test " + testDescription);
     }
@@ -552,103 +542,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
             }
         } while (exclusiveStartKey != null);
         assertTrue(remaining.isEmpty());
-    }
-
-    private List<MtRecord> getExpectedMtRecords() {
-        return ImmutableList.of(
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1")))),
-            new MtRecord()
-                .withContext("ctx2")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue2")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(MODIFY.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1Updated")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(MODIFY.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1Updated")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
-            new MtRecord()
-                .withContext("ctx2")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(MODIFY.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue2")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue2Updated")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner2")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValueTable2")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner1")
-                .withEventName(REMOVE.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue")))
-                    .withOldImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "someField", new AttributeValue().withS("someValue1UpdatedAgain")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3a"),
-                        "someField", new AttributeValue().withS("someValue3a")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue3"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue3b"),
-                        "someField", new AttributeValue().withS("someValue3b")))),
-            new MtRecord()
-                .withContext("ctx1")
-                .withTableName(getPrefix() + "MtAmazonDynamoDbTestRunner3")
-                .withEventName(INSERT.name())
-                .withDynamodb(new StreamRecord()
-                    .withKeys(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue")))
-                    .withNewImage(ImmutableMap.of("hashKeyField", new AttributeValue().withS("hashKeyValue"),
-                        "rangeKeyField", new AttributeValue().withS("rangeKeyValue"),
-                        "indexField", new AttributeValue().withS("indexFieldValue"))))
-        );
     }
 
     void runBinaryTest() { // TODO msgroi convert this to isolated test
@@ -739,7 +632,6 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
     }
 
     void teardown() {
-        streamTestRunner.stop();
         for (String tableName : rootAmazonDynamoDb.listTables().getTableNames()) {
             String prefix = getPrefix();
             if (tableName.startsWith(prefix)) {

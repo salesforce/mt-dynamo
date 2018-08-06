@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * @author msgroi
  */
-@ExtendWith(TestSetupInvocationContextProvider.class)
+@ExtendWith(TestTemplateWithDataSetup.class)
 class GetTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
