@@ -39,6 +39,8 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
+ * Tests scan().
+ *
  * @author msgroi
  */
 class ScanTest {
@@ -58,8 +60,9 @@ class ScanTest {
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
-            assertThat(testArgument.getAmazonDynamoDB().scan(scanRequest).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+            assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org)));
             assertEquals(TABLE1, scanRequest.getTableName());
             assertThat(scanRequest.getFilterExpression(), is(filterExpression));
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames));
@@ -72,19 +75,20 @@ class ScanTest {
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            assertThat(testArgument.getAmazonDynamoDB().scan(new ScanRequest().withTableName(TABLE1)
+            assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(TABLE1)
                            .withScanFilter(ImmutableMap.of(
                                HASH_KEY_FIELD,
                                new Condition().withComparisonOperator(EQ)
                                    .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
                                        HASH_KEY_VALUE))))).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org)));
         });
     }
 
     @TestTemplate
     @ExtendWith(TestTemplateWithDataSetup.class)
-    void scanByNonPK(TestArgument testArgument) {
+    void scanByNonPk(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
             String filterExpression = "#name = :value";
@@ -94,8 +98,9 @@ class ScanTest {
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
-            assertThat(testArgument.getAmazonDynamoDB().scan(scanRequest).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+            assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org)));
             assertEquals(TABLE1, scanRequest.getTableName()); // assert no side effects
             assertThat(scanRequest.getFilterExpression(), is(filterExpression)); // assert no side effects
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames)); // assert no side effects
@@ -108,10 +113,11 @@ class ScanTest {
     void scanAll(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDB()
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
                 .scan(new ScanRequest().withTableName(TABLE1)).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+            assertThat(items.get(0), is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                SOME_FIELD_VALUE + TABLE1 + org)));
         });
     }
 
@@ -120,16 +126,19 @@ class ScanTest {
     void scanWithPaging(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org ->
             scanAndAssertItemKeys(scanTestDataLoader.orgItemKeys.get(org),
-                testArgument.getAmazonDynamoDB(),
+                testArgument.getAmazonDynamoDb(),
                 testArgument.getHashKeyAttrType(),
                 org));
     }
 
-    private void scanAndAssertItemKeys(Set<Integer> expectedItems, AmazonDynamoDB amazonDynamoDB, ScalarAttributeType hashKeyAttrType, String org) {
+    private void scanAndAssertItemKeys(Set<Integer> expectedItems,
+        AmazonDynamoDB amazonDynamoDb,
+        ScalarAttributeType hashKeyAttrType,
+        String org) {
         MT_CONTEXT.setContext(org);
         Map<String, AttributeValue> exclusiveStartKey = null;
         do {
-            ScanResult scanResult = amazonDynamoDB
+            ScanResult scanResult = amazonDynamoDb
                 .scan(new ScanRequest(TABLE1).withLimit(10).withExclusiveStartKey(exclusiveStartKey));
             exclusiveStartKey = scanResult.getLastEvaluatedKey();
             List<Map<String, AttributeValue>> items = scanResult.getItems();
@@ -162,7 +171,7 @@ class ScanTest {
                 orgItemKeys.put(org, itemKeys);
                 // insert some data for another tenant as noise
                 for (int i = 0; i < putCount; i++) {
-                    testArgument.getAmazonDynamoDB().putItem(
+                    testArgument.getAmazonDynamoDb().putItem(
                         new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(
                             testArgument.getHashKeyAttrType(), String.valueOf(i)))));
                     itemKeys.add(i);

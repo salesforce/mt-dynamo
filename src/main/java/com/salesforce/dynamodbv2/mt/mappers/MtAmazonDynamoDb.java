@@ -154,6 +154,6 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
      */
     List<MtStreamDescription> listStreams(IRecordProcessorFactory factory);
 
-    default void invalidateCaches() {};
+    default void invalidateCaches() {}
 
 }

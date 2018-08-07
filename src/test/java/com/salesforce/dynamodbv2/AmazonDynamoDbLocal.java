@@ -41,7 +41,7 @@ public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in h
     }
 
     public static AmazonDynamoDB getNewAmazonDynamoDbLocal() {
-        return getNewAmazonDynamoDBLocalWithStreams().getAmazonDynamoDb();
+        return getNewAmazonDynamoDbLocalWithStreams().getAmazonDynamoDb();
     }
 
     private static AmazonDynamoDBLocal getNewAmazonDynamoDbLocalClient() {
@@ -49,7 +49,10 @@ public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in h
         return DynamoDBEmbedded.create();
     }
 
-    public static DynamoDbClients getNewAmazonDynamoDBLocalWithStreams() {
+    /**
+     * Retrieves an model that encapsulates an AmazonDynamoDB instance and a corresponding AmazonDynamoDBStreams object.
+     */
+    private static DynamoDbClients getNewAmazonDynamoDbLocalWithStreams() {
         AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
         localAmazonDynamoDb = amazonDynamoDbLocalClient.amazonDynamoDB();
         localAmazonDynamoDbStreams = amazonDynamoDbLocalClient.amazonDynamoDBStreams();
@@ -60,17 +63,17 @@ public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in h
         private AmazonDynamoDB amazonDynamoDb;
         private AmazonDynamoDBStreams amazonDynamoDbStreams;
 
-        public DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
+        DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
             AmazonDynamoDBStreams amazonDynamoDbStreams) {
             this.amazonDynamoDb = amazonDynamoDb;
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
-        public AmazonDynamoDB getAmazonDynamoDb() {
+        AmazonDynamoDB getAmazonDynamoDb() {
             return amazonDynamoDb;
         }
 
-        public AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+        AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
             return amazonDynamoDbStreams;
         }
     }
