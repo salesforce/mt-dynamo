@@ -97,7 +97,9 @@ public class TestSupport {
     static String attributeValueToString(ScalarAttributeType hashKeyAttrType, AttributeValue attr) {
         switch (hashKeyAttrType) {
             case B:
-                return UTF_8.decode(attr.getB()).toString();
+                String decodedString = UTF_8.decode(attr.getB()).toString();
+                attr.getB().rewind(); // rewind so future readers don't get an empty buffer
+                return decodedString;
             case N:
                 return attr.getN();
             case S:
