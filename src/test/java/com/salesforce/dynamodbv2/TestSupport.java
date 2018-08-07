@@ -24,13 +24,13 @@ public class TestSupport {
 
     static final boolean IS_LOCAL_DYNAMO = true; // TODO msgroi should test running against hosted dynamo
     static final int TIMEOUT_SECONDS = 60;
-    static final String HASH_KEY_FIELD = "hashKeyField";
-    static final String HASH_KEY_VALUE = "1";
-    static final String RANGE_KEY_FIELD = "rangeKeyField";
+    public static final String HASH_KEY_FIELD = "hashKeyField";
+    public static final String HASH_KEY_VALUE = "1";
+    public static final String RANGE_KEY_FIELD = "rangeKeyField";
     static final String RANGE_KEY_VALUE = "rangeKeyValue";
-    static final String SOME_FIELD = "someField";
+    public static final String SOME_FIELD = "someField";
     static final String SOME_FIELD_VALUE = "someValue";
-    static final String INDEX_FIELD = "indexField";
+    public static final String INDEX_FIELD = "indexField";
     static final String INDEX_FIELD_VALUE = "indexFieldValue";
 
     /*
@@ -117,15 +117,15 @@ public class TestSupport {
         }
     }
 
-    static AttributeValue createStringAttribute(String value) {
+    public static AttributeValue createStringAttribute(String value) {
         return new AttributeValue().withS(value);
     }
 
-    /*
-     * item building helper methods
+    /**
+     * Item building helper methods.
      */
-
-    static Map<String, AttributeValue> buildItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType, String value) {
+    public static Map<String, AttributeValue> buildItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
+        String value) {
         Map<String, AttributeValue> item = defaultItem(hashKeyAttrType);
         item.put(SOME_FIELD, createStringAttribute(value));
         return item;
