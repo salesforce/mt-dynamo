@@ -1,6 +1,5 @@
 package com.salesforce.dynamodbv2;
 
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.TIMEOUT_SECONDS;
@@ -59,7 +58,7 @@ class DDLTest {
             .createTableIfNotExists(new CreateTableRequest()
                 .withTableName(TABLE1)
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S))
+                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, testArgument.getHashKeyAttrType()))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH)), getPollInterval());
         items = testArgument.getAmazonDynamoDB() // assert no leftover data
             .scan(new ScanRequest().withTableName(TABLE1)).getItems();

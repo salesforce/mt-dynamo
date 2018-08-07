@@ -2,7 +2,6 @@ package com.salesforce.dynamodbv2;
 
 import static com.salesforce.dynamodbv2.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.TestSetup.TABLE3;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.buildHkRkItemWithSomeFieldValue;
@@ -31,7 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class PutTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
-    private static final String HASH_KEY_VALUE_NEW = HASH_KEY_VALUE + "New";
+    private static final String HASH_KEY_VALUE_NEW = "2";
     private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
@@ -41,15 +40,16 @@ class PutTest {
     void put(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            Map<String, AttributeValue> item = buildItemWithValues(HASH_KEY_VALUE_NEW,
+            Map<String, AttributeValue> item = buildItemWithValues(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE_NEW,
                 Optional.empty(),
                 SOME_FIELD_VALUE_NEW);
-            assertNull(getItem(testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE_NEW)); // assert before state
+            assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE_NEW)); // assert before state
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE1).withItem(item);
             testArgument.getAmazonDynamoDB().putItem(putItemRequest);
             assertThat(putItemRequest.getItem(), is(new HashMap<>(item))); // assert no side effects
             assertEquals(TABLE1, putItemRequest.getTableName()); // assert no side effects
-            assertThat(getItem(testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE_NEW), is(item));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE_NEW), is(item));
         });
     }
 
@@ -58,14 +58,14 @@ class PutTest {
     void putOverwrite(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            assertThat(getItem(testArgument.getAmazonDynamoDB(), TABLE1),
-                       is(new HashMap<>(buildItemWithSomeFieldValue(SOME_FIELD_VALUE + TABLE1 + org)))); // assert before state
-            Map<String, AttributeValue> itemToOverwrite = buildItemWithSomeFieldValue(SOME_FIELD_VALUE_OVERWRITTEN);
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1),
+                       is(new HashMap<>(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)))); // assert before state
+            Map<String, AttributeValue> itemToOverwrite = buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE_OVERWRITTEN);
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE1).withItem(itemToOverwrite);
             testArgument.getAmazonDynamoDB().putItem(putItemRequest);
             assertThat(putItemRequest.getItem(), is(new HashMap<>(itemToOverwrite))); // assert no side effects
             assertEquals(TABLE1, putItemRequest.getTableName()); // assert no side effects
-            assertThat(getItem(testArgument.getAmazonDynamoDB(), TABLE1), is(itemToOverwrite));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1), is(itemToOverwrite));
         });
     }
 
@@ -74,17 +74,22 @@ class PutTest {
     void putHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            Map<String, AttributeValue> item = buildItemWithValues(HASH_KEY_VALUE_NEW,
+            Map<String, AttributeValue> item = buildItemWithValues(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE_NEW,
                 Optional.of(RANGE_KEY_VALUE_NEW),
                 SOME_FIELD_VALUE_NEW);
-            assertNull(getItem(testArgument.getAmazonDynamoDB(), TABLE3,
+            assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3,
                 HASH_KEY_VALUE_NEW,
                 Optional.of(RANGE_KEY_VALUE_NEW))); // assert before state
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE3).withItem(item);
             testArgument.getAmazonDynamoDB().putItem(putItemRequest);
             assertThat(putItemRequest.getItem(), is(new HashMap<>(item))); // assert no side effects
             assertEquals(TABLE3, putItemRequest.getTableName()); // assert no side effects
-            assertThat(getItem(testArgument.getAmazonDynamoDB(), TABLE3, HASH_KEY_VALUE_NEW, Optional.of(RANGE_KEY_VALUE_NEW)),
+            assertThat(getItem(testArgument.getHashKeyAttrType(),
+                testArgument.getAmazonDynamoDB(),
+                TABLE3,
+                HASH_KEY_VALUE_NEW,
+                Optional.of(RANGE_KEY_VALUE_NEW)),
                        is(item));
         });
     }
@@ -94,14 +99,14 @@ class PutTest {
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            assertThat(getHkRkItem(testArgument.getAmazonDynamoDB(), TABLE3),
-                       is(new HashMap<>(buildHkRkItemWithSomeFieldValue(SOME_FIELD_VALUE + TABLE3 + org)))); // assert before state
-            Map<String, AttributeValue> itemToOverwrite = buildHkRkItemWithSomeFieldValue(SOME_FIELD_VALUE_OVERWRITTEN);
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3),
+                       is(new HashMap<>(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org)))); // assert before state
+            Map<String, AttributeValue> itemToOverwrite = buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE_OVERWRITTEN);
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE3).withItem(itemToOverwrite);
             testArgument.getAmazonDynamoDB().putItem(putItemRequest);
             assertThat(putItemRequest.getItem(), is(new HashMap<>(itemToOverwrite))); // assert no side effects
             assertEquals(TABLE3, putItemRequest.getTableName()); // assert no side effects
-            assertThat(getHkRkItem(testArgument.getAmazonDynamoDB(), TABLE3), is(itemToOverwrite));
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3), is(itemToOverwrite));
         });
     }
 

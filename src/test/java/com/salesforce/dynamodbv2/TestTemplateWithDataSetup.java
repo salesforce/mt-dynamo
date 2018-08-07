@@ -10,8 +10,11 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.TestSetup.TableSetup;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
+import java.util.List;
 
 /**
  * Requirements ...
@@ -71,7 +74,15 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
      */
     static class TestTemplatewithNoSetup extends TestTemplateWithDataSetup {
         TestTemplatewithNoSetup() {
-            beforeEachCallback(new TestSetup().withTableSetup(testArgument -> {}).withDataSetup(testArgument -> {}).getSetup());
+            beforeEachCallback(new TestSetup().withTableSetup(new TableSetup() {
+                @Override
+                public List<CreateTableRequest> getCreateTableRequests() {
+                    return null;
+                }
+                @Override
+                public void accept(TestArgument testArgument) {
+                }
+            }).withDataSetup(testArgument -> {}).getSetup());
         }
     }
 

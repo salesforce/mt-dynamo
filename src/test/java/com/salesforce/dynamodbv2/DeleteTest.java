@@ -39,19 +39,19 @@ class DeleteTest {
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
-        Map<String, AttributeValue> deleteItemKey = buildKey();
+        Map<String, AttributeValue> deleteItemKey = buildKey(testArgument.getHashKeyAttrType());
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE1).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDB().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE));
+        assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE));
         assertEquals(TABLE1, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
-        assertThat(buildItemWithSomeFieldValue(SOME_FIELD_VALUE + TABLE2 + org),
-                   is(getItem(testArgument.getAmazonDynamoDB(), TABLE2))); // assert different table, same org
+        assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE2 + org),
+                   is(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE2))); // assert different table, same org
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
-            assertThat(buildItemWithSomeFieldValue(SOME_FIELD_VALUE + TABLE1 + otherOrg),
-                       is(getItem(testArgument.getAmazonDynamoDB(), TABLE1))); // assert same table, different orgs
+            assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + otherOrg),
+                       is(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1))); // assert same table, different orgs
         });
     }
 
@@ -60,17 +60,17 @@ class DeleteTest {
     void deleteHkRkTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
-        Map<String, AttributeValue> deleteItemKey = buildHkRkKey();
+        Map<String, AttributeValue> deleteItemKey = buildHkRkKey(testArgument.getHashKeyAttrType());
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE3).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDB().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getAmazonDynamoDB(), TABLE3, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE)));
+        assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE)));
         assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
-            assertThat(buildHkRkItemWithSomeFieldValue(SOME_FIELD_VALUE + TABLE3 + otherOrg),
-                       is(getHkRkItem(testArgument.getAmazonDynamoDB(), TABLE3))); // assert same table, different orgs
+            assertThat(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + otherOrg),
+                       is(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3))); // assert same table, different orgs
         });
     }
 
