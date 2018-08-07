@@ -42,18 +42,17 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-public class TestSetup {
+class TestSetup {
 
     private static final MtAmazonDynamoDbContextProvider mtContext = TestArgumentSupplier.MT_CONTEXT;
-    private static final ScalarAttributeType hashKeyAttrType = ScalarAttributeType.S; // TODO msgroi parameterize this
     static final String TABLE1 = "Table1";
     static final String TABLE2 = "Table2";
     static final String TABLE3 = "Table3";
-    private Consumer<TestArgument> tableSetup = new DefaultTableSetup();
-    private Consumer<TestArgument> dataSetup = new DefaultDataSetup();
+    private TableSetup tableSetup = new DefaultTableSetup();
+    private Consumer<TestArgument> dataSetup = new DefaultDataSetup(tableSetup);
     private Consumer<TestArgument> teardown = new DefaultTeardown();
 
-    public TestSetup withTableSetup(Consumer<TestArgument> tableSetup) {
+    TestSetup withTableSetup(TableSetup tableSetup) {
         this.tableSetup = tableSetup;
         return this;
     }
@@ -74,58 +73,74 @@ public class TestSetup {
         return testArgument -> teardown.accept(testArgument);
     }
 
-    private class DefaultTableSetup implements Consumer<TestArgument> {
+    interface TableSetup extends Consumer<TestArgument> {
+        List<CreateTableRequest> getCreateTableRequests();
+    }
+
+    private class DefaultTableSetup implements TableSetup {
+
+        List<CreateTableRequest> createTableRequests;
+
         @Override
         public void accept(TestArgument testArgument) {
             testArgument.getOrgs().forEach(org -> {
                 mtContext.setContext(org);
-                getCreateRequests().forEach(createTableRequest ->
+                createTableRequests = getCreateRequests(testArgument.getHashKeyAttrType());
+                createTableRequests.forEach(createTableRequest ->
                     new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDB())
                         .createTableIfNotExists(createTableRequest, getPollInterval()));
             });
         }
-    }
 
-    private CreateTableRequest getCreateTableRequest(String table) {
-        return getCreateRequests().stream().filter(createTableRequest -> createTableRequest.getTableName().equals(table)).findAny().get();
-    }
-
-    private List<CreateTableRequest> getCreateRequests() {
-        return ImmutableList.of(
-            new CreateTableRequest()
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(TABLE1),
-            new CreateTableRequest()
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(TABLE2),
-            new CreateTableRequest()
-                .withTableName(TABLE3)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
-                    new AttributeDefinition(RANGE_KEY_FIELD, S),
-                    new AttributeDefinition(INDEX_FIELD, S))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                    new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                    .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+        private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
+            return ImmutableList.of(
+                new CreateTableRequest()
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
+                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                    .withTableName(TABLE1),
+                new CreateTableRequest()
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
+                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                    .withTableName(TABLE2),
+                new CreateTableRequest()
+                    .withTableName(TABLE3)
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                        new AttributeDefinition(RANGE_KEY_FIELD, S),
+                        new AttributeDefinition(INDEX_FIELD, S))
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(INDEX_FIELD, RANGE))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-        );
+                        new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
+                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                    .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                        .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                    .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                        .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                            new KeySchemaElement(INDEX_FIELD, RANGE))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+            );
+        }
+
+        @Override
+        public List<CreateTableRequest> getCreateTableRequests() {
+            return createTableRequests;
+        }
     }
 
     class DefaultDataSetup implements Consumer<TestArgument> {
+
+        private final TableSetup tableSetup;
+
+        DefaultDataSetup(TableSetup tableSetup) {
+            this.tableSetup = tableSetup;
+        }
+
         @Override
         public void accept(TestArgument testArgument) {
             Map<Boolean, List<CreateTableRequest>> tablesPartitionedByHasRangeKey = ImmutableList.of(TABLE1, TABLE2, TABLE3).stream()
-                .map(TestSetup.this::getCreateTableRequest).collect(Collectors.partitioningBy(
+                .map(this::getCreateTableRequest).collect(Collectors.partitioningBy(
                     createTableRequest -> createTableRequest.getKeySchema().stream().anyMatch(
                         keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE)));
             testArgument.getOrgs().forEach(org -> {
@@ -135,23 +150,28 @@ public class TestSetup {
                     .stream().map(CreateTableRequest::getTableName)
                         .forEach(table -> testArgument.getAmazonDynamoDB().putItem(
                             new PutItemRequest().withTableName(table)
-                                .withItem(buildItemWithSomeFieldValue(SOME_FIELD_VALUE + table + org))));
+                                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + table + org))));
                 // hk-rk tables
                 tablesPartitionedByHasRangeKey.get(true)
                     .stream().map(CreateTableRequest::getTableName)
                     .forEach(table -> {
                         testArgument.getAmazonDynamoDB().putItem(
                             new PutItemRequest().withTableName(table)
-                                .withItem(buildHkRkItemWithSomeFieldValue(SOME_FIELD_VALUE + table + org)));
+                                .withItem(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + table + org)));
                         testArgument.getAmazonDynamoDB().putItem(
                             new PutItemRequest().withTableName(table)
-                                .withItem(buildItemWithValues(HASH_KEY_VALUE,
+                                .withItem(buildItemWithValues(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE,
                                     Optional.of(RANGE_KEY_VALUE + "2"),
                                     SOME_FIELD_VALUE + table + org + "2",
                                     Optional.of(INDEX_FIELD_VALUE))));
                     });
             });
         }
+
+        private CreateTableRequest getCreateTableRequest(String table) {
+            return tableSetup.getCreateTableRequests().stream().filter(createTableRequest -> createTableRequest.getTableName().equals(table)).findAny().get();
+        }
+
     }
 
     private class DefaultTeardown implements Consumer<TestArgument> {

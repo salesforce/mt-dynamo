@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
 
@@ -15,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
@@ -30,6 +32,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamic
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -67,17 +70,28 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
     @Override
     public List<Arguments> get() {
-        return getAmazonDynamoDBStrategies().stream()
-            .map(amazonDynamoDB -> Arguments.of(new TestArgument(
-                amazonDynamoDB,
-                getOrgs().collect(Collectors.toList())))).collect(Collectors.toList());
+        return getAmazonDynamoDBStrategies().stream().flatMap(
+            (Function<AmazonDynamoDB, Stream<Arguments>>) amazonDynamoDB ->
+                getHashKeyAttrTypes().stream().flatMap(
+                    (Function<ScalarAttributeType, Stream<Arguments>>) scalarAttributeType ->
+                        Stream.of(Arguments.of(new TestArgument(amazonDynamoDB,
+                            getOrgs(),
+                            scalarAttributeType))))).collect(Collectors.toList());
     }
 
     /*
      * Returns a list of orgs to be used for a test.
      */
-    private Stream<String> getOrgs() {
-        return IntStream.rangeClosed(1, ORGS_PER_TEST).mapToObj(i -> "Org-" + ORG_COUNTER.incrementAndGet());
+    private List<String> getOrgs() {
+        return IntStream.rangeClosed(1, ORGS_PER_TEST).mapToObj(i -> "Org-" + ORG_COUNTER.incrementAndGet()).collect(
+            Collectors.toList());
+    }
+
+    /*
+     * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
+     */
+    private List<ScalarAttributeType> getHashKeyAttrTypes() {
+        return ImmutableList.of(S, N); // TODO msgroi S, N, B ultimately
     }
 
     /*
@@ -253,12 +267,14 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
      */
     static class TestArgument {
         private AmazonDynamoDB amazonDynamoDB;
-        List<String> orgs;
+        private List<String> orgs;
+        private ScalarAttributeType hashKeyAttrType;
 
-        public TestArgument(AmazonDynamoDB amazonDynamoDB,
-            List<String> orgs) {
+        public TestArgument(AmazonDynamoDB amazonDynamoDB, List<String> orgs,
+            ScalarAttributeType hashKeyAttrType) {
             this.amazonDynamoDB = amazonDynamoDB;
             this.orgs = orgs;
+            this.hashKeyAttrType = hashKeyAttrType;
         }
 
         AmazonDynamoDB getAmazonDynamoDB() {
@@ -269,9 +285,15 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
             return orgs;
         }
 
+        public ScalarAttributeType getHashKeyAttrType() {
+            return hashKeyAttrType;
+        }
+
         @Override
         public String toString() {
-            return amazonDynamoDB.getClass().getSimpleName() + ", orgs=" + orgs + '}';
+            return amazonDynamoDB.getClass().getSimpleName()
+                + ", orgs=" + orgs + '}'
+                + ", hashKeyAttrType=" + hashKeyAttrType.name();
         }
     }
 

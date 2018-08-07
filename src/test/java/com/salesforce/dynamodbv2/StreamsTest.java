@@ -3,7 +3,6 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
@@ -11,6 +10,7 @@ import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.TestSupport.buildKey;
+import static com.salesforce.dynamodbv2.TestSupport.createHkAttribute;
 import static com.salesforce.dynamodbv2.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.TestSupport.getPollInterval;
 import static java.lang.String.format;
@@ -36,6 +36,7 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
@@ -99,7 +100,7 @@ class StreamsTest {
         RecordProcessor recordProcessor = new RecordProcessor();
 
         // expected records
-        List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs());
+        List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(), testArgument.getHashKeyAttrType());
 
         // get orgs
         List<String> orgs = testArgument.getOrgs();
@@ -111,14 +112,14 @@ class StreamsTest {
                 .createTableIfNotExists(new CreateTableRequest()
                     .withTableName(format(STREAMS_TABLE, org))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S))
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, testArgument.getHashKeyAttrType()))
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                         .withStreamEnabled(true)), getPollInterval());
             testArgument.getAmazonDynamoDB().putItem(new PutItemRequest()
                 .withTableName(format(STREAMS_TABLE, org))
-                .withItem(buildItemWithSomeFieldValue(format(SOME_FIELD_VALUE_STREAMS_TEST, org))));
+                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), format(SOME_FIELD_VALUE_STREAMS_TEST, org))));
         });
 
         // for each org, update the record
@@ -126,7 +127,7 @@ class StreamsTest {
             MT_CONTEXT.setContext(org);
             testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
                 .withTableName(format(STREAMS_TABLE, org))
-                .withKey(buildKey())
+                .withKey(buildKey(testArgument.getHashKeyAttrType()))
                 .addAttributeUpdatesEntry(SOME_FIELD,
                     new AttributeValueUpdate().withValue(createStringAttribute(format(
                         SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))));
@@ -135,7 +136,7 @@ class StreamsTest {
         // for each org, delete the record
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            testArgument.getAmazonDynamoDB().deleteItem(new DeleteItemRequest().withTableName(format(STREAMS_TABLE, org)).withKey(buildKey()));
+            testArgument.getAmazonDynamoDB().deleteItem(new DeleteItemRequest().withTableName(format(STREAMS_TABLE, org)).withKey(buildKey(testArgument.getHashKeyAttrType())));
         });
 
         // start a worker per stream arn
@@ -193,29 +194,29 @@ class StreamsTest {
         }
     }
 
-    private List<MtRecord> getExpectedMtRecords(List<String> orgs) {
+    private List<MtRecord> getExpectedMtRecords(List<String> orgs, ScalarAttributeType hashKeyAttrType) {
         List<MtRecord> inserts = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(INSERT.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE)))
-                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org)))))).collect(Collectors.toList());
         List<MtRecord> updates = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(MODIFY.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE)))
-                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org))))
-                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE),
+                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))))).collect(Collectors.toList());
         List<MtRecord> deletes = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(REMOVE.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE)))
-                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, new AttributeValue().withS(HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))))).collect(Collectors.toList());
         return Stream.of(
             inserts,

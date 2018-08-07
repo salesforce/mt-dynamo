@@ -8,11 +8,9 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
-import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.TestSupport.createHkAttribute;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -44,7 +42,6 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -52,7 +49,6 @@ import com.salesforce.dynamodbv2.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.TestAmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -234,7 +230,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         String keyConditionExpression = "#name = :value";
         Map<String, String> queryExpressionAttrNames = ImmutableMap.of("#name", hashKeyField);
         Map<String, AttributeValue> queryExpressionAttrValues = ImmutableMap
-            .of(":value", createAttribute("hashKeyValue"));
+            .of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue"));
         QueryRequest queryRequest = new QueryRequest().withTableName(tableName1)
             .withKeyConditionExpression(keyConditionExpression)
             .withExpressionAttributeNames(queryExpressionAttrNames)
@@ -250,7 +246,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         QueryRequest queryRequestKeyConditions = new QueryRequest().withTableName(tableName1)
             .withKeyConditions(ImmutableMap.of(
                 hashKeyField,
-                new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+                new Condition().withComparisonOperator(EQ).withAttributeValueList(createHkAttribute(hashKeyAttrType, "hashKeyValue"))));
         List<Map<String, AttributeValue>> queryItemsKeyConditions = getAmazonDynamoDbSupplier()
             .query(queryRequestKeyConditions).getItems();
         assertItemValue("someValue1", queryItemsKeyConditions.get(0));
@@ -263,21 +259,21 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         List<Map<String, AttributeValue>> queryItems2 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue")))).getItems();
         assertItemValue("someValue2", queryItems2.get(0));
 
         // query item from ctx2 using attribute name literals
         // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
         List<Map<String, AttributeValue>> queryItems3 = getAmazonDynamoDbSupplier().query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression(hashKeyField + " = :value")
-                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue")))).getItems();
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue")))).getItems();
         assertItemValue("someValue2", queryItems3.get(0));
 
         // scan for an item using hk
         String filterExpression1 = "#name = :value";
         Map<String, String> scanExpressionAttrNames1 = ImmutableMap.of("#name", hashKeyField);
         Map<String, AttributeValue> scanExpressionAttrValues1 = ImmutableMap
-            .of(":value", createAttribute("hashKeyValue"));
+            .of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue"));
         ScanRequest scanRequest = new ScanRequest().withTableName(tableName1).withFilterExpression(filterExpression1)
             .withExpressionAttributeNames(scanExpressionAttrNames1)
             .withExpressionAttributeValues(scanExpressionAttrValues1);
@@ -291,7 +287,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         ScanRequest scanRequestKeyConditions = new ScanRequest().withTableName(tableName1)
             .withScanFilter(ImmutableMap.of(
                 hashKeyField,
-                new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttribute("hashKeyValue"))));
+                new Condition().withComparisonOperator(EQ).withAttributeValueList(createHkAttribute(hashKeyAttrType, "hashKeyValue"))));
         List<Map<String, AttributeValue>> scanItemsScanFilter = getAmazonDynamoDbSupplier()
             .scan(scanRequestKeyConditions).getItems();
         assertItemValue("someValue2", scanItemsScanFilter.get(0));
@@ -325,7 +321,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         // update item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> updateItemKey = new HashMap<>(
-            ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
+            ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue")));
         Map<String, AttributeValue> originalUpdateItemKey = new HashMap<>(updateItemKey);
         UpdateItemRequest updateItemRequest = new UpdateItemRequest()
             .withTableName(tableName1)
@@ -341,7 +337,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         mtContext.setContext("ctx2");
         getAmazonDynamoDbSupplier().updateItem(new UpdateItemRequest()
             .withTableName(tableName1)
-            .withKey(new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"))))
+            .withKey(new HashMap<>(ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue"))))
             .addAttributeUpdatesEntry(someField,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
         assertItemValue("someValue2Updated", getItem(tableName1));
@@ -390,7 +386,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         // delete item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> deleteItemKey = new HashMap<>(
-            ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue")));
+            ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue")));
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1).withKey(deleteItemKey);
         getAmazonDynamoDbSupplier().deleteItem(deleteItemRequest);
@@ -405,10 +401,10 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         // table with hk/rk and gsi/lsi
 
         // put items, same hk, different rk
-        Map<String, AttributeValue> table3item1 = ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
+        Map<String, AttributeValue> table3item1 = ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue3"),
             rangeKeyField, createStringAttribute("rangeKeyValue3a"),
             someField, createStringAttribute("someValue3a"));
-        Map<String, AttributeValue> table3item2 = ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
+        Map<String, AttributeValue> table3item2 = ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue3"),
             rangeKeyField, createStringAttribute("rangeKeyValue3b"),
             someField, createStringAttribute("someValue3b"));
         getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item1));
@@ -417,7 +413,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
 
         // get item
         GetItemRequest getItemRequest4 = new GetItemRequest().withTableName(tableName3).withKey(new HashMap<>(
-            ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue3"),
+            ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue3"),
                 rangeKeyField, createStringAttribute("rangeKeyValue3a"))));
         assertThat(getAmazonDynamoDbSupplier().getItem(getItemRequest4).getItem(), is(table3item1));
 
@@ -431,7 +427,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         // query hk and rk
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> table3item3 = new HashMap<>(ImmutableMap.of(
-            hashKeyField, createAttribute("hashKeyValue"),
+            hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue"),
             rangeKeyField, createStringAttribute("rangeKeyValue"),
             indexField, createStringAttribute("indexFieldValue")));
         getAmazonDynamoDbSupplier().putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
@@ -439,7 +435,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
             new QueryRequest().withTableName(tableName3)
                 .withKeyConditionExpression("#name = :value AND #name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", rangeKeyField))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue"),
                     ":value2", createStringAttribute("rangeKeyValue")))).getItems();
         assertEquals(1, queryItems6.size());
         Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
@@ -450,7 +446,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
             new QueryRequest().withTableName(tableName3).withKeyConditionExpression("#name = :value")
                 .withFilterExpression("#name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", someField))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue3"),
+                .withExpressionAttributeValues(ImmutableMap.of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue3"),
                     ":value2", createStringAttribute("someValue3a")))).getItems();
         assertEquals(1, queryItemsFe.size());
 
@@ -468,7 +464,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         QueryRequest queryRequest5 = new QueryRequest().withTableName(tableName3)
             .withKeyConditionExpression("#name = :value and #name2 = :value2")
             .withExpressionAttributeNames(ImmutableMap.of("#name", hashKeyField, "#name2", indexField))
-            .withExpressionAttributeValues(ImmutableMap.of(":value", createAttribute("hashKeyValue"),
+            .withExpressionAttributeValues(ImmutableMap.of(":value", createHkAttribute(hashKeyAttrType, "hashKeyValue"),
                 ":value2", createStringAttribute("indexFieldValue")))
             .withIndexName("testlsi");
         List<Map<String, AttributeValue>> queryItems5 = getAmazonDynamoDbSupplier().query(queryRequest5).getItems();
@@ -481,7 +477,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         Map<String, String> scanExpressionAttrNamesHkRk = ImmutableMap
             .of("#name1", hashKeyField, "#name2", rangeKeyField);
         Map<String, AttributeValue> scanExpressionAttrValuesHkRk = ImmutableMap
-            .of(":value1", createAttribute("hashKeyValue"),
+            .of(":value1", createHkAttribute(hashKeyAttrType, "hashKeyValue"),
                 ":value2", createStringAttribute("rangeKeyValue"));
         ScanRequest scanRequestHkRk = new ScanRequest().withTableName(tableName3)
             .withFilterExpression(filterExpressionHkRk)
@@ -514,13 +510,13 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         // insert some data for another tenant as noise
         for (int i = 0; i < 100; i++) {
             getAmazonDynamoDbSupplier().putItem(
-                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, String.valueOf(i)))));
         }
         mtContext.setContext("ctx4");
         Set<Integer> remaining = new HashSet<>();
         for (int i = 0; i < 10; i++) {
             getAmazonDynamoDbSupplier().putItem(
-                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createAttribute(String.valueOf(i)))));
+                new PutItemRequest(tableName1, ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, String.valueOf(i)))));
             remaining.add(i);
         }
         Map<String, AttributeValue> exclusiveStartKey = null;
@@ -652,29 +648,12 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
 
     protected Map<String, AttributeValue> createItem(String hashKeyField, String hashKeyValue, String someField,
         String someFieldValue) {
-        return new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(hashKeyValue),
+        return new HashMap<>(ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, hashKeyValue),
             someField, createStringAttribute(someFieldValue)));
     }
 
     private AttributeValue createStringAttribute(String value) {
         return new AttributeValue().withS(value);
-    }
-
-    private AttributeValue createAttribute(String value) {
-        AttributeValue attr = new AttributeValue();
-        switch (hashKeyAttrType) {
-            case S:
-                attr.setS(value);
-                return attr;
-            case N:
-                attr.setN(value);
-                return attr;
-            case B:
-                attr.setB(UTF_8.encode(value));
-                return attr;
-            default:
-                throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
-        }
     }
 
     private String getValue(AttributeValue attr) {
@@ -695,8 +674,8 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
     }
 
     private Map<String, AttributeValue> getItem(String tableName, String value) {
-        Map<String, AttributeValue> keys = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(value)));
-        Map<String, AttributeValue> originalKeys = new HashMap<>(ImmutableMap.of(hashKeyField, createAttribute(value)));
+        Map<String, AttributeValue> keys = new HashMap<>(ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, value)));
+        Map<String, AttributeValue> originalKeys = new HashMap<>(ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, value)));
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
         GetItemResult getItemResult = getAmazonDynamoDbSupplier().getItem(getItemRequest);
         assertEquals(tableName, getItemRequest.getTableName());
@@ -705,7 +684,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
     }
 
     private void assertItemValue(String expectedValue, Map<String, AttributeValue> actualItem) {
-        assertThat(actualItem, is(ImmutableMap.of(hashKeyField, createAttribute("hashKeyValue"),
+        assertThat(actualItem, is(ImmutableMap.of(hashKeyField, createHkAttribute(hashKeyAttrType, "hashKeyValue"),
             someField, createStringAttribute(expectedValue))));
     }
 

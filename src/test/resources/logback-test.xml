@@ -22,7 +22,7 @@
     <!--
         Setting to info level enables test start messages.
     -->
-    <logger name="com.salesforce.dynamodbv2.InvocationContextProviderWithSetupSupport" level="warn"/>
+    <logger name="com.salesforce.dynamodbv2.TestTemplateSupportingParameterizedTest" level="warn"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />
