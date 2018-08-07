@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
@@ -91,7 +92,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        return ImmutableList.of(S, N); // TODO msgroi S, N, B ultimately
+        return ImmutableList.of(S, N, B);
     }
 
     /*

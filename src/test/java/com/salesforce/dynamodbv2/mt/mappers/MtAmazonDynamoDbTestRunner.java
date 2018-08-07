@@ -637,7 +637,7 @@ public class MtAmazonDynamoDbTestRunner { // TODO msgroi make this part of doc g
         }
     }
 
-    private Map<String, AttributeValue> createItem(AttributeValue hashKeyValue, String someFieldValue) { // TODO msgroi switch these to use TestSetupSupport
+    private Map<String, AttributeValue> createItem(AttributeValue hashKeyValue, String someFieldValue) {
         return new HashMap<>(ImmutableMap.of(hashKeyField, hashKeyValue,
             someField, createStringAttribute(someFieldValue)));
     }
