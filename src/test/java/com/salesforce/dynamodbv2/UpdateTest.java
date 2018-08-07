@@ -28,6 +28,8 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
+ * Tests updateItem().
+ *
  * @author msgroi
  */
 class UpdateTest {
@@ -44,10 +46,12 @@ class UpdateTest {
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
                 .addAttributeUpdatesEntry(SOME_FIELD,
-                    new AttributeValueUpdate().withValue(createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
-            testArgument.getAmazonDynamoDB().updateItem(updateItemRequest);
-            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                    new AttributeValueUpdate()
+                        .withValue(createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
             assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
         });
@@ -58,17 +62,19 @@ class UpdateTest {
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(buildKey(testArgument.getHashKeyAttrType()))
                 .withUpdateExpression("set #name = :newValue")
                 .withConditionExpression("#name = :currentValue")
                 .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
-                .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute(SOME_FIELD_VALUE
-                    + TABLE1 + org))
-                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
-            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                .addExpressionAttributeValuesEntry(":currentValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org))
+                .addExpressionAttributeValuesEntry(":newValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
         });
     }
 
@@ -78,21 +84,22 @@ class UpdateTest {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
             try {
-                testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
+                testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE1)
                     .withKey(buildKey(testArgument.getHashKeyAttrType()))
                     .withUpdateExpression("set #name = :newValue")
                     .withConditionExpression("#name = :currentValue")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
                     .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
-                    .addExpressionAttributeValuesEntry(":newValue", createStringAttribute(SOME_FIELD_VALUE
-                        + TABLE1 + org + "Updated")));
+                    .addExpressionAttributeValuesEntry(":newValue",
+                        createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
                 throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
-            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org)));
         });
     }
 
@@ -106,10 +113,12 @@ class UpdateTest {
                 .withTableName(TABLE3)
                 .withKey(updateItemKey)
                 .addAttributeUpdatesEntry(SOME_FIELD,
-                    new AttributeValueUpdate().withValue(createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            testArgument.getAmazonDynamoDB().updateItem(updateItemRequest);
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3),
-                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+                    new AttributeValueUpdate().withValue(
+                        createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
             assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
         });
@@ -120,7 +129,7 @@ class UpdateTest {
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
                 .withUpdateExpression("set #name = :newValue")
@@ -128,9 +137,11 @@ class UpdateTest {
                 .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute(SOME_FIELD_VALUE
                     + TABLE3 + org))
-                .addExpressionAttributeValuesEntry(":newValue", createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3),
-                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+                .addExpressionAttributeValuesEntry(":newValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
         });
     }
 
@@ -140,7 +151,7 @@ class UpdateTest {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
             try {
-                testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
+                testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE3)
                     .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
                     .withUpdateExpression("set #name = :newValue")
@@ -153,8 +164,9 @@ class UpdateTest {
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3),
-                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org)));
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE3 + org)));
         });
     }
 

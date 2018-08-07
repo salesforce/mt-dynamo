@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * multiple times depending on the number of invocation contexts returned by your provider.  This class is dependent
  * only on the JUnit 5 API.  To use ...
  *
- * 1) Declare a class that extends this class and pass values into the constructor as follows ...
+ * <p>1) Declare a class that extends this class and pass values into the constructor as follows ...
  *     - argumentType: the Class that encapsulates the object that you want to pass to your test
  *     - arguments: List of objects of type argumentType that will be used to invoke your test
  *     - beforeEachCallback: a implementation class that takes an argument of type argumentType that will be called
@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
  *     - afterEachCallback: a implementation class that takes an argument of type argumentType that will be called
  *     after each test invocation
  * 2) If you want to share a set of test arguments across all methods in a test class, then annotate your test class
- * with @ExtendWith(<yourclass that extends TestTemplateSupportingParameterizedTest>.class).  If you want a set
+ * with @ExtendWith(yourclass that extends TestTemplateSupportingParameterizedTest.class).  If you want a set
  * of test arguments per test method, then annotate your test method(and don't annotate at the class level).
  * 3) Annotate your test method with @TestTemplate.
  *
@@ -65,10 +65,10 @@ public class TestTemplateSupportingParameterizedTest<T> implements TestTemplateI
     @Override
     public Stream<TestTemplateInvocationContext> provideTestTemplateInvocationContexts(ExtensionContext context) {
         return arguments.stream().map(arguments ->
-            new InvocationContext<T>(((T) arguments.get()[0]), beforeEachCallback, afterEachCallback));
+            new InvocationContext(((T) arguments.get()[0]), beforeEachCallback, afterEachCallback));
     }
 
-    private class InvocationContext<T> implements TestTemplateInvocationContext {
+    private class InvocationContext implements TestTemplateInvocationContext {
 
         private T argument;
         private Consumer<T> beforeEachCallback;
@@ -90,9 +90,11 @@ public class TestTemplateSupportingParameterizedTest<T> implements TestTemplateI
             return ImmutableList.of(
                 new ParameterResolver() {
                     @Override
-                    public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+                    public boolean supportsParameter(ParameterContext parameterContext,
+                        ExtensionContext extensionContext) {
                         return parameterContext.getParameter().getType().isAssignableFrom(argumentType);
                     }
+
                     @Override
                     public T resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
                         return argument;

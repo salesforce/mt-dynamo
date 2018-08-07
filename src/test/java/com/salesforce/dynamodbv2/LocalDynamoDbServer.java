@@ -13,16 +13,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Starts up a DynamoDB server using the command line launcher and returns an AmazonDynamoDB client that
+ * can connect to it via a local network port.
+ *
  * @author msgroi
  */
-class LocalDynamoDBServer {
+class LocalDynamoDbServer {
 
-    private static final Logger log = LoggerFactory.getLogger(LocalDynamoDBServer.class);
+    private static final Logger log = LoggerFactory.getLogger(LocalDynamoDbServer.class);
     private DynamoDBProxyServer server;
     private int port;
     private boolean running;
 
-    LocalDynamoDBServer() {
+    LocalDynamoDbServer() {
         this.port = getRandomPort();
     }
 
@@ -35,7 +38,7 @@ class LocalDynamoDBServer {
         }
     }
 
-    LocalDynamoDBServer(int port) {
+    LocalDynamoDbServer(int port) {
         this.port = port;
     }
 
@@ -67,7 +70,7 @@ class LocalDynamoDBServer {
         }
     }
 
-    public int getPort() {
+    int getPort() {
         return port;
     }
 

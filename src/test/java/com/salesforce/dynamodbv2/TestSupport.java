@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
+ * Helper methods for building, getting, and doing type conversions that are frequently necessary in unit tests.
+ * 
  * @author msgroi
  */
 public class TestSupport {
@@ -35,20 +37,21 @@ public class TestSupport {
      * get helper methods
      */
 
-    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType, AmazonDynamoDB amazonDynamoDB, String tableName) {
-        return getItem(hashKeyAttrType, amazonDynamoDB, tableName, HASH_KEY_VALUE);
+    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
+        AmazonDynamoDB amazonDynamoDb,
+        String tableName) {
+        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE);
     }
 
-    static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType, AmazonDynamoDB amazonDynamoDB, String tableName) {
-        return getItem(hashKeyAttrType, amazonDynamoDB, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE));
-    }
-
-    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType, AmazonDynamoDB amazonDynamoDB, String tableName, String hashKeyValue) {
-        return getItem(hashKeyAttrType, amazonDynamoDB, tableName, hashKeyValue, Optional.empty());
+    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
+        AmazonDynamoDB amazonDynamoDb,
+        String tableName,
+        String hashKeyValue) {
+        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, hashKeyValue, Optional.empty());
     }
 
     static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
-        AmazonDynamoDB amazonDynamoDB,
+        AmazonDynamoDB amazonDynamoDb,
         String tableName,
         String hashKeyValue,
         Optional<String> rangeKeyValue) {
@@ -60,10 +63,16 @@ public class TestSupport {
                 hashKeyAttrType, hashKeyValue))));
         Map<String, AttributeValue> originalKeys = new HashMap<>(keys);
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
-        GetItemResult getItemResult = amazonDynamoDB.getItem(getItemRequest);
+        GetItemResult getItemResult = amazonDynamoDb.getItem(getItemRequest);
         assertEquals(tableName, getItemRequest.getTableName()); // assert no side effects
         assertThat(getItemRequest.getKey(), is(originalKeys)); // assert no side effects
         return getItemResult.getItem();
+    }
+
+    static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
+        AmazonDynamoDB amazonDynamoDb,
+        String tableName) {
+        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE));
     }
 
     /*
@@ -73,10 +82,9 @@ public class TestSupport {
         return (IS_LOCAL_DYNAMO ? 0 : 5);
     }
 
-    /*
-     * AttributeValue helper methods
+    /**
+     * AttributeValue helper methods.
      */
-
     public static AttributeValue createHkAttribute(ScalarAttributeType hashKeyAttrType, String value) {
         AttributeValue attr = new AttributeValue();
         switch (hashKeyAttrType) {
@@ -143,7 +151,8 @@ public class TestSupport {
         return item;
     }
 
-    static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType, String value) {
+    static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
+        String value) {
         Map<String, AttributeValue> item = defaultHkRkItem(hashKeyAttrType);
         item.put(SOME_FIELD, createStringAttribute(value));
         return item;

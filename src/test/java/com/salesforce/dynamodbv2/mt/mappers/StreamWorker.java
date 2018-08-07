@@ -55,6 +55,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * Starts a DynamoDBStreams listener.
+ *
  * @author msgroi
  */
 public class StreamWorker {
@@ -68,6 +70,9 @@ public class StreamWorker {
     private final AmazonDynamoDBStreams amazonDynamoDbStreams;
     private final AWSCredentialsProvider awsCredentialsProvider;
 
+    /**
+     * Constructor.
+     */
     public StreamWorker(AmazonDynamoDB amazonDynamoDb,
         AmazonDynamoDBStreams amazonDynamoDbStreams,
         AWSCredentialsProvider awsCredentialsProvider) {
@@ -76,6 +81,9 @@ public class StreamWorker {
         this.awsCredentialsProvider = awsCredentialsProvider;
     }
 
+    /**
+     * Takes a stream descriptions arn, label, and record processor and starts a stream listener.
+     */
     public void start(MtStreamDescription streamDescription) {
         String streamArn = streamDescription.getArn();
         if (workers.get(streamArn) == null) {

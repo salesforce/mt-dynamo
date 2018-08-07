@@ -12,11 +12,12 @@ import static org.hamcrest.Matchers.is;
 
 import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
+ * Tests getItem().
+ *
  * @author msgroi
  */
 @ExtendWith(TestTemplateWithDataSetup.class)
@@ -28,8 +29,9 @@ class GetTest {
     void get(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + org)));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE1 + org)));
         });
     }
 
@@ -37,8 +39,9 @@ class GetTest {
     void getHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3),
-                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org)));
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+                       is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                           SOME_FIELD_VALUE + TABLE3 + org)));
         });
     }
 

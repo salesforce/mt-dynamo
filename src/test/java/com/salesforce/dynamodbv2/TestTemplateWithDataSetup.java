@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.LocalDynamoDBServer.getRandomPort;
+import static com.salesforce.dynamodbv2.LocalDynamoDbServer.getRandomPort;
 import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -24,32 +24,33 @@ import java.util.List;
  * - A test method should be able to a override or extend the table and/or data set up scripts.
  * - Use JUnit 5 since mt-dynamo has been using it since its inception.
  *
- * Solution
+ * <p>Solution
  *
- * Use JUnit 5 Test Templates(https://junit.org/junit5/docs/current/user-guide/#writing-tests-test-templates).
+ * <p>Use JUnit 5 Test Templates(https://junit.org/junit5/docs/current/user-guide/#writing-tests-test-templates).
  * Test templates allow you to define a test that can be invoked multiple times.  To use test templates, you provide
  * an implementation of the TestTemplateInvocationContextProvider interface.  That implementation returns a list
  * of invocation contexts.
  *
- * To use ...
+ * <p>To use ...
  *
- * Annotate your test class or test method with @ExtendWith(TestTemplateWithDataSetup.class).  Each test
+ * <p>Annotate your test class or test method with @ExtendWith(TestTemplateWithDataSetup.class).  Each test
  * method be annotated with @TestTemplate and must take a single argument of type TestArgument.
  *
- * FAQ
+ * <p>FAQ
  *
- * - Q. Why not use ParameterizedTest's and JUnit 5 lifecycle callback methods at the class level to create and
+ * <p>- Q. Why not use ParameterizedTest's and JUnit 5 lifecycle callback methods at the class level to create and
  * populate tables in the beforeEach method callback?
  * - A. This works if every test method in a class can use the same script to populate data.  This is contrary to our
  * requirement.
  *
- * - Q. Why not use ParameterizedTest's and per method lifecycle methods(@RegisterExtension)?
+ * <p>- Q. Why not use ParameterizedTest's and per method lifecycle methods(@RegisterExtension)?
  * - A. JUnit 5 lifecycle callback methods(@ExtendsWith) do not have access to parameterized test arguments.  Therefore,
- * there is no hook where pre-test data population can occur.  Note that this is a known deficiency that's currently slated
- * to be addressed in an upcoming version of JUnit 5(https://github.com/junit-team/junit5/issues/1139).
+ * there is no hook where pre-test data population can occur.  Note that this is a known deficiency that's currently
+ * slated to be addressed in an upcoming version of JUnit 5(https://github.com/junit-team/junit5/issues/1139).
  *
- * - Q. Why not use ParameterizedTest's but just create the tables and data at the beginning of each test?
- * - A. This is a viable solution, but it would mean adding a couple of lines of code to every test method in every class.
+ * <p>- Q. Why not use ParameterizedTest's but just create the tables and data at the beginning of each test?
+ * - A. This is a viable solution, but it would mean adding a couple of lines of code to every test method in every
+ * class.
  *
  * @author msgroi
  */
@@ -63,14 +64,16 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
     TestTemplateWithDataSetup() {
         super(
             TestArgument.class, // the model class that encapsulates a single invocation of your test
-            new TestArgumentSupplier().get(), // supplier that returns a list of TestArgument instances each or which will result in a test invocation
+            new TestArgumentSupplier().get(), /* supplier that returns a list of TestArgument instances
+                                                 each or which will result in a test invocation */
             testSetup.getSetup(), // setups up tables and populates with data
             testSetup.getTeardown() // tears down tables
         );
     }
 
     /*
-     * Alternate implementation that disables all table setup but still feeds TestArgument's as supplied by the TestArgumentSupplier.
+     * Alternate implementation that disables all table setup but still feeds TestArgument's as supplied by the
+     * TestArgumentSupplier.
      */
     static class TestTemplatewithNoSetup extends TestTemplateWithDataSetup {
         TestTemplatewithNoSetup() {
@@ -79,10 +82,11 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
                 public List<CreateTableRequest> getCreateTableRequests() {
                     return null;
                 }
+
                 @Override
                 public void accept(TestArgument testArgument) {
                 }
-            }).withDataSetup(testArgument -> {}).getSetup());
+            }).withDataSetup(testArgument -> { }).getSetup());
         }
     }
 
@@ -102,7 +106,7 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
 
         private static AmazonDynamoDB amazonDynamoDb;
         private static AmazonDynamoDBStreams amazonDynamoDbStreams;
-        private static LocalDynamoDBServer server;
+        private static LocalDynamoDbServer server;
         private static boolean initialized = false;
         private static int port = getRandomPort();
 
@@ -110,9 +114,9 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
             super(
                 TestArgument.class,
                 new TestArgumentSupplier(getAmazonDynamoDb()).get(),
-                testArgument -> initializeDynamoDBClients(), // before callback
+                testArgument -> initializeDynamoDbClients(), // before callback
                 testArgument -> { // after callback
-                    ((MtAmazonDynamoDb) testArgument.getAmazonDynamoDB()).invalidateCaches();
+                    ((MtAmazonDynamoDb) testArgument.getAmazonDynamoDb()).invalidateCaches();
                     if (server != null) {
                         server.stop();
                         initialized = false;
@@ -122,36 +126,41 @@ class TestTemplateWithDataSetup extends TestTemplateSupportingParameterizedTest<
         }
 
         static AmazonDynamoDB getAmazonDynamoDb() {
-            initializeDynamoDBClients();
+            initializeDynamoDbClients();
             return amazonDynamoDb;
         }
 
         static AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
-            initializeDynamoDBClients();
+            initializeDynamoDbClients();
             return amazonDynamoDbStreams;
         }
 
-        private static void initializeDynamoDBClients() {
+        private static void initializeDynamoDbClients() {
             if (!initialized) {
                 if (IS_LOCAL_DYNAMO) {
                     /*
                      * Normally don't like to commit commented out code but this may come in handy as it allows for
                      * running DynamoDB in embedded mode as opposed to locally via a network port.
                      */
-//                    if (USE_EMBEDDED_DYNAMO) {
-//                        DynamoDbClients localDynamoDbClients = AmazonDynamoDbLocal.getNewAmazonDynamoDBLocalWithStreams();
-//                        amazonDynamoDb = localDynamoDbClients.getAmazonDynamoDb();
-//                        amazonDynamoDbStreams = localDynamoDbClients.getAmazonDynamoDbStreams();
-//                    } else {
-                        server = new LocalDynamoDBServer(port);
-                        amazonDynamoDb = server.start();
-                        amazonDynamoDbStreams = AmazonDynamoDBStreamsClientBuilder.standard()
-                            .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("http://localhost:" + server.getPort(), null))
-                            .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))).build();
-//                    }
+                    // if (USE_EMBEDDED_DYNAMO) {
+                    //     DynamoDbClients localDynamoDbClients =
+                    //     AmazonDynamoDbLocal.getNewAmazonDynamoDbLocalWithStreams();
+                    //     amazonDynamoDb = localDynamoDbClients.getAmazonDynamoDb();
+                    //                     amazonDynamoDbStreams = localDynamoDbClients.getAmazonDynamoDbStreams();
+                    // } else {
+                    server = new LocalDynamoDbServer(port);
+                    amazonDynamoDb = server.start();
+                    amazonDynamoDbStreams = AmazonDynamoDBStreamsClientBuilder.standard()
+                        .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(
+                            "http://localhost:" + server.getPort(), null))
+                        .withCredentials(new AWSStaticCredentialsProvider(
+                            new BasicAWSCredentials("", ""))).build();
+                    // }
                 } else {
-                    amazonDynamoDb = AmazonDynamoDBClientBuilder.standard().withRegion(TestArgumentSupplier.REGION).build();
-                    amazonDynamoDbStreams = AmazonDynamoDBStreamsClientBuilder.standard().withRegion(TestArgumentSupplier.REGION).build();
+                    amazonDynamoDb = AmazonDynamoDBClientBuilder.standard()
+                        .withRegion(TestArgumentSupplier.REGION).build();
+                    amazonDynamoDbStreams = AmazonDynamoDBStreamsClientBuilder.standard()
+                        .withRegion(TestArgumentSupplier.REGION).build();
                 }
                 initialized = true;
             }

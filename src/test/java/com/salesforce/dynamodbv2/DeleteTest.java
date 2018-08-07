@@ -28,6 +28,8 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
+ * Tests deleteItem().
+ *
  * @author msgroi
  */
 class DeleteTest {
@@ -42,16 +44,22 @@ class DeleteTest {
         Map<String, AttributeValue> deleteItemKey = buildKey(testArgument.getHashKeyAttrType());
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE1).withKey(deleteItemKey);
-        testArgument.getAmazonDynamoDB().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1, HASH_KEY_VALUE));
+        testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
+        assertNull(getItem(testArgument.getHashKeyAttrType(),
+                   testArgument.getAmazonDynamoDb(), TABLE1, HASH_KEY_VALUE));
         assertEquals(TABLE1, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
-        assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE2 + org),
-                   is(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE2))); // assert different table, same org
+        assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                                        SOME_FIELD_VALUE + TABLE2 + org),
+                   is(getItem(testArgument.getHashKeyAttrType(),
+                              testArgument.getAmazonDynamoDb(),
+                              TABLE2))); // assert different table, same org
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
-            assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE1 + otherOrg),
-                       is(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE1))); // assert same table, different orgs
+            // assert same table, different orgs
+            assertThat(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                                             SOME_FIELD_VALUE + TABLE1 + otherOrg),
+                       is(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1)));
         });
     }
 
@@ -63,14 +71,17 @@ class DeleteTest {
         Map<String, AttributeValue> deleteItemKey = buildHkRkKey(testArgument.getHashKeyAttrType());
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE3).withKey(deleteItemKey);
-        testArgument.getAmazonDynamoDB().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE)));
+        testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
+        assertNull(getItem(testArgument.getHashKeyAttrType(),
+            testArgument.getAmazonDynamoDb(), TABLE3, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE)));
         assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
-            assertThat(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + otherOrg),
-                       is(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDB(), TABLE3))); // assert same table, different orgs
+            // assert same table, different orgs
+            assertThat(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                                                 SOME_FIELD_VALUE + TABLE3 + otherOrg),
+                       is(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3)));
         });
     }
 

@@ -71,6 +71,8 @@ import org.junit.jupiter.api.TestTemplate;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
+ * Tests streams.
+ *
  * @author msgroi
  */
 @ExtendWith(TestTemplateWithIsolatedDynamoDb.class)
@@ -85,7 +87,8 @@ class StreamsTest {
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
     private static AmazonDynamoDB amazonDynamoDb = TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDb();
-    private static AmazonDynamoDBStreams amazonDynamoDbStreams = TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDbStreams();
+    private static AmazonDynamoDBStreams amazonDynamoDbStreams =
+        TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDbStreams();
     private StreamWorker streamWorker;
 
     StreamsTest() {
@@ -97,10 +100,9 @@ class StreamsTest {
 
     @TestTemplate
     void test(TestArgument testArgument) {
-        RecordProcessor recordProcessor = new RecordProcessor();
-
         // expected records
-        List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(), testArgument.getHashKeyAttrType());
+        List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(),
+            testArgument.getHashKeyAttrType());
 
         // get orgs
         List<String> orgs = testArgument.getOrgs();
@@ -108,24 +110,26 @@ class StreamsTest {
         // for each org, create a table and put a record
         orgs.forEach(org -> {
             MT_CONTEXT.setContext(org);
-            new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDB())
+            new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                 .createTableIfNotExists(new CreateTableRequest()
                     .withTableName(format(STREAMS_TABLE, org))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, testArgument.getHashKeyAttrType()))
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD,
+                        testArgument.getHashKeyAttrType()))
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                         .withStreamEnabled(true)), getPollInterval());
-            testArgument.getAmazonDynamoDB().putItem(new PutItemRequest()
+            testArgument.getAmazonDynamoDb().putItem(new PutItemRequest()
                 .withTableName(format(STREAMS_TABLE, org))
-                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), format(SOME_FIELD_VALUE_STREAMS_TEST, org))));
+                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    format(SOME_FIELD_VALUE_STREAMS_TEST, org))));
         });
 
         // for each org, update the record
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            testArgument.getAmazonDynamoDB().updateItem(new UpdateItemRequest()
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(format(STREAMS_TABLE, org))
                 .withKey(buildKey(testArgument.getHashKeyAttrType()))
                 .addAttributeUpdatesEntry(SOME_FIELD,
@@ -136,11 +140,16 @@ class StreamsTest {
         // for each org, delete the record
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
-            testArgument.getAmazonDynamoDB().deleteItem(new DeleteItemRequest().withTableName(format(STREAMS_TABLE, org)).withKey(buildKey(testArgument.getHashKeyAttrType())));
+            testArgument.getAmazonDynamoDb().deleteItem(
+                new DeleteItemRequest().withTableName(format(STREAMS_TABLE, org))
+                    .withKey(buildKey(testArgument.getHashKeyAttrType())));
         });
 
+        // create record processor
+        RecordProcessor recordProcessor = new RecordProcessor();
+
         // start a worker per stream arn
-        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDB()).listStreams(() -> recordProcessor).stream()
+        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).listStreams(() -> recordProcessor).stream()
             .collect(collectingAndThen(toCollection(() -> new TreeSet<>(
                 Comparator.comparing(MtStreamDescription::getArn))), ArrayList::new)).forEach(streamWorker::start);
 
@@ -154,7 +163,8 @@ class StreamsTest {
             // assert records received
             assertRecordsReceived(expectedRecords, recordProcessor.mtRecords);
         } catch (ConditionTimeoutException e) {
-            fail("timeout, " + recordProcessor.mtRecords.size() + " records arrived, expected " + expectedRecords.size());
+            fail("timeout, " + recordProcessor.mtRecords.size()
+                 + " records arrived, expected " + expectedRecords.size());
         }
 
         streamWorker.stop();
@@ -201,7 +211,8 @@ class StreamsTest {
             .withDynamodb(new StreamRecord()
                 .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
                 .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
-                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org)))))).collect(Collectors.toList());
+                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org))))))
+            .collect(Collectors.toList());
         List<MtRecord> updates = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(MODIFY.name())
@@ -210,14 +221,16 @@ class StreamsTest {
                 .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org))))
                 .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
-                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))))).collect(Collectors.toList());
+                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org))))))
+            .collect(Collectors.toList());
         List<MtRecord> deletes = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(REMOVE.name())
             .withDynamodb(new StreamRecord()
                 .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
                 .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
-                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))))).collect(Collectors.toList());
+                    SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org))))))
+            .collect(Collectors.toList());
         return Stream.of(
             inserts,
             updates,
@@ -227,6 +240,7 @@ class StreamsTest {
 
     private static class RecordProcessor implements IRecordProcessor {
         List<MtRecord> mtRecords = new ArrayList<>();
+
         @Override
         public void initialize(InitializationInput initializationInput) {
         }

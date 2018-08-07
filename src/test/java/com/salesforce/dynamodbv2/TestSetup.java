@@ -87,7 +87,7 @@ class TestSetup {
                 mtContext.setContext(org);
                 createTableRequests = getCreateRequests(testArgument.getHashKeyAttrType());
                 createTableRequests.forEach(createTableRequest ->
-                    new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDB())
+                    new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                         .createTableIfNotExists(createTableRequest, getPollInterval()));
             });
         }
@@ -138,9 +138,11 @@ class TestSetup {
         }
 
         @Override
+        @SuppressWarnings("checkstyle:Indentation")
         public void accept(TestArgument testArgument) {
-            Map<Boolean, List<CreateTableRequest>> tablesPartitionedByHasRangeKey = ImmutableList.of(TABLE1, TABLE2, TABLE3).stream()
-                .map(this::getCreateTableRequest).collect(Collectors.partitioningBy(
+            Map<Boolean, List<CreateTableRequest>> tablesPartitionedByHasRangeKey =
+                ImmutableList.of(TABLE1, TABLE2, TABLE3).stream().map(
+                    this::getCreateTableRequest).collect(Collectors.partitioningBy(
                     createTableRequest -> createTableRequest.getKeySchema().stream().anyMatch(
                         keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE)));
             testArgument.getOrgs().forEach(org -> {
@@ -148,17 +150,19 @@ class TestSetup {
                 // hk-only tables
                 tablesPartitionedByHasRangeKey.get(false)
                     .stream().map(CreateTableRequest::getTableName)
-                        .forEach(table -> testArgument.getAmazonDynamoDB().putItem(
+                        .forEach(table -> testArgument.getAmazonDynamoDb().putItem(
                             new PutItemRequest().withTableName(table)
-                                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + table + org))));
+                                .withItem(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                                    SOME_FIELD_VALUE + table + org))));
                 // hk-rk tables
                 tablesPartitionedByHasRangeKey.get(true)
                     .stream().map(CreateTableRequest::getTableName)
                     .forEach(table -> {
-                        testArgument.getAmazonDynamoDB().putItem(
+                        testArgument.getAmazonDynamoDb().putItem(
                             new PutItemRequest().withTableName(table)
-                                .withItem(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + table + org)));
-                        testArgument.getAmazonDynamoDB().putItem(
+                                .withItem(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                                    SOME_FIELD_VALUE + table + org)));
+                        testArgument.getAmazonDynamoDb().putItem(
                             new PutItemRequest().withTableName(table)
                                 .withItem(buildItemWithValues(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE,
                                     Optional.of(RANGE_KEY_VALUE + "2"),
@@ -169,7 +173,8 @@ class TestSetup {
         }
 
         private CreateTableRequest getCreateTableRequest(String table) {
-            return tableSetup.getCreateTableRequests().stream().filter(createTableRequest -> createTableRequest.getTableName().equals(table)).findAny().get();
+            return tableSetup.getCreateTableRequests().stream().filter(
+                createTableRequest -> createTableRequest.getTableName().equals(table)).findAny().get();
         }
 
     }
@@ -177,7 +182,7 @@ class TestSetup {
     private class DefaultTeardown implements Consumer<TestArgument> {
         @Override
         public void accept(TestArgument testArgument) {
-            testArgument.getAmazonDynamoDB().shutdown();
+            testArgument.getAmazonDynamoDb().shutdown();
         }
     }
 

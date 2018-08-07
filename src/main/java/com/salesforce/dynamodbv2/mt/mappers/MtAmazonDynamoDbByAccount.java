@@ -119,8 +119,11 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
      */
     @VisibleForTesting
     public interface MtAccountMapper {
+
         AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext);
+
         default void shutdown() {}
+
     }
 
     @VisibleForTesting
