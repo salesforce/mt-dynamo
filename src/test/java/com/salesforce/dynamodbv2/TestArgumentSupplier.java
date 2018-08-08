@@ -54,7 +54,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
-    private static final int ORGS_PER_TEST = 3; // TODO msgroi 2?
+    private static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     private static final int DYNAMO_BASE_PORT = 8001;
     private static List<LocalDynamoDbServer> servers;
