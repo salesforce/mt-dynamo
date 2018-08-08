@@ -22,7 +22,7 @@ import java.util.Optional;
  */
 public class TestSupport {
 
-    static final boolean IS_LOCAL_DYNAMO = true; // TODO msgroi should test running against hosted dynamo
+    static final boolean IS_LOCAL_DYNAMO = true;
     static final int TIMEOUT_SECONDS = 60;
     public static final String HASH_KEY_FIELD = "hashKeyField";
     public static final String HASH_KEY_VALUE = "1";

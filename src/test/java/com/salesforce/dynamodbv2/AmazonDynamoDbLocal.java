@@ -17,7 +17,7 @@ import com.amazonaws.services.dynamodbv2.local.shared.access.AmazonDynamoDBLocal
  *
  * @author msgroi
  */
-public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in here
+public class AmazonDynamoDbLocal {
 
     private static AmazonDynamoDB localAmazonDynamoDb;
     private static AmazonDynamoDBStreams localAmazonDynamoDbStreams;
@@ -25,11 +25,6 @@ public class AmazonDynamoDbLocal { // TODO msgroi get rid of unused methods in h
     public static AmazonDynamoDB getAmazonDynamoDbLocal() {
         initialize();
         return localAmazonDynamoDb;
-    }
-
-    public static AmazonDynamoDBStreams getAmazonDynamoDbStreamsLocal() {
-        initialize();
-        return localAmazonDynamoDbStreams;
     }
 
     private static void initialize() {
