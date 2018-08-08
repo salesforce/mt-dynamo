@@ -87,7 +87,7 @@ class MtAmazonDynamoDbChainTest {
     @Test
     void test() throws Exception {
         // create context
-        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl(); // TODO msgroi fixme
+        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
 
         // log message aggregator
         LogAggregator logAggregator = new LogAggregator();
