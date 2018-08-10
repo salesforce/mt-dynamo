@@ -188,7 +188,7 @@ class ScanTest {
     static class ScanTestArgumentProvider extends DefaultArgumentProvider {
 
         public ScanTestArgumentProvider() {
-            super.setTestSetup(scanTestSetup);
+            super(scanTestSetup);
         }
 
     }

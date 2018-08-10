@@ -1,9 +1,7 @@
 package com.salesforce.dynamodbv2.testsupport;
 
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
@@ -22,24 +20,30 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
  */
 public class DefaultArgumentProvider implements ArgumentsProvider {
 
-    private ArgumentBuilder argumentBuilder = new ArgumentBuilder();
-    private TestSetup testSetup = new DefaultTestSetup();
-    private List<TestArgument> testArguments = new ArrayList<>();
+    private final ArgumentBuilder argumentBuilder;
+    private final TestSetup testSetup;
 
-    void setArgumentBuilder(ArgumentBuilder argumentBuilder) {
-        this.argumentBuilder = argumentBuilder;
+    /**
+     * Used when used with an arguments source annotation directly, e.g. @ArgumentsSource(DefaultArgumentProvider.class)
+     */
+    public DefaultArgumentProvider() {
+        this(new ArgumentBuilder(), new DefaultTestSetup());
     }
 
-    protected void setTestSetup(TestSetup testSetup) {
+    public DefaultArgumentProvider(TestSetup testSetup) {
+        this.argumentBuilder = new ArgumentBuilder();
+        this.testSetup = testSetup;
+    }
+
+    public DefaultArgumentProvider(ArgumentBuilder argumentBuilder, TestSetup testSetup) {
+        this.argumentBuilder = argumentBuilder;
         this.testSetup = testSetup;
     }
 
     @Override
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
         List<Arguments> arguments = argumentBuilder.get();
-        testArguments.addAll(arguments.stream().map(arguments1 ->
-            (TestArgument) arguments1.get()[0]).collect(Collectors.toList()));
-        testArguments.forEach(testArgument -> testSetup.setupTest(testArgument));
+        arguments.forEach(arguments1 -> testSetup.setupTest((TestArgument) arguments1.get()[0]));
         return arguments.stream();
     }
 

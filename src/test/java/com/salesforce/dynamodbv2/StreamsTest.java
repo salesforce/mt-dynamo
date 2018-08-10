@@ -280,7 +280,7 @@ class StreamsTest {
     private static class StreamsArgumentProvider extends IsolatedArgumentProvider {
 
         StreamsArgumentProvider() {
-            setTestSetup(new TestSetup() {
+            super(new TestSetup() {
                 @Override
                 public void setupTest(TestArgument testArgument) {
 
