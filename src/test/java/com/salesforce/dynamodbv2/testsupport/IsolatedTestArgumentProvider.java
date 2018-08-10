@@ -26,7 +26,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
  *
  * @author msgroi
  */
-public class ParameterizedIsolatedTestArgumentProvider extends ParameterizedTestArgumentProvider { // TODO msgroi rename taking away ParameterizedTest prefix
+public class IsolatedTestArgumentProvider extends TestArgumentProvider {
 
     private static AmazonDynamoDB amazonDynamoDb;
     private static AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -34,7 +34,7 @@ public class ParameterizedIsolatedTestArgumentProvider extends ParameterizedTest
     private static boolean initialized = false;
     private static int port = getRandomPort();
 
-    ParameterizedIsolatedTestArgumentProvider() {
+    IsolatedTestArgumentProvider() {
         setTestArgumentSupplier(new TestArgumentSupplier(amazonDynamoDb));
     }
 
@@ -79,6 +79,9 @@ public class ParameterizedIsolatedTestArgumentProvider extends ParameterizedTest
         return amazonDynamoDbStreams;
     }
 
+    /**
+     * Shuts down the server.
+     */
     public static void shutdown() {
         if (server != null) {
             server.stop();

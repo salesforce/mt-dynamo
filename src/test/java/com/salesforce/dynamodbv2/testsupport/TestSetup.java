@@ -27,8 +27,8 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-public class TestSetup {
+public class TestSetup { // TODO msgroi make this implement Consumer
 
     private static final MtAmazonDynamoDbContextProvider mtContext = TestArgumentSupplier.MT_CONTEXT;
     public static final String TABLE1 = "Table1";
@@ -140,9 +140,10 @@ public class TestSetup {
         @Override
         public List<CreateTableRequest> getCreateTableRequests() {
             return createTableRequests;
-            //            return getCreateRequests(S); // Doesn't matter what the hashKeyAttrType is because the client only cares
+            // Doesn't matter what the hashKeyAttrType is because the client only cares
             // which table has only a hk vs both hk and rk.  TODO msgroi make this return map of table names
             // keyed on whether they have hk only
+            //            return getCreateRequests(S);
         }
 
         @Override
@@ -208,13 +209,6 @@ public class TestSetup {
                 createTableRequest -> createTableRequest.getTableName().equals(table)).findAny().get();
         }
 
-    }
-
-    private class DefaultTeardown implements Consumer<TestArgument> {
-        @Override
-        public void accept(TestArgument testArgument) {
-            testArgument.getAmazonDynamoDb().shutdown();
-        }
     }
 
     private int getPollInterval() {

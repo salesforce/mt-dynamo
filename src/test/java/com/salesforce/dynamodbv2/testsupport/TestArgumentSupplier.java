@@ -21,6 +21,8 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
@@ -31,9 +33,9 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
-import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
-import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -51,15 +53,13 @@ import org.junit.jupiter.params.provider.Arguments;
  */
 public class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
-    public static final Regions REGION = Regions.US_EAST_1;
+    static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
     private static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
-    private static final int DYNAMO_BASE_PORT = 8001;
-    private static List<LocalDynamoDbServer> servers;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
@@ -113,18 +113,7 @@ public class TestArgumentSupplier implements Supplier<List<Arguments>> {
          * byAccount
          */
         AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder() // TODO msgroi test byAccount again
-            .withAccountMapper(new MtAccountMapper() {
-                @Override
-                public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
-                    return wrapWithLogger(getServers().get(
-                        Integer.valueOf(mtContext.getContext().split("-")[1]) % ORGS_PER_TEST).start());
-                }
-
-                @Override
-                public void shutdown() {
-                    getServers().forEach(LocalDynamoDbServer::stop);
-                }
-            })
+            .withAccountMapper(new DynamicAccountMtMapper())
             .withContext(MT_CONTEXT).build();
 
         /*
@@ -257,12 +246,24 @@ public class TestArgumentSupplier implements Supplier<List<Arguments>> {
                     "putItem", "query", "scan", "updateItem")).build() : amazonDynamoDb;
     }
 
-    private static List<LocalDynamoDbServer> getServers() {
-        if (servers == null) {
-            servers = IntStream.rangeClosed(DYNAMO_BASE_PORT, DYNAMO_BASE_PORT + ORGS_PER_TEST)
-                .mapToObj(LocalDynamoDbServer::new).collect(Collectors.toList());
+    private static class DynamicAccountMtMapper implements MtAccountMapper {
+
+        Map<String, LocalDynamoDbServer> contextServerMap = new HashMap<>();
+
+        @Override
+        public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
+            return contextServerMap.computeIfAbsent(mtContext.getContext(), org -> {
+                LocalDynamoDbServer server = new LocalDynamoDbServer();
+                server.start();
+                return server;
+            }).getClient();
         }
-        return servers;
+
+        @Override
+        public void shutdown() {
+            contextServerMap.values().forEach(LocalDynamoDbServer::stop);
+        }
+
     }
 
     /*

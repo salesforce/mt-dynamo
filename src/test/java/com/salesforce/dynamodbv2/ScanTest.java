@@ -25,11 +25,12 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.TestArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.TestSetup;
 import com.salesforce.dynamodbv2.testsupport.TestSetup.DataSetup;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -37,9 +38,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests scan().
@@ -49,11 +49,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 class ScanTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
-    private static final ScanTestDataLoader scanTestDataLoader = new ScanTestDataLoader();
-    private static TestSetup testSetup = new TestSetup().withDataSetup(scanTestDataLoader);
+    private static final ScanTestDataLoader pagingTestDataLoader = new ScanTestDataLoader();
+    private static final TestSetup testSetup = new TestSetup().withDataSetup(pagingTestDataLoader);
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(TestArgumentProvider.class)
     void scanWithHk(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -65,8 +65,8 @@ class ScanTest {
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                           SOME_FIELD_VALUE + TABLE1 + org)));
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org)));
             assertEquals(TABLE1, scanRequest.getTableName());
             assertThat(scanRequest.getFilterExpression(), is(filterExpression));
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames));
@@ -74,24 +74,24 @@ class ScanTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(TestArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
             assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(TABLE1)
-                           .withScanFilter(ImmutableMap.of(
-                               HASH_KEY_FIELD,
-                               new Condition().withComparisonOperator(EQ)
-                                   .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
-                                       HASH_KEY_VALUE))))).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                           SOME_FIELD_VALUE + TABLE1 + org)));
+                    .withScanFilter(ImmutableMap.of(
+                        HASH_KEY_FIELD,
+                        new Condition().withComparisonOperator(EQ)
+                            .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
+                                HASH_KEY_VALUE))))).getItems().get(0),
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org)));
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(TestArgumentProvider.class)
     void scanByNonPk(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -103,8 +103,8 @@ class ScanTest {
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                           SOME_FIELD_VALUE + TABLE1 + org)));
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org)));
             assertEquals(TABLE1, scanRequest.getTableName()); // assert no side effects
             assertThat(scanRequest.getFilterExpression(), is(filterExpression)); // assert no side effects
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames)); // assert no side effects
@@ -112,8 +112,8 @@ class ScanTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(TestArgumentProvider.class)
     void scanAll(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -125,19 +125,14 @@ class ScanTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(ScanTestPagingContextProvider.class)
+    @ParameterizedTest
+    @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanWithPaging(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org ->
-            scanAndAssertItemKeys(scanTestDataLoader.orgItemKeys.get(org),
+            scanAndAssertItemKeys(pagingTestDataLoader.orgItemKeys.get(org),
                 testArgument.getAmazonDynamoDb(),
                 testArgument.getHashKeyAttrType(),
                 org));
-    }
-
-    @AfterEach
-    void afterEach() {
-        testSetup.teardown();
     }
 
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,
@@ -192,10 +187,10 @@ class ScanTest {
     /*
      * Replaces the default data setup with one that is specific to the ScanTest's paging test.
      */
-    static class ScanTestPagingContextProvider extends TestTemplateWithDataSetup {
+    static class ScanTestArgumentProvider extends TestArgumentProvider {
 
-        public ScanTestPagingContextProvider() {
-            beforeEachCallback(testSetup.getSetup());
+        public ScanTestArgumentProvider() {
+            super.setTestSetup(testSetup);
         }
 
     }

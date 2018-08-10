@@ -25,7 +25,7 @@ public class LocalDynamoDbServer {
     private int port;
     private boolean running;
 
-    LocalDynamoDbServer() {
+    public LocalDynamoDbServer() {
         this.port = getRandomPort();
     }
 
@@ -89,9 +89,13 @@ public class LocalDynamoDbServer {
         return port;
     }
 
-    private AmazonDynamoDB getClient() {
+    /**
+     * Returns a client that can be used to connect to the server.
+     */
+    public AmazonDynamoDB getClient() {
         return AmazonDynamoDBClientBuilder.standard()
             .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration("http://localhost:" + port, null))
             .withCredentials(new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))).build();
     }
+
 }

@@ -50,6 +50,9 @@ public class TestSupport {
         return getItem(hashKeyAttrType, amazonDynamoDb, tableName, hashKeyValue, Optional.empty());
     }
 
+    /**
+     * Retrieves the item with the provided HK and RK values.
+     */
     public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
         AmazonDynamoDB amazonDynamoDb,
         String tableName,
@@ -141,6 +144,9 @@ public class TestSupport {
         return buildItemWithValues(hashKeyAttrType, hashKeyValue, rangeKeyValue, someFieldValue, Optional.empty());
     }
 
+    /**
+     * Builds an item with the provided HK, RK, and someField values.
+     */
     public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
         String hashKeyValue,
         Optional<String> rangeKeyValueOpt,
@@ -173,6 +179,9 @@ public class TestSupport {
             HASH_KEY_VALUE)));
     }
 
+    /**
+     * Builds a map representing an item, setting the HK and RK field names to the default.
+     */
     public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
         return new HashMap<>(new HashMap<>(ImmutableMap.of(
             HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
