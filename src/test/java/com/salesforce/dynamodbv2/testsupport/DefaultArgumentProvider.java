@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
  * a @ParameterizedTest's @ArgumentProvider annotation.
  *
  * <p>It delegates to the ArgumentBuilder to get a list of TestArguments.  Each TestArgument will be used as an input
- * to a test invocation.  Before returning the list of TestArgument's, it calls accept on its DefaultTestSetup.
+ * to a test invocation.  Before returning the list of TestArgument's, it calls setTestSetup on its DefaultTestSetup.
  * The DefaultTestSetup implementation creates tables for each TestArgument's org/AmazonDynamoDB/hashKeyAttrType
  * combination.
  *
@@ -39,7 +39,7 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
         List<Arguments> arguments = argumentBuilder.get();
         testArguments.addAll(arguments.stream().map(arguments1 ->
             (TestArgument) arguments1.get()[0]).collect(Collectors.toList()));
-        testArguments.forEach(testArgument -> testSetup.accept(testArgument));
+        testArguments.forEach(testArgument -> testSetup.setupTest(testArgument));
         return arguments.stream();
     }
 

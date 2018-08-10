@@ -165,7 +165,7 @@ class ScanTest {
         Map<String,Set<Integer>> orgItemKeys = new HashMap<>();
 
         @Override
-        public void setupData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
+        public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
             CreateTableRequest createTableRequest) {
             int ordinal = (Integer.parseInt(org.substring(org.indexOf("-") + 1)) - 1) % ORGS_PER_TEST;
             int putCount = ordinal < orgPutCounts.size() ? orgPutCounts.get(ordinal) : new Random().nextInt(10);

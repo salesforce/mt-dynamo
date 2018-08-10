@@ -35,7 +35,7 @@ import java.util.Optional;
 /**
  * Performs default table creation and population logic.  To override table creation of data population logic,
  * provide your own TestSetup implementation.  To add more tables to the default set, extend this class, call
- * super.accept() from within your accept method.
+ * super.setupTest() from within your accept method.
  *
  * @author msgroi
  */
@@ -48,24 +48,24 @@ public class DefaultTestSetup implements TestSetup {
     private List<CreateTableRequest> createTableRequests;
 
     @Override
-    public void accept(TestArgument testArgument) {
+    public void setupTest(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             mtContext.setContext(org);
             createTableRequests = getCreateRequests(testArgument.getHashKeyAttrType());
             createTableRequests.forEach(createTableRequest -> {
                 new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                     .createTableIfNotExists(createTableRequest, getPollInterval());
-                setupData(testArgument.getAmazonDynamoDb(),
-                          testArgument.getHashKeyAttrType(),
-                          org,
-                          createTableRequest);
+                setupTableData(testArgument.getAmazonDynamoDb(),
+                               testArgument.getHashKeyAttrType(),
+                               org,
+                               createTableRequest);
             });
         });
     }
 
     @SuppressWarnings("checkstyle:Indentation")
     @Override
-    public void setupData(AmazonDynamoDB amazonDynamoDb,
+    public void setupTableData(AmazonDynamoDB amazonDynamoDb,
         ScalarAttributeType hashKeyAttrType,
         String org,
         CreateTableRequest createTableRequest) {
