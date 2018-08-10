@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.parameterizedtests;
 
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
@@ -23,22 +23,25 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ParameterizedTestArgumentProvider;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests updateItem().
  *
  * @author msgroi
  */
-class UpdateTest {
+@Tag("parameterized-tests")
+class ParameterizedUpdateTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void update(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -58,8 +61,8 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -79,8 +82,8 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void updateConditionalFail(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -104,8 +107,8 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void updateHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -125,8 +128,8 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -146,8 +149,8 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

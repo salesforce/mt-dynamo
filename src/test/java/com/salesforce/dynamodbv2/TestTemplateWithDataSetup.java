@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.LocalDynamoDbServer.getRandomPort;
-import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer.getRandomPort;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -11,9 +11,12 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
-import com.salesforce.dynamodbv2.TestSetup.TableSetup;
+import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
+import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
+import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.TestSetup;
+import com.salesforce.dynamodbv2.testsupport.TestSetup.TableSetup;
 import java.util.List;
 
 /**

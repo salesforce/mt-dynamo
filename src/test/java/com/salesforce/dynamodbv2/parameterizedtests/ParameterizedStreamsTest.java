@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.parameterizedtests;
 
 import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
@@ -48,15 +48,16 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
-import com.salesforce.dynamodbv2.TestTemplateWithDataSetup.TestTemplateWithIsolatedDynamoDb;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.StreamWorker;
-import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.testsupport.ParameterizedIsolatedTestArgumentProvider;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -68,18 +69,22 @@ import java.util.stream.Stream;
 import org.awaitility.Duration;
 import org.awaitility.core.ConditionTimeoutException;
 import org.awaitility.pollinterval.FixedPollInterval;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests streams.
  *
  * @author msgroi
  */
-@ExtendWith(TestTemplateWithIsolatedDynamoDb.class)
 @Tag("isolated-tests")
-class StreamsTest {
+@Disabled
+class ParameterizedStreamsTest {
 
     private static final AWSCredentialsProvider AWS_CREDENTIALS_PROVIDER = IS_LOCAL_DYNAMO
         ? new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))
@@ -88,19 +93,31 @@ class StreamsTest {
     private static final String STREAMS_TABLE = "Streams%sTable";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
-    private static AmazonDynamoDB amazonDynamoDb = TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDb();
+    private static AmazonDynamoDB amazonDynamoDb = ParameterizedIsolatedTestArgumentProvider.getAmazonDynamoDb();
     private static AmazonDynamoDBStreams amazonDynamoDbStreams =
-        TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDbStreams();
-    private StreamWorker streamWorker;
+        ParameterizedIsolatedTestArgumentProvider.getAmazonDynamoDbStreams();
+    private static StreamWorker streamWorker;
 
-    StreamsTest() {
+    @BeforeAll
+    static void beforeAll() {
         streamWorker = new StreamWorker(amazonDynamoDb,
             amazonDynamoDbStreams,
             AWS_CREDENTIALS_PROVIDER
         );
     }
 
-    @TestTemplate
+    @BeforeEach
+    void beforeEach() {
+        ParameterizedIsolatedTestArgumentProvider.getAmazonDynamoDb();
+    }
+
+    @AfterEach
+    void afterEach() {
+        ParameterizedIsolatedTestArgumentProvider.shutdown();
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedIsolatedTestArgumentProvider.class)
     void test(TestArgument testArgument) {
         // expected records
         List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(),
@@ -170,6 +187,8 @@ class StreamsTest {
         }
 
         streamWorker.stop();
+
+        ((MtAmazonDynamoDb) amazonDynamoDb).invalidateCaches();
     }
 
     private void assertRecordsReceived(List<MtRecord> expectedRecords, List<MtRecord> actualRecords) {

@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.parameterizedtests;
 
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
@@ -16,26 +16,29 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.testsupport.ParameterizedTestArgumentProvider;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests DDL operations.
  *
  * @author msgroi
  */
-class DdlTest {
+@Tag("parameterized-tests")
+class ParameterizedDdlTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void describeTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -43,8 +46,8 @@ class DdlTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void createAndDeleteTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);

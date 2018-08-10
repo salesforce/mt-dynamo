@@ -14,15 +14,19 @@
     </appender>
 
     <!--
-        Setting to info level enables DDL level logging.  Enabling the MtAmazonDynamoDbLogger logger will result
-        in logging both DDL and DML operations.
+        Setting to info level enables DDL level logging.  Setting to warn level shows table deletions only.
     -->
-    <logger name="com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils" level="warn"/>
+    <logger name="com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils" level="error"/>
 
     <!--
         Setting to info level enables test start messages.
     -->
     <logger name="com.salesforce.dynamodbv2.TestTemplateSupportingParameterizedTest" level="warn"/>
+
+    <!--
+        Setting to error suppresses warnings resulting from table drops during test teardown.
+    -->
+    <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable" level="error"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />

@@ -1,9 +1,9 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -31,6 +31,8 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -47,9 +49,9 @@ import org.junit.jupiter.params.provider.Arguments;
  *
  * @author msgroi
  */
-class TestArgumentSupplier implements Supplier<List<Arguments>> {
+public class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
-    static final Regions REGION = Regions.US_EAST_1;
+    public static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
@@ -58,7 +60,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     private static final int DYNAMO_BASE_PORT = 8001;
     private static List<LocalDynamoDbServer> servers;
-    static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
     private static final String HK_TABLE_NAME = "hkTable";
@@ -110,7 +112,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
         /*
          * byAccount
          */
-        AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder()
+        AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder() // TODO msgroi test byAccount again
             .withAccountMapper(new MtAccountMapper() {
                 @Override
                 public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
@@ -231,10 +233,10 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
         return ImmutableList.of(
             /*
-             * The byAccount works by itself and with byTable, but sqlite failures occur when it runs concurrently
-             * with any of the sharedTable* strategies.
+             * Testing byAccount by itself and with byTable succeeds, but sqlite failures occur when it runs
+             * concurrently with any of the sharedTable* strategies.
              */
-            // byAccount,
+            //byAccount,
             byTable,
             sharedTableCustomDynamic,
             sharedTableCustomStaticBuilder,
@@ -267,11 +269,14 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
      * Represents an AmazonDynamoDB to be tested along with a list of orgs that have been designated to be used
      * when testing that instance.
      */
-    static class TestArgument {
+    public static class TestArgument {
         private AmazonDynamoDB amazonDynamoDb;
         private List<String> orgs;
         private ScalarAttributeType hashKeyAttrType;
 
+        /**
+         * Takes the arguments that make up the inputs to a test invocation.
+         */
         public TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
             ScalarAttributeType hashKeyAttrType) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -279,11 +284,11 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
             this.hashKeyAttrType = hashKeyAttrType;
         }
 
-        AmazonDynamoDB getAmazonDynamoDb() {
+        public AmazonDynamoDB getAmazonDynamoDb() {
             return amazonDynamoDb;
         }
 
-        List<String> getOrgs() {
+        public List<String> getOrgs() {
             return orgs;
         }
 

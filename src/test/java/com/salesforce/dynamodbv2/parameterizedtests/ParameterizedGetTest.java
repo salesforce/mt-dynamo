@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.parameterizedtests;
 
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
@@ -13,20 +13,23 @@ import static org.hamcrest.Matchers.is;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import com.salesforce.dynamodbv2.testsupport.ParameterizedTestArgumentProvider;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests getItem().
  *
  * @author msgroi
  */
-@ExtendWith(TestTemplateWithDataSetup.class)
-class GetTest {
+@Tag("parameterized-tests")
+class ParameterizedGetTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
 
-    @TestTemplate
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void get(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -36,7 +39,8 @@ class GetTest {
         });
     }
 
-    @TestTemplate
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void getHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

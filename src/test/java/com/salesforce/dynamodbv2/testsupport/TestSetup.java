@@ -1,18 +1,19 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.INDEX_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.INDEX_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
-import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.buildHkRkItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithValues;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.TIMEOUT_SECONDS;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -26,8 +27,9 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableList;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +37,7 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
+ * // TODO msgroi fix this if I end up merging table and data set up
  * Performs default table creation and population logic.  To override table creation of data population logic, call
  * withTableSetup() and/or withDataSetup() respectively.  To add more tables to the default set or add more data to the
  * default set of data, the pass implementations to those methods that themselves extend DefaultTableSetup and/or
@@ -42,44 +45,54 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-class TestSetup {
+public class TestSetup {
 
     private static final MtAmazonDynamoDbContextProvider mtContext = TestArgumentSupplier.MT_CONTEXT;
-    static final String TABLE1 = "Table1";
-    static final String TABLE2 = "Table2";
-    static final String TABLE3 = "Table3";
-    private TableSetup tableSetup = new DefaultTableSetup();
-    private Consumer<TestArgument> dataSetup = new DefaultDataSetup(tableSetup);
-    private Consumer<TestArgument> teardown = new DefaultTeardown();
+    public static final String TABLE1 = "Table1";
+    public static final String TABLE2 = "Table2";
+    public static final String TABLE3 = "Table3";
+    private TableSetup tableSetup = new DefaultTableSetup(); // TODO msgroi combine data and table setup
+    private DataSetup dataSetup = new DefaultDataSetup(tableSetup);
 
-    TestSetup withTableSetup(TableSetup tableSetup) {
+    public TestSetup withTableSetup(TableSetup tableSetup) {
         this.tableSetup = tableSetup;
         return this;
     }
 
-    TestSetup withDataSetup(Consumer<TestArgument> dataSetup) {
+    public TestSetup withDataSetup(DataSetup dataSetup) {
         this.dataSetup = dataSetup;
         return this;
     }
 
-    Consumer<TestArgument> getSetup() {
+    /**
+     * Returns the class that's responsible for setting up both tables and data for a test.
+     */
+    public DataSetup getSetup() {
         return testArgument -> {
             tableSetup.accept(testArgument);
             dataSetup.accept(testArgument);
         };
     }
 
-    Consumer<TestArgument> getTeardown() {
-        return testArgument -> teardown.accept(testArgument);
+    public void teardown() {
+        dataSetup.teardown();
+        tableSetup.teardown();
     }
 
-    interface TableSetup extends Consumer<TestArgument> {
+    public Consumer<TestArgument> getTeardown() {
+        return testArgument -> teardown();
+    }
+
+    public interface TableSetup extends Consumer<TestArgument> {
         List<CreateTableRequest> getCreateTableRequests();
+
+        default void teardown() {}
     }
 
     private class DefaultTableSetup implements TableSetup {
 
         List<CreateTableRequest> createTableRequests;
+        List<TestArgument> testArguments = new ArrayList<>();
 
         @Override
         public void accept(TestArgument testArgument) {
@@ -90,6 +103,7 @@ class TestSetup {
                     new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                         .createTableIfNotExists(createTableRequest, getPollInterval()));
             });
+            testArguments.add(testArgument);
         }
 
         private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
@@ -126,10 +140,27 @@ class TestSetup {
         @Override
         public List<CreateTableRequest> getCreateTableRequests() {
             return createTableRequests;
+            //            return getCreateRequests(S); // Doesn't matter what the hashKeyAttrType is because the client only cares
+            // which table has only a hk vs both hk and rk.  TODO msgroi make this return map of table names
+            // keyed on whether they have hk only
+        }
+
+        @Override
+        public void teardown() {
+            testArguments.forEach(testArgument -> testArgument.getOrgs().forEach(org -> {
+                mtContext.setContext(org);
+                getCreateRequests(testArgument.getHashKeyAttrType()).forEach(createTableRequest ->
+                    new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
+                        .deleteTableIfExists(createTableRequest.getTableName(), getPollInterval(), TIMEOUT_SECONDS));
+            }));
         }
     }
 
-    class DefaultDataSetup implements Consumer<TestArgument> {
+    public interface DataSetup extends Consumer<TestArgument> {
+        default void teardown() {}
+    }
+
+    class DefaultDataSetup implements DataSetup {
 
         private final TableSetup tableSetup;
 

@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.parameterizedtests;
 
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
@@ -19,18 +19,21 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
 import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ParameterizedTestArgumentProvider;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests putItem().
  *
  * @author msgroi
  */
-class PutTest {
+@Tag("parameterized-tests")
+class ParameterizedPutTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
     private static final String HASH_KEY_VALUE_NEW = "2";
@@ -38,8 +41,8 @@ class PutTest {
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void put(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -60,8 +63,8 @@ class PutTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void putOverwrite(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -79,8 +82,8 @@ class PutTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void putHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -104,8 +107,8 @@ class PutTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(ParameterizedTestArgumentProvider.class)
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

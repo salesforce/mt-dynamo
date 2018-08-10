@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.dynamodblocal;
 
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author msgroi
  */
-class LocalDynamoDbServer {
+public class LocalDynamoDbServer {
 
     private static final Logger log = LoggerFactory.getLogger(LocalDynamoDbServer.class);
     private DynamoDBProxyServer server;
@@ -29,7 +29,10 @@ class LocalDynamoDbServer {
         this.port = getRandomPort();
     }
 
-    static int getRandomPort() {
+    /**
+     * Find a random open port and returns it.
+     */
+    public static int getRandomPort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             socket.setReuseAddress(true);
             return socket.getLocalPort();
@@ -38,11 +41,17 @@ class LocalDynamoDbServer {
         }
     }
 
-    LocalDynamoDbServer(int port) {
+    /*
+     * Creates an instance with the specified port.
+     */
+    public LocalDynamoDbServer(int port) {
         this.port = port;
     }
 
-    AmazonDynamoDB start() {
+    /**
+     * If it's not already running, starts the server, then returns a client regardless.
+     */
+    public AmazonDynamoDB start() {
         if (!running) {
             try {
                 System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
@@ -58,7 +67,10 @@ class LocalDynamoDbServer {
         return getClient();
     }
 
-    void stop() {
+    /**
+     * If the server is running, stops the server.  Returns silently otherwise.
+     */
+    public void stop() {
         if (running) {
             try {
                 server.stop();
@@ -70,7 +82,10 @@ class LocalDynamoDbServer {
         }
     }
 
-    int getPort() {
+    /*
+     * Returns the port of the server.
+     */
+    public int getPort() {
         return port;
     }
 

@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.dynamodblocal;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
