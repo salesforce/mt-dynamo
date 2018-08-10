@@ -14,7 +14,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 
 /**
  * Run with an independent, isolated DynamoDB instance when run locally.  Also disables all table setup but still
- * feeds TestArgument's as supplied by the TestArgumentSupplier.  DynamoDB will start up as an external process
+ * feeds TestArgument's as supplied by the ArgumentBuilder.  DynamoDB will start up as an external process
  * that can be accessed via the local network.  It picks an open port randomly, then will restart the DynamoDB
  * server process between each test run, effectively dropping the database.
  *
@@ -26,7 +26,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
  *
  * @author msgroi
  */
-public class IsolatedTestArgumentProvider extends TestArgumentProvider {
+public class IsolatedTestArgumentProvider extends DefaultArgumentProvider {
 
     private static AmazonDynamoDB amazonDynamoDb;
     private static AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -35,7 +35,7 @@ public class IsolatedTestArgumentProvider extends TestArgumentProvider {
     private static int port = getRandomPort();
 
     IsolatedTestArgumentProvider() {
-        setTestArgumentSupplier(new TestArgumentSupplier(amazonDynamoDb));
+        setArgumentBuilder(new ArgumentBuilder(amazonDynamoDb));
     }
 
     private static void initializeDynamoDbClients() {
@@ -61,9 +61,9 @@ public class IsolatedTestArgumentProvider extends TestArgumentProvider {
                 // }
             } else {
                 amazonDynamoDb = AmazonDynamoDBClientBuilder.standard()
-                    .withRegion(TestArgumentSupplier.REGION).build();
+                    .withRegion(ArgumentBuilder.REGION).build();
                 amazonDynamoDbStreams = AmazonDynamoDBStreamsClientBuilder.standard()
-                    .withRegion(TestArgumentSupplier.REGION).build();
+                    .withRegion(ArgumentBuilder.REGION).build();
             }
             initialized = true;
         }

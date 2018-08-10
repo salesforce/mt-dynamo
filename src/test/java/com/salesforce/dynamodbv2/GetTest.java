@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
@@ -11,9 +11,9 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -24,10 +24,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class GetTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void get(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -37,8 +37,8 @@ class GetTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void getHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

@@ -1,8 +1,8 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE2;
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -36,10 +36,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class DeleteTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
@@ -65,8 +65,8 @@ class DeleteTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void deleteHkRkTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);

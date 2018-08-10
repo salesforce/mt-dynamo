@@ -54,10 +54,10 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.StreamWorker;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.IsolatedTestArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -89,7 +89,7 @@ class StreamsTest {
     private static final AWSCredentialsProvider AWS_CREDENTIALS_PROVIDER = IS_LOCAL_DYNAMO
         ? new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))
         : new DefaultAWSCredentialsProviderChain();
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
     private static final String STREAMS_TABLE = "Streams%sTable";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
@@ -116,7 +116,7 @@ class StreamsTest {
         IsolatedTestArgumentProvider.shutdown();
     }
 
-    @ParameterizedTest
+    @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(IsolatedTestArgumentProvider.class)
     void test(TestArgument testArgument) {
         // expected records

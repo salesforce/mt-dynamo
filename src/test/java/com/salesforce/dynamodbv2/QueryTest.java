@@ -1,8 +1,8 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
@@ -25,9 +25,9 @@ import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -41,10 +41,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class QueryTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void query(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -69,8 +69,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditions(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -86,8 +86,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -102,8 +102,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
     void queryUsingAttributeNameLiterals(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
@@ -119,8 +119,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -148,8 +148,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkTableNoRkSpecified(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -179,8 +179,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -200,8 +200,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryGsi(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -219,8 +219,8 @@ class QueryTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void queryLsi(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);

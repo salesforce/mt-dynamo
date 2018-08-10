@@ -45,20 +45,21 @@ import java.util.stream.Stream;
 import org.junit.jupiter.params.provider.Arguments;
 
 /*
- * Supplies of a list of Argument objects, where each Argument is a 2 element Object[] array, where the first element
+ * Builds of a list of Argument objects, where each Argument is a 3 element Object[] array, where the first element
  * is the AmazonDynamoDB instance being tested and the second element is a list of orgs that have been designated
- * to be used when testing that instance.
+ * to be used when testing that instance, and the third is the attribute type of the hash key of the table to be
+ * tested.
  *
  * @author msgroi
  */
-public class TestArgumentSupplier implements Supplier<List<Arguments>> {
+public class ArgumentBuilder implements Supplier<List<Arguments>> {
 
     static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
-    private static final int ORGS_PER_TEST = 2;
+    public static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
 
@@ -70,10 +71,10 @@ public class TestArgumentSupplier implements Supplier<List<Arguments>> {
     private static final String INDEX_FIELD = "INDEX_FIELD";
     private static final String INDEX_RANGE_FIELD = "INDEX_RANGE_FIELD";
 
-    public TestArgumentSupplier() {
+    public ArgumentBuilder() {
     }
 
-    public TestArgumentSupplier(AmazonDynamoDB rootAmazonDynamoDb) {
+    public ArgumentBuilder(AmazonDynamoDB rootAmazonDynamoDb) {
         this.rootAmazonDynamoDb = rootAmazonDynamoDb;
     }
 
@@ -112,7 +113,7 @@ public class TestArgumentSupplier implements Supplier<List<Arguments>> {
         /*
          * byAccount
          */
-        AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder() // TODO msgroi test byAccount again
+        AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder()
             .withAccountMapper(new DynamicAccountMtMapper())
             .withContext(MT_CONTEXT).build();
 

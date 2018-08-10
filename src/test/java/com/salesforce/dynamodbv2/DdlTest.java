@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.testsupport.TestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.TIMEOUT_SECONDS;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
@@ -17,10 +17,10 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier;
-import com.salesforce.dynamodbv2.testsupport.TestArgumentSupplier.TestArgument;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,10 +33,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class DdlTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void describeTable(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             MT_CONTEXT.setContext(org);
@@ -44,8 +44,8 @@ class DdlTest {
         });
     }
 
-    @ParameterizedTest
-    @ArgumentsSource(TestArgumentProvider.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void createAndDeleteTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
