@@ -49,15 +49,15 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.StreamWorker;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.IsolatedTestArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.IsolatedArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.testsupport.TestSetup;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -72,7 +72,6 @@ import org.awaitility.pollinterval.FixedPollInterval;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -83,7 +82,6 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  * @author msgroi
  */
 @Tag("isolated-tests")
-@Disabled // TODO msgroi get this working
 class StreamsTest {
 
     private static final AWSCredentialsProvider AWS_CREDENTIALS_PROVIDER = IS_LOCAL_DYNAMO
@@ -93,9 +91,9 @@ class StreamsTest {
     private static final String STREAMS_TABLE = "Streams%sTable";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
-    private static AmazonDynamoDB amazonDynamoDb = IsolatedTestArgumentProvider.getAmazonDynamoDb();
+    private static AmazonDynamoDB amazonDynamoDb = IsolatedArgumentProvider.getAmazonDynamoDb();
     private static AmazonDynamoDBStreams amazonDynamoDbStreams =
-        IsolatedTestArgumentProvider.getAmazonDynamoDbStreams();
+        IsolatedArgumentProvider.getAmazonDynamoDbStreams();
     private static StreamWorker streamWorker;
 
     @BeforeAll
@@ -108,16 +106,16 @@ class StreamsTest {
 
     @BeforeEach
     void beforeEach() {
-        IsolatedTestArgumentProvider.getAmazonDynamoDb();
+        IsolatedArgumentProvider.getAmazonDynamoDb();
     }
 
     @AfterEach
     void afterEach() {
-        IsolatedTestArgumentProvider.shutdown();
+        IsolatedArgumentProvider.shutdown();
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(IsolatedTestArgumentProvider.class)
+    @ArgumentsSource(StreamsArgumentProvider.class)
     void test(TestArgument testArgument) {
         // expected records
         List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(),
@@ -187,8 +185,6 @@ class StreamsTest {
         }
 
         streamWorker.stop();
-
-        ((MtAmazonDynamoDb) amazonDynamoDb).invalidateCaches();
     }
 
     private void assertRecordsReceived(List<MtRecord> expectedRecords, List<MtRecord> actualRecords) {
@@ -275,6 +271,28 @@ class StreamsTest {
         @Override
         public void shutdown(ShutdownInput shutdownInput) {
         }
+    }
+
+    /*
+     * Uses the isolated argument provider to get a standalone DynamoDB instance and override the default setup
+     * to be a no-op.
+     */
+    private static class StreamsArgumentProvider extends IsolatedArgumentProvider {
+
+        StreamsArgumentProvider() {
+            setTestSetup(new TestSetup() {
+                @Override
+                public void setupTest(TestArgument testArgument) {
+
+                }
+
+                @Override
+                public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType,
+                    String org, CreateTableRequest createTableRequest) {
+                }
+            });
+        }
+
     }
 
 }

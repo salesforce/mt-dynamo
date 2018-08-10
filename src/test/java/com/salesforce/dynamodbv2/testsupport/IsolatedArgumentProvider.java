@@ -26,7 +26,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
  *
  * @author msgroi
  */
-public class IsolatedTestArgumentProvider extends DefaultArgumentProvider {
+public class IsolatedArgumentProvider extends DefaultArgumentProvider {
 
     private static AmazonDynamoDB amazonDynamoDb;
     private static AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -34,7 +34,7 @@ public class IsolatedTestArgumentProvider extends DefaultArgumentProvider {
     private static boolean initialized = false;
     private static int port = getRandomPort();
 
-    IsolatedTestArgumentProvider() {
+    public IsolatedArgumentProvider() {
         setArgumentBuilder(new ArgumentBuilder(amazonDynamoDb));
     }
 
