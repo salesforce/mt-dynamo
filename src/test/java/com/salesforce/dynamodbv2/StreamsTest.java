@@ -283,7 +283,6 @@ class StreamsTest {
             super(new TestSetup() {
                 @Override
                 public void setupTest(TestArgument testArgument) {
-
                 }
 
                 @Override
