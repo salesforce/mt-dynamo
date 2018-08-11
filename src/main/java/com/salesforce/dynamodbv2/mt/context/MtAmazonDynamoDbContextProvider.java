@@ -7,8 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
-import java.util.concurrent.Callable;
-
 /**
  * TODO: write Javadoc.
  *

@@ -20,8 +20,6 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.HashMap;
@@ -36,13 +34,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class UpdateTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
-
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     void update(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = buildKey(testArgument.getHashKeyAttrType());
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
@@ -62,8 +57,7 @@ class UpdateTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalSuccess(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(buildKey(testArgument.getHashKeyAttrType()))
@@ -83,8 +77,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalFail(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE1)
@@ -108,8 +101,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = buildHkRkKey(testArgument.getHashKeyAttrType());
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE3)
@@ -129,8 +121,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
@@ -150,8 +141,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE3)

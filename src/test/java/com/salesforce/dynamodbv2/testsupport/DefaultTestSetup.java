@@ -72,7 +72,6 @@ public class DefaultTestSetup implements TestSetup {
         String table = createTableRequest.getTableName();
         boolean hasRangeKey = createTableRequest.getKeySchema().stream().anyMatch(
                 keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE);
-        mtContext.setContext(org);
         if (!hasRangeKey) {
             // hk-only tables
             amazonDynamoDb.putItem(

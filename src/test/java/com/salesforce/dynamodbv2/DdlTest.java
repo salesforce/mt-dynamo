@@ -38,10 +38,8 @@ class DdlTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void describeTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
-            assertEquals(TABLE1, testArgument.getAmazonDynamoDb().describeTable(TABLE1).getTable().getTableName());
-        });
+        testArgument.forEachOrgContext(org
+            -> assertEquals(TABLE1, testArgument.getAmazonDynamoDb().describeTable(TABLE1).getTable().getTableName()));
     }
 
     @ParameterizedTest(name = "{arguments}")

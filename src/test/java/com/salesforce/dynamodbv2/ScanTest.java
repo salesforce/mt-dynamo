@@ -54,8 +54,7 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithHk(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
             Map<String, String> expressionAttrNames = ImmutableMap.of("#name", HASH_KEY_FIELD);
             Map<String, AttributeValue> expressionAttrValues = ImmutableMap
@@ -76,24 +75,21 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org ->
             assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(TABLE1)
-                    .withScanFilter(ImmutableMap.of(
-                        HASH_KEY_FIELD,
-                        new Condition().withComparisonOperator(EQ)
-                            .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
-                                HASH_KEY_VALUE))))).getItems().get(0),
-                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                    SOME_FIELD_VALUE + TABLE1 + org)));
-        });
+                .withScanFilter(ImmutableMap.of(
+                    HASH_KEY_FIELD,
+                    new Condition().withComparisonOperator(EQ)
+                        .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
+                            HASH_KEY_VALUE))))).getItems().get(0),
+            is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                SOME_FIELD_VALUE + TABLE1 + org))));
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanByNonPk(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
             Map<String, String> expressionAttrNames = ImmutableMap.of("#name", SOME_FIELD);
             Map<String, AttributeValue> expressionAttrValues = ImmutableMap
@@ -114,8 +110,7 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAll(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
                 .scan(new ScanRequest().withTableName(TABLE1)).getItems();
             assertEquals(1, items.size());
@@ -127,18 +122,14 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanWithPaging(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org ->
-            scanAndAssertItemKeys(scanTestSetup.orgItemKeys.get(org),
-                testArgument.getAmazonDynamoDb(),
-                testArgument.getHashKeyAttrType(),
-                org));
+        testArgument.forEachOrgContext(org -> scanAndAssertItemKeys(scanTestSetup.orgItemKeys.get(org),
+            testArgument.getAmazonDynamoDb(),
+            testArgument.getHashKeyAttrType()));
     }
 
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,
         AmazonDynamoDB amazonDynamoDb,
-        ScalarAttributeType hashKeyAttrType,
-        String org) {
-        MT_CONTEXT.setContext(org);
+        ScalarAttributeType hashKeyAttrType) {
         Map<String, AttributeValue> exclusiveStartKey = null;
         do {
             ScanResult scanResult = amazonDynamoDb

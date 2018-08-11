@@ -24,8 +24,6 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.List;
@@ -41,13 +39,10 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class QueryTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
-
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void query(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#name = :value";
             Map<String, String> queryExpressionAttrNames = ImmutableMap.of("#name", HASH_KEY_FIELD);
             Map<String, AttributeValue> queryExpressionAttrValues = ImmutableMap
@@ -72,8 +67,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditions(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
                 .query(new QueryRequest().withTableName(TABLE1)
                     .withKeyConditions(ImmutableMap.of(
@@ -89,8 +83,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(TABLE1).withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD))
@@ -106,8 +99,7 @@ class QueryTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
     void queryUsingAttributeNameLiterals(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items =
                 testArgument.getAmazonDynamoDb().query(new QueryRequest().withTableName(TABLE1)
                 .withKeyConditionExpression(HASH_KEY_FIELD + " = :value")
@@ -122,8 +114,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#hk = :hkv and #rk = :rkv";
             Map<String, String> queryExpressionAttrNames = ImmutableMap.of(
                 "#hk", HASH_KEY_FIELD,
@@ -151,8 +142,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkTableNoRkSpecified(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#hk = :hkv";
             Map<String, String> queryExpressionAttrNames = ImmutableMap.of("#hk", HASH_KEY_FIELD);
             Map<String, AttributeValue> queryExpressionAttrValues =
@@ -182,8 +172,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(TABLE3).withKeyConditionExpression("#name = :value")
                     .withFilterExpression("#name2 = :value2")
@@ -203,8 +192,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryGsi(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(TABLE3).withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", INDEX_FIELD))
@@ -222,8 +210,7 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryLsi(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
                 .withKeyConditionExpression("#name = :value and #name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD, "#name2", INDEX_FIELD))
