@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,17 @@ class FieldPrefixFunctionTest {
     void applyAndReverse() {
         FieldValue expected = new FieldValue("ctx", "table", "ctx.table.value", "value");
 
-        FieldValue applied = SUT.apply(() -> "ctx", "table", "value");
+        FieldValue applied = SUT.apply(new MtAmazonDynamoDbContextProvider() {
+            @Override
+            public String getContext() {
+                return "ctx";
+            }
+
+            @Override
+            public void withContext(String org, Runnable runnable) {
+
+            }
+        }, "table", "value");
 
         assertEquals(expected, applied);
 

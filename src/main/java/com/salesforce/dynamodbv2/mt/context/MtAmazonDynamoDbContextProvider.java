@@ -7,12 +7,13 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
+import java.util.concurrent.Callable;
+
 /**
  * TODO: write Javadoc.
  *
  * @author msgroi
  */
-@FunctionalInterface
 public interface MtAmazonDynamoDbContextProvider {
 
     String getContext();
@@ -20,4 +21,7 @@ public interface MtAmazonDynamoDbContextProvider {
     default void setContext(String tenantId) {
         // defaults to no-op
     }
+
+    void withContext(String org, Runnable runnable);
+
 }

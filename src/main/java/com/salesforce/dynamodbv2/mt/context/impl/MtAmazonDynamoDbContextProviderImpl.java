@@ -11,6 +11,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 /**
  * TODO: write Javadoc.
@@ -34,6 +35,20 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
             throw new IllegalStateException("no context available");
         } else {
             return value;
+        }
+    }
+
+    @Override
+    public void withContext(String org, Runnable runnable) {
+        String origContext = getContext();
+        try {
+            setContext(org);
+            runnable.run();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        finally {
+            setContext(origContext);
         }
     }
 
