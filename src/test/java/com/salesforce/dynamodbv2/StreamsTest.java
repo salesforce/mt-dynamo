@@ -91,9 +91,9 @@ class StreamsTest {
     private static final String STREAMS_TABLE = "Streams%sTable";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
-    private static AmazonDynamoDB amazonDynamoDb = IsolatedArgumentProvider.getAmazonDynamoDb();
+    private static AmazonDynamoDB amazonDynamoDb = IsolatedArgumentProvider.getAndInitializeAmazonDynamoDb();
     private static AmazonDynamoDBStreams amazonDynamoDbStreams =
-        IsolatedArgumentProvider.getAmazonDynamoDbStreams();
+        IsolatedArgumentProvider.getAndInitializeAmazonDynamoDbStreams();
     private static StreamWorker streamWorker;
 
     @BeforeAll
@@ -106,7 +106,7 @@ class StreamsTest {
 
     @BeforeEach
     void beforeEach() {
-        IsolatedArgumentProvider.getAmazonDynamoDb();
+        IsolatedArgumentProvider.getAndInitializeAmazonDynamoDb();
     }
 
     @AfterEach

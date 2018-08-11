@@ -1,7 +1,5 @@
 package com.salesforce.dynamodbv2.testsupport;
 
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
@@ -33,6 +31,8 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,17 +42,20 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.jupiter.params.provider.Arguments;
 
 /*
- * Builds of a list of Argument objects, where each Argument is a 3 element Object[] array, where the first element
- * is the AmazonDynamoDB instance being tested and the second element is a list of orgs that have been designated
- * to be used when testing that instance, and the third is the attribute type of the hash key of the table to be
- * tested.
+ * Builds of a list of TestArgument objects.  Each TestArgument consists of 3 elements ...
+ *
+ * - the AmazonDynamoDB instance to be tested
+ * - the attribute type of the hash key of the table to be tested
+ * - a list of orgs that have been designated to be used for the given test invocation
+ *
+ * The ArgumentBuilder is used by the DefaultArgumentProvider which can be referenced in a JUnit5 @ParameterizedTest
+ * @ArgumentSource annotation.  See {@link DefaultArgumentProvider} for details.
  *
  * @author msgroi
  */
-public class ArgumentBuilder implements Supplier<List<Arguments>> {
+public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
@@ -79,14 +82,14 @@ public class ArgumentBuilder implements Supplier<List<Arguments>> {
     }
 
     @Override
-    public List<Arguments> get() {
+    public List<TestArgument> get() {
         return getAmazonDynamoDbStrategies().stream().flatMap(
-            (Function<AmazonDynamoDB, Stream<Arguments>>) amazonDynamoDB ->
+            (Function<AmazonDynamoDB, Stream<TestArgument>>) amazonDynamoDB ->
                 getHashKeyAttrTypes().stream().flatMap(
-                    (Function<ScalarAttributeType, Stream<Arguments>>) scalarAttributeType ->
-                        Stream.of(Arguments.of(new TestArgument(amazonDynamoDB,
+                    (Function<ScalarAttributeType, Stream<TestArgument>>) scalarAttributeType ->
+                        Stream.of(new TestArgument(amazonDynamoDB,
                             getOrgs(),
-                            scalarAttributeType))))).collect(Collectors.toList());
+                            scalarAttributeType)))).collect(Collectors.toList());
     }
 
     /*
@@ -101,7 +104,7 @@ public class ArgumentBuilder implements Supplier<List<Arguments>> {
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        return ImmutableList.of(S, N, B);
+        return Arrays.asList(ScalarAttributeType.values());
     }
 
     /*
@@ -133,6 +136,10 @@ public class ArgumentBuilder implements Supplier<List<Arguments>> {
         String indexRangeField = "indexRangeField";
         CreateTableRequestFactory createTableRequestFactory = virtualTableDescription -> {
             String tableName = virtualTableDescription.getTableName();
+            /*
+             *  This builder is intended to allow for arbitrary table mappings, tableName.endsWith("3") being an
+             *  example of such an arbitrary mapping.
+             */
             if (tableName.endsWith("3")) {
                 return new CreateTableRequest()
                     .withTableName(tableName)
@@ -267,9 +274,9 @@ public class ArgumentBuilder implements Supplier<List<Arguments>> {
 
     }
 
-    /*
+    /**
      * Represents an AmazonDynamoDB to be tested along with a list of orgs that have been designated to be used
-     * when testing that instance.
+     * when testing that instance.  See the {@link ArgumentBuilder} Javadoc for details.
      */
     public static class TestArgument {
         private AmazonDynamoDB amazonDynamoDb;

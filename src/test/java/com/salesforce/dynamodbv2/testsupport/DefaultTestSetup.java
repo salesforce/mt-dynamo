@@ -35,7 +35,7 @@ import java.util.Optional;
 /**
  * Performs default table creation and population logic.  To override table creation of data population logic,
  * provide your own TestSetup implementation.  To add more tables to the default set, extend this class, call
- * super.setupTest() from within your accept method.
+ * super.setupTest() from within your accept method.  See {@link DefaultArgumentProvider} for more details.
  *
  * @author msgroi
  */

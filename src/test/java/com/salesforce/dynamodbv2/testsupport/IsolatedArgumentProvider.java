@@ -48,8 +48,8 @@ public class IsolatedArgumentProvider extends DefaultArgumentProvider {
                 // if (USE_EMBEDDED_DYNAMO) {
                 //     DynamoDbClients localDynamoDbClients =
                 //     AmazonDynamoDbLocal.getNewAmazonDynamoDbLocalWithStreams();
-                //     amazonDynamoDb = localDynamoDbClients.getAmazonDynamoDb();
-                //                     amazonDynamoDbStreams = localDynamoDbClients.getAmazonDynamoDbStreams();
+                //     amazonDynamoDb = localDynamoDbClients.getAndInitializeAmazonDynamoDb();
+                //     amazonDynamoDbStreams = localDynamoDbClients.getAndInitializeAmazonDynamoDbStreams();
                 // } else {
                 server = new LocalDynamoDbServer(port);
                 amazonDynamoDb = server.start();
@@ -69,12 +69,12 @@ public class IsolatedArgumentProvider extends DefaultArgumentProvider {
         }
     }
 
-    public static AmazonDynamoDB getAmazonDynamoDb() {
+    public static AmazonDynamoDB getAndInitializeAmazonDynamoDb() {
         initializeDynamoDbClients();
         return amazonDynamoDb;
     }
 
-    public static AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+    public static AmazonDynamoDBStreams getAndInitializeAmazonDynamoDbStreams() {
         initializeDynamoDbClients();
         return amazonDynamoDbStreams;
     }
