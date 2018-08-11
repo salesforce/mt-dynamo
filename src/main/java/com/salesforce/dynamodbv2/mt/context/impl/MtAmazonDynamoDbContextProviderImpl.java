@@ -44,8 +44,6 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
         try {
             setContext(org);
             runnable.run();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
         }
         finally {
             setContext(origContext);
