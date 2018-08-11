@@ -149,6 +149,10 @@ class FieldMapperTest {
             public String getContext() {
                 return context;
             }
+
+            @Override
+            public void withContext(String org, Runnable runnable) {
+            }
         };
     }
 

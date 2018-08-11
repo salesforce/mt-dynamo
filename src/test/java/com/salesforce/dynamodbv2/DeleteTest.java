@@ -1,17 +1,17 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.TestSetup.TABLE2;
-import static com.salesforce.dynamodbv2.TestSetup.TABLE3;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.RANGE_KEY_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.buildHkRkItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildHkRkKey;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.TestSupport.getHkRkItem;
-import static com.salesforce.dynamodbv2.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,13 +19,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests deleteItem().
@@ -34,10 +36,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 class DeleteTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
@@ -63,8 +65,8 @@ class DeleteTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void deleteHkRkTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);

@@ -5,12 +5,12 @@
  * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithValues;
+import static com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -31,6 +31,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;

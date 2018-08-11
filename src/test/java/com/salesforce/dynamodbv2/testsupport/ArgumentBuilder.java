@@ -1,9 +1,7 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -21,6 +19,8 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
@@ -31,34 +31,41 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.jupiter.params.provider.Arguments;
 
 /*
- * Supplies of a list of Argument objects, where each Argument is a 2 element Object[] array, where the first element
- * is the AmazonDynamoDB instance being tested and the second element is a list of orgs that have been designated
- * to be used when testing that instance.
+ * Builds of a list of TestArgument objects.  Each TestArgument consists of 3 elements ...
+ *
+ * - the AmazonDynamoDB instance to be tested
+ * - the attribute type of the hash key of the table to be tested
+ * - a list of orgs that have been designated to be used for the given test invocation
+ *
+ * The ArgumentBuilder is used by the DefaultArgumentProvider which can be referenced in a JUnit5 @ParameterizedTest
+ * @ArgumentSource annotation.  See {@link DefaultArgumentProvider} for details.
  *
  * @author msgroi
  */
-class TestArgumentSupplier implements Supplier<List<Arguments>> {
+public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
-    private static final int ORGS_PER_TEST = 2;
+    public static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
-    private static final int DYNAMO_BASE_PORT = 8001;
-    private static List<LocalDynamoDbServer> servers;
-    static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
     private static final String HK_TABLE_NAME = "hkTable";
@@ -68,22 +75,22 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
     private static final String INDEX_FIELD = "INDEX_FIELD";
     private static final String INDEX_RANGE_FIELD = "INDEX_RANGE_FIELD";
 
-    public TestArgumentSupplier() {
+    public ArgumentBuilder() {
     }
 
-    public TestArgumentSupplier(AmazonDynamoDB rootAmazonDynamoDb) {
+    public ArgumentBuilder(AmazonDynamoDB rootAmazonDynamoDb) {
         this.rootAmazonDynamoDb = rootAmazonDynamoDb;
     }
 
     @Override
-    public List<Arguments> get() {
+    public List<TestArgument> get() {
         return getAmazonDynamoDbStrategies().stream().flatMap(
-            (Function<AmazonDynamoDB, Stream<Arguments>>) amazonDynamoDB ->
+            (Function<AmazonDynamoDB, Stream<TestArgument>>) amazonDynamoDB ->
                 getHashKeyAttrTypes().stream().flatMap(
-                    (Function<ScalarAttributeType, Stream<Arguments>>) scalarAttributeType ->
-                        Stream.of(Arguments.of(new TestArgument(amazonDynamoDB,
+                    (Function<ScalarAttributeType, Stream<TestArgument>>) scalarAttributeType ->
+                        Stream.of(new TestArgument(amazonDynamoDB,
                             getOrgs(),
-                            scalarAttributeType))))).collect(Collectors.toList());
+                            scalarAttributeType)))).collect(Collectors.toList());
     }
 
     /*
@@ -98,7 +105,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        return ImmutableList.of(S, N, B);
+        return Arrays.asList(ScalarAttributeType.values());
     }
 
     /*
@@ -111,18 +118,7 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
          * byAccount
          */
         AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder()
-            .withAccountMapper(new MtAccountMapper() {
-                @Override
-                public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
-                    return wrapWithLogger(getServers().get(
-                        Integer.valueOf(mtContext.getContext().split("-")[1]) % ORGS_PER_TEST).start());
-                }
-
-                @Override
-                public void shutdown() {
-                    getServers().forEach(LocalDynamoDbServer::stop);
-                }
-            })
+            .withAccountMapper(new DynamicAccountMtMapper())
             .withContext(MT_CONTEXT).build();
 
         /*
@@ -141,6 +137,10 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
         String indexRangeField = "indexRangeField";
         CreateTableRequestFactory createTableRequestFactory = virtualTableDescription -> {
             String tableName = virtualTableDescription.getTableName();
+            /*
+             *  This builder is intended to allow for arbitrary table mappings, tableName.endsWith("3") being an
+             *  example of such an arbitrary mapping.
+             */
             if (tableName.endsWith("3")) {
                 return new CreateTableRequest()
                     .withTableName(tableName)
@@ -231,10 +231,10 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
 
         return ImmutableList.of(
             /*
-             * The byAccount works by itself and with byTable, but sqlite failures occur when it runs concurrently
-             * with any of the sharedTable* strategies.
+             * Testing byAccount by itself and with byTable succeeds, but sqlite failures occur when it runs
+             * concurrently with any of the sharedTable* strategies.
              */
-            // byAccount,
+            //byAccount,
             byTable,
             sharedTableCustomDynamic,
             sharedTableCustomStaticBuilder,
@@ -255,23 +255,38 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
                     "putItem", "query", "scan", "updateItem")).build() : amazonDynamoDb;
     }
 
-    private static List<LocalDynamoDbServer> getServers() {
-        if (servers == null) {
-            servers = IntStream.rangeClosed(DYNAMO_BASE_PORT, DYNAMO_BASE_PORT + ORGS_PER_TEST)
-                .mapToObj(LocalDynamoDbServer::new).collect(Collectors.toList());
+    private static class DynamicAccountMtMapper implements MtAccountMapper {
+
+        Map<String, LocalDynamoDbServer> contextServerMap = new HashMap<>();
+
+        @Override
+        public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
+            return contextServerMap.computeIfAbsent(mtContext.getContext(), org -> {
+                LocalDynamoDbServer server = new LocalDynamoDbServer();
+                server.start();
+                return server;
+            }).getClient();
         }
-        return servers;
+
+        @Override
+        public void shutdown() {
+            contextServerMap.values().forEach(LocalDynamoDbServer::stop);
+        }
+
     }
 
-    /*
+    /**
      * Represents an AmazonDynamoDB to be tested along with a list of orgs that have been designated to be used
-     * when testing that instance.
+     * when testing that instance.  See the {@link ArgumentBuilder} Javadoc for details.
      */
-    static class TestArgument {
+    public static class TestArgument {
         private AmazonDynamoDB amazonDynamoDb;
         private List<String> orgs;
         private ScalarAttributeType hashKeyAttrType;
 
+        /**
+         * Takes the arguments that make up the inputs to a test invocation.
+         */
         public TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
             ScalarAttributeType hashKeyAttrType) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -279,16 +294,20 @@ class TestArgumentSupplier implements Supplier<List<Arguments>> {
             this.hashKeyAttrType = hashKeyAttrType;
         }
 
-        AmazonDynamoDB getAmazonDynamoDb() {
+        public AmazonDynamoDB getAmazonDynamoDb() {
             return amazonDynamoDb;
         }
 
-        List<String> getOrgs() {
+        public List<String> getOrgs() {
             return orgs;
         }
 
         public ScalarAttributeType getHashKeyAttrType() {
             return hashKeyAttrType;
+        }
+
+        public void forEachOrgContext(Consumer<String> consumer) {
+            orgs.forEach(org -> MT_CONTEXT.withContext(org, () -> consumer.accept(org)));
         }
 
         @Override

@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -22,16 +22,16 @@ import java.util.Optional;
  */
 public class TestSupport {
 
-    static final boolean IS_LOCAL_DYNAMO = true;
-    static final int TIMEOUT_SECONDS = 60;
+    public static final boolean IS_LOCAL_DYNAMO = true;
+    public static final int TIMEOUT_SECONDS = 60;
     public static final String HASH_KEY_FIELD = "hashKeyField";
     public static final String HASH_KEY_VALUE = "1";
     public static final String RANGE_KEY_FIELD = "rangeKeyField";
-    static final String RANGE_KEY_VALUE = "rangeKeyValue";
+    public static final String RANGE_KEY_VALUE = "rangeKeyValue";
     public static final String SOME_FIELD = "someField";
-    static final String SOME_FIELD_VALUE = "someValue";
+    public static final String SOME_FIELD_VALUE = "someValue";
     public static final String INDEX_FIELD = "indexField";
-    static final String INDEX_FIELD_VALUE = "indexFieldValue";
+    public static final String INDEX_FIELD_VALUE = "indexFieldValue";
 
     /*
      * get helper methods
@@ -50,7 +50,10 @@ public class TestSupport {
         return getItem(hashKeyAttrType, amazonDynamoDb, tableName, hashKeyValue, Optional.empty());
     }
 
-    static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
+    /**
+     * Retrieves the item with the provided HK and RK values.
+     */
+    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
         AmazonDynamoDB amazonDynamoDb,
         String tableName,
         String hashKeyValue,
@@ -69,7 +72,7 @@ public class TestSupport {
         return getItemResult.getItem();
     }
 
-    static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
+    public static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
         AmazonDynamoDB amazonDynamoDb,
         String tableName) {
         return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE));
@@ -78,7 +81,7 @@ public class TestSupport {
     /*
      * Poll interval and timeout for DDL operations
      */
-    static int getPollInterval() {
+    public static int getPollInterval() {
         return (IS_LOCAL_DYNAMO ? 0 : 5);
     }
 
@@ -102,7 +105,10 @@ public class TestSupport {
         }
     }
 
-    static String attributeValueToString(ScalarAttributeType hashKeyAttrType, AttributeValue attr) {
+    /**
+     * Converts an AttributeValue into a String.
+     */
+    public static String attributeValueToString(ScalarAttributeType hashKeyAttrType, AttributeValue attr) {
         switch (hashKeyAttrType) {
             case B:
                 String decodedString = UTF_8.decode(attr.getB()).toString();
@@ -131,14 +137,17 @@ public class TestSupport {
         return item;
     }
 
-    static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
+    public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
         String hashKeyValue,
         Optional<String> rangeKeyValue,
         String someFieldValue) {
         return buildItemWithValues(hashKeyAttrType, hashKeyValue, rangeKeyValue, someFieldValue, Optional.empty());
     }
 
-    static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
+    /**
+     * Builds an item with the provided HK, RK, and someField values.
+     */
+    public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
         String hashKeyValue,
         Optional<String> rangeKeyValueOpt,
         String someFieldValue,
@@ -151,19 +160,29 @@ public class TestSupport {
         return item;
     }
 
-    static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
+    /**
+     * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
+     * someField value to the value provided.
+     */
+    public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
         String value) {
         Map<String, AttributeValue> item = defaultHkRkItem(hashKeyAttrType);
         item.put(SOME_FIELD, createStringAttribute(value));
         return item;
     }
 
-    static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
+    /**
+     * Builds an map representing an item key, setting the HK field and value to the default.
+     */
+    public static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
         return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType,
             HASH_KEY_VALUE)));
     }
 
-    static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
+    /**
+     * Builds a map representing an item, setting the HK and RK field names to the default.
+     */
+    public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
         return new HashMap<>(new HashMap<>(ImmutableMap.of(
             HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
             RANGE_KEY_FIELD, createStringAttribute(RANGE_KEY_VALUE))));

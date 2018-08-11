@@ -3,16 +3,16 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.INSERT;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.MODIFY;
 import static com.amazonaws.services.dynamodbv2.model.OperationType.REMOVE;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.IS_LOCAL_DYNAMO;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.TestSupport.createHkAttribute;
-import static com.salesforce.dynamodbv2.TestSupport.createStringAttribute;
-import static com.salesforce.dynamodbv2.TestSupport.getPollInterval;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.collectingAndThen;
@@ -48,13 +48,16 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
-import com.salesforce.dynamodbv2.TestTemplateWithDataSetup.TestTemplateWithIsolatedDynamoDb;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtStreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.StreamWorker;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.IsolatedArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
+import com.salesforce.dynamodbv2.testsupport.TestSetup;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -66,39 +69,53 @@ import java.util.stream.Stream;
 import org.awaitility.Duration;
 import org.awaitility.core.ConditionTimeoutException;
 import org.awaitility.pollinterval.FixedPollInterval;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests streams.
  *
  * @author msgroi
  */
-@ExtendWith(TestTemplateWithIsolatedDynamoDb.class)
 @Tag("isolated-tests")
 class StreamsTest {
 
     private static final AWSCredentialsProvider AWS_CREDENTIALS_PROVIDER = IS_LOCAL_DYNAMO
         ? new AWSStaticCredentialsProvider(new BasicAWSCredentials("", ""))
         : new DefaultAWSCredentialsProviderChain();
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
     private static final String STREAMS_TABLE = "Streams%sTable";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST = SOME_FIELD_VALUE + "%sStreamsTest";
     private static final String SOME_FIELD_VALUE_STREAMS_TEST_UPDATED = SOME_FIELD_VALUE + "%sStreamsTestUpdated";
-    private static AmazonDynamoDB amazonDynamoDb = TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDb();
+    private static AmazonDynamoDB amazonDynamoDb = IsolatedArgumentProvider.getAndInitializeAmazonDynamoDb();
     private static AmazonDynamoDBStreams amazonDynamoDbStreams =
-        TestTemplateWithIsolatedDynamoDb.getAmazonDynamoDbStreams();
-    private StreamWorker streamWorker;
+        IsolatedArgumentProvider.getAndInitializeAmazonDynamoDbStreams();
+    private static StreamWorker streamWorker;
 
-    StreamsTest() {
+    @BeforeAll
+    static void beforeAll() {
         streamWorker = new StreamWorker(amazonDynamoDb,
             amazonDynamoDbStreams,
             AWS_CREDENTIALS_PROVIDER
         );
     }
 
-    @TestTemplate
+    @BeforeEach
+    void beforeEach() {
+        IsolatedArgumentProvider.getAndInitializeAmazonDynamoDb();
+    }
+
+    @AfterEach
+    void afterEach() {
+        IsolatedArgumentProvider.shutdown();
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(StreamsArgumentProvider.class)
     void test(TestArgument testArgument) {
         // expected records
         List<MtRecord> expectedRecords = getExpectedMtRecords(testArgument.getOrgs(),
@@ -164,7 +181,7 @@ class StreamsTest {
             assertRecordsReceived(expectedRecords, recordProcessor.mtRecords);
         } catch (ConditionTimeoutException e) {
             fail("timeout, " + recordProcessor.mtRecords.size()
-                 + " records arrived, expected " + expectedRecords.size());
+                + " records arrived, expected " + expectedRecords.size());
         }
 
         streamWorker.stop();
@@ -254,6 +271,27 @@ class StreamsTest {
         @Override
         public void shutdown(ShutdownInput shutdownInput) {
         }
+    }
+
+    /*
+     * Uses the isolated argument provider to get a standalone DynamoDB instance and override the default setup
+     * to be a no-op.
+     */
+    private static class StreamsArgumentProvider extends IsolatedArgumentProvider {
+
+        StreamsArgumentProvider() {
+            super(new TestSetup() {
+                @Override
+                public void setupTest(TestArgument testArgument) {
+                }
+
+                @Override
+                public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType,
+                    String org, CreateTableRequest createTableRequest) {
+                }
+            });
+        }
+
     }
 
 }

@@ -1,9 +1,9 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.TestSupport.HASH_KEY_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.TIMEOUT_SECONDS;
-import static com.salesforce.dynamodbv2.TestSupport.getPollInterval;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.TIMEOUT_SECONDS;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -16,12 +16,15 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests DDL operations.
@@ -30,19 +33,17 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 class DdlTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void describeTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
-            assertEquals(TABLE1, testArgument.getAmazonDynamoDb().describeTable(TABLE1).getTable().getTableName());
-        });
+        testArgument.forEachOrgContext(org
+            -> assertEquals(TABLE1, testArgument.getAmazonDynamoDb().describeTable(TABLE1).getTable().getTableName()));
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void createAndDeleteTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);

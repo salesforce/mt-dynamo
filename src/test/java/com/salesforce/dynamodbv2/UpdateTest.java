@@ -1,16 +1,16 @@
 package com.salesforce.dynamodbv2;
 
-import static com.salesforce.dynamodbv2.TestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.TestSetup.TABLE3;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD;
-import static com.salesforce.dynamodbv2.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.TestSupport.buildHkRkItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildHkRkKey;
-import static com.salesforce.dynamodbv2.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.TestSupport.createStringAttribute;
-import static com.salesforce.dynamodbv2.TestSupport.getHkRkItem;
-import static com.salesforce.dynamodbv2.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,12 +20,12 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.salesforce.dynamodbv2.TestArgumentSupplier.TestArgument;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.jupiter.api.TestTemplate;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 
 /**
  * Tests updateItem().
@@ -34,13 +34,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 class UpdateTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = TestArgumentSupplier.MT_CONTEXT;
-
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void update(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = buildKey(testArgument.getHashKeyAttrType());
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
@@ -57,11 +54,10 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalSuccess(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(buildKey(testArgument.getHashKeyAttrType()))
@@ -73,16 +69,15 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
-                       is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                           SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalFail(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE1)
@@ -103,11 +98,10 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void updateHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = buildHkRkKey(testArgument.getHashKeyAttrType());
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE3)
@@ -124,11 +118,10 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
@@ -145,11 +138,10 @@ class UpdateTest {
         });
     }
 
-    @TestTemplate
-    @ExtendWith(TestTemplateWithDataSetup.class)
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> {
-            MT_CONTEXT.setContext(org);
+        testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE3)

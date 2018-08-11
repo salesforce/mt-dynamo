@@ -37,6 +37,17 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
         }
     }
 
+    @Override
+    public void withContext(String org, Runnable runnable) {
+        String origContext = getContext();
+        try {
+            setContext(org);
+            runnable.run();
+        } finally {
+            setContext(origContext);
+        }
+    }
+
     private Map<String, String> getContextMap() {
         Map<String, String> context = (Map<String, String>) threadLocal.get();
         if (context == null) {
