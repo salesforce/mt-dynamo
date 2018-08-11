@@ -29,10 +29,10 @@ class GetTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void get(TestArgument testArgument) {
-        testArgument.getOrgs().forEach(org -> MT_CONTEXT.withContext(org,
-            () -> assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+        testArgument.forEachOrgContext(
+            org -> assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
                 is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                    SOME_FIELD_VALUE + TABLE1 + org)))));
+                    SOME_FIELD_VALUE + TABLE1 + org))));
     }
 
     @ParameterizedTest(name = "{arguments}")
