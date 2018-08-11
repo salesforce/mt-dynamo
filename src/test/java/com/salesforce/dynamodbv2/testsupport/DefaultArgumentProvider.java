@@ -84,11 +84,11 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
         /*
          * Before returning the list of Arguments back to JUnit so it can pass each in as a test invocation, we
          * are calling TestSetup.setupTest().  This provides a hook for doing additional data setup for each
-         * parameterized test argument.  The default TestSetup implementation, DefaulTestSetup, creates a default
-         * set of tables and populates them with a default set of data.  This begs the question, why not declare a
+         * parameterized test argument.  The default TestSetup implementation, DefaultTestSetup, creates a default
+         * set of tables and populates them with a default set of data, which leads to the question, why not declare a
          * standard JUnit BeforeEachCallback handler and perform the data set up there.  The answer is that the
          * ExtensionContext provided in JUnit callback methods do not have access to @ParameterizedTest arguments.
-         * Note that this is a known deficiency that's currently slated to be addressed in an upcoming version of
+         * Note that this is a known deficiency which is currently slated to be addressed in an upcoming version of
          * JUnit 5(https://github.com/junit-team/junit5/issues/1139).
          */
         arguments.forEach(testSetup::setupTest);
