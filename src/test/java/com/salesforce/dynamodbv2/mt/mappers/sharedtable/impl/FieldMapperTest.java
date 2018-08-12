@@ -25,7 +25,9 @@ import java.nio.charset.Charset;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class FieldMapperTest {

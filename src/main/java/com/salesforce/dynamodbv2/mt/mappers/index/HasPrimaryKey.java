@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.index;
 
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 
-/*
+/**
  * Interface indicating that a class has primary key, represented by a PrimaryKey.  DynamoDB tables have primary keys
  * as do secondary indexes, thus this class is implemented by DynamoTableDescriptionImpl, DynamoSecondaryIndex, as
  * well as CreateTableRequestWrapper.

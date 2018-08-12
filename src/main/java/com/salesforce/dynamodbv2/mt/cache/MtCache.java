@@ -20,7 +20,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class MtCache<V> implements Cache<String, V> {

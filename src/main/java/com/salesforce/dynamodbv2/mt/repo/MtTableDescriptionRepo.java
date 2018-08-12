@@ -10,7 +10,9 @@ package com.salesforce.dynamodbv2.mt.repo;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public interface MtTableDescriptionRepo {

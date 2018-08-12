@@ -26,7 +26,9 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class CreateTableRequestBuilder {

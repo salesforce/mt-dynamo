@@ -7,7 +7,9 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class MappingException extends Exception {

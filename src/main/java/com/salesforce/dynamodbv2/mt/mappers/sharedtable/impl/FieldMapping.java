@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
-/*
+/**
  * Model class for storing a mapping of a field mapping pair.
  *
  * @author msgroi

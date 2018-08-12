@@ -24,17 +24,17 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Searches the list of primary keys returning the one that is compatible with the provided primary key according to its
  * HASH and RANGE key types.
  *
- * - look for a primary key in the list that has only a HASH key of type S and a match RANGE key, if the primary key
+ * <p>- look for a primary key in the list that has only a HASH key of type S and a match RANGE key, if the primary key
  *   being found does not have a RANGE key then look for a primary key that doesn't have a RANGE key
  * - if none found and strictMode is not true, then look for a primary key in the list that has both a HASH and RANGE
  *   key of type S, then RANGE key of type N, then RANGE key of type B
  * - otherwise, throw MappingException
  *
- * If any of the above steps finds more than one primary key, then a MappingException is thrown.
+ * <p>If any of the above steps finds more than one primary key, then a MappingException is thrown.
  *
  * @author msgroi
  */

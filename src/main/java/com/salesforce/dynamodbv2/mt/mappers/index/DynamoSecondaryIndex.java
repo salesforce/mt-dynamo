@@ -19,7 +19,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.List;
 import java.util.Optional;
 
-/*
+/**
  * Model class representing secondary index.
  *
  * @author msgroi

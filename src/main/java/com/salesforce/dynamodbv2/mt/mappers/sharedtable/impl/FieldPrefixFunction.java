@@ -12,7 +12,9 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class FieldPrefixFunction {
