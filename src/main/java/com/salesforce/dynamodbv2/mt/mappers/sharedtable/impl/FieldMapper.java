@@ -64,7 +64,9 @@ class FieldMapper {
             case N:
                 return attributeValue.getN();
             case B:
-                return UTF_8.decode(attributeValue.getB()).toString();
+                String decodedString = UTF_8.decode(attributeValue.getB()).toString();
+                attributeValue.getB().rewind(); // rewind so future readers don't get an empty buffer
+                return decodedString;
             default:
                 throw new IllegalArgumentException("unexpected type " + type + " encountered");
         }

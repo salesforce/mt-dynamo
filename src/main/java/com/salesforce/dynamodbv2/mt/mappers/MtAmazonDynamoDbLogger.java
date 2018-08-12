@@ -207,8 +207,11 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     private void log(String method, String... messages) {
         if (logAll || methodsToLog.contains(method)) {
             String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
-            log.info(concatenatedMessage);
-            logCallback.ifPresent(listConsumer -> listConsumer.accept(ImmutableList.of(concatenatedMessage)));
+            if (logCallback.isPresent()) {
+                logCallback.get().accept(ImmutableList.of(concatenatedMessage));
+            } else {
+                log.info(concatenatedMessage);
+            }
         }
     }
 

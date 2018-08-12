@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
@@ -52,10 +53,19 @@ class QueryMapperTest {
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
-            virtualTableDescription1 -> PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest(),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            () -> "ctx",
-            "."
+        virtualTableDescription1 -> PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest(),
+        new DynamoSecondaryIndexMapperByTypeImpl(),
+        new MtAmazonDynamoDbContextProvider() {
+            @Override
+            public String getContext() {
+                return "ctx";
+            }
+
+            @Override
+            public void withContext(String org, Runnable runnable) {
+            }
+        },
+        "."
     );
 
     private QueryMapper getMockQueryMapper(String fieldMapperReturnValue) {

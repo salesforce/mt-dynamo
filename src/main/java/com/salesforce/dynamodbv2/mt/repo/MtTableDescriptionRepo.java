@@ -21,4 +21,6 @@ public interface MtTableDescriptionRepo {
 
     TableDescription deleteTable(String tableName);
 
+    void invalidateCaches();
+
 }

@@ -13,6 +13,16 @@
         </encoder>
     </appender>
 
+    <!--
+        Setting to info level enables DDL level logging.  Setting to warn level shows table deletions only.
+    -->
+    <logger name="com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils" level="error"/>
+
+    <!--
+        Setting to error suppresses warnings resulting from table drops during test teardown.
+    -->
+    <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable" level="error"/>
+
     <root level="info">
         <appender-ref ref="STDOUT" />
     </root>

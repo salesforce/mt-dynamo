@@ -5,7 +5,7 @@
  * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;

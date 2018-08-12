@@ -5,7 +5,7 @@
  * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.dynamodblocal;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -27,11 +27,6 @@ public class AmazonDynamoDbLocal {
         return localAmazonDynamoDb;
     }
 
-    public static AmazonDynamoDBStreams getAmazonDynamoDbStreamsLocal() {
-        initialize();
-        return localAmazonDynamoDbStreams;
-    }
-
     private static void initialize() {
         if (localAmazonDynamoDb == null) {
             AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
@@ -41,12 +36,41 @@ public class AmazonDynamoDbLocal {
     }
 
     public static AmazonDynamoDB getNewAmazonDynamoDbLocal() {
-        return getNewAmazonDynamoDbLocalClient().amazonDynamoDB();
+        return getNewAmazonDynamoDbLocalWithStreams().getAmazonDynamoDb();
     }
 
     private static AmazonDynamoDBLocal getNewAmazonDynamoDbLocalClient() {
         System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
         return DynamoDBEmbedded.create();
+    }
+
+    /**
+     * Retrieves an model that encapsulates an AmazonDynamoDB instance and a corresponding AmazonDynamoDBStreams object.
+     */
+    private static DynamoDbClients getNewAmazonDynamoDbLocalWithStreams() {
+        AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
+        localAmazonDynamoDb = amazonDynamoDbLocalClient.amazonDynamoDB();
+        localAmazonDynamoDbStreams = amazonDynamoDbLocalClient.amazonDynamoDBStreams();
+        return new DynamoDbClients(localAmazonDynamoDb, localAmazonDynamoDbStreams);
+    }
+
+    public static class DynamoDbClients {
+        private AmazonDynamoDB amazonDynamoDb;
+        private AmazonDynamoDBStreams amazonDynamoDbStreams;
+
+        DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
+            AmazonDynamoDBStreams amazonDynamoDbStreams) {
+            this.amazonDynamoDb = amazonDynamoDb;
+            this.amazonDynamoDbStreams = amazonDynamoDbStreams;
+        }
+
+        AmazonDynamoDB getAmazonDynamoDb() {
+            return amazonDynamoDb;
+        }
+
+        AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+            return amazonDynamoDbStreams;
+        }
     }
 
 }

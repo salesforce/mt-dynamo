@@ -5,34 +5,43 @@
  * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
  */
 
-package com.salesforce.dynamodbv2;
+package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.HOSTED_DYNAMO_ACCOUNT_MAPPER;
-import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest.LOCAL_DYNAMO_ACCOUNT_MAPPER;
+import static com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
+import com.amazonaws.auth.AWSCredentialsProvider;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccountTest;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountCredentialsMapper;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbTestRunner;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import dnl.utils.text.table.TextTable;
-
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -48,9 +57,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -80,13 +89,15 @@ import org.junit.jupiter.api.Test;
  * <p>See Javadoc for each test for the chain sequence that each test implements.
  *
  * <p>Note that all tests that involve the account mapper depend on having set up local credentials profiles. See
- * {@link MtAmazonDynamoDbByAccountTest.TestAccountCredentialsMapper} for details.
+ * TestAccountCredentialsMapper for details.
  *
  * @author msgroi
  */
 @Disabled
 class DocGeneratorRunner {
 
+    private static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
+    private static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
     private static final boolean SKIP_ACCOUNT_TEST = false;
     private static final boolean IS_LOCAL_DYNAMO = true;
     private static final String DOCS_DIR = "docs";
@@ -95,7 +106,9 @@ class DocGeneratorRunner {
             .standard()
             .withRegion(Regions.US_EAST_1);
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
-    private static final AmazonDynamoDB LOCAL_AMAZON_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
+        ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
+        : AMAZON_DYNAMO_DB_CLIENT_BUILDER.build();
 
     /*
      * logger -> account
@@ -127,10 +140,9 @@ class DocGeneratorRunner {
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTable() {
-        AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
         AmazonDynamoDB amazonDynamoDb =
                 getTableBuilder().withAmazonDynamoDb(
-                        getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
+                        getLoggerBuilder().withAmazonDynamoDb(ROOT_AMAZON_DYNAMO_DB).build()).build();
         new DocGenerator(
                 "byTable",
                 DOCS_DIR + "/byTable",
@@ -138,7 +150,7 @@ class DocGeneratorRunner {
                 () -> amazonDynamoDb,
                 IS_LOCAL_DYNAMO,
                 false,
-                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                ImmutableMap.of("na", ROOT_AMAZON_DYNAMO_DB)).runAll();
     }
 
     /*
@@ -148,10 +160,9 @@ class DocGeneratorRunner {
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTable() {
-        AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
         AmazonDynamoDB amazonDynamoDb =
                 getBySharedTableBuilder().withAmazonDynamoDb(
-                        getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build();
+                        getLoggerBuilder().withAmazonDynamoDb(ROOT_AMAZON_DYNAMO_DB).build()).build();
         new DocGenerator(
                 "bySharedTable",
                 DOCS_DIR + "/bySharedTable",
@@ -159,7 +170,7 @@ class DocGeneratorRunner {
                 () -> amazonDynamoDb,
                 IS_LOCAL_DYNAMO,
                 false,
-                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                ImmutableMap.of("na", ROOT_AMAZON_DYNAMO_DB)).runAll();
     }
 
     /*
@@ -218,11 +229,10 @@ class DocGeneratorRunner {
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTable() {
-        AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
         AmazonDynamoDB amazonDynamoDb =
                 getTableBuilder().withAmazonDynamoDb(
                         getBySharedTableBuilder().withAmazonDynamoDb(
-                                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
+                                getLoggerBuilder().withAmazonDynamoDb(ROOT_AMAZON_DYNAMO_DB).build()).build()).build();
         new DocGenerator(
                 "byTableBySharedTable",
                 DOCS_CHAINS_DIR + "/byTableBySharedTable",
@@ -230,7 +240,7 @@ class DocGeneratorRunner {
                 () -> amazonDynamoDb,
                 IS_LOCAL_DYNAMO,
                 false,
-                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                ImmutableMap.of("na", ROOT_AMAZON_DYNAMO_DB)).runAll();
     }
 
     /*
@@ -240,11 +250,10 @@ class DocGeneratorRunner {
     @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTable() {
-        AmazonDynamoDB physicalAmazonDynamoDb = getPhysicalAmazonDynamoDb(IS_LOCAL_DYNAMO);
         AmazonDynamoDB amazonDynamoDb =
                 getBySharedTableBuilder().withAmazonDynamoDb(
                         getTableBuilder().withAmazonDynamoDb(
-                                getLoggerBuilder().withAmazonDynamoDb(physicalAmazonDynamoDb).build()).build()).build();
+                                getLoggerBuilder().withAmazonDynamoDb(ROOT_AMAZON_DYNAMO_DB).build()).build()).build();
         new DocGenerator(
                 "bySharedTableByTable",
                 DOCS_CHAINS_DIR + "/bySharedTableByTable",
@@ -252,7 +261,7 @@ class DocGeneratorRunner {
                 () -> amazonDynamoDb,
                 IS_LOCAL_DYNAMO,
                 false,
-                ImmutableMap.of("na", physicalAmazonDynamoDb)).runAll();
+                ImmutableMap.of("na", ROOT_AMAZON_DYNAMO_DB)).runAll();
     }
 
     /*
@@ -307,7 +316,7 @@ class DocGeneratorRunner {
                 getAccounts()).runAll();
     }
 
-    public class DocGenerator extends MtAmazonDynamoDbTestRunner {
+    public class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
                 .put("_tablemetadata", ImmutableList.of("table", "data"))
@@ -315,30 +324,37 @@ class DocGeneratorRunner {
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
                 .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
 
-        private final String test;
-        private final Path outputFile;
+        private String test;
+        private Path outputFile;
+        private List<Map<String, String>> ctxTablePairs;
+        private boolean manuallyPrefixTablenames;
+        private Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
+        private MtAmazonDynamoDbContextProvider mtContext;
+        private String hashKeyField = "hashKeyField";
+        private Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
+        private AmazonDynamoDB amazonDynamoDb;
+        private int timeoutSeconds = 600;
+        private boolean isLocalDynamo;
         private String tableName1;
         private String tableName2;
-        private List<Map<String, String>> ctxTablePairs;
-        private final boolean manuallyPrefixTablenames;
-        private final Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
+        private ScalarAttributeType hashKeyAttrType;
 
-        DocGenerator(String test,
-                     String outputFilePath,
-                     MtAmazonDynamoDbContextProvider mtContext,
-                     Supplier<AmazonDynamoDB> amazonDynamoDbSupplier,
-                     boolean isLocalDynamo,
-                     boolean prefixTablenames,
-                     Map<String, AmazonDynamoDB> targetAmazonDynamoDbs) {
-            super(mtContext,
-                    amazonDynamoDbSupplier.get(),
-                    getPhysicalAmazonDynamoDb(isLocalDynamo),
-                    null,
-                    isLocalDynamo);
+        private DocGenerator(String test,
+            String outputFilePath,
+            MtAmazonDynamoDbContextProvider mtContext,
+            Supplier<AmazonDynamoDB> amazonDynamoDbSupplier,
+            boolean isLocalDynamo,
+            boolean prefixTablenames,
+            Map<String, AmazonDynamoDB> targetAmazonDynamoDbs) {
             this.test = test;
             this.outputFile = getOutputFile(outputFilePath);
             this.manuallyPrefixTablenames = prefixTablenames;
             this.targetAmazonDynamoDbs = targetAmazonDynamoDbs;
+            this.mtContext = mtContext;
+            this.amazonDynamoDb = amazonDynamoDbSupplier.get();
+            this.amazonDynamoDbSupplier = () -> this.amazonDynamoDb;
+            this.isLocalDynamo = isLocalDynamo;
+            this.hashKeyAttrType = S;
         }
 
         void runAll() {
@@ -348,8 +364,8 @@ class DocGeneratorRunner {
         }
 
         void setup() {
-            tableName1 = buildTableName("table", 1);
-            tableName2 = buildTableName("table", 2);
+            tableName1 = buildTableName(1);
+            tableName2 = buildTableName(2);
             ctxTablePairs = ImmutableList.of(
                     ImmutableMap.of("ctx1", tableName1),
                     ImmutableMap.of("ctx1", tableName2),
@@ -399,6 +415,37 @@ class DocGeneratorRunner {
                 Entry<String, String> ctxTablePairEntry = ctxTablePair.entrySet().iterator().next();
                 deleteTable(ctxTablePairEntry.getKey(), ctxTablePairEntry.getValue());
             });
+        }
+
+        private void deleteTable(String tenantId, String tableName) {
+            mtContext.setContext(tenantId);
+            new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
+                .deleteTableIfExists(tableName, getPollInterval(), timeoutSeconds);
+        }
+
+        private void createTable(String context, String tableName) {
+            mtContext.setContext(context);
+            createTable(context, new CreateTableRequest()
+                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
+                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                .withTableName(tableName));
+        }
+
+        private void createTable(String context, CreateTableRequest createTableRequest) {
+            mtContext.setContext(context);
+            new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
+                .createTableIfNotExists(createTableRequest, getPollInterval());
+        }
+
+        private void recreateTable(String context, String tableName) {
+            mtContext.setContext(context);
+            deleteTable(context, tableName);
+            createTable(context, tableName);
+        }
+
+        private int getPollInterval() {
+            return isLocalDynamo ? 0 : 1;
         }
 
         void populateTable(String tenantId, String tableName) {
@@ -487,15 +534,11 @@ class DocGeneratorRunner {
         }
 
         private Map<String, AttributeValue> createItem(String value) {
-            return createItem(hashKeyField, value, "someField", "value-" + value);
+            return buildItemWithValues(hashKeyAttrType, value, Optional.empty(), "value-" + value);
         }
 
-        private String buildTableName(String table, int ordinal) {
-            return buildTableName(table + ordinal);
-        }
-
-        private String buildTableName(String table) {
-            return getTablePrefix() + table;
+        private String buildTableName(int ordinal) {
+            return getTablePrefix() + "table" + ordinal;
         }
 
         private Path getOutputFile(String outputFilePath) {
@@ -572,8 +615,67 @@ class DocGeneratorRunner {
         return prefixTablenames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
     }
 
-    private AmazonDynamoDB getPhysicalAmazonDynamoDb(boolean isLocalDynamo) {
-        return isLocalDynamo ? LOCAL_AMAZON_DYNAMO_DB : AMAZON_DYNAMO_DB_CLIENT_BUILDER.build();
+    private static class TestAccountMapper implements MtAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {
+
+        private static final Map<String, AmazonDynamoDB> CACHE = ImmutableMap.of("ctx1", getNewAmazonDynamoDbLocal(),
+            "ctx2", getNewAmazonDynamoDbLocal(),
+            "ctx3", getNewAmazonDynamoDbLocal(),
+            "ctx4", getNewAmazonDynamoDbLocal());
+
+        @Override
+        public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider context) {
+            checkArgument(CACHE.containsKey(context.getContext()), "invalid context '" + context + "'");
+            return CACHE.get(context.getContext());
+        }
+
+        @Override
+        public Map<String, AmazonDynamoDB> get() {
+            return CACHE;
+        }
+
+    }
+
+    private static class TestAccountCredentialsMapper implements MtAccountCredentialsMapper,
+        Supplier<Map<String, AmazonDynamoDB>> {
+
+        AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
+        AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
+        AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
+        AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
+
+        @Override
+        public AWSCredentialsProvider getAwsCredentialsProvider(String context) {
+            switch (context) {
+                case "1":
+                    /*
+                     * loads default profile
+                     */
+                    return ctx1CredentialsProvider;
+                case "2":
+                    /*
+                     * loads 'personal' profile
+                     *
+                     * http://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/auth/DefaultAWSCredentialsProviderChain.html
+                     */
+                    return ctx2CredentialsProvider;
+                case "3":
+                    return ctx3CredentialsProvider;
+                case "4":
+                    return ctx4CredentialsProvider;
+                default:
+                    throw new IllegalArgumentException("invalid context '" + context + "'");
+            }
+        }
+
+        @Override
+        public Map<String, AmazonDynamoDB> get() {
+            return ImmutableMap.of("1",
+                AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx1CredentialsProvider).build(),
+                "2", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx2CredentialsProvider).build(),
+                "3", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx3CredentialsProvider).build(),
+                "4", AMAZON_DYNAMO_DB_CLIENT_BUILDER.withCredentials(ctx4CredentialsProvider).build());
+        }
+
     }
 
 }
