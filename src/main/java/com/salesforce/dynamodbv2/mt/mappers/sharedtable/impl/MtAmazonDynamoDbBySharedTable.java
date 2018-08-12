@@ -39,6 +39,7 @@ import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcess
 import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
@@ -266,7 +267,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return scanResult;
     }
 
-    private boolean projectionContainsKey(ScanRequest request, PrimaryKey key) {
+    @VisibleForTesting
+    static boolean projectionContainsKey(ScanRequest request, PrimaryKey key) {
         String projection = request.getProjectionExpression();
         List<String> legacyProjection = request.getAttributesToGet();
 
@@ -282,7 +284,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    private boolean projectionContainsKey(String projection, Map<String, String> expressionNames,
+    private static boolean projectionContainsKey(String projection, Map<String, String> expressionNames,
                                           List<String> legacyProjection, String key) {
         if (projection != null) {
             // TODO we should probably parse expressions or use more sophisticated matching
@@ -340,7 +342,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return () -> new RecordProcessor(factory.createProcessor(), physicalTable);
     }
 
-    private class RecordProcessor implements IRecordProcessor {
+    @VisibleForTesting
+    class RecordProcessor implements IRecordProcessor {
 
         private final IRecordProcessor processor;
         private final DynamoTableDescription physicalTable;

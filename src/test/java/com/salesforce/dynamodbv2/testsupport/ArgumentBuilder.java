@@ -18,6 +18,7 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
@@ -59,7 +60,8 @@ import java.util.stream.Stream;
 public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
-    private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
+    @VisibleForTesting
+    public static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();

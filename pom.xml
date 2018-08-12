@@ -210,6 +210,10 @@
                     <rules>
                         <rule implementation="org.jacoco.maven.RuleConfiguration" />
                     </rules>
+                    <excludes>
+                        <!-- This class is a pass-through that contains no logic. -->
+                        <exclude>**/*MtAmazonDynamoDbBase*.class</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>
@@ -259,10 +263,16 @@
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.0.1</version>
             </plugin>
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-            </plugin>
+            <!--<plugin>-->
+                <!--<groupId>org.jacoco</groupId>-->
+                <!--<artifactId>jacoco-maven-plugin</artifactId>-->
+                <!--<version>0.8.1</version>-->
+                <!--<configuration>-->
+                    <!--<excludes>-->
+                        <!--<exclude>**/*MtAmazonDynamoDbBase*.java</exclude>-->
+                    <!--</excludes>-->
+                <!--</configuration>-->
+            <!--</plugin>-->
         </plugins>
     </reporting>
 
