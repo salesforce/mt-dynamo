@@ -7,12 +7,16 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.applyKeyConditionToField;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.convertFieldNameLiteralsToExpressionNames;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.dedupeFieldMappings;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
+import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -53,8 +57,10 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.RequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -363,9 +369,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // map key
         updateItemRequest.setKey(tableMapping.getItemMapper().apply(updateItemRequest.getKey()));
 
-        // map attributeUpdates // TODO msgroi todo
+        // map attributeUpdates // TODO todo
 
-        // map updateCondition // TODO msgroi todo
+        // convert literals
+        RequestWrapper requestWrapper = new UpdateItemRequestWrapper(updateItemRequest);
+        Collection<FieldMapping> fieldMappings =
+            dedupeFieldMappings(tableMapping.getAllVirtualToPhysicalFieldMappings()).values();
+        convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
+
+        // map conditions
+        fieldMappings.forEach(targetFieldMapping ->
+            applyKeyConditionToField(tableMapping.getFieldMapper(), requestWrapper, targetFieldMapping));
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
@@ -493,4 +507,91 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
+
+    private static class UpdateItemRequestWrapper implements RequestWrapper {
+
+        private final UpdateItemRequest updateItemRequestCloned;
+
+        UpdateItemRequestWrapper(UpdateItemRequest updateItemRequestCloned) {
+            this.updateItemRequestCloned = updateItemRequestCloned;
+        }
+
+        @Override
+        public Map<String, String> getExpressionAttributeNames() {
+            return updateItemRequestCloned.getExpressionAttributeNames();
+        }
+
+        @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (updateItemRequestCloned.getExpressionAttributeNames() == null) {
+                updateItemRequestCloned.setExpressionAttributeNames(new HashMap<>());
+            }
+            updateItemRequestCloned.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExpressionAttributeValues() {
+            if (updateItemRequestCloned.getExpressionAttributeValues() == null) {
+                updateItemRequestCloned.setExpressionAttributeValues(new HashMap<>());
+            }
+            return updateItemRequestCloned.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            updateItemRequestCloned.getExpressionAttributeValues().put(key, value);
+        }
+
+        @Override
+        public String getPrimaryExpression() {
+            return updateItemRequestCloned.getUpdateExpression();
+        }
+
+        @Override
+        public void setPrimaryExpression(String expression) {
+            updateItemRequestCloned.setUpdateExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return updateItemRequestCloned.getConditionExpression();
+        }
+
+        @Override
+        public void setFilterExpression(String conditionalExpression) {
+            updateItemRequestCloned.setConditionExpression(conditionalExpression);
+        }
+
+        @Override
+        public String getIndexName() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setIndexName(String indexName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
 }
