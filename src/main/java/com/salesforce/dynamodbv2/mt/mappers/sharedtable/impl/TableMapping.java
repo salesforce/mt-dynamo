@@ -51,6 +51,7 @@ class TableMapping {
     private final Map<String, List<FieldMapping>> physicalToVirtualMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> secondaryIndexFieldMappings;
 
+    private final FieldMapper fieldMapper;
     private final ItemMapper itemMapper;
     private final QueryMapper queryMapper;
 
@@ -68,7 +69,7 @@ class TableMapping {
         this.virtualToPhysicalMappings = buildAllVirtualToPhysicalFieldMappings(virtualTable);
         this.physicalToVirtualMappings = buildAllPhysicalToVirtualFieldMappings(virtualToPhysicalMappings);
         validateVirtualPhysicalCompatibility();
-        FieldMapper fieldMapper = new FieldMapper(mtContext,
+        this.fieldMapper = new FieldMapper(mtContext,
             virtualTable.getTableName(),
             new FieldPrefixFunction(delimiter));
         itemMapper = new ItemMapper(this, fieldMapper);
@@ -81,6 +82,10 @@ class TableMapping {
 
     DynamoTableDescription getPhysicalTable() {
         return physicalTable;
+    }
+
+    FieldMapper getFieldMapper() {
+        return fieldMapper;
     }
 
     ItemMapper getItemMapper() {

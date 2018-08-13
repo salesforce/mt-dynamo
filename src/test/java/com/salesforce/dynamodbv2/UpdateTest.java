@@ -2,12 +2,17 @@ package com.salesforce.dynamodbv2;
 
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
@@ -61,11 +66,51 @@ class UpdateTest {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(buildKey(testArgument.getHashKeyAttrType()))
-                .withUpdateExpression("set #name = :newValue")
-                .withConditionExpression("#name = :currentValue")
-                .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
+                .withUpdateExpression("set #someField = :newValue")
+                .withConditionExpression("#someField = :currentValue")
+                .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org))
+                .addExpressionAttributeValuesEntry(":newValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateConditionalonHkSuccess(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withUpdateExpression("set #someField = :newValue")
+                .withConditionExpression("#hk = :currentValue")
+                .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
+                .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
+                .addExpressionAttributeValuesEntry(":currentValue",
+                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
+                .addExpressionAttributeValuesEntry(":newValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+            assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
+                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateConditionalonHkWithLiteralsSuccess(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withUpdateExpression("set " + SOME_FIELD + " = :newValue")
+                .withConditionExpression(HASH_KEY_FIELD + " = :currentValue")
+                .addExpressionAttributeValuesEntry(":currentValue",
+                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
@@ -125,9 +170,9 @@ class UpdateTest {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
-                .withUpdateExpression("set #name = :newValue")
-                .withConditionExpression("#name = :currentValue")
-                .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
+                .withUpdateExpression("set #someField = :newValue")
+                .withConditionExpression("#someField = :currentValue")
+                .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute(SOME_FIELD_VALUE
                     + TABLE3 + org))
                 .addExpressionAttributeValuesEntry(":newValue",
@@ -135,6 +180,29 @@ class UpdateTest {
             assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                        is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                            SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateConditionalOnHkRkSuccessHkRkTable(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE3)
+                .withKey(buildHkRkKey(testArgument.getHashKeyAttrType()))
+                .withUpdateExpression("set #someField = :newValue")
+                .withConditionExpression("#hk = :currentHkValue and #rk = :currentRkValue")
+                .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
+                .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
+                .addExpressionAttributeNamesEntry("#rk", RANGE_KEY_FIELD)
+                .addExpressionAttributeValuesEntry(":currentHkValue",
+                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
+                .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_VALUE))
+                .addExpressionAttributeValuesEntry(":newValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+                is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
+                    SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
         });
     }
 
