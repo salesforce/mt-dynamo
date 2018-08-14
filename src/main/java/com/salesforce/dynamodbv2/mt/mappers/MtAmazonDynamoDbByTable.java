@@ -10,6 +10,9 @@ package com.salesforce.dynamodbv2.mt.mappers;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -39,7 +42,10 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -72,11 +78,37 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
+     * Transform unqualified table names in request to qualified (by tenant) table names, make the dynamo request, then
+     * transform qualified table names back into unqualified table names in the response.
+     */
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
+        final BatchGetItemRequest batchGetItemRequestWithPrefixedTableNames = batchGetItemRequest.clone();
+        batchGetItemRequestWithPrefixedTableNames.clearRequestItemsEntries();
+        for (String unqualifiedTableName : batchGetItemRequest.getRequestItems().keySet()) {
+            batchGetItemRequestWithPrefixedTableNames.addRequestItemsEntry(buildPrefixedTableName(unqualifiedTableName),
+                    batchGetItemRequest.getRequestItems().get(unqualifiedTableName));
+        }
+
+        final BatchGetItemResult batchGetItemResult = getAmazonDynamoDb()
+                .batchGetItem(batchGetItemRequestWithPrefixedTableNames);
+
+        final Map<String, List<Map<String, AttributeValue>>> responsesWithUnprefixedTableNames
+                = new HashMap<>();
+        for (String qualifiedTableName : batchGetItemResult.getResponses().keySet()) {
+            responsesWithUnprefixedTableNames.put(stripTableNamePrefix(qualifiedTableName),
+                    batchGetItemResult.getResponses().get(qualifiedTableName));
+        }
+        batchGetItemResult.clearResponsesEntries();
+        responsesWithUnprefixedTableNames.forEach(batchGetItemResult::addResponsesEntry);
+        return batchGetItemResult;
+    }
+
+    /**
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         createTableRequest = createTableRequest.clone();
-        createTableRequest.withTableName(buildPrefixedTablename(createTableRequest.getTableName()));
+        createTableRequest.withTableName(buildPrefixedTableName(createTableRequest.getTableName()));
         return getAmazonDynamoDb().createTable(createTableRequest);
     }
 
@@ -85,7 +117,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         deleteItemRequest = deleteItemRequest.clone();
-        deleteItemRequest.withTableName(buildPrefixedTablename(deleteItemRequest.getTableName()));
+        deleteItemRequest.withTableName(buildPrefixedTableName(deleteItemRequest.getTableName()));
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
@@ -93,11 +125,11 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
-        String virtualTableName = deleteTableRequest.getTableName();
+        String unqualifiedTableName = deleteTableRequest.getTableName();
         deleteTableRequest = deleteTableRequest.clone();
-        deleteTableRequest.withTableName(buildPrefixedTablename(deleteTableRequest.getTableName()));
+        deleteTableRequest.withTableName(buildPrefixedTableName(deleteTableRequest.getTableName()));
         DeleteTableResult deleteTableResult = getAmazonDynamoDb().deleteTable(deleteTableRequest);
-        deleteTableResult.getTableDescription().setTableName(virtualTableName);
+        deleteTableResult.getTableDescription().setTableName(unqualifiedTableName);
         return deleteTableResult;
     }
 
@@ -105,11 +137,11 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
-        String virtualTableName = describeTableRequest.getTableName();
+        String unqualifiedTableName = describeTableRequest.getTableName();
         describeTableRequest = describeTableRequest.clone();
-        describeTableRequest.withTableName(buildPrefixedTablename(describeTableRequest.getTableName()));
+        describeTableRequest.withTableName(buildPrefixedTableName(describeTableRequest.getTableName()));
         DescribeTableResult describeTableResult = getAmazonDynamoDb().describeTable(describeTableRequest);
-        describeTableResult.getTable().setTableName(virtualTableName);
+        describeTableResult.getTable().setTableName(unqualifiedTableName);
         return describeTableResult;
     }
 
@@ -118,7 +150,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         getItemRequest = getItemRequest.clone();
-        String prefixedTableName = buildPrefixedTablename(getItemRequest.getTableName());
+        String prefixedTableName = buildPrefixedTableName(getItemRequest.getTableName());
         getItemRequest.withTableName(prefixedTableName);
         return getAmazonDynamoDb().getItem(getItemRequest);
     }
@@ -128,7 +160,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         putItemRequest = putItemRequest.clone();
-        putItemRequest.withTableName(buildPrefixedTablename(putItemRequest.getTableName()));
+        putItemRequest.withTableName(buildPrefixedTableName(putItemRequest.getTableName()));
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
@@ -137,7 +169,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public QueryResult query(QueryRequest queryRequest) {
         queryRequest = queryRequest.clone();
-        queryRequest.withTableName(buildPrefixedTablename(queryRequest.getTableName()));
+        queryRequest.withTableName(buildPrefixedTableName(queryRequest.getTableName()));
         return getAmazonDynamoDb().query(queryRequest);
     }
 
@@ -146,7 +178,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public ScanResult scan(ScanRequest scanRequest) {
         scanRequest = scanRequest.clone();
-        scanRequest.withTableName(buildPrefixedTablename(scanRequest.getTableName()));
+        scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
         return getAmazonDynamoDb().scan(scanRequest);
     }
 
@@ -155,7 +187,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         updateItemRequest = updateItemRequest.clone();
-        updateItemRequest.withTableName(buildPrefixedTablename(updateItemRequest.getTableName()));
+        updateItemRequest.withTableName(buildPrefixedTableName(updateItemRequest.getTableName()));
         return getAmazonDynamoDb().updateItem(updateItemRequest);
     }
 
@@ -180,7 +212,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, String tableName) {
         int idx = tableName.indexOf(delimiter);
         String tenant = tableName.substring(0, idx);
-        String name = tableName.substring(idx + delimiter.length(), tableName.length());
+        String name = tableName.substring(idx + delimiter.length());
         return () -> new RecordProcessor(tenant, name, factory.createProcessor());
     }
 
@@ -279,9 +311,19 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
     }
 
-    @VisibleForTesting
-    String buildPrefixedTablename(String virtualTablename) {
-        return (tablePrefix.orElse("")) + getMtContext().getContext() + delimiter + virtualTablename;
+    private String getTableNamePrefix() {
+        return this.tablePrefix.orElse("") + getMtContext().getContext() + this.delimiter;
     }
 
+    @VisibleForTesting
+    String buildPrefixedTableName(String unqualifiedTableName) {
+        return getTableNamePrefix() + unqualifiedTableName;
+    }
+
+    @VisibleForTesting
+    String stripTableNamePrefix(String qualifiedTableName) {
+        final String tableNamePrefix = getTableNamePrefix();
+        Preconditions.checkState(qualifiedTableName.startsWith(tableNamePrefix));
+        return qualifiedTableName.substring(tableNamePrefix.length());
+    }
 }

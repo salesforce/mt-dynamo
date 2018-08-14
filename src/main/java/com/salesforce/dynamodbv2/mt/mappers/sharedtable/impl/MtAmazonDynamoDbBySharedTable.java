@@ -11,6 +11,8 @@ import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -112,6 +114,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
+    }
+
+    /**
+     * TODO: write Javadoc.
+     */
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
+        // TODO: add support (similar to MtAmazonDynamoDbByTable.batchGetItem)
+        throw new UnsupportedOperationException();
     }
 
     /**
