@@ -11,10 +11,7 @@ import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.NAME_PLACEHOLDER;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.applyKeyConditionToField;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.convertFieldNameLiteralsToExpressionNames;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.dedupeFieldMappings;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ConditionMapper.NAME_PLACEHOLDER;
 import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -27,7 +24,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.RequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,6 +72,7 @@ class QueryMapper {
 
     private void apply(RequestWrapper request) {
         convertLegacyExpression(request);
+        applyConvertFieldNameLiterals(request);
         applyKeyCondition(request);
         applyExclusiveStartKey(request);
     }
@@ -83,13 +80,10 @@ class QueryMapper {
     private void applyKeyCondition(RequestWrapper request) {
         String virtualHashKey;
         Collection<FieldMapping> fieldMappings;
-
         if (request.getIndexName() == null) {
             // query or scan does NOT use index
             virtualHashKey = tableMapping.getVirtualTable().getPrimaryKey().getHashKey();
-            Map<String, List<FieldMapping>> fieldMappingDeduped = tableMapping.getAllVirtualToPhysicalFieldMappings();
-            fieldMappings = dedupeFieldMappings(fieldMappingDeduped).values();
-            convertFieldNameLiteralsToExpressionNames(fieldMappings, request);
+            fieldMappings = tableMapping.getAllVirtualToPhysicalFieldMappingsDeduped().values();
         } else {
             // query uses index
             DynamoSecondaryIndex virtualSecondaryIndex = tableMapping.getVirtualTable().findSi(request.getIndexName());
@@ -118,7 +112,8 @@ class QueryMapper {
         checkNotNull(request.getPrimaryExpression(), "request expression is required");
 
         // map each field to its target name and apply field prefixing as appropriate
-        fieldMappings.forEach(targetFieldMapping -> applyKeyConditionToField(fieldMapper, request, targetFieldMapping));
+        fieldMappings.forEach(targetFieldMapping ->
+            tableMapping.getConditionMapper().applyKeyConditionToField(request, targetFieldMapping));
     }
 
     private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
@@ -139,6 +134,10 @@ class QueryMapper {
         request.setPrimaryExpression(
             (request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "")
                 + "begins_with(" + NAME_PLACEHOLDER + ", " + VALUE_PLACEHOLDER + ")");
+    }
+
+    private void applyConvertFieldNameLiterals(RequestWrapper request) {
+        tableMapping.getConditionMapper().convertFieldNameLiteralsToExpressionNames(request);
     }
 
     private void applyExclusiveStartKey(RequestWrapper request) {

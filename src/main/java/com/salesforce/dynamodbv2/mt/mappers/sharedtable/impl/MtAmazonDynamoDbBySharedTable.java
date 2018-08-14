@@ -7,9 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.applyKeyConditionToField;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.convertFieldNameLiteralsToExpressionNames;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.dedupeFieldMappings;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -57,10 +54,8 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ExpressionMappingSupport.RequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -371,15 +366,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // map attributeUpdates // TODO todo
 
-        // convert literals
-        RequestWrapper requestWrapper = new UpdateItemRequestWrapper(updateItemRequest);
-        Collection<FieldMapping> fieldMappings =
-            dedupeFieldMappings(tableMapping.getAllVirtualToPhysicalFieldMappings()).values();
-        convertFieldNameLiteralsToExpressionNames(fieldMappings, requestWrapper);
-
         // map conditions
-        fieldMappings.forEach(targetFieldMapping ->
-            applyKeyConditionToField(tableMapping.getFieldMapper(), requestWrapper, targetFieldMapping));
+        tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);

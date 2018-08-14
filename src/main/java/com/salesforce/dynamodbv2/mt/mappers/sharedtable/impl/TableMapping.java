@@ -33,7 +33,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -51,9 +53,9 @@ class TableMapping {
     private final Map<String, List<FieldMapping>> physicalToVirtualMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> secondaryIndexFieldMappings;
 
-    private final FieldMapper fieldMapper;
     private final ItemMapper itemMapper;
     private final QueryMapper queryMapper;
+    private final ConditionMapper conditionMapper;
 
     TableMapping(DynamoTableDescription virtualTable,
                  CreateTableRequestFactory createTableRequestFactory,
@@ -69,11 +71,12 @@ class TableMapping {
         this.virtualToPhysicalMappings = buildAllVirtualToPhysicalFieldMappings(virtualTable);
         this.physicalToVirtualMappings = buildAllPhysicalToVirtualFieldMappings(virtualToPhysicalMappings);
         validateVirtualPhysicalCompatibility();
-        this.fieldMapper = new FieldMapper(mtContext,
+        FieldMapper fieldMapper = new FieldMapper(mtContext,
             virtualTable.getTableName(),
             new FieldPrefixFunction(delimiter));
         itemMapper = new ItemMapper(this, fieldMapper);
         queryMapper = new QueryMapper(this, fieldMapper);
+        conditionMapper = new ConditionMapper(this, fieldMapper);
     }
 
     DynamoTableDescription getVirtualTable() {
@@ -84,10 +87,6 @@ class TableMapping {
         return physicalTable;
     }
 
-    FieldMapper getFieldMapper() {
-        return fieldMapper;
-    }
-
     ItemMapper getItemMapper() {
         return itemMapper;
     }
@@ -96,11 +95,42 @@ class TableMapping {
         return queryMapper;
     }
 
+    ConditionMapper getConditionMapper() {
+        return conditionMapper;
+    }
+
     /*
      * Returns a mapping of virtual to physical fields.
      */
     Map<String, List<FieldMapping>> getAllVirtualToPhysicalFieldMappings() {
         return virtualToPhysicalMappings;
+    }
+
+    /*
+     * Returns a mapping of virtual to physical fields.  When a virtual field maps to more than one physical field
+     * then those mappings are reduced to one by selecting one arbitrarily.  See dedupeFieldMappings() method.
+     */
+    Map<String, FieldMapping> getAllVirtualToPhysicalFieldMappingsDeduped() {
+        return dedupeFieldMappings(virtualToPhysicalMappings);
+    }
+
+    /*
+     * This method takes a mapping of virtual to physical fields, where it is possible that a single given virtual
+     * field may map to more than one physical field, and returns a mapping where each virtual field maps to exactly
+     * one physical field.  In cases where there is more than one physical field for a given virtual field, it
+     * arbitrarily chooses the first mapping.
+     *
+     * This method is called for any query or scan request that does not specify an index.
+     *
+     * It is an effective no-op, meaning, there are no duplicates to remove, except when a scan is performed against
+     * a table that maps a given virtual field to multiple physical fields.  In that case, it doesn't matter which
+     * field we use in the query, the results should be the same, so we choose one of the physical fields arbitrarily.
+     */
+    private static Map<String, FieldMapping> dedupeFieldMappings(Map<String, List<FieldMapping>> fieldMappings) {
+        return fieldMappings.entrySet().stream().collect(Collectors.toMap(
+            Entry::getKey,
+            fieldMappingEntry -> fieldMappingEntry.getValue().get(0)
+        ));
     }
 
     /*
