@@ -327,7 +327,7 @@ class DocGeneratorRunner {
         private String test;
         private Path outputFile;
         private List<Map<String, String>> ctxTablePairs;
-        private boolean manuallyPrefixTablenames;
+        private boolean manuallyPrefixTableNames;
         private Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
         private MtAmazonDynamoDbContextProvider mtContext;
         private String hashKeyField = "hashKeyField";
@@ -344,11 +344,11 @@ class DocGeneratorRunner {
             MtAmazonDynamoDbContextProvider mtContext,
             Supplier<AmazonDynamoDB> amazonDynamoDbSupplier,
             boolean isLocalDynamo,
-            boolean prefixTablenames,
+            boolean prefixTableNames,
             Map<String, AmazonDynamoDB> targetAmazonDynamoDbs) {
             this.test = test;
             this.outputFile = getOutputFile(outputFilePath);
-            this.manuallyPrefixTablenames = prefixTablenames;
+            this.manuallyPrefixTableNames = prefixTableNames;
             this.targetAmazonDynamoDbs = targetAmazonDynamoDbs;
             this.mtContext = mtContext;
             this.amazonDynamoDb = amazonDynamoDbSupplier.get();
@@ -483,9 +483,9 @@ class DocGeneratorRunner {
             }
         }
 
-        private List<String> getTargetColumnOrder(String qualifiedTablename) {
-            int dotPos = qualifiedTablename.indexOf(".");
-            String unqualifiedTableName = dotPos == -1 ? qualifiedTablename : qualifiedTablename.substring(dotPos + 1);
+        private List<String> getTargetColumnOrder(String qualifiedTableName) {
+            int dotPos = qualifiedTableName.indexOf(".");
+            String unqualifiedTableName = dotPos == -1 ? qualifiedTableName : qualifiedTableName.substring(dotPos + 1);
             List<String> targetColumnOrder = targetColumnOrderMap.get(unqualifiedTableName);
             checkArgument(targetColumnOrder != null && !targetColumnOrder.isEmpty(),
                     "no column ordering found for " + unqualifiedTableName);
@@ -562,7 +562,7 @@ class DocGeneratorRunner {
         }
 
         private String getTablePrefix() {
-            return DocGeneratorRunner.getTablePrefix(manuallyPrefixTablenames);
+            return DocGeneratorRunner.getTablePrefix(manuallyPrefixTableNames);
         }
 
     }
@@ -590,7 +590,8 @@ class DocGeneratorRunner {
     private MtAmazonDynamoDbLogger.MtAmazonDynamoDbBuilder getLoggerBuilder() {
         return MtAmazonDynamoDbLogger.builder()
                 .withContext(MT_CONTEXT)
-                .withMethodsToLog(ImmutableList.of("createTable",
+                .withMethodsToLog(ImmutableList.of("batchGetItem",
+                        "createTable",
                         "deleteItem",
                         "deleteTable",
                         "describeTable",
@@ -608,11 +609,11 @@ class DocGeneratorRunner {
                 .withTruncateOnDeleteTable(true);
     }
 
-    private static String getTablePrefix(boolean prefixTablenames) {
+    private static String getTablePrefix(boolean prefixTableNames) {
         if (IS_LOCAL_DYNAMO) {
             return "";
         }
-        return prefixTablenames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
+        return prefixTableNames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
     }
 
     private static class TestAccountMapper implements MtAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {

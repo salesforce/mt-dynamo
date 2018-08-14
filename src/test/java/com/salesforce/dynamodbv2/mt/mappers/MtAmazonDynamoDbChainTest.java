@@ -109,7 +109,7 @@ class MtAmazonDynamoDbChainTest {
             .withAmazonDynamoDb(amazonDynamoDbByAccount)
             .withContext(mtContext)
             .withLogCallback(logAggregator)
-            .withMethodsToLog(ImmutableList.of("createTable", "deleteItem", "deleteTable", "getItem",
+            .withMethodsToLog(ImmutableList.of("batchGetItem", "createTable", "deleteItem", "deleteTable", "getItem",
                 "putItem", "query", "scan", "updateItem")).build();
         AmazonDynamoDB amazonDynamoDbByTable = MtAmazonDynamoDbByTable.builder()
             .withAmazonDynamoDb(amazonDynamoDbLogger)

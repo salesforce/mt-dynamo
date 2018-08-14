@@ -253,7 +253,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(MT_CONTEXT)
             .withMethodsToLog(
-                ImmutableList.of("createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
+                ImmutableList.of("batchGetItem", "createTable", "deleteItem", "deleteTable", "describeTable", "getItem",
                     "putItem", "query", "scan", "updateItem")).build() : amazonDynamoDb;
     }
 

@@ -4,11 +4,14 @@ import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -27,6 +30,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
@@ -36,6 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -111,11 +116,19 @@ class ScanTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAll(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
-                .scan(new ScanRequest().withTableName(TABLE1)).getItems();
-            assertEquals(1, items.size());
-            assertThat(items.get(0), is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                SOME_FIELD_VALUE + TABLE1 + org)));
+            final Set<Map<String, AttributeValue>> items = new HashSet<>(testArgument.getAmazonDynamoDb()
+                .scan(new ScanRequest().withTableName(TABLE1)).getItems());
+            assertEquals(2, items.size());
+            final Map<String, AttributeValue> someValue = buildItemWithValues(testArgument.getHashKeyAttrType(),
+                    HASH_KEY_VALUE,
+                    Optional.empty(),
+                    SOME_FIELD_VALUE + TABLE1 + org);
+            final Map<String, AttributeValue> someOtherValue = buildItemWithValues(testArgument.getHashKeyAttrType(),
+                    HASH_KEY_OTHER_VALUE,
+                    Optional.empty(),
+                    SOME_OTHER_FIELD_VALUE + TABLE1 + org);
+            final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
+            assertEquals(expectedSet, items);
         });
     }
 
