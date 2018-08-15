@@ -7,17 +7,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
+import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Helper methods for building, getting, and doing type conversions that are frequently necessary in unit tests.
- * 
+ *
  * @author msgroi
  */
 public class TestSupport {
@@ -61,12 +72,8 @@ public class TestSupport {
         String tableName,
         String hashKeyValue,
         Optional<String> rangeKeyValue) {
-        Map<String, AttributeValue> keys = rangeKeyValue
-            .map(s -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType,
-                hashKeyValue),
-                RANGE_KEY_FIELD, createStringAttribute(s))))
-            .orElseGet(() -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(
-                hashKeyAttrType, hashKeyValue))));
+        final AttributeValue hkAttribute = createHkAttribute(hashKeyAttrType, hashKeyValue);
+        Map<String, AttributeValue> keys = getKeys(hkAttribute, rangeKeyValue);
         Map<String, AttributeValue> originalKeys = new HashMap<>(keys);
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
         GetItemResult getItemResult = amazonDynamoDb.getItem(getItemRequest);
@@ -75,10 +82,69 @@ public class TestSupport {
         return getItemResult.getItem();
     }
 
+    private static HashMap<String, AttributeValue> getKeys(AttributeValue hkAttribute, Optional<String> rangeKeyValue) {
+        return rangeKeyValue
+            .map(rkv -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, hkAttribute,
+                RANGE_KEY_FIELD, createStringAttribute(rkv))))
+            .orElseGet(() -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, hkAttribute)));
+    }
+
     public static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
         AmazonDynamoDB amazonDynamoDb,
         String tableName) {
         return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE));
+    }
+
+    /**
+     * Retrieves the items with the provided PKs (as HKs or HK-RK pairs).
+     */
+    public static Set<Map<String, AttributeValue>> batchGetItem(ScalarAttributeType hashKeyAttrType,
+                                                      AmazonDynamoDB amazonDynamoDb,
+                                                      String tableName,
+                                                      // TODO?: pass these both as a single list
+                                                      List<String> hashKeyValue,
+                                                      Optional<List<String>> rangeKeyValue) {
+
+        rangeKeyValue.ifPresent(rkv -> Preconditions.checkArgument(hashKeyValue.size() == rkv.size()));
+        final List<AttributeValue> hkAttribute = hashKeyValue.stream()
+                .map(hkv -> createHkAttribute(hashKeyAttrType, hkv))
+                .collect(Collectors.toList());
+
+        List<Map<String, AttributeValue>> keys = new ArrayList<>();
+        for (int i = 0; i < hashKeyValue.size(); ++i) {
+            final int finalI = i;
+            keys.add(getKeys(hkAttribute.get(i), rangeKeyValue.map(rkvs -> rkvs.get(finalI))));
+        }
+        Set<Map<String, AttributeValue>> originalKeys = new HashSet<>(keys);
+        final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
+        keysAndAttributes.setKeys(keys);
+        Map<String, KeysAndAttributes> requestItems = ImmutableMap.of(tableName, keysAndAttributes);
+        Map<String, KeysAndAttributes> unprocessedKeys = ImmutableMap.of();
+        final Set<Map<String, AttributeValue>> resultItems = new HashSet<>();
+        do {
+            final BatchGetItemRequest batchGetItemRequest = new BatchGetItemRequest().withRequestItems(requestItems);
+            final BatchGetItemResult batchGetItemResult = amazonDynamoDb.batchGetItem(batchGetItemRequest);
+
+            final Set<String> tablesInResult = batchGetItemResult.getResponses().keySet();
+            assertEquals(1, tablesInResult.size());
+            assertEquals(tableName, Iterables.getOnlyElement(tablesInResult));
+            resultItems.addAll(batchGetItemResult.getResponses().get(tableName));
+            requestItems = batchGetItemResult.getUnprocessedKeys();
+        } while (!unprocessedKeys.isEmpty());
+        assertEquals(originalKeys, resultItems.stream()
+                .map(item -> stripItemToPk(item, rangeKeyValue.isPresent()))
+                .collect(Collectors.toSet()));
+        return resultItems;
+    }
+
+    /**
+     * Strip {@code} item down to its PK (i.e., a two-element map with HK and RK keys if {@code hasRk}, o/w a
+     * one-element map with just an HK key).
+     */
+    private static Map<String, AttributeValue> stripItemToPk(Map<String, AttributeValue> item, boolean hasRk) {
+        return item.entrySet().stream()
+                .filter(p -> p.getKey().equals(HASH_KEY_FIELD) || (hasRk && p.getKey().equals(RANGE_KEY_FIELD)))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     /*

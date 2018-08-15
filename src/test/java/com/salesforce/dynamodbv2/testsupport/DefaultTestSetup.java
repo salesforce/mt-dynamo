@@ -74,7 +74,9 @@ public class DefaultTestSetup implements TestSetup {
         boolean hasRangeKey = createTableRequest.getKeySchema().stream().anyMatch(
                 keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE);
         if (!hasRangeKey) {
-            // hk-only tables
+            // (hk-only tables) add two rows:
+            // (hk1, {no rk}, table-and-org-specific-field-value1)
+            // (hk2, {no rk}, table-and-org-specific-field-value2)
             amazonDynamoDb.putItem(
                     new PutItemRequest().withTableName(table)
                             .withItem(buildItemWithValues(hashKeyAttrType,
@@ -88,7 +90,9 @@ public class DefaultTestSetup implements TestSetup {
                                     Optional.empty(),
                                     SOME_OTHER_FIELD_VALUE + table + org)));
         } else {
-            // hk-rk tables
+            // (hk-rk tables) add two rows:
+            // (hk1, rk1, table-and-org-specific-field-value1)
+            // (hk1, rk2, table-and-org-specific-field-value2, index-field-value)
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
                     .withItem(buildHkRkItemWithSomeFieldValue(hashKeyAttrType,

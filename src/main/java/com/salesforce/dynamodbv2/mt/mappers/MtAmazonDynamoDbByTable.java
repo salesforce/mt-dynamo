@@ -61,7 +61,7 @@ import java.util.Optional;
  * <p>The following are optional arguments ... - delimiter: a String delimiter used
  * to separate the tenant identifier prefix from the table name
  *
- * <p>Supported: create|describe|delete Table, get|putItem, scan, query
+ * <p>Supported: batchGet|get|put Item, create|describe|delete Table, scan, query
  *
  * @author msgroi
  */

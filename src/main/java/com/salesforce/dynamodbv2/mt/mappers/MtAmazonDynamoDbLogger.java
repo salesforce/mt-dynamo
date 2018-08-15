@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Logs all calls.
  *
- * <p>Supported: batchGetItem create|delete|describeTable, get|put|updateItem, scan, query
+ * <p>Supported: batchGet|get|put|updateItem, create|delete|describeTable, scan, query
  *
  * @author msgroi
  */
