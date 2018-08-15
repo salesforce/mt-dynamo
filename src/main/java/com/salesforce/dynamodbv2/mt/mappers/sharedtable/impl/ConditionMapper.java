@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
 import java.util.Collection;
 import java.util.Map;
@@ -34,7 +35,7 @@ class ConditionMapper {
             convertFieldNameLiteralsToExpressionNamesInternal(fieldMappings, request.getFilterExpression(), request));
     }
 
-    void apply(RequestWrapper request) {
+    void apply(RequestWrapper request) { // TODO msgroi unit test
         convertFieldNameLiteralsToExpressionNames(request);
         tableMapping.getAllVirtualToPhysicalFieldMappingsDeduped().values().forEach(
             fieldMapping -> applyKeyConditionToField(request, fieldMapping));
@@ -45,7 +46,7 @@ class ConditionMapper {
      * operand in the primary expression or filter expression, gets its value in the expression attribute values,
      * applies the mapping, and sets the physical name of the field to that of the target field.
      */
-    void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) {
+    void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) { // TODO msgroi unit test
         applyKeyConditionToField(
             request,
             fieldMapping,
@@ -53,7 +54,7 @@ class ConditionMapper {
             request.getFilterExpression());
     }
 
-    private void applyKeyConditionToField(RequestWrapper request,
+    private void applyKeyConditionToField(RequestWrapper request, // TODO msgroi unit test
         FieldMapping fieldMapping,
         String primaryExpression,
         String filterExpression) {
@@ -98,7 +99,8 @@ class ConditionMapper {
         return newConditionExpression;
     }
 
-    private String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
+    @VisibleForTesting
+    static String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
         String fieldPlaceholderCandidate = "#field" + counter.get();
         while (expressionAttributeNames != null && expressionAttributeNames.containsKey(fieldPlaceholderCandidate)) {
             fieldPlaceholderCandidate = "#field" + counter.incrementAndGet();
@@ -110,7 +112,8 @@ class ConditionMapper {
      * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the
      * primary expression, then in the filterExpression.
      */
-    private static String findVirtualValuePlaceholder(String primaryExpression,
+    @VisibleForTesting
+    static String findVirtualValuePlaceholder(String primaryExpression,
         String filterExpression,
         String keyFieldName) {
         return findVirtualValuePlaceholder(primaryExpression, keyFieldName)
@@ -123,7 +126,8 @@ class ConditionMapper {
     /*
      * Finds the value in the right-hand side operand of an expression where the left-hand operator is a given field.
      */
-    private static Optional<String> findVirtualValuePlaceholder(String conditionExpression, String keyFieldName) {
+    @VisibleForTesting
+    static Optional<String> findVirtualValuePlaceholder(String conditionExpression, String keyFieldName) {
         String toFind = keyFieldName + " = ";
         int start = conditionExpression.indexOf(toFind);
         if (start == -1) {
