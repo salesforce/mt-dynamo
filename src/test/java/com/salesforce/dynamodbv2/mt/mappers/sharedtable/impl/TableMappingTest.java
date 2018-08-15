@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -35,6 +36,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -123,6 +125,50 @@ class TableMappingTest {
     @Test
     void getAllVirtualToPhysicalFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings, sut.getAllVirtualToPhysicalFieldMappings());
+    }
+
+    @Test
+    void getAllVirtualToPhysicalFieldMappingsDeduped() {
+        TableMapping sut = new TableMapping(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
+            .builder()
+            .withTableName("virtualTableName")
+            .withTableKeySchema("hk", S, "rk", S)
+            .addSi("virtualgsi",
+                GSI,
+                new PrimaryKey("virtualgsihk", S, "virtualindex", S),
+                1L)
+            .addSi("virtuallsi",
+                LSI,
+                new PrimaryKey("hk", S, "virtualindex", S),
+                1L)
+            .build()),
+            virtualTableDescription1 -> new DynamoTableDescriptionImpl(CreateTableRequestBuilder
+                .builder()
+                .withTableName("physicalTableName")
+                .withTableKeySchema("physicalhk", S, "physicalrk", S)
+                .addSi("physicalgsi",
+                    GSI,
+                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", S),
+                    1L)
+                .addSi("virtuallsi",
+                    LSI,
+                    new PrimaryKey("physicalhk", S, "physicallsirk", S),
+                    1L)
+                .build()).getCreateTableRequest(),
+            new DynamoSecondaryIndexMapperByTypeImpl(),
+            null,
+            null
+        );
+        Map<String, List<FieldMapping>> fieldMappings = sut.getAllVirtualToPhysicalFieldMappings();
+        Map<String, Integer> expectedMappingCounts = ImmutableMap.of("hk", 2,
+            "rk", 1,
+            "virtualindex", 2,
+            "virtualgsihk", 1);
+        assertEquals(4, expectedMappingCounts.keySet().size());
+        expectedMappingCounts.forEach((key, expectedCount) ->
+            assertEquals(expectedCount.intValue(), fieldMappings.get(key).size(), "key=" + key));
+        Set<String> expectedMappingCountsDeduped = ImmutableSet.of("hk", "rk", "virtualindex", "virtualgsihk");
+        assertEquals(expectedMappingCountsDeduped, sut.getAllVirtualToPhysicalFieldMappingsDeduped().keySet());
     }
 
     @Test
