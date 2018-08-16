@@ -138,7 +138,7 @@ public class TestSupport {
     }
 
     /**
-     * Strip {@code} item down to its PK (i.e., a two-element map with HK and RK keys if {@code hasRk}, o/w a
+     * Strip {@code item} down to its PK (i.e., a two-element map with HK and RK keys if {@code hasRk}, o/w a
      * one-element map with just an HK key).
      */
     private static Map<String, AttributeValue> stripItemToPk(Map<String, AttributeValue> item, boolean hasRk) {

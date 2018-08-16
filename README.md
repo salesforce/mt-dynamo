@@ -125,6 +125,7 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 - **v0.9.6** Added `listStreams()` support
 - **v0.9.7** Bug fixes
 - **v0.9.8** Replaced `ByIndex` implementation with `SharedTable`
+- **v0.9.9** Support for `batchGetItem` (for all strategies except `MtAmazonDynamoDbBySharedTable`)
 
 ## Backlog
 
