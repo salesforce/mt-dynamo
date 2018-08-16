@@ -54,7 +54,8 @@ class ConditionMapper {
             request.getFilterExpression());
     }
 
-    private void applyKeyConditionToField(RequestWrapper request, // TODO msgroi unit test
+    @VisibleForTesting
+    void applyKeyConditionToField(RequestWrapper request, // TODO msgroi unit test
         FieldMapping fieldMapping,
         String primaryExpression,
         String filterExpression) {
