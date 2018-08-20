@@ -32,7 +32,7 @@ import java.util.function.Function;
  * - a MtAccountCredentialsMapper implementation that maps context to AWSCredentialsProvider's
  *
  * <p>Supported:
- * - methods: create|describe|delete Table, get|putItem, scan|query
+ * - methods: batchGet|get|put Item, create|describe|delete Table, scan|query
  *
  * @author msgroi
  */

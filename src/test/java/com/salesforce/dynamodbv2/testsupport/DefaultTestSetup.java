@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2.testsupport;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
@@ -10,8 +11,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -42,9 +43,9 @@ import java.util.Optional;
 public class DefaultTestSetup implements TestSetup {
 
     private static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
-    public static final String TABLE1 = "Table1";
-    public static final String TABLE2 = "Table2";
-    public static final String TABLE3 = "Table3";
+    public static final String TABLE1 = "Table1"; // has hk
+    public static final String TABLE2 = "Table2"; // has hk
+    public static final String TABLE3 = "Table3"; // has hk, rk
     private List<CreateTableRequest> createTableRequests;
 
     @Override
@@ -73,13 +74,25 @@ public class DefaultTestSetup implements TestSetup {
         boolean hasRangeKey = createTableRequest.getKeySchema().stream().anyMatch(
                 keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE);
         if (!hasRangeKey) {
-            // hk-only tables
+            // (hk-only tables) add two rows:
+            // (hk1, {no rk}, table-and-org-specific-field-value1)
+            // (hk2, {no rk}, table-and-org-specific-field-value2)
             amazonDynamoDb.putItem(
-                new PutItemRequest().withTableName(table)
-                    .withItem(buildItemWithSomeFieldValue(hashKeyAttrType,
-                        SOME_FIELD_VALUE + table + org)));
+                    new PutItemRequest().withTableName(table)
+                            .withItem(buildItemWithValues(hashKeyAttrType,
+                                    HASH_KEY_VALUE,
+                                    Optional.empty(),
+                                    SOME_FIELD_VALUE + table + org)));
+            amazonDynamoDb.putItem(
+                    new PutItemRequest().withTableName(table)
+                            .withItem(buildItemWithValues(hashKeyAttrType,
+                                    HASH_KEY_OTHER_VALUE,
+                                    Optional.empty(),
+                                    SOME_OTHER_FIELD_VALUE + table + org)));
         } else {
-            // hk-rk tables
+            // (hk-rk tables) add two rows:
+            // (hk1, rk1, table-and-org-specific-field-value1)
+            // (hk1, rk2, table-and-org-specific-field-value2, index-field-value)
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
                     .withItem(buildHkRkItemWithSomeFieldValue(hashKeyAttrType,
@@ -96,15 +109,15 @@ public class DefaultTestSetup implements TestSetup {
     private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
         return ImmutableList.of(
             new CreateTableRequest()
+                .withTableName(TABLE1)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(TABLE1),
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
             new CreateTableRequest()
+                .withTableName(TABLE2)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withTableName(TABLE2),
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
             new CreateTableRequest()
                 .withTableName(TABLE3)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),

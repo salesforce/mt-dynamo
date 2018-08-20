@@ -95,7 +95,7 @@ import java.util.Map;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
- * - throwing UnsupportedOperationException's for all methods that are collectively unsupported
+ * - throwing an UnsupportedOperationException for each unsupported method
  * - providing pass-through to an AmazonDynamoDB and MtAmazonDynamoDbContextProvider passed into the constructor
  * - providing the ability to override the method that returns said AmazonDynamoDB
  *
@@ -134,7 +134,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
-        throw new UnsupportedOperationException();
+        return getAmazonDynamoDb().batchGetItem(batchGetItemRequest);
     }
 
     @Override

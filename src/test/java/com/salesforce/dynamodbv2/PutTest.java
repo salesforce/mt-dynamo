@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class PutTest {
 
-    private static final String HASH_KEY_VALUE_NEW = "2";
+    private static final String HASH_KEY_VALUE_NEW = "3";
     private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";

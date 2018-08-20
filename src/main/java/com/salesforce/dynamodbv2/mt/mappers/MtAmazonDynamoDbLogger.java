@@ -9,6 +9,8 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -36,13 +38,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Logs all calls.
  *
- * <p>Supported: create|describe|delete Table, get|putItem, scan, query
+ * <p>Supported: batchGet|get|put|updateItem, create|delete|describeTable, scan, query
  *
  * @author msgroi
  */
@@ -62,6 +66,16 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         this.logCallback = Optional.ofNullable(logCallback);
         this.methodsToLog = methodsToLog;
         this.logAll = logAll;
+    }
+
+    /**
+     * TODO: write Javadoc.
+     */
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
+        final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::table)
+                .collect(Collectors.joining(",", "[", "]"));
+        log("batchGetItem", tablesAsString, batchGetItemRequest.toString());
+        return super.batchGetItem(batchGetItemRequest);
     }
 
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {

@@ -11,6 +11,8 @@ import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -22,6 +24,7 @@ import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
@@ -115,6 +118,51 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
+     * Retrieves batches of items using their primary key.
+     */
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
+        // clone request and clear items
+        Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
+        BatchGetItemRequest qualifiedBatchGetItemRequest = unqualifiedBatchGetItemRequest.clone();
+        qualifiedBatchGetItemRequest.clearRequestItemsEntries();
+
+        // create a map of physical table names to TableMapping for use when handling the request later
+        Map<String, TableMapping> tableMappingByPhysicalTableName = new HashMap<>();
+
+        // for each table in the batch request, map table name and keys
+        unqualifiedKeysByTable.forEach((unqualifiedTableName, unqualifiedKeys) -> {
+            // map table name
+            TableMapping tableMapping = getTableMapping(unqualifiedTableName);
+            String qualifiedTableName = tableMapping.getPhysicalTable().getTableName();
+            tableMappingByPhysicalTableName.put(qualifiedTableName, tableMapping);
+            // map key
+            qualifiedBatchGetItemRequest.addRequestItemsEntry(
+                qualifiedTableName,
+                new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream().map(
+                    key -> tableMapping.getItemMapper().apply(key)).collect(Collectors.toList())));
+        });
+
+        // batch get
+        final BatchGetItemResult qualifiedBatchGetItemResult = getAmazonDynamoDb()
+            .batchGetItem(qualifiedBatchGetItemRequest);
+        Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = qualifiedBatchGetItemResult
+                .getResponses();
+
+        // map result
+        final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
+        unqualifiedBatchGetItemResult.clearResponsesEntries();
+        qualifiedItemsByTable.forEach((qualifiedTableName, qualifiedItems) -> {
+            TableMapping tableMapping = tableMappingByPhysicalTableName.get(qualifiedTableName);
+            unqualifiedBatchGetItemResult.addResponsesEntry(
+                tableMapping.getVirtualTable().getTableName(),
+                qualifiedItems.stream().map(keysAndAttributes ->
+                    tableMapping.getItemMapper().reverse(keysAndAttributes)).collect(Collectors.toList()));
+        });
+
+        return unqualifiedBatchGetItemResult;
+    }
+
+    /**
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -169,8 +217,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // map key
         getItemRequest.setKey(tableMapping.getItemMapper().apply(getItemRequest.getKey()));
 
-        // map result
+        // get
         GetItemResult getItemResult = getAmazonDynamoDb().getItem(getItemRequest);
+
+        // map result
         if (getItemResult.getItem() != null) {
             getItemResult.withItem(tableMapping.getItemMapper().reverse(getItemResult.getItem()));
         }

@@ -102,8 +102,8 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 
 ### Methods
 
- * All implementations support the following methods `createTable`, `describeTable`, `deleteTable`, `getItem`, `putItem`, `scan`, and `query`.
- * The following methods are NOT supported: `updateTable`, `batchGetItem`, `batchWriteItem`, `createBackup`, `deleteBackup`, `listBackups`, `restoreTableFromBackup`, `createGlobalTable`, `updateGlobalTable`, `describeGlobalTable`, `listGlobalTables`, `describeContinuousBackups`, `describeLimits`, `describeTimeToLive`, `updateTimeToLive`, `listTagsOfResource`, `tagResource`, `untagResource`, `getCachedResponseMetadata`, `waiters`.
+ * All implementations support the following methods `createTable`, `describeTable`, `deleteTable`, `getItem`, `batchGetItem`, `putItem`, `scan`, and `query`.
+ * The following methods are NOT supported: `updateTable`, `batchWriteItem`, `createBackup`, `deleteBackup`, `listBackups`, `restoreTableFromBackup`, `createGlobalTable`, `updateGlobalTable`, `describeGlobalTable`, `listGlobalTables`, `describeContinuousBackups`, `describeLimits`, `describeTimeToLive`, `updateTimeToLive`, `listTagsOfResource`, `tagResource`, `untagResource`, `getCachedResponseMetadata`, `waiters`.
  * `ScanRequest` and `QueryRequest` calls currently only support EQ conditions.
  * All `SharedTable*` implementations...
    * Table Primary Keys: Currently, this implementation supports tables with a primary key containing only a `HASH` field of type `STRING`, or a table containing a `HASH` field and a `RANGE` field both of type `STRING`
@@ -124,9 +124,10 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 - **v0.9.6** Added `listStreams()` support
 - **v0.9.7** Bug fixes
 - **v0.9.8** Replaced `ByIndex` implementation with `SharedTable`
+- **v0.9.9** Support for `batchGetItem`
 
 ## Backlog
 
-- Additional support for the remainder of the api for all 3 impls.
+- Additional support for the remainder of the API for all 3 impls.
 - Add support for updateTable with table definition invalidation and/or cache timeouts.
 - Add support for choosing using `LSI` when there is a `GSI` with matching key schema data types.
