@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-/*
+/**
  * Holds the state of mapping of a virtual table to a physical table.  It provides methods for retrieving the virtual
  * and physical descriptions, the mapping of fields from virtual to physical and back.
  *

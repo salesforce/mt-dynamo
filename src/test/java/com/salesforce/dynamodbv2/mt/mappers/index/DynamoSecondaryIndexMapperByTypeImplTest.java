@@ -21,7 +21,9 @@ import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import org.junit.jupiter.api.Test;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class DynamoSecondaryIndexMapperByTypeImplTest {

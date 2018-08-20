@@ -13,7 +13,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Finds the physical index matching the virtual provided index by matching HASH and RANGE keys by data type.
  *
  * @author msgroi

@@ -15,7 +15,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 
-/*
+/**
  * Adds and removes prefixes to fields based on the tenant context.
  *
  * @author msgroi

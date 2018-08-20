@@ -13,7 +13,9 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import org.junit.jupiter.api.Test;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class FieldPrefixFunctionTest {

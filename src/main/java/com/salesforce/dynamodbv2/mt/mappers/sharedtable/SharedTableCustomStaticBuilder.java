@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Maps virtual tables to a set of physical tables by comparing the types of the elements of the virtual table'
  * s primary key against the corresponding types on the physical tables.  The list of physical tables is provided
  * to the builder when it is constructed along with a TableMapping implementation.  When build() is called on the
@@ -31,11 +31,11 @@ import java.util.stream.Collectors;
  * index on a virtual table referenced by a client, there must exist a secondary index on the corresponding physical
  * table of the same type(global vs local) where the primary keys are compatible.
  *
- * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
+ * <p>See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
- * It requires ...
+ * <p>It requires ...
  *
- * - an AmazonDynamoDB instance
+ * <p>- an AmazonDynamoDB instance
  * - a multi-tenant context
  * - array of CreateTableRequest's: CreateTableRequest's representing the physical tables to be created when
  *   build() is called.
@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
  *   representing the virtual table being referenced by the API client and returns the name of a physical table.
  *   The table name returned must match one of the names of the tables passed in in the array of CreateTableRequest's.
  *
- * See SharedTableCustomDynamicBuilder for optional arguments and limitations.
+ * <p>See SharedTableCustomDynamicBuilder for optional arguments and limitations.
  */
 public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuilder {
 

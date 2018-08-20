@@ -21,36 +21,36 @@ import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import java.util.Optional;
 
-/*
+/**
  * Allows a developer to control the mapping of virtual to physical tables by providing a CreateTableRequestFactory.
  * Hash keys in the physical table will be appropriately prefixed with tenant context, providing logical separation
  * of tenants even if they are mapped to the same physical table.
  *
- * It also requires that the types of each element of the virtual table's primary key are compatible with that of
+ * <p>It also requires that the types of each element of the virtual table's primary key are compatible with that of
  * the physical table.
  *
- * The default behavior if not overridden by providing an alternate DynamoSecondaryIndexMapper implementation
+ * <p>The default behavior if not overridden by providing an alternate DynamoSecondaryIndexMapper implementation
  * requires that each secondary index on the virtual table has a corresponding secondary index on the physical table
  * with the same name where types are compatible.
  *
- * Table and Secondary Index Primary Key Compatibility
+ * <p>Table and Secondary Index Primary Key Compatibility
  *
- * A virtual table's primary key or secondary index's primary key is considered compatible with a physical table's
+ * <p>A virtual table's primary key or secondary index's primary key is considered compatible with a physical table's
  * primary key if the physical primary key has a hashkey of type S and either, range keys that are undefined on both
  * the virtual and physical tables or they are defined on both and have types that match.
  *
- * The builder required ...
+ * <p>The builder required ...
  *
- * - A CreateTableRequestFactory implementation which allows the client to map virtual CreateTableRequest's to
+ * <p>- A CreateTableRequestFactory implementation which allows the client to map virtual CreateTableRequest's to
  * physical CreateTableRequests.  By default, requests that reference secondary indexes will be mapped to their
  * counterpart on the virtual table using DynamoSecondaryIndexMapperByNameImpl, which expects that any secondary
  * index name referenced in the virtual table exists by name in the physical table.
  * - an AmazonDynamoDB instance
  * - a multi-tenant context
  *
- * Optionally ...
+ * <p>Optionally ...
  *
- * - DynamoSecondaryIndexMapper: Allows customization of mapping of virtual to physical
+ * <p>- DynamoSecondaryIndexMapper: Allows customization of mapping of virtual to physical
  *   secondary indexes.  Two implementations are provided, DynamoSecondaryIndexMapperByNameImpl and
  *   DynamoSecondaryIndexMapperByTypeImpl.  See Javadoc there for details.
  *   Default: DynamoSecondaryIndexMapperByNameImpl.
@@ -66,16 +66,16 @@ import java.util.Optional;
  * - truncateOnDeleteTable: a boolean to indicate whether all of a table's data should be deleted when a table is
  *   dropped, default: FALSE
  *
- * Limitations ...
+ * <p>Limitations ...
  *
- * Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
+ * <p>Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
  *
- * * See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
+ * <p>* See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
  * ** Updates on gsi hashkey's are unsupported
  * *** Only EQ conditions are supported.
  *
- * Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield
+ * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield
  * unexpected results.
  */
 public class SharedTableCustomDynamicBuilder {

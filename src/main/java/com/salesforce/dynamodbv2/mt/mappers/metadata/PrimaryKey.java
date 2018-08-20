@@ -11,7 +11,9 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
 import java.util.Optional;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public class PrimaryKey {

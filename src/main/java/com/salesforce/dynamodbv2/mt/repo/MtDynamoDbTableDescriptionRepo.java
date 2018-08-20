@@ -38,10 +38,10 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
  *
- * The AmazonDynamoDb that it uses must not, itself, be a MtAmazonDynamoDb* instance.  MtAmazonDynamoDbLogger
+ * <p>The AmazonDynamoDb that it uses must not, itself, be a MtAmazonDynamoDb* instance.  MtAmazonDynamoDbLogger
  * is supported.
  *
  * @author msgroi

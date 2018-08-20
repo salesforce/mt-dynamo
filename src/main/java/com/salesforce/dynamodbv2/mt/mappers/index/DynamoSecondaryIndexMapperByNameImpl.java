@@ -9,7 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.index;
 
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 
-/*
+/**
  * Finds the physical index matching the virtual provided index by matching by index name.
  *
  * @author msgroi

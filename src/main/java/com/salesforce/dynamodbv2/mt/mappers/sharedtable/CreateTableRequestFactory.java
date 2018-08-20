@@ -13,10 +13,10 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
+/**
  * Allows a client to provide a custom mapping of virtual CreateTableRequest's to physical ones.
  *
- * See TableMappingFactory for details.
+ * <p>See TableMappingFactory for details.
  *
  * @author msgroi
  */

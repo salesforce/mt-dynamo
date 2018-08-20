@@ -34,7 +34,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Maps query and scan requests against virtual tables to their physical table counterpart according to the provided
  * TableMapping, delegating field mapping to the provided FieldMapper.
  *

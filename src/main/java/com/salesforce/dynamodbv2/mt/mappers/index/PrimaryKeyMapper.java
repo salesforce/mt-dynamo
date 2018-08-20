@@ -5,7 +5,9 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 
 import java.util.List;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 public interface PrimaryKeyMapper {

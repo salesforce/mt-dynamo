@@ -20,7 +20,9 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class ItemMapperTest {

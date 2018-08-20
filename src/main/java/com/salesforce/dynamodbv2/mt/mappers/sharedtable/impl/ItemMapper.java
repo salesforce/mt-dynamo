@@ -15,7 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/*
+/**
  * Maps items representing records in virtual tables so they can be read from and written to their physical table
  * counterpart according to the provided TableMapping, delegating field prefixing to the provided FieldMapper.
  * The apply() method is used to map keys in getItem, putItem, updateItem, deleteItem and for mapping item responses

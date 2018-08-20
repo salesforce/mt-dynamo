@@ -15,7 +15,7 @@ import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
 import java.util.List;
 import java.util.Optional;
 
-/*
+/**
  * Interface that allows DynamoTableDescriptionImpl's and CreateTableRequests to be used interchangeably.
  *
  * @author msgroi

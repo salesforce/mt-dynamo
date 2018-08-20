@@ -41,7 +41,9 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 
-/*
+/**
+ * TODO: write Javadoc.
+ *
  * @author msgroi
  */
 class TableMappingTest {
