@@ -2,12 +2,12 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Supplier;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 /**
  * Applies mapping and prefixing to condition query and conditional update expressions.
@@ -79,14 +79,18 @@ class ConditionMapper {
                 .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny()
                 : Optional.empty(); // Optional[#field1]
             if (keyFieldName.isPresent() && !keyFieldName.get().equals(NAME_PLACEHOLDER)) {
-                String virtualValuePlaceholder = findVirtualValuePlaceholder(primaryExpression, filterExpression,
-                    keyFieldName.get()); // ":value"
-                AttributeValue virtualAttr =
-                        request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkvalue,}
-                AttributeValue physicalAttr = fieldMapping.isContextAware()
-                        ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkvalue,}
-                        : virtualAttr;
-                request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+                Optional<String> virtualValuePlaceholderOpt =
+                    findVirtualValuePlaceholder(primaryExpression, filterExpression, keyFieldName.get()); // ":value"
+                if (virtualValuePlaceholderOpt.isPresent()) {
+                    String virtualValuePlaceholder = virtualValuePlaceholderOpt.get();
+                    AttributeValue virtualAttr =
+                            request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkvalue,}
+                    AttributeValue physicalAttr =
+                        fieldMapping.isContextAware()
+                                ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkvalue,}
+                                : virtualAttr;
+                    request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
+                }
                 request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
             }
         }
@@ -142,14 +146,15 @@ class ConditionMapper {
      * primary expression, then in the filterExpression.
      */
     @VisibleForTesting
-    static String findVirtualValuePlaceholder(String primaryExpression,
+    static Optional<String> findVirtualValuePlaceholder(String primaryExpression,
         String filterExpression,
         String keyFieldName) {
-        return findVirtualValuePlaceholder(primaryExpression, keyFieldName)
-            .orElseGet((Supplier<String>) () -> findVirtualValuePlaceholder(filterExpression, keyFieldName)
-                .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field " + keyFieldName + " not found in either conditionExpression="
-                        + primaryExpression + ", or filterExpression=" + filterExpression)));
+        return Stream.of(
+            findVirtualValuePlaceholder(primaryExpression, keyFieldName),
+            findVirtualValuePlaceholder(filterExpression, keyFieldName))
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .findFirst();
     }
 
     /**
@@ -158,11 +163,12 @@ class ConditionMapper {
      * <p>Comments show expected variable values with a sample set of inputs.
      */
     @VisibleForTesting
-    static Optional<String> findVirtualValuePlaceholder(
-            String conditionExpression, // "#field1 = :value"
-            String keyFieldName) { // "#field1"
-        String toFind = keyFieldName + " = "; // "#field1 = "
-        int start = conditionExpression.indexOf(toFind); // 0
+    static Optional<String> findVirtualValuePlaceholder(String conditionExpression, String keyFieldName) {
+        if (conditionExpression == null) {
+            return Optional.empty();
+        }
+        String toFind = keyFieldName + " = ";
+        int start = conditionExpression.indexOf(toFind);
         if (start == -1) {
             return Optional.empty();
         }

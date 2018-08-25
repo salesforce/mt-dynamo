@@ -4,8 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -422,6 +421,22 @@ class ConditionMapperTest {
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
                                 .attributeValues(":value", "ctx1.testgsi.indexFieldValue").build()
+                ),
+                // map attribute_exists expression
+                new KeyConditionTestInvocation(
+                    new KeyConditionTestInputs()
+                        .org("ctx")
+                        .virtualTableName("virtualTable")
+                        .attributeNames("#field1", "virtualhk")
+                        .fieldMapping(new FieldMapping(new Field("virtualhk", S), new Field("physicalhk", S),
+                            "virtualTable",
+                            "null",
+                            TABLE,
+                            true))
+                        .primaryExpression("attribute_exists(#field1)")
+                        .filterExpression(null).build(),
+                    new KeyConditionTestExpected()
+                        .attributeNames("#field1", "physicalhk").build()
                 )
         ).stream();
     }
@@ -432,7 +447,9 @@ class ConditionMapperTest {
     }
 
     private static Map<String, AttributeValue> toAttributeValues(String... attributeValues) {
-        return IntStream.range(0, attributeValues.length / 2).map(i -> i * 2)
+        return attributeValues == null
+            ? new HashMap<>()
+            : IntStream.range(0, attributeValues.length / 2).map(i -> i * 2)
                 .collect(HashMap::new, (m,i) -> m.put(attributeValues[i],
                         new AttributeValue().withS(attributeValues[i + 1])), Map::putAll);
     }
@@ -475,23 +492,20 @@ class ConditionMapperTest {
     void findVirtualValuePlaceholderInEitherExpression() {
         assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue",
-            "#hk = :currentValue", "#hk"));
+            "#hk = :currentValue", "#hk").get());
         assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#hk"));
+                "#hk").get());
         assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#rk"));
-        try {
-            ConditionMapper.findVirtualValuePlaceholder(
-                    "set #someField = :newValue",
-                    "#hk = :currentValue", "#invalid");
-            fail("expected IllegalArgumentException not encountered");
-        } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().startsWith("field #invalid not found"));
-        }
+                "#rk").get());
+        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+                "set #someField = :newValue",
+                "#hk = :currentValue", "#invalid").isPresent());
+        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+            null, null, "#invalid").isPresent());
     }
 
     @Test
@@ -504,6 +518,8 @@ class ConditionMapperTest {
             "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").get());
         assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").get());
+        assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
+            null, null));
     }
 
 }

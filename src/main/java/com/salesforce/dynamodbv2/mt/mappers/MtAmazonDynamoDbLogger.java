@@ -83,8 +83,12 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         return super.createTable(createTableRequest);
     }
 
+    /**
+     * deleteItem logging wrapper.
+     */
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
-        log("deleteItem", tableToString(deleteItemRequest.getTableName()), keyToString(deleteItemRequest.getKey()));
+        log("deleteItem", tableToString(deleteItemRequest.getTableName()),
+                deleteItemRequestToString(deleteItemRequest));
         return super.deleteItem(deleteItemRequest);
     }
 
@@ -220,6 +224,19 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             + (updateRequest.getExpressionAttributeValues() != null
                 ? ", values=" + updateRequest.getExpressionAttributeValues()
                 : "");
+    }
+
+    private String deleteItemRequestToString(DeleteItemRequest deleteItemRequest) {
+        return "key=" + deleteItemRequest.getKey()
+            + (deleteItemRequest.getConditionExpression() != null
+            ? ", conditionExpression=" + deleteItemRequest.getConditionExpression()
+            : "")
+            + (deleteItemRequest.getExpressionAttributeNames() != null
+            ? ", names=" + deleteItemRequest.getExpressionAttributeNames()
+            : "")
+            + (deleteItemRequest.getExpressionAttributeValues() != null
+            ? ", values=" + deleteItemRequest.getExpressionAttributeValues()
+            : "");
     }
 
     private void log(String method, String... messages) {
