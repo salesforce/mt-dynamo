@@ -57,22 +57,25 @@ class ConditionMapper {
     @VisibleForTesting
     void applyKeyConditionToField(RequestWrapper request, // TODO msgroi unit test
         FieldMapping fieldMapping,
-        String primaryExpression,
+        String primaryExpression, // "#field1 = :value"
         String filterExpression) {
         if (primaryExpression != null) {
-            String virtualAttrName = fieldMapping.getSource().getName();
-            Map<String, String> expressionAttrNames = request.getExpressionAttributeNames();
+            String virtualAttrName = fieldMapping.getSource().getName(); // "virtualhk"
+            Map<String, String> expressionAttrNames = request.getExpressionAttributeNames(); // "#field1" -> "virtualhk"
             Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny()
-                : Optional.empty();
+                : Optional.empty(); // Optional[#field1]
             if (keyFieldName.isPresent() && !keyFieldName.get().equals(NAME_PLACEHOLDER)) {
                 Optional<String> virtualValuePlaceholderOpt =
-                    findVirtualValuePlaceholder(primaryExpression, filterExpression, keyFieldName.get());
+                    findVirtualValuePlaceholder(primaryExpression, filterExpression, keyFieldName.get()); // ":value"
                 if (virtualValuePlaceholderOpt.isPresent()) {
                     String virtualValuePlaceholder = virtualValuePlaceholderOpt.get();
-                    AttributeValue virtualAttr = request.getExpressionAttributeValues().get(virtualValuePlaceholder);
+                    AttributeValue virtualAttr =
+                            request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkvalue,}
                     AttributeValue physicalAttr =
-                        fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, virtualAttr) : virtualAttr;
+                        fieldMapping.isContextAware()
+                                ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkvalue,}
+                                : virtualAttr;
                     request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
                 }
                 request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
