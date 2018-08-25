@@ -26,6 +26,10 @@ class ConditionMapper {
         this.fieldMapper = fieldMapper;
     }
 
+    /**
+     * Extracts literals referenced in primary and filter expressions and turns them into references to
+     * expression names and values.
+     */
     void convertFieldNameLiteralsToExpressionNames(RequestWrapper request) {
         Collection<FieldMapping> fieldMappings =
             tableMapping.getAllVirtualToPhysicalFieldMappingsDeduped().values();
@@ -35,7 +39,10 @@ class ConditionMapper {
             convertFieldNameLiteralsToExpressionNamesInternal(fieldMappings, request.getFilterExpression(), request));
     }
 
-    void apply(RequestWrapper request) { // TODO msgroi unit test
+    /**
+     * For each virtual-physical field mapping, maps field names and applies field value prefixing for tenant isolation.
+     */
+    void apply(RequestWrapper request) {
         convertFieldNameLiteralsToExpressionNames(request);
         tableMapping.getAllVirtualToPhysicalFieldMappingsDeduped().values().forEach(
             fieldMapping -> applyKeyConditionToField(request, fieldMapping));
@@ -46,7 +53,7 @@ class ConditionMapper {
      * operand in the primary expression or filter expression, gets its value in the expression attribute values,
      * applies the mapping, and sets the physical name of the field to that of the target field.
      */
-    void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) { // TODO msgroi unit test
+    void applyKeyConditionToField(RequestWrapper request, FieldMapping fieldMapping) {
         applyKeyConditionToField(
             request,
             fieldMapping,
@@ -54,8 +61,14 @@ class ConditionMapper {
             request.getFilterExpression());
     }
 
+    /**
+     * For a given virtual-physical field mapping, maps field names and applies field value prefixing for
+     * tenant isolation.
+     *
+     * <p>Comments show expected variable values with a sample set of inputs.
+     */
     @VisibleForTesting
-    void applyKeyConditionToField(RequestWrapper request, // TODO msgroi unit test
+    void applyKeyConditionToField(RequestWrapper request,
         FieldMapping fieldMapping,
         String primaryExpression, // "#field1 = :value"
         String filterExpression) {
@@ -83,29 +96,42 @@ class ConditionMapper {
         }
     }
 
-    private String convertFieldNameLiteralsToExpressionNamesInternal(Collection<FieldMapping> fieldMappings,
-        String conditionExpression,
+    /**
+     * Extracts literals referenced in expressions and turns them into references to expression names and values.
+     *
+     * <p>Comments show expected variable values with a sample set of inputs.
+     */
+    private String convertFieldNameLiteralsToExpressionNamesInternal(
+        Collection<FieldMapping> fieldMappings, // source = "field", target="field"
+        String conditionExpression, // "field = :value and field2 = :value2 and field = :value3"
         RequestWrapper request) {
         String newConditionExpression = conditionExpression;
         if (conditionExpression != null) {
             AtomicInteger counter = new AtomicInteger(1);
             for (FieldMapping fieldMapping : fieldMappings) {
-                String virtualFieldName = fieldMapping.getSource().getName();
-                String toFind = " " + virtualFieldName + " =";
-                int start = (" " + newConditionExpression).indexOf(toFind); // TODO add support for non-EQ operators
+                String virtualFieldName = fieldMapping.getSource().getName(); // "field"
+                String toFind = " " + virtualFieldName + " ="; // " field ="
+                int start = (" " + newConditionExpression).indexOf(toFind); // 0 - TODO add support for non-EQ operators
                 while (start >= 0) {
-                    String fieldLiteral = newConditionExpression.substring(start, start + virtualFieldName.length());
-                    String fieldPlaceholder = getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter);
+                    String fieldLiteral =
+                            newConditionExpression.substring(start, start + virtualFieldName.length()); // "field"
+                    String fieldPlaceholder =
+                            getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter); // "#field1"
                     newConditionExpression = conditionExpression
                         .replaceAll(fieldLiteral + " ", fieldPlaceholder + " ");
+                    // "#field1 = :value and field2 = :value2 and #field1 = :value3"
                     request.putExpressionAttributeName(fieldPlaceholder, fieldLiteral);
-                    start = (" " + newConditionExpression).indexOf(toFind);
+                    start = (" " + newConditionExpression).indexOf(toFind); // -1
                 }
             }
         }
         return newConditionExpression;
     }
 
+    /*
+     * Generates a field name placeholder starting with '#field' and suffixed with an incrementing number skipping
+     * any reference that already exists in the expressionAttributeNames map.
+     */
     @VisibleForTesting
     static String getNextFieldPlaceholder(Map<String, String> expressionAttributeNames, AtomicInteger counter) {
         String fieldPlaceholderCandidate = "#field" + counter.get();
@@ -115,7 +141,7 @@ class ConditionMapper {
         return fieldPlaceholderCandidate;
     }
 
-    /*
+    /**
      * Finds the value in the right-hand side operand where the left-hand operator is a given field, first in the
      * primary expression, then in the filterExpression.
      */
@@ -131,8 +157,10 @@ class ConditionMapper {
             .findFirst();
     }
 
-    /*
+    /**
      * Finds the value in the right-hand side operand of an expression where the left-hand operator is a given field.
+     *
+     * <p>Comments show expected variable values with a sample set of inputs.
      */
     @VisibleForTesting
     static Optional<String> findVirtualValuePlaceholder(String conditionExpression, String keyFieldName) {
@@ -144,9 +172,9 @@ class ConditionMapper {
         if (start == -1) {
             return Optional.empty();
         }
-        int end = conditionExpression.indexOf(" ", start + toFind.length());
+        int end = conditionExpression.indexOf(" ", start + toFind.length()); // -1
         return Optional.of(conditionExpression.substring(start + toFind.length(),
-            end == -1 ? conditionExpression.length() : end)); // TODO add support for non-EQ operators
+            end == -1 ? conditionExpression.length() : end)); // ":value" // TODO add support for non-EQ operators
     }
 
 }
