@@ -72,7 +72,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
-        final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::table)
+        final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::tableToString)
                 .collect(Collectors.joining(",", "[", "]"));
         log("batchGetItem", tablesAsString, batchGetItemRequest.toString());
         return super.batchGetItem(batchGetItemRequest);
