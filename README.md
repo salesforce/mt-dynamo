@@ -120,12 +120,7 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 
 ## Release Notes
 
-- **v0.9.3** First revision
-- **v0.9.6** Added `listStreams()` support
-- **v0.9.7** Bug fixes
-- **v0.9.8** Replaced `ByIndex` implementation with `SharedTable`
-- **v0.9.9** <Skipped>
-- **v0.9.10** Support for `batchGetItem`
+See [CHANGELOG.md](CHANGELOG.md)
 
 ## Backlog
 
