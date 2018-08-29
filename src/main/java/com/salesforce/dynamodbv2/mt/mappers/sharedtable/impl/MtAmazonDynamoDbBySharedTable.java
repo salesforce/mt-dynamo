@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
+import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -180,6 +181,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // map key
         deleteItemRequest.setKey(tableMapping.getItemMapper().apply(deleteItemRequest.getKey()));
+
+        // map conditions
+        tableMapping.getConditionMapper().apply(new DeleteItemRequestWrapper(deleteItemRequest));
 
         // delete
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
@@ -363,9 +367,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // map key
         updateItemRequest.setKey(tableMapping.getItemMapper().apply(updateItemRequest.getKey()));
 
-        // map attributeUpdates // TODO msgroi todo
+        // map attributeUpdates // TODO todo
 
-        // map updateCondition // TODO msgroi todo
+        // map conditions
+        tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
@@ -493,4 +498,182 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
+
+    private static class UpdateItemRequestWrapper implements RequestWrapper {
+
+        private final UpdateItemRequest updateItemRequest;
+
+        UpdateItemRequestWrapper(UpdateItemRequest updateItemRequest) {
+            this.updateItemRequest = updateItemRequest;
+        }
+
+        @Override
+        public Map<String, String> getExpressionAttributeNames() {
+            return updateItemRequest.getExpressionAttributeNames();
+        }
+
+        @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (updateItemRequest.getExpressionAttributeNames() == null) {
+                updateItemRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            updateItemRequest.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExpressionAttributeValues() {
+            if (updateItemRequest.getExpressionAttributeValues() == null) {
+                updateItemRequest.setExpressionAttributeValues(new HashMap<>());
+            }
+            return updateItemRequest.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            updateItemRequest.getExpressionAttributeValues().put(key, value);
+        }
+
+        @Override
+        public String getPrimaryExpression() {
+            return updateItemRequest.getUpdateExpression();
+        }
+
+        @Override
+        public void setPrimaryExpression(String expression) {
+            updateItemRequest.setUpdateExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return updateItemRequest.getConditionExpression();
+        }
+
+        @Override
+        public void setFilterExpression(String conditionalExpression) {
+            updateItemRequest.setConditionExpression(conditionalExpression);
+        }
+
+        @Override
+        public String getIndexName() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setIndexName(String indexName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
+    private static class DeleteItemRequestWrapper implements RequestWrapper {
+
+        private final DeleteItemRequest deleteItemRequest;
+
+        DeleteItemRequestWrapper(DeleteItemRequest deleteItemRequest) {
+            this.deleteItemRequest = deleteItemRequest;
+            if (this.deleteItemRequest.getExpressionAttributeNames() != null) {
+                this.deleteItemRequest.setExpressionAttributeNames(new HashMap<>(this.getExpressionAttributeNames()));
+            }
+            if (this.deleteItemRequest.getExpressionAttributeValues() != null) {
+                this.deleteItemRequest.setExpressionAttributeValues(new HashMap<>(this.getExpressionAttributeValues()));
+            }
+        }
+
+        @Override
+        public Map<String, String> getExpressionAttributeNames() {
+            return deleteItemRequest.getExpressionAttributeNames();
+        }
+
+        @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (deleteItemRequest.getExpressionAttributeNames() == null) {
+                deleteItemRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            deleteItemRequest.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExpressionAttributeValues() {
+            if (deleteItemRequest.getExpressionAttributeValues() == null) {
+                deleteItemRequest.setExpressionAttributeValues(new HashMap<>());
+            }
+            return deleteItemRequest.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            deleteItemRequest.getExpressionAttributeValues().put(key, value);
+        }
+
+        @Override
+        public String getPrimaryExpression() {
+            return deleteItemRequest.getConditionExpression();
+        }
+
+        @Override
+        public void setPrimaryExpression(String expression) {
+            deleteItemRequest.setConditionExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return null;
+        }
+
+        @Override
+        public void setFilterExpression(String conditionalExpression) {
+        }
+
+        @Override
+        public String getIndexName() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setIndexName(String indexName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
 }

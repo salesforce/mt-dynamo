@@ -72,54 +72,62 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
-        final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::table)
+        final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::tableToString)
                 .collect(Collectors.joining(",", "[", "]"));
         log("batchGetItem", tablesAsString, batchGetItemRequest.toString());
         return super.batchGetItem(batchGetItemRequest);
     }
 
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        log("createTable", table(createTableRequest.getTableName()), createTableRequest.toString());
+        log("createTable", tableToString(createTableRequest.getTableName()), createTableRequest.toString());
         return super.createTable(createTableRequest);
     }
 
+    /**
+     * deleteItem logging wrapper.
+     */
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
-        log("deleteItem", table(deleteItemRequest.getTableName()), key(deleteItemRequest.getKey()));
+        log("deleteItem", tableToString(deleteItemRequest.getTableName()),
+                deleteItemRequestToString(deleteItemRequest));
         return super.deleteItem(deleteItemRequest);
     }
 
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
-        log("deleteTable", table(deleteTableRequest.getTableName()));
+        log("deleteTable", tableToString(deleteTableRequest.getTableName()));
         return super.deleteTable(deleteTableRequest);
     }
 
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
-        log("describeTable", table(describeTableRequest.getTableName()));
+        log("describeTable", tableToString(describeTableRequest.getTableName()));
         return super.describeTable(describeTableRequest);
     }
 
     public GetItemResult getItem(GetItemRequest getItemRequest) {
-        log("getItem", table(getItemRequest.getTableName()), key(getItemRequest.getKey()));
+        log("getItem", tableToString(getItemRequest.getTableName()), keyToString(getItemRequest.getKey()));
         return super.getItem(getItemRequest);
     }
 
     public PutItemResult putItem(PutItemRequest putItemRequest) {
-        log("putItem", table(putItemRequest.getTableName()), item(putItemRequest.getItem()));
+        log("putItem", tableToString(putItemRequest.getTableName()), itemToString(putItemRequest.getItem()));
         return super.putItem(putItemRequest);
     }
 
     public QueryResult query(QueryRequest queryRequest) {
-        log("query", table(queryRequest.getTableName()), queryRequest(queryRequest));
+        log("query", tableToString(queryRequest.getTableName()), queryRequestToString(queryRequest));
         return super.query(queryRequest);
     }
 
     public ScanResult scan(ScanRequest scanRequest) {
-        log("scan", table(scanRequest.getTableName()), scanRequest(scanRequest));
+        log("scan", tableToString(scanRequest.getTableName()), scanRequestToString(scanRequest));
         return super.scan(scanRequest);
     }
 
+    /**
+     * updateItem logging wrapper.
+     */
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
-        log("updateItem", table(updateItemRequest.getTableName()), updateItemRequest(updateItemRequest));
+        log("updateItem", tableToString(updateItemRequest.getTableName()),
+                updateItemRequestToString(updateItemRequest));
         return super.updateItem(updateItemRequest);
     }
 
@@ -171,19 +179,19 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
 
     }
 
-    private String table(String tableName) {
+    private String tableToString(String tableName) {
         return "table=" + tableName;
     }
 
-    private String key(Map<String, AttributeValue> key) {
+    private String keyToString(Map<String, AttributeValue> key) {
         return "key=" + key;
     }
 
-    private String item(Map<String, AttributeValue> item) {
+    private String itemToString(Map<String, AttributeValue> item) {
         return "item=" + item;
     }
 
-    private String queryRequest(QueryRequest queryRequest) {
+    private String queryRequestToString(QueryRequest queryRequest) {
         return "keyConditionExpression=" + queryRequest.getKeyConditionExpression()
             + (queryRequest.getFilterExpression() != null
             ? ", filterExpression=" + queryRequest.getFilterExpression()
@@ -193,13 +201,13 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             + (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
     }
 
-    private String scanRequest(ScanRequest scanRequest) {
+    private String scanRequestToString(ScanRequest scanRequest) {
         return "filterExpression=" + scanRequest.getFilterExpression()
             + ", names=" + scanRequest.getExpressionAttributeNames()
             + ", values=" + scanRequest.getExpressionAttributeValues();
     }
 
-    private String updateItemRequest(UpdateItemRequest updateRequest) {
+    private String updateItemRequestToString(UpdateItemRequest updateRequest) {
         return (updateRequest.getUpdateExpression() != null
                 ? ", updateExpression=" + updateRequest.getUpdateExpression()
                 : "")
@@ -216,6 +224,19 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
             + (updateRequest.getExpressionAttributeValues() != null
                 ? ", values=" + updateRequest.getExpressionAttributeValues()
                 : "");
+    }
+
+    private String deleteItemRequestToString(DeleteItemRequest deleteItemRequest) {
+        return "key=" + deleteItemRequest.getKey()
+            + (deleteItemRequest.getConditionExpression() != null
+            ? ", conditionExpression=" + deleteItemRequest.getConditionExpression()
+            : "")
+            + (deleteItemRequest.getExpressionAttributeNames() != null
+            ? ", names=" + deleteItemRequest.getExpressionAttributeNames()
+            : "")
+            + (deleteItemRequest.getExpressionAttributeValues() != null
+            ? ", values=" + deleteItemRequest.getExpressionAttributeValues()
+            : "");
     }
 
     private void log(String method, String... messages) {
