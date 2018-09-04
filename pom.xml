@@ -155,6 +155,8 @@
 
     <build>
         <plugins>
+            <!-- For an explanation of the necessity of the presence of the junit-platform-surefire-provider dependency,
+                 see the maven-surefire-plugin declaration in the "isolated-tests" profile below. -->
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.22.0</version>
@@ -162,7 +164,7 @@
                     <dependency>
                         <groupId>org.junit.platform</groupId>
                         <artifactId>junit-platform-surefire-provider</artifactId>
-                        <version>1.2.0</version>
+                        <version>1.3.0</version>
                     </dependency>
                 </dependencies>
                 <configuration>
@@ -279,6 +281,12 @@
             <id>isolated-tests</id>
             <build>
                 <plugins>
+                    <!-- As of junit 5.3.0 and maven-surefire-plugin 2.22.0, we should no longer need the following
+                         the junit-platform-surefire-provider dependency here.  However, it appears that, without it,
+                         we lose support for the includeTags/excludeTags feature.  That feature is required to skip the
+                         running of tests with the @Tag("isolated-tests") annotation.  These tests interfere with the
+                         rest of the tests and therefore can only be run on their own via
+                         "mvn clean test -P isolated-tests".  -->
                     <plugin>
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>2.22.0</version>
@@ -286,7 +294,7 @@
                             <dependency>
                                 <groupId>org.junit.platform</groupId>
                                 <artifactId>junit-platform-surefire-provider</artifactId>
-                                <version>1.2.0</version>
+                                <version>1.3.0</version>
                             </dependency>
                             <!--
                                  This dependency works around this(https://github.com/junit-team/junit5/issues/1367) bug
