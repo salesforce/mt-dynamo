@@ -11,7 +11,7 @@
 
     <groupId>com.salesforce.dynamodb</groupId>
     <artifactId>mt-dynamodb</artifactId>
-    <version>0.9.11-SNAPSHOT</version>
+    <version>0.9.11-upgradedkcl-SNAPSHOT</version>
     <name>mt-dynamodb</name>
     <description>Multitenant support for the AWS Java SDK for Amazon DynamoDB</description>
 
@@ -59,9 +59,9 @@
             <version>${aws.sdk.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
+            <groupId>software.amazon.kinesis</groupId>
             <artifactId>amazon-kinesis-client</artifactId>
-            <version>1.9.1</version>
+            <version>2.0.2</version>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>
