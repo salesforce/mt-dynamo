@@ -114,39 +114,7 @@ public class HybridSharedTableBuilder {
         return this;
     }
 
-    private Map<String, CreateTableRequest> virtualTableToCreateTableRequestMap() {
-        return ImmutableMap.of(
-            "Event", buildEventCreateTableRequest(),
-            "Aggregate", buildAggregateCreateTableRequest());
-    }
-
-    private CreateTableRequest buildEventCreateTableRequest() {
-        return new CreateTableRequest()
-            .withTableName("Event")
-            .withAttributeDefinitions(
-                new AttributeDefinition("aggregate_id", ScalarAttributeType.S),
-                new AttributeDefinition("sequence_number", ScalarAttributeType.N))
-            .withKeySchema(new KeySchemaElement("aggregate_id", KeyType.HASH),
-                new KeySchemaElement("sequence_number", KeyType.RANGE))
-            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-            .withStreamSpecification(new StreamSpecification()
-                .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                .withStreamEnabled(true));
-    }
-
-    private CreateTableRequest buildAggregateCreateTableRequest() {
-        return new CreateTableRequest()
-            .withTableName("Aggregate")
-            .withAttributeDefinitions(
-                new AttributeDefinition("id", ScalarAttributeType.S))
-            .withKeySchema(new KeySchemaElement("id", KeyType.HASH))
-            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-            .withStreamSpecification(new StreamSpecification()
-                .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                .withStreamEnabled(true));
-    }
-
-    private class IteratingCreateTableRequestFactory implements CreateTableRequestFactory {
+    private class IteratingCreateTableRequestFactory implements CreateTableRequestFactory { // TODO msgroi unit test
 
         private final List<CreateTableRequestFactory> createTableRequestFactories;
 
