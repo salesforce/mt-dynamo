@@ -29,6 +29,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import java.util.HashMap;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -50,7 +51,7 @@ class QueryMapperTest {
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
-        virtualTableDescription1 -> PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest(),
+        virtualTableDescription1 -> Optional.of(PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest()),
         new DynamoSecondaryIndexMapperByTypeImpl(),
         new MtAmazonDynamoDbContextProvider() {
             @Override

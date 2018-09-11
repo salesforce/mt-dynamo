@@ -179,8 +179,8 @@ class TableMapping {
      */
     private DynamoTableDescription lookupPhysicalTable(DynamoTableDescription virtualTable,
                                                        CreateTableRequestFactory createTableRequestFactory) {
-        return new DynamoTableDescriptionImpl(ofNullable(
-            createTableRequestFactory.getCreateTableRequest(virtualTable))
+        return new DynamoTableDescriptionImpl(
+            createTableRequestFactory.getCreateTableRequest(virtualTable)
             .orElseThrow((Supplier<ResourceNotFoundException>) () ->
                 new ResourceNotFoundException("table " + virtualTable.getTableName() + " is not a supported table")));
     }
