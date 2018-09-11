@@ -37,6 +37,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -144,7 +145,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
              *  example of such an arbitrary mapping.
              */
             if (tableName.endsWith("3")) {
-                return new CreateTableRequest()
+                return Optional.of(new CreateTableRequest()
                     .withTableName(tableName)
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
@@ -163,16 +164,16 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true));
+                        .withStreamEnabled(true)));
             } else {
-                return new CreateTableRequest()
+                return Optional.of(new CreateTableRequest()
                     .withTableName(tableName)
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S))
                     .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true));
+                        .withStreamEnabled(true)));
             }
         };
         AmazonDynamoDB sharedTableCustomDynamic = SharedTableCustomDynamicBuilder.builder()

@@ -1,16 +1,8 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
-import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
@@ -19,7 +11,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -114,7 +105,7 @@ public class HybridSharedTableBuilder {
         return this;
     }
 
-    private class IteratingCreateTableRequestFactory implements CreateTableRequestFactory { // TODO msgroi unit test
+    private class IteratingCreateTableRequestFactory implements CreateTableRequestFactory { // TODO add unit test
 
         private final List<CreateTableRequestFactory> createTableRequestFactories;
 
@@ -122,13 +113,21 @@ public class HybridSharedTableBuilder {
             this.createTableRequestFactories = createTableRequestFactories;
         }
 
+        /**
+         * Iterate through each CreateTableRequestFactory.  If a CreateTableRequestFactory returns a CreateTableRequest,
+         * then return it.  Otherwise, if no CreateTableRequestFactory return a CreateTableRequest, then return
+         * Optional.empty().
+         */
         @Override
-        public CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
-            return createTableRequestFactories.stream().flatMap(
-                (Function<CreateTableRequestFactory, Stream<CreateTableRequest>>) createTableRequestFactory ->
-                    Stream.of(createTableRequestFactory.getCreateTableRequest(virtualTableDescription)))
-                .findFirst().orElseThrow(() ->
-                    new IllegalArgumentException("no mapping found for " + virtualTableDescription.getTableName()));
+        public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+            for (CreateTableRequestFactory createTableRequestFactory : createTableRequestFactories) {
+                Optional<CreateTableRequest> createTableRequestOpt =
+                    createTableRequestFactory.getCreateTableRequest(virtualTableDescription);
+                if (createTableRequestOpt.isPresent()) {
+                    return createTableRequestOpt;
+                }
+            }
+            return Optional.empty();
         }
 
         @Override

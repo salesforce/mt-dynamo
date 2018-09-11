@@ -12,6 +12,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Allows a client to provide a custom mapping of virtual CreateTableRequest's to physical ones.
@@ -23,9 +24,9 @@ import java.util.List;
 public interface CreateTableRequestFactory {
 
     /*
-     * Takes a virtual table description and returns a CreateTableRequest corresponding physical table.
+     * Takes a virtual table description and returns a CreateTableRequest corresponding physical table if one is found.
      */
-    CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription);
+    Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription);
 
     /*
      * Returns a list of CreateTableRequests that will be created when the factory is initialized.

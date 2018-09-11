@@ -169,7 +169,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private static final String RANGE_KEY_FIELD = "rk";
 
     /**
-     * Builds the tables that underly the SharedTable implementation as described in the class level Javadoc above.
+     * Builds the tables that underly the SharedTable implementation as described in the class-level Javadoc.
      */
     static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
         boolean streamsEnabled) {
@@ -273,7 +273,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     /**
      * Implements the request factory that is capable of mapping virtual tables to the physical tables underlying
-     * the SharedTable multitenancy strategy as described in the class-level Javadoc above.
+     * the SharedTable multitenancy strategy as described in the class-level Javadoc.
      */
     static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
 
@@ -295,16 +295,16 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         }
 
         @Override
-        public CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+        public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
             try {
                 boolean hasLsis = !isEmpty(virtualTableDescription.getLsis());
-                return ((CreateTableRequestWrapper) primaryKeyMapper
+                return Optional.of(((CreateTableRequestWrapper) primaryKeyMapper
                     .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
                         .filter(createTableRequest1 -> hasLsis
                             == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
                         .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new)
                         .collect(Collectors.toList())))
-                    .getCreateTableRequest();
+                    .getCreateTableRequest());
             } catch (MappingException e) {
                 throw new RuntimeException(e);
             }
