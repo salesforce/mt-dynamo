@@ -5,9 +5,11 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_STRING_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -50,7 +52,7 @@ class BatchGetTest {
                         testArgument.getHashKeyAttrType(),
                         hashKeyValues.get(1),
                         Optional.empty(),
-                        SOME_OTHER_FIELD_VALUE + TABLE1 + org);
+                        SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org);
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
@@ -62,7 +64,7 @@ class BatchGetTest {
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_VALUE);
                 final Optional<List<String>> rangeKeyValues = Optional
-                        .of(Arrays.asList(RANGE_KEY_VALUE, RANGE_KEY_VALUE + "2"));
+                        .of(Arrays.asList(RANGE_KEY_STRING_VALUE, RANGE_KEY_OTHER_STRING_VALUE));
                 final Set<Map<String, AttributeValue>> gottenItems = TestSupport.batchGetItem(
                         testArgument.getHashKeyAttrType(),
                         testArgument.getAmazonDynamoDb(),
@@ -78,7 +80,7 @@ class BatchGetTest {
                         testArgument.getHashKeyAttrType(),
                         hashKeyValues.get(1),
                         rangeKeyValues.map(rkv -> rkv.get(1)),
-                        SOME_FIELD_VALUE + TABLE3 + org + "2",
+                        SOME_OTHER_FIELD_VALUE + TABLE3 + org,
                         Optional.of(INDEX_FIELD_VALUE));
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });

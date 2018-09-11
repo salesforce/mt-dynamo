@@ -9,9 +9,10 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_STRING_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 
@@ -88,7 +89,7 @@ public class DefaultTestSetup implements TestSetup {
                             .withItem(buildItemWithValues(hashKeyAttrType,
                                     HASH_KEY_OTHER_VALUE,
                                     Optional.empty(),
-                                    SOME_OTHER_FIELD_VALUE + table + org)));
+                                    SOME_OTHER_OTHER_FIELD_VALUE + table + org)));
         } else {
             // (hk-rk tables) add two rows:
             // (hk1, rk1, table-and-org-specific-field-value1)
@@ -100,8 +101,8 @@ public class DefaultTestSetup implements TestSetup {
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
                     .withItem(buildItemWithValues(hashKeyAttrType, HASH_KEY_VALUE,
-                        Optional.of(RANGE_KEY_VALUE + "2"),
-                        SOME_FIELD_VALUE + table + org + "2",
+                        Optional.of(RANGE_KEY_OTHER_STRING_VALUE),
+                        SOME_OTHER_FIELD_VALUE + table + org,
                         Optional.of(INDEX_FIELD_VALUE))));
         }
     }

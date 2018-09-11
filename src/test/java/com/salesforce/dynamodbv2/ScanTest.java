@@ -8,11 +8,11 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_V
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -63,7 +63,7 @@ class ScanTest {
             String filterExpression = "#name = :value";
             Map<String, String> expressionAttrNames = ImmutableMap.of("#name", HASH_KEY_FIELD);
             Map<String, AttributeValue> expressionAttrValues = ImmutableMap
-                .of(":value", createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE));
+                .of(":value", createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE));
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
@@ -85,7 +85,7 @@ class ScanTest {
                 .withScanFilter(ImmutableMap.of(
                     HASH_KEY_FIELD,
                     new Condition().withComparisonOperator(EQ)
-                        .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
+                        .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
                             HASH_KEY_VALUE))))).getItems().get(0),
             is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                 SOME_FIELD_VALUE + TABLE1 + org))));
@@ -126,7 +126,7 @@ class ScanTest {
             final Map<String, AttributeValue> someOtherValue = buildItemWithValues(testArgument.getHashKeyAttrType(),
                     HASH_KEY_OTHER_VALUE,
                     Optional.empty(),
-                    SOME_OTHER_FIELD_VALUE + TABLE1 + org);
+                    SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org);
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
             assertEquals(expectedSet, items);
         });
@@ -179,7 +179,7 @@ class ScanTest {
             // insert some data for another tenant as noise
             for (int i = 0; i < putCount; i++) {
                 amazonDynamoDb.putItem(
-                    new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(
+                    new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(
                         hashKeyAttrType, String.valueOf(i)))));
                 itemKeys.add(i);
             }

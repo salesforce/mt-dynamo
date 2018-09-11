@@ -10,7 +10,7 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static java.lang.String.format;
@@ -226,26 +226,26 @@ class StreamsTest {
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(INSERT.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
-                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org))))))
             .collect(Collectors.toList());
         List<MtRecord> updates = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(MODIFY.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
-                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST, org))))
-                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
+                .withNewImage(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org))))))
             .collect(Collectors.toList());
         List<MtRecord> deletes = orgs.stream().map(org -> new MtRecord().withContext(org)
             .withTableName(format(STREAMS_TABLE, org))
             .withEventName(REMOVE.name())
             .withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE)))
-                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
+                .withKeys(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE)))
+                .withOldImage(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
                     SOME_FIELD, new AttributeValue().withS(format(SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org))))))
             .collect(Collectors.toList());
         return Stream.of(

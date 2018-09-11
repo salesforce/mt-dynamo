@@ -5,14 +5,14 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
@@ -91,7 +91,7 @@ class UpdateTest {
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
                 .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue",
-                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
+                    createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
@@ -110,7 +110,7 @@ class UpdateTest {
                 .withUpdateExpression("set " + SOME_FIELD + " = :newValue")
                 .withConditionExpression(HASH_KEY_FIELD + " = :currentValue")
                 .addExpressionAttributeValuesEntry(":currentValue",
-                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
+                    createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertThat(getItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE1),
@@ -196,8 +196,8 @@ class UpdateTest {
                 .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
                 .addExpressionAttributeNamesEntry("#rk", RANGE_KEY_FIELD)
                 .addExpressionAttributeValuesEntry(":currentHkValue",
-                    createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
-                .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_VALUE))
+                    createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
+                .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_STRING_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),

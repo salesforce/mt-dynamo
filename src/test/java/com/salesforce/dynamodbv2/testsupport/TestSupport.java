@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -36,14 +37,16 @@ public class TestSupport {
     public static final boolean IS_LOCAL_DYNAMO = true;
     public static final int TIMEOUT_SECONDS = 60;
     public static final String HASH_KEY_FIELD = "hashKeyField";
-    // we use a number for HASH_KEY_VALUE since it nicely works with Dynamo's scalar-attribute types (S, N, B)
+    // we use a number for HASH_KEY_VALUE since it nicely works with each of Dynamo's scalar-attribute types (S, N, B)
     public static final String HASH_KEY_VALUE = "1";
     public static final String HASH_KEY_OTHER_VALUE = "2";
     public static final String RANGE_KEY_FIELD = "rangeKeyField";
-    public static final String RANGE_KEY_VALUE = "rangeKeyValue";
+    public static final String RANGE_KEY_STRING_VALUE = "rangeKeyValue";
+    public static final String RANGE_KEY_OTHER_STRING_VALUE = RANGE_KEY_STRING_VALUE + "2";
     public static final String SOME_FIELD = "someField";
     public static final String SOME_FIELD_VALUE = "someValue";
-    public static final String SOME_OTHER_FIELD_VALUE = "someOtherValue";
+    public static final String SOME_OTHER_FIELD_VALUE = SOME_FIELD_VALUE + "2";
+    public static final String SOME_OTHER_OTHER_FIELD_VALUE = "someOtherValue";
     public static final String INDEX_FIELD = "indexField";
     public static final String INDEX_FIELD_VALUE = "indexFieldValue";
 
@@ -72,7 +75,7 @@ public class TestSupport {
         String tableName,
         String hashKeyValue,
         Optional<String> rangeKeyValue) {
-        final AttributeValue hkAttribute = createHkAttribute(hashKeyAttrType, hashKeyValue);
+        final AttributeValue hkAttribute = createAttributeValue(hashKeyAttrType, hashKeyValue);
         Map<String, AttributeValue> keys = getKeys(hkAttribute, rangeKeyValue);
         Map<String, AttributeValue> originalKeys = new HashMap<>(keys);
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
@@ -92,7 +95,7 @@ public class TestSupport {
     public static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
         AmazonDynamoDB amazonDynamoDb,
         String tableName) {
-        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_VALUE));
+        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_STRING_VALUE));
     }
 
     /**
@@ -107,7 +110,7 @@ public class TestSupport {
 
         rangeKeyValue.ifPresent(rkv -> Preconditions.checkArgument(hashKeyValue.size() == rkv.size()));
         final List<AttributeValue> hkAttribute = hashKeyValue.stream()
-                .map(hkv -> createHkAttribute(hashKeyAttrType, hkv))
+                .map(hkv -> createAttributeValue(hashKeyAttrType, hkv))
                 .collect(Collectors.toList());
 
         List<Map<String, AttributeValue>> keys = new ArrayList<>();
@@ -157,9 +160,9 @@ public class TestSupport {
     /**
      * AttributeValue helper methods.
      */
-    public static AttributeValue createHkAttribute(ScalarAttributeType hashKeyAttrType, String value) {
+    public static AttributeValue createAttributeValue(ScalarAttributeType keyAttrType, String value) {
         AttributeValue attr = new AttributeValue();
-        switch (hashKeyAttrType) {
+        switch (keyAttrType) {
             case S:
                 attr.setS(value);
                 return attr;
@@ -170,7 +173,7 @@ public class TestSupport {
                 attr.setB(UTF_8.encode(value));
                 return attr;
             default:
-                throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
+                throw new IllegalArgumentException("unsupported type " + keyAttrType + " encountered");
         }
     }
 
@@ -222,7 +225,7 @@ public class TestSupport {
         String someFieldValue,
         Optional<String> indexFieldValueOpt) {
         Map<String, AttributeValue> item = defaultItem(hashKeyAttrType);
-        item.put(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, hashKeyValue));
+        item.put(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, hashKeyValue));
         rangeKeyValueOpt.ifPresent(rangeKeyValue -> item.put(RANGE_KEY_FIELD, createStringAttribute(rangeKeyValue)));
         item.put(SOME_FIELD, createStringAttribute(someFieldValue));
         indexFieldValueOpt.ifPresent(indexFieldValue -> item.put(INDEX_FIELD, createStringAttribute(indexFieldValue)));
@@ -231,11 +234,23 @@ public class TestSupport {
 
     /**
      * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
-     * someField value to the value provided.
+     * someField value {@code value}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType}; range-key
+     * scalar-attribute type set to S.)
      */
     public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-        String value) {
-        Map<String, AttributeValue> item = defaultHkRkItem(hashKeyAttrType);
+                                                                              String value) {
+        return buildHkRkItemWithSomeFieldValue(hashKeyAttrType, S, value);
+    }
+
+    /**
+     * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
+     * someField value to {@code value}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType}; range-key
+     * scalar-attribute type set based on {@code rangeKeyAttrType}.)
+     */
+    public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
+            ScalarAttributeType rangeKeyAttrType,
+            String value) {
+        Map<String, AttributeValue> item = defaultHkRkItem(hashKeyAttrType, rangeKeyAttrType);
         item.put(SOME_FIELD, createStringAttribute(value));
         return item;
     }
@@ -244,7 +259,7 @@ public class TestSupport {
      * Builds an map representing an item key, setting the HK field and value to the default.
      */
     public static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType,
+        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType,
             HASH_KEY_VALUE)));
     }
 
@@ -253,8 +268,8 @@ public class TestSupport {
      */
     public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
         return new HashMap<>(new HashMap<>(ImmutableMap.of(
-            HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
-            RANGE_KEY_FIELD, createStringAttribute(RANGE_KEY_VALUE))));
+            HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
+            RANGE_KEY_FIELD, createStringAttribute(RANGE_KEY_STRING_VALUE))));
     }
 
     /*
@@ -262,13 +277,14 @@ public class TestSupport {
      */
 
     private static Map<String, AttributeValue> defaultItem(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
+        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
             SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE)));
     }
 
-    private static Map<String, AttributeValue> defaultHkRkItem(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(hashKeyAttrType, HASH_KEY_VALUE),
-            RANGE_KEY_FIELD, createStringAttribute(RANGE_KEY_VALUE),
+    private static Map<String, AttributeValue> defaultHkRkItem(ScalarAttributeType hashKeyAttrType,
+                                                               ScalarAttributeType rangeKeyAttrType) {
+        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
+            RANGE_KEY_FIELD, createAttributeValue(rangeKeyAttrType, RANGE_KEY_STRING_VALUE),
             SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE)));
     }
 
