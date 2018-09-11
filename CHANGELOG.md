@@ -7,7 +7,8 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.11 (unreleased) 
 
-* `SharedTable` support for conditional updates and deletes 
+* `SharedTable` support for conditional updates and deletes
+* Added `HybridSharedTableBuilder`
 
 ## 0.9.10 (August 16, 2018)
 
