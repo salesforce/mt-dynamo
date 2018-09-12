@@ -27,6 +27,11 @@ public class AmazonDynamoDbLocal {
         return localAmazonDynamoDb;
     }
 
+    public static AmazonDynamoDBStreams getAmazonDynamoDBStreamsLocal() {
+        initialize();
+        return localAmazonDynamoDbStreams;
+    }
+
     private static void initialize() {
         if (localAmazonDynamoDb == null) {
             AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
