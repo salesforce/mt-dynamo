@@ -46,8 +46,8 @@ class HybridSharedTableBuilderTest {
 
     @Test
     void testIteratingCreateTableRequestFactory_precreateTables() {
-        IteratingCreateTableRequestFactory sut = new IteratingCreateTableRequestFactory(ImmutableList.of(ctrf1, ctrf2));
-        assertEquals(ImmutableList.of(createTableRequest1, createTableRequest2), sut.precreateTables());
+        assertEquals(ImmutableList.of(createTableRequest1, createTableRequest2),
+            new IteratingCreateTableRequestFactory(ImmutableList.of(ctrf1, ctrf2)).precreateTables());
     }
 
 }
