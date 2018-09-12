@@ -85,11 +85,13 @@ public class TestSupport {
         return getItemResult.getItem();
     }
 
-    private static HashMap<String, AttributeValue> getKeys(AttributeValue hkAttribute, Optional<String> rangeKeyValue) {
+    private static Map<String, AttributeValue> getKeys(AttributeValue hkAttribute, Optional<String> rangeKeyValue) {
         return rangeKeyValue
-            .map(rkv -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, hkAttribute,
-                RANGE_KEY_FIELD, createStringAttribute(rkv))))
-            .orElseGet(() -> new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, hkAttribute)));
+            .map(rkv -> ItemBuilder.builder(hkAttribute)
+                    .rangeKey(createStringAttribute(rkv))
+                    .build())
+            .orElseGet(() -> ItemBuilder.builder(hkAttribute)
+                    .build());
     }
 
     public static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
@@ -259,17 +261,17 @@ public class TestSupport {
      * Builds an map representing an item key, setting the HK field and value to the default.
      */
     public static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType,
-            HASH_KEY_VALUE)));
+        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
+                .build();
     }
 
     /**
      * Builds a map representing an item, setting the HK and RK field names to the default.
      */
     public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(new HashMap<>(ImmutableMap.of(
-            HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
-            RANGE_KEY_FIELD, createStringAttribute(RANGE_KEY_STRING_VALUE))));
+        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
+                .rangeKey(createStringAttribute(RANGE_KEY_STRING_VALUE))
+                .build();
     }
 
     /*
@@ -277,15 +279,17 @@ public class TestSupport {
      */
 
     private static Map<String, AttributeValue> defaultItem(ScalarAttributeType hashKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
-            SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE)));
+        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
+                .someField(createStringAttribute(SOME_FIELD_VALUE))
+                .build();
     }
 
     private static Map<String, AttributeValue> defaultHkRkItem(ScalarAttributeType hashKeyAttrType,
                                                                ScalarAttributeType rangeKeyAttrType) {
-        return new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE),
-            RANGE_KEY_FIELD, createAttributeValue(rangeKeyAttrType, RANGE_KEY_STRING_VALUE),
-            SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE)));
+        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
+                .rangeKey(createAttributeValue(rangeKeyAttrType, RANGE_KEY_STRING_VALUE))
+                .someField(createStringAttribute(SOME_FIELD_VALUE))
+                .build();
     }
 
 }
