@@ -180,6 +180,10 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
+    protected Optional<String> getTablePrefix() {
+        return tablePrefix;
+    }
+
     private void validate() {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
@@ -219,7 +223,7 @@ public class SharedTableCustomDynamicBuilder {
         return prefix(tablePrefix, tableName);
     }
 
-    private String prefix(Optional<String> tablePrefix, String tableName) {
+    protected static String prefix(Optional<String> tablePrefix, String tableName) {
         return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 

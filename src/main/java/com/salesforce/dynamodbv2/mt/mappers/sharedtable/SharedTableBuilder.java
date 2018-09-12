@@ -141,7 +141,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
-        withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests, precreateTables));
+        withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests,
+            precreateTables,
+            getTablePrefix()));
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
         return super.build();
     }
@@ -154,7 +156,8 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             streamsEnabled = true;
         }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
-            this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput);
+            this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
+                this.streamsEnabled);
         }
         if (precreateTables == null) {
             precreateTables = true;
@@ -165,7 +168,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private static final String HASH_KEY_FIELD = "hk";
     private static final String RANGE_KEY_FIELD = "rk";
 
-    private List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput) {
+    /**
+     * Builds the tables that underly the SharedTable implementation as described in the class-level Javadoc.
+     */
+    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
+        boolean streamsEnabled) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
             .withTableName("mt_sharedtablestatic_s_s")
@@ -197,36 +204,38 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             mtSharedTableStaticSnNoLsi,
             mtSharedTableStaticSbNoLsi
         ).stream().map(createTableRequestBuilder -> {
-            addSis(createTableRequestBuilder);
-            addStreamSpecification(createTableRequestBuilder);
+            addSis(createTableRequestBuilder, provisionedThroughput);
+            addStreamSpecification(createTableRequestBuilder, streamsEnabled);
             return createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput,
                 provisionedThroughput).build();
         }).collect(Collectors.toList());
     }
 
-    private void addSis(CreateTableRequestBuilder createTableRequestBuilder) {
-        addSi(createTableRequestBuilder, GSI, S, empty());
-        addSi(createTableRequestBuilder, GSI, S, of(S));
-        addSi(createTableRequestBuilder, GSI, S, of(N));
-        addSi(createTableRequestBuilder, GSI, S, of(B));
+    private static void addSis(CreateTableRequestBuilder createTableRequestBuilder, long defaultProvisionedThroughput) {
+        addSi(createTableRequestBuilder, GSI, S, empty(), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, S, of(S), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, S, of(N), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, S, of(B), defaultProvisionedThroughput);
         if (!createTableRequestBuilder.getTableName().toLowerCase().endsWith("nolsi")) {
-            addSi(createTableRequestBuilder, LSI, S, of(S));
-            addSi(createTableRequestBuilder, LSI, S, of(N));
-            addSi(createTableRequestBuilder, LSI, S, of(B));
+            addSi(createTableRequestBuilder, LSI, S, of(S), defaultProvisionedThroughput);
+            addSi(createTableRequestBuilder, LSI, S, of(N), defaultProvisionedThroughput);
+            addSi(createTableRequestBuilder, LSI, S, of(B), defaultProvisionedThroughput);
         }
     }
 
-    private void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder) {
+    private static void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder,
+        boolean streamsEnabled) {
         createTableRequestBuilder.withStreamSpecification(streamsEnabled
                 ? new StreamSpecification().withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                                            .withStreamEnabled(true)
                 : new StreamSpecification().withStreamEnabled(false));
     }
 
-    private void addSi(CreateTableRequestBuilder createTableRequestBuilder,
+    private static void addSi(CreateTableRequestBuilder createTableRequestBuilder,
                        DynamoSecondaryIndexType indexType,
                        ScalarAttributeType hashKeyType,
-                       Optional<ScalarAttributeType> rangeKeyType) {
+                       Optional<ScalarAttributeType> rangeKeyType,
+                       long defaultProvisionedThroughput) {
         String indexName = indexType.name().toLowerCase() + "_"
             + hashKeyType.name().toLowerCase()
             + rangeKeyType.map(type -> "_" + type.name().toLowerCase()).orElse("").toLowerCase();
@@ -262,31 +271,40 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     }
 
-    private class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
+    /**
+     * Implements the request factory that is capable of mapping virtual tables to the physical tables underlying
+     * the SharedTable multitenancy strategy as described in the class-level Javadoc.
+     */
+    static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
 
         private final PrimaryKeyMapper primaryKeyMapper = new PrimaryKeyMapperByTypeImpl(false);
         private final List<CreateTableRequest> createTableRequests;
         private final boolean precreateTables;
 
+        /**
+         * Public constructor.
+         */
         SharedTableCreateTableRequestFactory(List<CreateTableRequest> createTableRequests,
-                                             boolean precreateTables) {
+                                             boolean precreateTables,
+                                             Optional<String> tablePrefix) {
             this.createTableRequests = createTableRequests.stream()
-                .map(createTableRequest -> createTableRequest.withTableName(prefix(createTableRequest.getTableName())))
+                .map(createTableRequest -> createTableRequest.withTableName(
+                    prefix(tablePrefix, createTableRequest.getTableName())))
                 .collect(Collectors.toList());
             this.precreateTables = precreateTables;
         }
 
         @Override
-        public CreateTableRequest getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+        public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
             try {
                 boolean hasLsis = !isEmpty(virtualTableDescription.getLsis());
-                return ((CreateTableRequestWrapper) primaryKeyMapper
+                return Optional.of(((CreateTableRequestWrapper) primaryKeyMapper
                     .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
                         .filter(createTableRequest1 -> hasLsis
                             == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
                         .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new)
                         .collect(Collectors.toList())))
-                    .getCreateTableRequest();
+                    .getCreateTableRequest());
             } catch (MappingException e) {
                 throw new RuntimeException(e);
             }

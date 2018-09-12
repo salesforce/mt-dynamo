@@ -18,6 +18,7 @@ import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTy
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 
 import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,8 +31,9 @@ class ItemMapperTest {
     private static final String PREFIX = "PREFIX-";
     private static final ItemMapper SUT = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
-        virtualTableDescription1 -> new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder().withTableKeySchema("physicalhk", S).build()).getCreateTableRequest(),
+        virtualTableDescription1 -> Optional.of(new DynamoTableDescriptionImpl(CreateTableRequestBuilder.builder()
+            .withTableKeySchema("physicalhk", S).build())
+            .getCreateTableRequest()),
         new DynamoSecondaryIndexMapperByTypeImpl(),
         null,
         null

@@ -36,6 +36,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -71,7 +72,7 @@ class TableMappingTest {
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
     private final TableMapping sut = new TableMapping(virtualTable,
-            virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
+            virtualTableDescription1 -> Optional.of(physicalTable.getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
             null
@@ -144,7 +145,7 @@ class TableMappingTest {
                 new PrimaryKey("hk", S, "virtualindex", S),
                 1L)
             .build()),
-            virtualTableDescription1 -> new DynamoTableDescriptionImpl(CreateTableRequestBuilder
+            virtualTableDescription1 -> Optional.of(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
                 .builder()
                 .withTableName("physicalTableName")
                 .withTableKeySchema("physicalhk", S, "physicalrk", S)
@@ -156,7 +157,7 @@ class TableMappingTest {
                     LSI,
                     new PrimaryKey("physicalhk", S, "physicallsirk", S),
                     1L)
-                .build()).getCreateTableRequest(),
+                .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
             null
@@ -267,7 +268,7 @@ class TableMappingTest {
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
         DynamoSecondaryIndexMapper spyIndexMapper = spy(DynamoSecondaryIndexMapperByTypeImpl.class);
         TableMapping tableMapping = new TableMapping(virtualTable,
-                virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
+                virtualTableDescription1 -> Optional.of(physicalTable.getCreateTableRequest()),
                 spyIndexMapper,
                 null,
                 null
@@ -322,7 +323,7 @@ class TableMappingTest {
                         .build());
         assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
                         virtualTable,
-                        virtualTableDescription1 -> physicalTable.getCreateTableRequest(),
+                        virtualTableDescription1 -> Optional.of(physicalTable.getCreateTableRequest()),
                         new DynamoSecondaryIndexMapperByTypeImpl(),
                         null,
                         null
