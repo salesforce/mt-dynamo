@@ -7,8 +7,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItemDefaultHkRk;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -104,7 +104,7 @@ class PutTest {
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // assert before state
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                 is(new HashMap<>(buildHkRkItemWithSomeFieldValue(
                     testArgument.getHashKeyAttrType(), SOME_FIELD_VALUE + TABLE3 + org))));
             Map<String, AttributeValue> itemToOverwrite =
@@ -113,7 +113,7 @@ class PutTest {
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             assertThat(putItemRequest.getItem(), is(new HashMap<>(itemToOverwrite))); // assert no side effects
             assertEquals(TABLE3, putItemRequest.getTableName()); // assert no side effects
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                 is(itemToOverwrite));
         });
     }

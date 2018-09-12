@@ -12,8 +12,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWit
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItemDefaultHkRk;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -138,7 +138,9 @@ class DeleteTest {
             // assert same table, different orgs
             assertThat(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                                                  SOME_FIELD_VALUE + TABLE3 + otherOrg),
-                       is(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3)));
+                       is(getItemDefaultHkRk(testArgument.getHashKeyAttrType(),
+                               testArgument.getAmazonDynamoDb(),
+                               TABLE3)));
         });
     }
 

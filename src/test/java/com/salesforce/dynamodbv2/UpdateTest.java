@@ -14,8 +14,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSom
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItemDefaultHkRk;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -81,7 +81,7 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void updateConditionalonHkSuccess(TestArgument testArgument) {
+    void updateConditionalOnHkSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
@@ -102,7 +102,7 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void updateConditionalonHkWithLiteralsSuccess(TestArgument testArgument) {
+    void updateConditionalOnHkWithLiteralsSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
@@ -155,7 +155,7 @@ class UpdateTest {
                     new AttributeValueUpdate().withValue(
                         createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                        is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                            SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
@@ -177,7 +177,7 @@ class UpdateTest {
                     + TABLE3 + org))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                        is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                            SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
         });
@@ -200,7 +200,7 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_STRING_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                 is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                     SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
         });
@@ -224,7 +224,7 @@ class UpdateTest {
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
-            assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
                        is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                            SOME_FIELD_VALUE + TABLE3 + org)));
         });

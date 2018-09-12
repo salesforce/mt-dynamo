@@ -14,7 +14,6 @@ import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 
@@ -74,9 +73,10 @@ public class TestSupport {
         AmazonDynamoDB amazonDynamoDb,
         String tableName,
         String hashKeyValue,
-        Optional<String> rangeKeyValue) {
-        final AttributeValue hkAttribute = createAttributeValue(hashKeyAttrType, hashKeyValue);
-        Map<String, AttributeValue> keys = getKeys(hkAttribute, rangeKeyValue);
+        Optional<String> rangeKeyValueOpt) {
+        Map<String, AttributeValue> keys = ItemBuilder.builder(hashKeyAttrType, hashKeyValue)
+                .rangeKeyStringOpt(rangeKeyValueOpt)
+                .build();
         Map<String, AttributeValue> originalKeys = new HashMap<>(keys);
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
         GetItemResult getItemResult = amazonDynamoDb.getItem(getItemRequest);
@@ -85,18 +85,12 @@ public class TestSupport {
         return getItemResult.getItem();
     }
 
-    private static Map<String, AttributeValue> getKeys(AttributeValue hkAttribute, Optional<String> rangeKeyValue) {
-        return rangeKeyValue
-            .map(rkv -> ItemBuilder.builder(hkAttribute)
-                    .rangeKey(createStringAttribute(rkv))
-                    .build())
-            .orElseGet(() -> ItemBuilder.builder(hkAttribute)
-                    .build());
-    }
-
-    public static Map<String, AttributeValue> getHkRkItem(ScalarAttributeType hashKeyAttrType,
-        AmazonDynamoDB amazonDynamoDb,
-        String tableName) {
+    /**
+     * Retrieves the item with the default HK and RK values.
+     */
+    public static Map<String, AttributeValue> getItemDefaultHkRk(ScalarAttributeType hashKeyAttrType,
+                                                                 AmazonDynamoDB amazonDynamoDb,
+                                                                 String tableName) {
         return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_STRING_VALUE));
     }
 
@@ -107,18 +101,14 @@ public class TestSupport {
                                                       AmazonDynamoDB amazonDynamoDb,
                                                       String tableName,
                                                       // TODO?: pass these both as a single list
-                                                      List<String> hashKeyValue,
-                                                      Optional<List<String>> rangeKeyValue) {
-
-        rangeKeyValue.ifPresent(rkv -> Preconditions.checkArgument(hashKeyValue.size() == rkv.size()));
-        final List<AttributeValue> hkAttribute = hashKeyValue.stream()
-                .map(hkv -> createAttributeValue(hashKeyAttrType, hkv))
-                .collect(Collectors.toList());
-
+                                                      List<String> hashKeyValues,
+                                                      Optional<List<String>> rangeKeyValuesOpt) {
         List<Map<String, AttributeValue>> keys = new ArrayList<>();
-        for (int i = 0; i < hashKeyValue.size(); ++i) {
+        for (int i = 0; i < hashKeyValues.size(); ++i) {
             final int finalI = i;
-            keys.add(getKeys(hkAttribute.get(i), rangeKeyValue.map(rkvs -> rkvs.get(finalI))));
+            keys.add(ItemBuilder.builder(hashKeyAttrType, hashKeyValues.get(i))
+                    .rangeKeyStringOpt(rangeKeyValuesOpt.map(rangeKeyValues -> rangeKeyValues.get(finalI)))
+                    .build());
         }
         Set<Map<String, AttributeValue>> originalKeys = new HashSet<>(keys);
         final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
@@ -137,7 +127,7 @@ public class TestSupport {
             requestItems = batchGetItemResult.getUnprocessedKeys();
         } while (!unprocessedKeys.isEmpty());
         assertEquals(originalKeys, resultItems.stream()
-                .map(item -> stripItemToPk(item, rangeKeyValue.isPresent()))
+                .map(item -> stripItemToPk(item, rangeKeyValuesOpt.isPresent()))
                 .collect(Collectors.toSet()));
         return resultItems;
     }
@@ -159,21 +149,22 @@ public class TestSupport {
         return (IS_LOCAL_DYNAMO ? 0 : 5);
     }
 
-    /**
+    /*
      * AttributeValue helper methods.
+     */
+
+    /**
+     * Creates an AttributeValue.
      */
     public static AttributeValue createAttributeValue(ScalarAttributeType keyAttrType, String value) {
         AttributeValue attr = new AttributeValue();
         switch (keyAttrType) {
             case S:
-                attr.setS(value);
-                return attr;
+                return attr.withS(value);
             case N:
-                attr.setN(value);
-                return attr;
+                return attr.withN(value);
             case B:
-                attr.setB(UTF_8.encode(value));
-                return attr;
+                return attr.withB(UTF_8.encode(value));
             default:
                 throw new IllegalArgumentException("unsupported type " + keyAttrType + " encountered");
         }
@@ -184,14 +175,14 @@ public class TestSupport {
      */
     public static String attributeValueToString(ScalarAttributeType hashKeyAttrType, AttributeValue attr) {
         switch (hashKeyAttrType) {
+            case S:
+                return attr.getS();
+            case N:
+                return attr.getN();
             case B:
                 String decodedString = UTF_8.decode(attr.getB()).toString();
                 attr.getB().rewind(); // rewind so future readers don't get an empty buffer
                 return decodedString;
-            case N:
-                return attr.getN();
-            case S:
-                return attr.getS();
             default:
                 throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
         }
@@ -206,9 +197,9 @@ public class TestSupport {
      */
     public static Map<String, AttributeValue> buildItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
         String value) {
-        Map<String, AttributeValue> item = defaultItem(hashKeyAttrType);
-        item.put(SOME_FIELD, createStringAttribute(value));
-        return item;
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                .someField(S, value)
+                .build();
     }
 
     public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
@@ -226,12 +217,11 @@ public class TestSupport {
         Optional<String> rangeKeyValueOpt,
         String someFieldValue,
         Optional<String> indexFieldValueOpt) {
-        Map<String, AttributeValue> item = defaultItem(hashKeyAttrType);
-        item.put(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, hashKeyValue));
-        rangeKeyValueOpt.ifPresent(rangeKeyValue -> item.put(RANGE_KEY_FIELD, createStringAttribute(rangeKeyValue)));
-        item.put(SOME_FIELD, createStringAttribute(someFieldValue));
-        indexFieldValueOpt.ifPresent(indexFieldValue -> item.put(INDEX_FIELD, createStringAttribute(indexFieldValue)));
-        return item;
+        return ItemBuilder.builder(hashKeyAttrType, hashKeyValue)
+                .someField(S, someFieldValue)
+                .rangeKeyStringOpt(rangeKeyValueOpt)
+                .indexFieldStringOpt(indexFieldValueOpt)
+                .build();
     }
 
     /**
@@ -252,16 +242,17 @@ public class TestSupport {
     public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
             ScalarAttributeType rangeKeyAttrType,
             String value) {
-        Map<String, AttributeValue> item = defaultHkRkItem(hashKeyAttrType, rangeKeyAttrType);
-        item.put(SOME_FIELD, createStringAttribute(value));
-        return item;
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                .someField(S, value)
+                .rangeKey(rangeKeyAttrType, RANGE_KEY_STRING_VALUE)
+                .build();
     }
 
     /**
      * Builds an map representing an item key, setting the HK field and value to the default.
      */
     public static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
-        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
                 .build();
     }
 
@@ -269,26 +260,8 @@ public class TestSupport {
      * Builds a map representing an item, setting the HK and RK field names to the default.
      */
     public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
-        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
-                .rangeKey(createStringAttribute(RANGE_KEY_STRING_VALUE))
-                .build();
-    }
-
-    /*
-     * private
-     */
-
-    private static Map<String, AttributeValue> defaultItem(ScalarAttributeType hashKeyAttrType) {
-        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
-                .someField(createStringAttribute(SOME_FIELD_VALUE))
-                .build();
-    }
-
-    private static Map<String, AttributeValue> defaultHkRkItem(ScalarAttributeType hashKeyAttrType,
-                                                               ScalarAttributeType rangeKeyAttrType) {
-        return ItemBuilder.builder(createAttributeValue(hashKeyAttrType, HASH_KEY_VALUE))
-                .rangeKey(createAttributeValue(rangeKeyAttrType, RANGE_KEY_STRING_VALUE))
-                .someField(createStringAttribute(SOME_FIELD_VALUE))
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                .rangeKey(S, RANGE_KEY_STRING_VALUE)
                 .build();
     }
 

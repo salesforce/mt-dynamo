@@ -1,28 +1,33 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableMap;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
-// TODO: change input parameter from AttributeValue to ScalarAttributeType (keyAttrType), String (value)
 /**
  * Builds a map of attribute names to {@code AttributeValue} objects.
  */
 public class ItemBuilder {
-    final Map<String, AttributeValue> item;
+    private final Map<String, AttributeValue> item;
 
     /**
      * Creates a new builder.
      */
-    public static ItemBuilder builder(AttributeValue hashKeyValue) {
+    public static ItemBuilder builder(ScalarAttributeType hashKeyAttrType, String hashKeyValue) {
         final Map<String, AttributeValue> item = new HashMap<>();
-        item.put(HASH_KEY_FIELD, hashKeyValue);
+        item.put(HASH_KEY_FIELD, createAttributeValue(hashKeyAttrType, hashKeyValue));
 
         return new ItemBuilder(item);
     }
@@ -31,23 +36,37 @@ public class ItemBuilder {
         this.item = item;
     }
 
-    public ItemBuilder rangeKey(AttributeValue rangeKeyValue) {
-        this.item.put(RANGE_KEY_FIELD, rangeKeyValue);
+    public ItemBuilder rangeKey(ScalarAttributeType rangeKeyAttrType, String rangeKeyValue) {
+        this.item.put(RANGE_KEY_FIELD, createAttributeValue(rangeKeyAttrType, rangeKeyValue));
         return this;
     }
 
-    public ItemBuilder someField(AttributeValue someFieldValue) {
-        this.item.put(SOME_FIELD, someFieldValue);
+    /**
+     * Add a range key with value rangeKeyValueOpt.get() if present, otherwise do nothing.
+     */
+    public ItemBuilder rangeKeyStringOpt(Optional<String> rangeKeyValueOpt) {
+        return rangeKeyValueOpt.map(rangeKeyValue -> this.rangeKey(S, rangeKeyValue)).orElse(this);
+    }
+
+    public ItemBuilder someField(ScalarAttributeType hashKeyAttrType, String someFieldValue) {
+        this.item.put(SOME_FIELD, createAttributeValue(hashKeyAttrType, someFieldValue));
         return this;
     }
 
-    public ItemBuilder indexField(AttributeValue indexFieldValue) {
-        this.item.put(INDEX_FIELD, indexFieldValue);
+    public ItemBuilder indexField(ScalarAttributeType hashKeyAttrType, String indexFieldValue) {
+        this.item.put(INDEX_FIELD, createAttributeValue(hashKeyAttrType, indexFieldValue));
         return this;
     }
 
-    public Map<String, AttributeValue> build() {
-        return this.item;
+    /**
+    * Add an index field with value rangeKeyValueOpt.get() if present, otherwise do nothing.
+    */
+    public ItemBuilder indexFieldStringOpt(Optional<String> indexFieldValueOpt) {
+        return indexFieldValueOpt.map(indexFieldValue -> this.indexField(S, indexFieldValue)).orElse(this);
+    }
+
+    public ImmutableMap<String, AttributeValue> build() {
+        return ImmutableMap.copyOf(this.item);
     }
 
     @Override

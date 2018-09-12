@@ -5,8 +5,8 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.getHkRkItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItemDefaultHkRk;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 
@@ -35,7 +35,9 @@ class GetTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void getHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(
-            org -> assertThat(getHkRkItem(testArgument.getHashKeyAttrType(), testArgument.getAmazonDynamoDb(), TABLE3),
+            org -> assertThat(getItemDefaultHkRk(testArgument.getHashKeyAttrType(),
+                    testArgument.getAmazonDynamoDb(),
+                    TABLE3),
                 is(buildHkRkItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
                     SOME_FIELD_VALUE + TABLE3 + org))));
     }
