@@ -1,14 +1,23 @@
-package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
+package com.salesforce.dynamodbv2.mt.util;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
-class CompositeStringUtil {
+/**
+ * A utility for joining strings such that they can be split again deterministically.
+ *
+ * TODO Consider adding support for null values
+ */
+public class CompositeStrings {
 
     private final char separator;
     private final char escape;
 
-    CompositeStringUtil(char separator, char escape) {
+    public CompositeStrings() {
+        this('-', '\\');
+    }
+
+    public CompositeStrings(char separator, char escape) {
         this.separator = separator;
         this.escape = escape;
     }
@@ -20,7 +29,7 @@ class CompositeStringUtil {
      * @param values Values to join into a composite key sequenceNumber
      * @return Joined composite key containing all individual keys
      */
-    String joinValues(Iterable<String> values) {
+    public String join(Iterable<String> values) {
         // determine upper bound for composite key size
         int length = 0;
         for (String value : values) {
@@ -52,7 +61,7 @@ class CompositeStringUtil {
      * @param composite Composite key to split into individual keys.
      * @return Sequence of keys contained in the given composite key
      */
-    Iterator<String> splitValues(String composite) {
+    public Iterator<String> split(String composite) {
         return new Iterator<String>() {
 
             private int index = 0;

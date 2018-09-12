@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.model.*;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.salesforce.dynamodbv2.mt.util.CompositeStrings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -272,10 +273,10 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
      */
     static class ShardIterator implements Comparable<ShardIterator> {
 
-        static final CompositeStringUtil compositeStringUtil = new CompositeStringUtil('/', '\\');
+        static final CompositeStrings compositeStrings = new CompositeStrings('/', '\\');
 
         static ShardIterator fromString(String external) {
-            Iterator<String> it = compositeStringUtil.splitValues(external);
+            Iterator<String> it = compositeStrings.split(external);
             String streamArn = it.next();
             String shardId = it.next();
             String type = it.next();
@@ -340,7 +341,7 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
             fields.add(shardId);
             fields.add(iteratorPosition.getType().toString());
             Optional.ofNullable(iteratorPosition.getSequenceNumber()).ifPresent(fields::add);
-            return compositeStringUtil.joinValues(fields);
+            return compositeStrings.join(fields);
         }
 
         GetShardIteratorRequest toRequest() {
@@ -376,6 +377,7 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
 
     // cache values are quasi-immutable
     private final NavigableMap<ShardIterator, GetRecordsResult> recordsCache;
+    private final Deque<ShardIterator> evictionDeque;
     private final ReadWriteLock recordsCacheLock;
     private final int maxRecordsCacheSize;
     private final int maxGetRecordsRetries;
@@ -395,6 +397,7 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
         this.sleeper = sleeper;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
         this.recordsCache = new TreeMap<>();
+        this.evictionDeque = new LinkedList<>();
         this.recordsCacheLock = new ReentrantReadWriteLock();
         this.iteratorCache = CacheBuilder
                 .newBuilder()
@@ -416,7 +419,7 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
         if (LOG.isDebugEnabled()) {
             LOG.debug("Cache miss for iterator {}", iterator);
         }
-        return delegate.getShardIterator(iterator.toRequest()).getShardIterator();
+        return super.getShardIterator(iterator.toRequest()).getShardIterator();
     }
 
     @Override
@@ -490,7 +493,7 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
             // then load records from stream
             final GetRecordsResult loadedRecordsResult;
             try {
-                loadedRecordsResult = delegate.getRecords(new GetRecordsRequest().withShardIterator(shardIterator));
+                loadedRecordsResult = super.getRecords(new GetRecordsRequest().withShardIterator(shardIterator));
             } catch (LimitExceededException e) {
                 long backoff = (getRecordsRetries + 1) * getRecordsLimitExceededBackoffInMillis;
                 if (LOG.isWarnEnabled()) {
@@ -564,13 +567,13 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
             // into the cache, so we can use an empty list to indicate a cache miss
             cachedRecordsResult = Optional.empty();
         } else {
-            ShardIterator lowerIteator = floorCacheEntry.getKey();
+            ShardIterator lowerIterator = floorCacheEntry.getKey();
             GetRecordsResult lowerResult = floorCacheEntry.getValue();
             if (floorCacheEntry.getKey().equals(iterator)) {
                 // exact iterator hit (hopefully common case), return all cached records
                 cachedRecordsResult = Optional.of(lowerResult);
-            } else if (lowerIteator.getStreamArn().equals(iterator.getStreamArn()) &&
-                    lowerIteator.getShardId().equals(iterator.getShardId()) &&
+            } else if (lowerIterator.getStreamArn().equals(iterator.getStreamArn()) &&
+                    lowerIterator.getShardId().equals(iterator.getShardId()) &&
                     iterator.getIteratorPosition().test(getLast(lowerResult.getRecords()))) {
                 // Cache entry contains records that match (i.e., come after) the requested iterator position. Filter
                 // cached records to those that match. Return only that subset, to increase the chance of using a shared
@@ -654,10 +657,14 @@ class CachingAmazonDynamoDBStreams extends DelegatingAmazonDynamoDBStreams {
      * @param result   result to cache
      */
     private void addCacheSegment(ShardIterator iterator, GetRecordsResult result) {
-        recordsCache.put(iterator, result);
-        // evicted oldest if necessary
-        if (recordsCache.size() > maxRecordsCacheSize) {
-            recordsCache.remove(recordsCache.firstKey());
+        GetRecordsResult prevResult = recordsCache.put(iterator, result);
+        checkState(prevResult == null);
+
+        // evict if necessary - FIFO in terms of when entries were added to the cache
+        evictionDeque.addLast(iterator);
+        if (evictionDeque.size() > maxRecordsCacheSize) {
+            ShardIterator oldest = evictionDeque.removeFirst();
+            recordsCache.remove(oldest);
         }
     }
 
