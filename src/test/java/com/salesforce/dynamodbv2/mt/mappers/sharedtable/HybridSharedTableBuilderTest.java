@@ -24,6 +24,7 @@ class HybridSharedTableBuilderTest {
     private static DynamoTableDescription virtualTable2 = mock(DynamoTableDescription.class);
     private static CreateTableRequest createTableRequest2 = mock(CreateTableRequest.class);
     private static CreateTableRequestFactory ctrf2 = mock(CreateTableRequestFactory.class);
+    private static DynamoTableDescription virtualTable3 = mock(DynamoTableDescription.class);
 
     @BeforeAll
     static void beforeAll() {
@@ -41,7 +42,7 @@ class HybridSharedTableBuilderTest {
         // resolved by ctrf2
         assertEquals(createTableRequest2, sut.getCreateTableRequest(virtualTable2).get());
         // resolved by neither
-        assertFalse(sut.getCreateTableRequest(mock(DynamoTableDescription.class)).isPresent());
+        assertFalse(sut.getCreateTableRequest(virtualTable3).isPresent());
     }
 
     @Test
