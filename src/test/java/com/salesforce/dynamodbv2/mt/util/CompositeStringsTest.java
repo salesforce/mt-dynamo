@@ -1,20 +1,20 @@
 package com.salesforce.dynamodbv2.mt.util;
 
-import com.google.common.collect.Iterables;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import java.util.List;
-import java.util.stream.Stream;
-
 import static java.util.Arrays.asList;
 import static java.util.Collections.singleton;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.google.common.collect.Iterables;
+
+import java.util.stream.Stream;
+
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
 /**
- * Unit test for composite strings util
+ * Unit test for composite strings util.
  */
 class CompositeStringsTest {
 
