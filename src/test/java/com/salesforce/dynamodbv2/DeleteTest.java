@@ -8,10 +8,10 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItemDefaultHkRk;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -48,7 +48,7 @@ class DeleteTest {
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
-        Map<String, AttributeValue> deleteItemKey = buildKey(testArgument.getHashKeyAttrType());
+        Map<String, AttributeValue> deleteItemKey = buildHkKey(testArgument.getHashKeyAttrType());
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE1).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
@@ -75,7 +75,7 @@ class DeleteTest {
     void deleteWithAttributeExists(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
-            .withTableName(TABLE1).withKey(buildKey(testArgument.getHashKeyAttrType()))
+            .withTableName(TABLE1).withKey(buildHkKey(testArgument.getHashKeyAttrType()))
             .withConditionExpression("attribute_exists(#field)")
             .withExpressionAttributeNames(ImmutableMap.of("#field", SOME_FIELD)));
         assertNull(getItem(testArgument.getHashKeyAttrType(),
@@ -87,7 +87,7 @@ class DeleteTest {
     void deleteWithAttributeExistsWithLiterals(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
-            .withTableName(TABLE1).withKey(buildKey(testArgument.getHashKeyAttrType()))
+            .withTableName(TABLE1).withKey(buildHkKey(testArgument.getHashKeyAttrType()))
             .withConditionExpression("attribute_exists(" + SOME_FIELD + ")"));
         assertNull(getItem(testArgument.getHashKeyAttrType(),
             testArgument.getAmazonDynamoDb(), TABLE1, HASH_KEY_VALUE));
@@ -99,7 +99,7 @@ class DeleteTest {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         try {
             testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
-                .withTableName(TABLE1).withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withTableName(TABLE1).withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                 .withConditionExpression("attribute_exists(#field)")
                 .withExpressionAttributeNames(ImmutableMap.of("#field", "someNonExistentField")));
             fail("expected ConditionalCheckFailedException not encountered");
@@ -113,7 +113,7 @@ class DeleteTest {
     void deleteWithHkAttributeExists(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
-            .withTableName(TABLE1).withKey(buildKey(testArgument.getHashKeyAttrType()))
+            .withTableName(TABLE1).withKey(buildHkKey(testArgument.getHashKeyAttrType()))
             .withConditionExpression("attribute_exists(#field)")
             .withExpressionAttributeNames(ImmutableMap.of("#field", HASH_KEY_FIELD)));
         assertNull(getItem(testArgument.getHashKeyAttrType(),

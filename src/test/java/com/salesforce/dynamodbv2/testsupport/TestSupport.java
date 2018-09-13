@@ -170,6 +170,10 @@ public class TestSupport {
         }
     }
 
+    public static AttributeValue createStringAttribute(String value) {
+        return createAttributeValue(S, value);
+    }
+
     /**
      * Converts an AttributeValue into a String.
      */
@@ -188,17 +192,17 @@ public class TestSupport {
         }
     }
 
-    public static AttributeValue createStringAttribute(String value) {
-        return new AttributeValue().withS(value);
-    }
+    /*
+     * Item-building helper methods.
+     */
 
     /**
-     * Item building helper methods.
+     * Builds an item with the provided someField type and value, but the default HK and no RK.
      */
     public static Map<String, AttributeValue> buildItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-        String value) {
+        String someFieldValue) {
         return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .someField(S, value)
+                .someField(S, someFieldValue)
                 .build();
     }
 
@@ -226,38 +230,38 @@ public class TestSupport {
 
     /**
      * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
-     * someField value {@code value}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType}; range-key
-     * scalar-attribute type set to S.)
+     * someField someFieldValue {@code someFieldValue}. (Hash-key scalar-attribute type set based on
+     * {@code hashKeyAttrType}; range-key scalar-attribute type set to S.)
      */
     public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-                                                                              String value) {
-        return buildHkRkItemWithSomeFieldValue(hashKeyAttrType, S, value);
+                                                                              String someFieldValue) {
+        return buildHkRkItemWithSomeFieldValue(hashKeyAttrType, S, someFieldValue);
     }
 
     /**
      * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
-     * someField value to {@code value}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType}; range-key
-     * scalar-attribute type set based on {@code rangeKeyAttrType}.)
+     * someField value to {@code someFieldValue}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType};
+     * range-key scalar-attribute type set based on {@code rangeKeyAttrType}.)
      */
     public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
             ScalarAttributeType rangeKeyAttrType,
-            String value) {
+            String someFieldValue) {
         return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .someField(S, value)
+                .someField(S, someFieldValue)
                 .rangeKey(rangeKeyAttrType, RANGE_KEY_STRING_VALUE)
                 .build();
     }
 
     /**
-     * Builds an map representing an item key, setting the HK field and value to the default.
+     * Builds an map representing an item, setting the HK field name and value to the default.
      */
-    public static Map<String, AttributeValue> buildKey(ScalarAttributeType hashKeyAttrType) {
+    public static Map<String, AttributeValue> buildHkKey(ScalarAttributeType hashKeyAttrType) {
         return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
                 .build();
     }
 
     /**
-     * Builds a map representing an item, setting the HK and RK field names to the default.
+     * Builds a map representing an item, setting the HK and RK field names and values to the default.
      */
     public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
         return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)

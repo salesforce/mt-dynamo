@@ -8,8 +8,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
@@ -148,7 +148,7 @@ class StreamsTest {
             MT_CONTEXT.setContext(org);
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(format(STREAMS_TABLE, org))
-                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                 .addAttributeUpdatesEntry(SOME_FIELD,
                     new AttributeValueUpdate().withValue(createStringAttribute(format(
                         SOME_FIELD_VALUE_STREAMS_TEST_UPDATED, org)))));
@@ -159,7 +159,7 @@ class StreamsTest {
             MT_CONTEXT.setContext(org);
             testArgument.getAmazonDynamoDb().deleteItem(
                 new DeleteItemRequest().withTableName(format(STREAMS_TABLE, org))
-                    .withKey(buildKey(testArgument.getHashKeyAttrType())));
+                    .withKey(buildHkKey(testArgument.getHashKeyAttrType())));
         });
 
         // create record processor

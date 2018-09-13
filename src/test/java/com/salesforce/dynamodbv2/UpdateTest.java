@@ -8,10 +8,10 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildKey;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
@@ -43,7 +43,7 @@ class UpdateTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void update(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            Map<String, AttributeValue> updateItemKey = buildKey(testArgument.getHashKeyAttrType());
+            Map<String, AttributeValue> updateItemKey = buildHkKey(testArgument.getHashKeyAttrType());
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
@@ -65,7 +65,7 @@ class UpdateTest {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
-                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#someField = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -85,7 +85,7 @@ class UpdateTest {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
-                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#hk = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -106,7 +106,7 @@ class UpdateTest {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
-                .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                .withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                 .withUpdateExpression("set " + SOME_FIELD + " = :newValue")
                 .withConditionExpression(HASH_KEY_FIELD + " = :currentValue")
                 .addExpressionAttributeValuesEntry(":currentValue",
@@ -126,7 +126,7 @@ class UpdateTest {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE1)
-                    .withKey(buildKey(testArgument.getHashKeyAttrType()))
+                    .withKey(buildHkKey(testArgument.getHashKeyAttrType()))
                     .withUpdateExpression("set #name = :newValue")
                     .withConditionExpression("#name = :currentValue")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
