@@ -13,8 +13,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildHkRkItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -32,7 +30,6 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Performs default table creation and population logic.  To override table creation of data population logic,
@@ -80,30 +77,31 @@ public class DefaultTestSetup implements TestSetup {
             // (hk2, {no rk}, table-and-org-specific-field-value2)
             amazonDynamoDb.putItem(
                     new PutItemRequest().withTableName(table)
-                            .withItem(buildItemWithValues(hashKeyAttrType,
-                                    HASH_KEY_VALUE,
-                                    Optional.empty(),
-                                    SOME_FIELD_VALUE + table + org)));
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                    .someField(S, SOME_FIELD_VALUE + table + org)
+                                    .build()));
             amazonDynamoDb.putItem(
                     new PutItemRequest().withTableName(table)
-                            .withItem(buildItemWithValues(hashKeyAttrType,
-                                    HASH_KEY_OTHER_VALUE,
-                                    Optional.empty(),
-                                    SOME_OTHER_OTHER_FIELD_VALUE + table + org)));
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_OTHER_VALUE)
+                                    .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + table + org)
+                                    .build()));
         } else {
             // (hk-rk tables) add two rows:
             // (hk1, rk1, table-and-org-specific-field-value1)
             // (hk1, rk2, table-and-org-specific-field-value2, index-field-value)
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
-                    .withItem(buildHkRkItemWithSomeFieldValue(hashKeyAttrType,
-                        SOME_FIELD_VALUE + table + org)));
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                            .someField(S, SOME_FIELD_VALUE + table + org)
+                            .rangeKey(S, TestSupport.RANGE_KEY_STRING_VALUE)
+                            .build()));
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
-                    .withItem(buildItemWithValues(hashKeyAttrType, HASH_KEY_VALUE,
-                        Optional.of(RANGE_KEY_OTHER_STRING_VALUE),
-                        SOME_OTHER_FIELD_VALUE + table + org,
-                        Optional.of(INDEX_FIELD_VALUE))));
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                            .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                            .rangeKey(S, RANGE_KEY_OTHER_STRING_VALUE)
+                            .indexField(S, INDEX_FIELD_VALUE)
+                            .build()));
         }
     }
 

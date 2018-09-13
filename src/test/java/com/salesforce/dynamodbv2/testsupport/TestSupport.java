@@ -16,7 +16,6 @@ import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -49,23 +48,6 @@ public class TestSupport {
     public static final String INDEX_FIELD = "indexField";
     public static final String INDEX_FIELD_VALUE = "indexFieldValue";
 
-    /*
-     * get helper methods
-     */
-
-    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
-        AmazonDynamoDB amazonDynamoDb,
-        String tableName) {
-        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE);
-    }
-
-    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
-        AmazonDynamoDB amazonDynamoDb,
-        String tableName,
-        String hashKeyValue) {
-        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, hashKeyValue, Optional.empty());
-    }
-
     /**
      * Retrieves the item with the provided HK and RK values.
      */
@@ -86,15 +68,6 @@ public class TestSupport {
     }
 
     /**
-     * Retrieves the item with the default HK and RK values.
-     */
-    public static Map<String, AttributeValue> getItemDefaultHkRk(ScalarAttributeType hashKeyAttrType,
-                                                                 AmazonDynamoDB amazonDynamoDb,
-                                                                 String tableName) {
-        return getItem(hashKeyAttrType, amazonDynamoDb, tableName, HASH_KEY_VALUE, Optional.of(RANGE_KEY_STRING_VALUE));
-    }
-
-    /**
      * Retrieves the items with the provided PKs (as HKs or HK-RK pairs).
      */
     public static Set<Map<String, AttributeValue>> batchGetItem(ScalarAttributeType hashKeyAttrType,
@@ -110,6 +83,7 @@ public class TestSupport {
                     .rangeKeyStringOpt(rangeKeyValuesOpt.map(rangeKeyValues -> rangeKeyValues.get(finalI)))
                     .build());
         }
+
         Set<Map<String, AttributeValue>> originalKeys = new HashSet<>(keys);
         final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
         keysAndAttributes.setKeys(keys);
@@ -191,82 +165,4 @@ public class TestSupport {
                 throw new IllegalArgumentException("unsupported type " + hashKeyAttrType + " encountered");
         }
     }
-
-    /*
-     * Item-building helper methods.
-     */
-
-    /**
-     * Builds an item with the provided someField type and value, but the default HK and no RK.
-     */
-    public static Map<String, AttributeValue> buildItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-        String someFieldValue) {
-        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .someField(S, someFieldValue)
-                .build();
-    }
-
-    public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
-        String hashKeyValue,
-        Optional<String> rangeKeyValue,
-        String someFieldValue) {
-        return buildItemWithValues(hashKeyAttrType, hashKeyValue, rangeKeyValue, someFieldValue, Optional.empty());
-    }
-
-    /**
-     * Builds an item with the provided HK, RK, and someField values.
-     */
-    public static Map<String, AttributeValue> buildItemWithValues(ScalarAttributeType hashKeyAttrType,
-        String hashKeyValue,
-        Optional<String> rangeKeyValueOpt,
-        String someFieldValue,
-        Optional<String> indexFieldValueOpt) {
-        return ItemBuilder.builder(hashKeyAttrType, hashKeyValue)
-                .someField(S, someFieldValue)
-                .rangeKeyStringOpt(rangeKeyValueOpt)
-                .indexFieldStringOpt(indexFieldValueOpt)
-                .build();
-    }
-
-    /**
-     * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
-     * someField someFieldValue {@code someFieldValue}. (Hash-key scalar-attribute type set based on
-     * {@code hashKeyAttrType}; range-key scalar-attribute type set to S.)
-     */
-    public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-                                                                              String someFieldValue) {
-        return buildHkRkItemWithSomeFieldValue(hashKeyAttrType, S, someFieldValue);
-    }
-
-    /**
-     * Builds a map representing an item, setting the HK and RK field names and values to the default and setting the
-     * someField value to {@code someFieldValue}. (Hash-key scalar-attribute type set based on {@code hashKeyAttrType};
-     * range-key scalar-attribute type set based on {@code rangeKeyAttrType}.)
-     */
-    public static Map<String, AttributeValue> buildHkRkItemWithSomeFieldValue(ScalarAttributeType hashKeyAttrType,
-            ScalarAttributeType rangeKeyAttrType,
-            String someFieldValue) {
-        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .someField(S, someFieldValue)
-                .rangeKey(rangeKeyAttrType, RANGE_KEY_STRING_VALUE)
-                .build();
-    }
-
-    /**
-     * Builds an map representing an item, setting the HK field name and value to the default.
-     */
-    public static Map<String, AttributeValue> buildHkKey(ScalarAttributeType hashKeyAttrType) {
-        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .build();
-    }
-
-    /**
-     * Builds a map representing an item, setting the HK and RK field names and values to the default.
-     */
-    public static Map<String, AttributeValue> buildHkRkKey(ScalarAttributeType hashKeyAttrType) {
-        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                .rangeKey(S, RANGE_KEY_STRING_VALUE)
-                .build();
-    }
-
 }

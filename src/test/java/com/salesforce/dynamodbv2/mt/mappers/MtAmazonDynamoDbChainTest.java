@@ -52,8 +52,8 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import com.salesforce.dynamodbv2.testsupport.TestSupport;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -229,7 +230,9 @@ class MtAmazonDynamoDbChainTest {
         // put item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> item =
-            TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValue1");
+                ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValue1")
+                        .build();
         Map<String, AttributeValue> originalItem = new HashMap<>(item);
         PutItemRequest putItemRequest = new PutItemRequest().withTableName(tableName1).withItem(item);
         amazonDynamoDb.putItem(putItemRequest);
@@ -240,11 +243,17 @@ class MtAmazonDynamoDbChainTest {
         mtContext.setContext("ctx2");
         amazonDynamoDb
             .putItem(new PutItemRequest().withTableName(tableName1)
-                .withItem(TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValue2")));
+                .withItem(ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValue2")
+                        .build()));
 
         // get item from ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> item1 = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1);
+        Map<String, AttributeValue> item1 = getItem(HASH_KEY_ATTR_TYPE,
+                amazonDynamoDb,
+                tableName1,
+                HASH_KEY_VALUE,
+                Optional.empty());
         assertItemValue("someValue1", item1);
 
         // query item from ctx1
@@ -275,7 +284,11 @@ class MtAmazonDynamoDbChainTest {
 
         // get item from ctx2
         mtContext.setContext("ctx2");
-        assertItemValue("someValue2", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2", getItem(HASH_KEY_ATTR_TYPE,
+                amazonDynamoDb,
+                tableName1,
+                HASH_KEY_VALUE,
+                Optional.empty()));
 
         // query item from ctx2 using attribute name placeholders
         List<Map<String, AttributeValue>> queryItems2 = amazonDynamoDb.query(
@@ -356,7 +369,8 @@ class MtAmazonDynamoDbChainTest {
             .addAttributeUpdatesEntry(SOME_FIELD,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
         amazonDynamoDb.updateItem(updateItemRequest);
-        assertItemValue("someValue1Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1Updated",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
         assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
         assertEquals(tableName1, updateItemRequest.getTableName());
 
@@ -368,7 +382,8 @@ class MtAmazonDynamoDbChainTest {
                 createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))))
             .addAttributeUpdatesEntry(SOME_FIELD,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
-        assertItemValue("someValue2Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2Updated",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
 
         // conditional update, fail
         mtContext.setContext("ctx1");
@@ -386,7 +401,8 @@ class MtAmazonDynamoDbChainTest {
         } catch (ConditionalCheckFailedException ignore) {
             // OK to ignore(?)
         }
-        assertItemValue("someValue1Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1Updated",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
 
         // conditional update, success
         mtContext.setContext("ctx1");
@@ -399,17 +415,21 @@ class MtAmazonDynamoDbChainTest {
             .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
             .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         amazonDynamoDb.updateItem(condUpdateItemRequestSuccess);
-        assertItemValue("someValue1UpdatedAgain", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1UpdatedAgain",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
 
         // put item into table2 in ctx1
         mtContext.setContext("ctx1");
         amazonDynamoDb
             .putItem(new PutItemRequest().withTableName(tableName2)
-                .withItem(TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValueTable2")));
+                .withItem(ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValueTable2")
+                        .build()));
 
         // get item from table2 in ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> itemTable2 = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2);
+        Map<String, AttributeValue> itemTable2
+                = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2, HASH_KEY_VALUE, Optional.empty());
         assertItemValue("someValueTable2", itemTable2);
 
         // delete item in ctx1
@@ -420,11 +440,17 @@ class MtAmazonDynamoDbChainTest {
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1)
             .withKey(deleteItemKey);
         amazonDynamoDb.deleteItem(deleteItemRequest);
-        assertNull(getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, "someValue1Updated"));
+        assertNull(getItem(HASH_KEY_ATTR_TYPE,
+                amazonDynamoDb,
+                tableName1,
+                "someValue1Updated",
+                Optional.empty()));
         mtContext.setContext("ctx2");
-        assertItemValue("someValue2Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2Updated",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
         mtContext.setContext("ctx1");
-        assertItemValue("someValueTable2", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2));
+        assertItemValue("someValueTable2",
+                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2, HASH_KEY_VALUE, Optional.empty()));
         assertEquals(tableName1, deleteItemRequest.getTableName());
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey));
 

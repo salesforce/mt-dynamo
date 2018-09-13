@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
@@ -10,14 +11,15 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.batchGetItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.TestSupport;
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -37,22 +39,19 @@ class BatchGetTest {
         testArgument.forEachOrgContext(
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_OTHER_VALUE);
-                final Set<Map<String, AttributeValue>> gottenItems = TestSupport.batchGetItem(
-                        testArgument.getHashKeyAttrType(),
+                final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
                         testArgument.getAmazonDynamoDb(),
                         TABLE1,
                         hashKeyValues,
                         Optional.empty());
-                final Map<String, AttributeValue> expectedItem0 = buildItemWithValues(
-                        testArgument.getHashKeyAttrType(),
-                        hashKeyValues.get(0),
-                        Optional.empty(),
-                        SOME_FIELD_VALUE + TABLE1 + org);
-                final Map<String, AttributeValue> expectedItem1 = buildItemWithValues(
-                        testArgument.getHashKeyAttrType(),
-                        hashKeyValues.get(1),
-                        Optional.empty(),
-                        SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org);
+                final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                            hashKeyValues.get(0))
+                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                        .build();
+                final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                            hashKeyValues.get(1))
+                        .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
+                        .build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
@@ -65,25 +64,23 @@ class BatchGetTest {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_VALUE);
                 final Optional<List<String>> rangeKeyValues = Optional
                         .of(Arrays.asList(RANGE_KEY_STRING_VALUE, RANGE_KEY_OTHER_STRING_VALUE));
-                final Set<Map<String, AttributeValue>> gottenItems = TestSupport.batchGetItem(
-                        testArgument.getHashKeyAttrType(),
+                final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
                         testArgument.getAmazonDynamoDb(),
                         TABLE3,
                         hashKeyValues,
                         rangeKeyValues);
-                final Map<String, AttributeValue> expectedItem0 = buildItemWithValues(
-                        testArgument.getHashKeyAttrType(),
-                        hashKeyValues.get(0),
-                        rangeKeyValues.map(rkv -> rkv.get(0)),
-                        SOME_FIELD_VALUE + TABLE3 + org);
-                final Map<String, AttributeValue> expectedItem1 = buildItemWithValues(
-                        testArgument.getHashKeyAttrType(),
-                        hashKeyValues.get(1),
-                        rangeKeyValues.map(rkv -> rkv.get(1)),
-                        SOME_OTHER_FIELD_VALUE + TABLE3 + org,
-                        Optional.of(INDEX_FIELD_VALUE));
+                final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                            hashKeyValues.get(0))
+                        .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                        .rangeKey(S, RANGE_KEY_STRING_VALUE)
+                        .build();
+                final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                            hashKeyValues.get(1))
+                        .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                        .rangeKey(S, RANGE_KEY_OTHER_STRING_VALUE)
+                        .indexField(S, INDEX_FIELD_VALUE)
+                        .build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
-
 }

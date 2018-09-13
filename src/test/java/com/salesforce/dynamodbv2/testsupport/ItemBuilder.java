@@ -11,7 +11,6 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -56,13 +55,6 @@ public class ItemBuilder {
     public ItemBuilder indexField(ScalarAttributeType hashKeyAttrType, String indexFieldValue) {
         this.item.put(INDEX_FIELD, createAttributeValue(hashKeyAttrType, indexFieldValue));
         return this;
-    }
-
-    /**
-    * Add an index field with value rangeKeyValueOpt.get() if present, otherwise do nothing.
-    */
-    public ItemBuilder indexFieldStringOpt(Optional<String> indexFieldValueOpt) {
-        return indexFieldValueOpt.map(indexFieldValue -> this.indexField(S, indexFieldValue)).orElse(this);
     }
 
     public ImmutableMap<String, AttributeValue> build() {
