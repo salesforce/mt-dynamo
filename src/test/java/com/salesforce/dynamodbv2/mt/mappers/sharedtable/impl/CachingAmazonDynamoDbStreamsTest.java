@@ -178,7 +178,7 @@ class CachingAmazonDynamoDbStreamsTest {
             // the result should have been completely served from cache
             assertEquals(1, countingDynamoDbStreams.getRecordsCount);
             assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
-            Record lastRecord = getLast(records);
+            final Record lastRecord = getLast(records);
 
             // second client fetches records starting at trim horizon with limit smaller than page size, but larger
             // than initial limit of first client
@@ -741,14 +741,14 @@ class CachingAmazonDynamoDbStreamsTest {
      */
     @Test
     void testMultipleShards() {
-        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
-        GetShardIteratorRequest thRequest11 = mockTrimHorizonRequest(streams, "stream1", "shard1");
-        GetShardIteratorRequest thRequest12 = mockTrimHorizonRequest(streams, "stream1", "shard2");
-        GetShardIteratorRequest thRequest21 = mockTrimHorizonRequest(streams, "stream2", "shard1");
-        GetShardIteratorRequest thRequest22 = mockTrimHorizonRequest(streams, "stream2", "shard2");
+        final GetShardIteratorRequest thRequest11 = mockTrimHorizonRequest(streams, "stream1", "shard1");
+        final GetShardIteratorRequest thRequest12 = mockTrimHorizonRequest(streams, "stream1", "shard2");
+        final GetShardIteratorRequest thRequest21 = mockTrimHorizonRequest(streams, "stream2", "shard1");
+        final GetShardIteratorRequest thRequest22 = mockTrimHorizonRequest(streams, "stream2", "shard2");
 
-        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
 
         assertGetRecords(cachingStreams, thRequest11, null, 0, 10);
         assertGetRecords(cachingStreams, thRequest12, null, 0, 10);
