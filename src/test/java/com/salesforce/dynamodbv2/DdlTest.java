@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2;
 
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.TIMEOUT_SECONDS;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static org.junit.jupiter.api.Assertions.assertEquals;

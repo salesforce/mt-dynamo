@@ -1,15 +1,10 @@
 package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +14,11 @@ import java.util.Optional;
  * Builds a map of attribute names to {@code AttributeValue} objects.
  */
 public class ItemBuilder {
+    public static final String HASH_KEY_FIELD = "hashKeyField";
+    public static final String RANGE_KEY_FIELD = "rangeKeyField";
+    public static final String SOME_FIELD = "someField";
+    public static final String INDEX_FIELD = "indexField";
+
     private final Map<String, AttributeValue> item;
 
     /**

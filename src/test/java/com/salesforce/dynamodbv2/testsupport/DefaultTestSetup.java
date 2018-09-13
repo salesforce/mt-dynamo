@@ -2,14 +2,14 @@ package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_STRING_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
@@ -93,13 +93,13 @@ public class DefaultTestSetup implements TestSetup {
                 new PutItemRequest().withTableName(table)
                     .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + table + org)
-                            .rangeKey(S, TestSupport.RANGE_KEY_STRING_VALUE)
+                            .rangeKey(S, TestSupport.RANGE_KEY_VALUE)
                             .build()));
             amazonDynamoDb.putItem(
                 new PutItemRequest().withTableName(table)
                     .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
                             .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                            .rangeKey(S, RANGE_KEY_OTHER_STRING_VALUE)
+                            .rangeKey(S, RANGE_KEY_OTHER_VALUE)
                             .indexField(S, INDEX_FIELD_VALUE)
                             .build()));
         }

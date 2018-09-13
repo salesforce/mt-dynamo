@@ -4,10 +4,10 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_STRING_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -151,7 +151,7 @@ class DeleteTest {
         MT_CONTEXT.setContext(org);
         Map<String, AttributeValue> deleteItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
-                .rangeKey(S, RANGE_KEY_STRING_VALUE)
+                .rangeKey(S, RANGE_KEY_VALUE)
                 .build();
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE3).withKey(deleteItemKey);
@@ -160,7 +160,7 @@ class DeleteTest {
                 TABLE3,
                 HASH_KEY_VALUE,
                 testArgument.getHashKeyAttrType(),
-                Optional.of(RANGE_KEY_STRING_VALUE)));
+                Optional.of(RANGE_KEY_VALUE)));
         assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
@@ -168,13 +168,13 @@ class DeleteTest {
             // assert same table, different orgs
             assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + TABLE3 + otherOrg)
-                            .rangeKey(S, RANGE_KEY_STRING_VALUE)
+                            .rangeKey(S, RANGE_KEY_VALUE)
                             .build(),
                        is(getItem(testArgument.getAmazonDynamoDb(),
                                TABLE3,
                                HASH_KEY_VALUE,
                                testArgument.getHashKeyAttrType(),
-                               Optional.of(RANGE_KEY_STRING_VALUE))));
+                               Optional.of(RANGE_KEY_VALUE))));
         });
     }
 
