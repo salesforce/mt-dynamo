@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
@@ -40,8 +41,8 @@ public class HybridSharedTableBuilder {
      * Builds a MtAmazonDynamoDbBySharedTable.
      */
     public MtAmazonDynamoDbBySharedTable build() {
-        IteratingCreateTableRequestFactory iteratingCreateTableRequestFactory =
-            new IteratingCreateTableRequestFactory(ImmutableList.of(
+        CreateTableRequestFactoryEnsemble iteratingCreateTableRequestFactory =
+            new CreateTableRequestFactoryEnsemble(ImmutableList.of(
                 primaryCreateTableRequestFactory,
                 new SharedTableCreateTableRequestFactory(
                     SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, streamsEnabled),
@@ -105,11 +106,12 @@ public class HybridSharedTableBuilder {
         return this;
     }
 
-    private class IteratingCreateTableRequestFactory implements CreateTableRequestFactory { // TODO add unit test
+    @VisibleForTesting
+    static class CreateTableRequestFactoryEnsemble implements CreateTableRequestFactory {
 
         private final List<CreateTableRequestFactory> createTableRequestFactories;
 
-        IteratingCreateTableRequestFactory(List<CreateTableRequestFactory> createTableRequestFactories) {
+        CreateTableRequestFactoryEnsemble(List<CreateTableRequestFactory> createTableRequestFactories) {
             this.createTableRequestFactories = createTableRequestFactories;
         }
 
