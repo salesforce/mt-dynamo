@@ -9,12 +9,12 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -52,8 +52,8 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import com.salesforce.dynamodbv2.testsupport.TestSupport;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -229,7 +230,9 @@ class MtAmazonDynamoDbChainTest {
         // put item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> item =
-            TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValue1");
+                ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValue1")
+                        .build();
         Map<String, AttributeValue> originalItem = new HashMap<>(item);
         PutItemRequest putItemRequest = new PutItemRequest().withTableName(tableName1).withItem(item);
         amazonDynamoDb.putItem(putItemRequest);
@@ -240,18 +243,24 @@ class MtAmazonDynamoDbChainTest {
         mtContext.setContext("ctx2");
         amazonDynamoDb
             .putItem(new PutItemRequest().withTableName(tableName1)
-                .withItem(TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValue2")));
+                .withItem(ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValue2")
+                        .build()));
 
         // get item from ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> item1 = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1);
+        Map<String, AttributeValue> item1 = getItem(amazonDynamoDb,
+                tableName1,
+                HASH_KEY_VALUE,
+                HASH_KEY_ATTR_TYPE,
+                Optional.empty());
         assertItemValue("someValue1", item1);
 
         // query item from ctx1
         String keyConditionExpression = "#name = :value";
         Map<String, String> queryExpressionAttrNames = ImmutableMap.of("#name", HASH_KEY_FIELD);
         Map<String, AttributeValue> queryExpressionAttrValues = ImmutableMap
-            .of(":value", createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE));
+            .of(":value", createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE));
         QueryRequest queryRequest = new QueryRequest().withTableName(tableName1)
             .withKeyConditionExpression(keyConditionExpression)
             .withExpressionAttributeNames(queryExpressionAttrNames)
@@ -268,21 +277,25 @@ class MtAmazonDynamoDbChainTest {
             .withKeyConditions(ImmutableMap.of(
                 HASH_KEY_FIELD,
                 new Condition().withComparisonOperator(EQ)
-                    .withAttributeValueList(createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))));
+                    .withAttributeValueList(createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))));
         List<Map<String, AttributeValue>> queryItemsKeyConditions = amazonDynamoDb
             .query(queryRequestKeyConditions).getItems();
         assertItemValue("someValue1", queryItemsKeyConditions.get(0));
 
         // get item from ctx2
         mtContext.setContext("ctx2");
-        assertItemValue("someValue2", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2", getItem(amazonDynamoDb,
+                tableName1,
+                HASH_KEY_VALUE,
+                HASH_KEY_ATTR_TYPE,
+                Optional.empty()));
 
         // query item from ctx2 using attribute name placeholders
         List<Map<String, AttributeValue>> queryItems2 = amazonDynamoDb.query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression("#name = :value")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":value",
-                    createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)))).getItems();
+                    createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)))).getItems();
         assertItemValue("someValue2", queryItems2.get(0));
 
         // query item from ctx2 using attribute name literals
@@ -290,14 +303,14 @@ class MtAmazonDynamoDbChainTest {
         List<Map<String, AttributeValue>> queryItems3 = amazonDynamoDb.query(
             new QueryRequest().withTableName(tableName1).withKeyConditionExpression(HASH_KEY_FIELD + " = :value")
                 .withExpressionAttributeValues(ImmutableMap.of(":value",
-                    createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)))).getItems();
+                    createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)))).getItems();
         assertItemValue("someValue2", queryItems3.get(0));
 
         // scan for an item using hk
         String filterExpression1 = "#name = :value";
         Map<String, String> scanExpressionAttrNames1 = ImmutableMap.of("#name", HASH_KEY_FIELD);
         Map<String, AttributeValue> scanExpressionAttrValues1 = ImmutableMap
-            .of(":value", createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE));
+            .of(":value", createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE));
         ScanRequest scanRequest = new ScanRequest().withTableName(tableName1)
             .withFilterExpression(filterExpression1)
             .withExpressionAttributeNames(scanExpressionAttrNames1)
@@ -313,7 +326,7 @@ class MtAmazonDynamoDbChainTest {
             .withScanFilter(ImmutableMap.of(
                 HASH_KEY_FIELD,
                 new Condition().withComparisonOperator(EQ)
-                    .withAttributeValueList(createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))));
+                    .withAttributeValueList(createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))));
         List<Map<String, AttributeValue>> scanItemsScanFilter = amazonDynamoDb
             .scan(scanRequestKeyConditions).getItems();
         assertItemValue("someValue2", scanItemsScanFilter.get(0));
@@ -348,7 +361,7 @@ class MtAmazonDynamoDbChainTest {
         // update item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> updateItemKey = new HashMap<>(
-            ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)));
+            ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)));
         Map<String, AttributeValue> originalUpdateItemKey = new HashMap<>(updateItemKey);
         UpdateItemRequest updateItemRequest = new UpdateItemRequest()
             .withTableName(tableName1)
@@ -356,7 +369,8 @@ class MtAmazonDynamoDbChainTest {
             .addAttributeUpdatesEntry(SOME_FIELD,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
         amazonDynamoDb.updateItem(updateItemRequest);
-        assertItemValue("someValue1Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1Updated",
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
         assertEquals(tableName1, updateItemRequest.getTableName());
 
@@ -365,10 +379,11 @@ class MtAmazonDynamoDbChainTest {
         amazonDynamoDb.updateItem(new UpdateItemRequest()
             .withTableName(tableName1)
             .withKey(new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD,
-                createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))))
+                createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))))
             .addAttributeUpdatesEntry(SOME_FIELD,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
-        assertItemValue("someValue2Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2Updated",
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // conditional update, fail
         mtContext.setContext("ctx1");
@@ -386,7 +401,8 @@ class MtAmazonDynamoDbChainTest {
         } catch (ConditionalCheckFailedException ignore) {
             // OK to ignore(?)
         }
-        assertItemValue("someValue1Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1Updated",
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // conditional update, success
         mtContext.setContext("ctx1");
@@ -399,32 +415,38 @@ class MtAmazonDynamoDbChainTest {
             .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("someValue1Updated"))
             .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         amazonDynamoDb.updateItem(condUpdateItemRequestSuccess);
-        assertItemValue("someValue1UpdatedAgain", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue1UpdatedAgain",
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // put item into table2 in ctx1
         mtContext.setContext("ctx1");
         amazonDynamoDb
             .putItem(new PutItemRequest().withTableName(tableName2)
-                .withItem(TestSupport.buildItemWithSomeFieldValue(HASH_KEY_ATTR_TYPE, "someValueTable2")));
+                .withItem(ItemBuilder.builder(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)
+                        .someField(S, "someValueTable2")
+                        .build()));
 
         // get item from table2 in ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> itemTable2 = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2);
+        Map<String, AttributeValue> itemTable2
+                = getItem(amazonDynamoDb, tableName2, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty());
         assertItemValue("someValueTable2", itemTable2);
 
         // delete item in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> deleteItemKey = new HashMap<>(
-            ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)));
+            ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE)));
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1)
             .withKey(deleteItemKey);
         amazonDynamoDb.deleteItem(deleteItemRequest);
-        assertNull(getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, "someValue1Updated"));
+        assertNull(getItem(amazonDynamoDb, tableName1, "someValue1Updated", HASH_KEY_ATTR_TYPE, Optional.empty()));
         mtContext.setContext("ctx2");
-        assertItemValue("someValue2Updated", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1));
+        assertItemValue("someValue2Updated",
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         mtContext.setContext("ctx1");
-        assertItemValue("someValueTable2", getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2));
+        assertItemValue("someValueTable2",
+                getItem(amazonDynamoDb, tableName2, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         assertEquals(tableName1, deleteItemRequest.getTableName());
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey));
 
@@ -432,11 +454,11 @@ class MtAmazonDynamoDbChainTest {
 
         // put items, same hk, different rk
         Map<String, AttributeValue> table3item1 = ImmutableMap.of(HASH_KEY_FIELD,
-            createHkAttribute(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
+            createAttributeValue(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
             RANGE_KEY_FIELD, createStringAttribute("rangeKeyValue3a"),
             SOME_FIELD, createStringAttribute("someValue3a"));
         Map<String, AttributeValue> table3item2 = ImmutableMap.of(HASH_KEY_FIELD,
-            createHkAttribute(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
+            createAttributeValue(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
             RANGE_KEY_FIELD, createStringAttribute("rangeKeyValue3b"),
             SOME_FIELD, createStringAttribute("someValue3b"));
         amazonDynamoDb.putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item1));
@@ -445,7 +467,7 @@ class MtAmazonDynamoDbChainTest {
 
         // get item
         GetItemRequest getItemRequest4 = new GetItemRequest().withTableName(tableName3).withKey(new HashMap<>(
-            ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
+            ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
                 RANGE_KEY_FIELD, createStringAttribute("rangeKeyValue3a"))));
         assertThat(amazonDynamoDb.getItem(getItemRequest4).getItem(), is(table3item1));
 
@@ -459,7 +481,7 @@ class MtAmazonDynamoDbChainTest {
         // query hk and rk
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> table3item3 = new HashMap<>(ImmutableMap.of(
-            HASH_KEY_FIELD, createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
+            HASH_KEY_FIELD, createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
             RANGE_KEY_FIELD, createStringAttribute("rangeKeyValue"),
             INDEX_FIELD, createStringAttribute("indexFieldValue")));
         amazonDynamoDb.putItem(new PutItemRequest().withTableName(tableName3).withItem(table3item3));
@@ -469,7 +491,7 @@ class MtAmazonDynamoDbChainTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD,
                     "#name2", RANGE_KEY_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":value",
-                    createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
+                    createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
                     ":value2", createStringAttribute("rangeKeyValue")))).getItems();
         assertEquals(1, queryItems6.size());
         Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
@@ -481,7 +503,7 @@ class MtAmazonDynamoDbChainTest {
                 .withFilterExpression("#name2 = :value2")
                 .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD, "#name2", SOME_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":value",
-                    createHkAttribute(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
+                    createAttributeValue(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
                     ":value2", createStringAttribute("someValue3a")))).getItems();
         assertEquals(1, queryItemsFe.size());
 
@@ -501,7 +523,7 @@ class MtAmazonDynamoDbChainTest {
             .withKeyConditionExpression("#name = :value and #name2 = :value2")
             .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD, "#name2", INDEX_FIELD))
             .withExpressionAttributeValues(ImmutableMap.of(":value",
-                createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
+                createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
                 ":value2", createStringAttribute("indexFieldValue")))
             .withIndexName("testlsi");
         List<Map<String, AttributeValue>> queryItems5 = amazonDynamoDb.query(queryRequest5).getItems();
@@ -514,7 +536,7 @@ class MtAmazonDynamoDbChainTest {
         Map<String, String> scanExpressionAttrNamesHkRk = ImmutableMap
             .of("#name1", HASH_KEY_FIELD, "#name2", RANGE_KEY_FIELD);
         Map<String, AttributeValue> scanExpressionAttrValuesHkRk = ImmutableMap
-            .of(":value1", createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
+            .of(":value1", createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
                 ":value2", createStringAttribute("rangeKeyValue"));
         ScanRequest scanRequestHkRk = new ScanRequest().withTableName(tableName3)
             .withFilterExpression(filterExpressionHkRk)
@@ -554,7 +576,7 @@ class MtAmazonDynamoDbChainTest {
 
     private void assertItemValue(String expectedValue, Map<String, AttributeValue> actualItem) {
         assertThat(actualItem, is(ImmutableMap.of(HASH_KEY_FIELD,
-            createHkAttribute(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
+            createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
             SOME_FIELD, createStringAttribute(expectedValue))));
     }
 

@@ -352,7 +352,7 @@ class QueryMapper {
     private void validateQueryRequest(QueryRequest queryRequest) {
         boolean hasKeyConditionExpression = !isEmpty(queryRequest.getKeyConditionExpression());
         boolean hasKeyConditions = (queryRequest.getKeyConditions() != null
-            && queryRequest.getKeyConditions().keySet().size() > 0);
+            && !queryRequest.getKeyConditions().keySet().isEmpty());
         checkArgument(hasKeyConditionExpression || hasKeyConditions,
             "keyConditionExpression or keyConditions are required");
         checkArgument(!hasKeyConditionExpression || !hasKeyConditions,
@@ -362,7 +362,7 @@ class QueryMapper {
     private void validateScanRequest(ScanRequest scanRequest) {
         boolean hasFilterExpression = !isEmpty(scanRequest.getFilterExpression());
         boolean hasScanFilter = (scanRequest.getScanFilter() != null
-            && scanRequest.getScanFilter().keySet().size() > 0);
+            && !scanRequest.getScanFilter().keySet().isEmpty());
         checkArgument(!hasFilterExpression || !hasScanFilter,
             "ambiguous ScanRequest: both filterExpression and scanFilter were provided");
     }
@@ -375,7 +375,7 @@ class QueryMapper {
      * (https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/dynamodbv2/document/DynamoDB.html).
      */
     private void convertLegacyExpression(RequestWrapper request) {
-        if ((request.getLegacyExpression() != null && request.getLegacyExpression().keySet().size() > 0)) {
+        if ((request.getLegacyExpression() != null && !request.getLegacyExpression().keySet().isEmpty())) {
             List<String> keyConditionExpressionParts = new ArrayList<>();
             AtomicInteger counter = new AtomicInteger(1);
             request.getLegacyExpression().forEach((key, condition) -> {
