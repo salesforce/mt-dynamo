@@ -46,7 +46,6 @@ public class HybridSharedTableBuilder {
                 primaryCreateTableRequestFactory,
                 new SharedTableCreateTableRequestFactory(
                     SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, streamsEnabled),
-                    true,
                     tablePrefix)
             ));
 
@@ -59,6 +58,7 @@ public class HybridSharedTableBuilder {
                 new DynamoSecondaryIndexMapperByTypeImpl(),
                 ".",
                 amazonDynamoDb,
+                true,
                 pollIntervalSeconds),
             MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
@@ -133,10 +133,10 @@ public class HybridSharedTableBuilder {
         }
 
         @Override
-        public List<CreateTableRequest> precreateTables() {
+        public List<CreateTableRequest> getPhysicalTables() {
             return createTableRequestFactories.stream().flatMap(
                 (Function<CreateTableRequestFactory, Stream<CreateTableRequest>>) createTableRequestFactory ->
-                    createTableRequestFactory.precreateTables().stream()).collect(Collectors.toList());
+                    createTableRequestFactory.getPhysicalTables().stream()).collect(Collectors.toList());
         }
 
     }

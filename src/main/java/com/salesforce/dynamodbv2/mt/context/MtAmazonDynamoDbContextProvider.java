@@ -12,6 +12,7 @@ package com.salesforce.dynamodbv2.mt.context;
  *
  * @author msgroi
  */
+@FunctionalInterface
 public interface MtAmazonDynamoDbContextProvider {
 
     String getContext();

@@ -11,7 +11,7 @@ public abstract class MtAmazonDynamoDbStreamsBase extends AbstractAmazonDynamoDB
 
     private final AmazonDynamoDBStreams amazonDynamoDbStreams;
 
-    MtAmazonDynamoDbStreamsBase(AmazonDynamoDBStreams amazonDynamoDbStreams) {
+    protected MtAmazonDynamoDbStreamsBase(AmazonDynamoDBStreams amazonDynamoDbStreams) {
         this.amazonDynamoDbStreams = amazonDynamoDbStreams;
     }
 

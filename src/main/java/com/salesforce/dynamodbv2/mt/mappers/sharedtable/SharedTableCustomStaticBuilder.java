@@ -83,7 +83,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
             }
 
             @Override
-            public List<CreateTableRequest> precreateTables() {
+            public List<CreateTableRequest> getPhysicalTables() {
                 return new ArrayList<>(createTableRequestsMap.values());
             }
         });

@@ -2,6 +2,8 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import org.apache.commons.lang3.NotImplementedException;
 
 /**
@@ -20,6 +22,10 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
         if (dynamoDb instanceof MtAmazonDynamoDbByTable) {
             // By table means streams on a table will be tenant-specific, so just provide a passthrough client
             return new MtAmazonDynamoDbStreamsPassthrough(dynamoDbStreams);
+        }
+
+        if (dynamoDb instanceof MtAmazonDynamoDbBySharedTable) {
+            return new MtAmazonDynamoDbStreamsBySharedTable(dynamoDbStreams, (MtAmazonDynamoDbBySharedTable)dynamoDb);
         }
 
         if (dynamoDb instanceof MtAmazonDynamoDbBase) {

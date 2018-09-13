@@ -32,8 +32,8 @@ class HybridSharedTableBuilderTest {
     static void beforeAll() {
         when(ctrf1.getCreateTableRequest(virtualTable1)).thenReturn(Optional.of(createTableRequest1));
         when(ctrf2.getCreateTableRequest(virtualTable2)).thenReturn(Optional.of(createTableRequest2));
-        when(ctrf1.precreateTables()).thenReturn(ImmutableList.of(createTableRequest1));
-        when(ctrf2.precreateTables()).thenReturn(ImmutableList.of(createTableRequest2));
+        when(ctrf1.getPhysicalTables()).thenReturn(ImmutableList.of(createTableRequest1));
+        when(ctrf2.getPhysicalTables()).thenReturn(ImmutableList.of(createTableRequest2));
     }
 
     @Test
@@ -50,7 +50,7 @@ class HybridSharedTableBuilderTest {
     @Test
     void testIteratingCreateTableRequestFactory_precreateTables() {
         assertEquals(ImmutableList.of(createTableRequest1, createTableRequest2),
-            new CreateTableRequestFactoryEnsemble(ImmutableList.of(ctrf1, ctrf2)).precreateTables());
+            new CreateTableRequestFactoryEnsemble(ImmutableList.of(ctrf1, ctrf2)).getPhysicalTables());
     }
 
 }
