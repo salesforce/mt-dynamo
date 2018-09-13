@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
+ * Tests HybridSharedTableBuilder.
+ *
  * @author msgroi
  */
 class HybridSharedTableBuilderTest {
