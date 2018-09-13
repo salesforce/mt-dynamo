@@ -5,9 +5,9 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ROOT_AMAZON_DYNAMO_DB;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -36,6 +36,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable.RecordProcessor;
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -94,7 +95,9 @@ class MtAmazonDynamoDbBySharedTableTest {
 
         // prime the cache
         amazonDynamoDb.putItem(new PutItemRequest()
-            .withTableName(TABLE1).withItem(buildItemWithSomeFieldValue(S, SOME_FIELD_VALUE)));
+            .withTableName(TABLE1).withItem(ItemBuilder.builder(S, HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE)
+                        .build()));
 
         // list streams
         List<MtStreamDescription> streams = amazonDynamoDb.listStreams(() -> new IRecordProcessor() {
@@ -141,7 +144,9 @@ class MtAmazonDynamoDbBySharedTableTest {
 
         // prime the cache
         amazonDynamoDb.putItem(new PutItemRequest()
-            .withTableName(TABLE1).withItem(buildItemWithSomeFieldValue(S, SOME_FIELD_VALUE)));
+            .withTableName(TABLE1).withItem(ItemBuilder.builder(S, HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE)
+                        .build()));
 
         // create a record to pass through
         Record record = new Record();

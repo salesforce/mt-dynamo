@@ -1,18 +1,17 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithSomeFieldValue;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.createHkAttribute;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -36,11 +35,11 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -63,13 +62,14 @@ class ScanTest {
             String filterExpression = "#name = :value";
             Map<String, String> expressionAttrNames = ImmutableMap.of("#name", HASH_KEY_FIELD);
             Map<String, AttributeValue> expressionAttrValues = ImmutableMap
-                .of(":value", createHkAttribute(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE));
+                .of(":value", createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE));
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                    SOME_FIELD_VALUE + TABLE1 + org)));
+                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                        .build()));
             assertEquals(TABLE1, scanRequest.getTableName());
             assertThat(scanRequest.getFilterExpression(), is(filterExpression));
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames));
@@ -80,15 +80,16 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org ->
-            assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(TABLE1)
-                .withScanFilter(ImmutableMap.of(
-                    HASH_KEY_FIELD,
-                    new Condition().withComparisonOperator(EQ)
-                        .withAttributeValueList(createHkAttribute(testArgument.getHashKeyAttrType(),
-                            HASH_KEY_VALUE))))).getItems().get(0),
-            is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                SOME_FIELD_VALUE + TABLE1 + org))));
+        testArgument.forEachOrgContext(org -> assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest()
+                        .withTableName(TABLE1)
+                        .withScanFilter(ImmutableMap.of(
+                                HASH_KEY_FIELD,
+                                new Condition().withComparisonOperator(EQ)
+                                        .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
+                                                HASH_KEY_VALUE))))).getItems().get(0),
+                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                        .build())));
     }
 
     @ParameterizedTest(name = "{arguments}")
@@ -103,8 +104,9 @@ class ScanTest {
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                is(buildItemWithSomeFieldValue(testArgument.getHashKeyAttrType(),
-                    SOME_FIELD_VALUE + TABLE1 + org)));
+                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                        .build()));
             assertEquals(TABLE1, scanRequest.getTableName()); // assert no side effects
             assertThat(scanRequest.getFilterExpression(), is(filterExpression)); // assert no side effects
             assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames)); // assert no side effects
@@ -119,14 +121,14 @@ class ScanTest {
             final Set<Map<String, AttributeValue>> items = new HashSet<>(testArgument.getAmazonDynamoDb()
                 .scan(new ScanRequest().withTableName(TABLE1)).getItems());
             assertEquals(2, items.size());
-            final Map<String, AttributeValue> someValue = buildItemWithValues(testArgument.getHashKeyAttrType(),
-                    HASH_KEY_VALUE,
-                    Optional.empty(),
-                    SOME_FIELD_VALUE + TABLE1 + org);
-            final Map<String, AttributeValue> someOtherValue = buildItemWithValues(testArgument.getHashKeyAttrType(),
-                    HASH_KEY_OTHER_VALUE,
-                    Optional.empty(),
-                    SOME_OTHER_FIELD_VALUE + TABLE1 + org);
+            final Map<String, AttributeValue> someValue = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                        HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build();
+            final Map<String, AttributeValue> someOtherValue = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                        HASH_KEY_OTHER_VALUE)
+                    .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
+                    .build();
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
             assertEquals(expectedSet, items);
         });
@@ -179,7 +181,7 @@ class ScanTest {
             // insert some data for another tenant as noise
             for (int i = 0; i < putCount; i++) {
                 amazonDynamoDb.putItem(
-                    new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createHkAttribute(
+                    new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(
                         hashKeyAttrType, String.valueOf(i)))));
                 itemKeys.add(i);
             }

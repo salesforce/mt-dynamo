@@ -1,11 +1,11 @@
 package com.salesforce.dynamodbv2;
 
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.TIMEOUT_SECONDS;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -49,7 +49,7 @@ class DdlTest {
         MT_CONTEXT.setContext(org);
         List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
             .scan(new ScanRequest().withTableName(TABLE1)).getItems(); // assert data is present
-        assertTrue(items.size() > 0);
+        assertFalse(items.isEmpty());
         new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
             .deleteTableIfExists(TABLE1, getPollInterval(), TIMEOUT_SECONDS);
         try {

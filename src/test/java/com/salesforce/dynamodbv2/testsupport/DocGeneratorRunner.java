@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.testsupport;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.buildItemWithValues;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -57,7 +56,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Disabled;
@@ -534,7 +532,9 @@ class DocGeneratorRunner {
         }
 
         private Map<String, AttributeValue> createItem(String value) {
-            return buildItemWithValues(hashKeyAttrType, value, Optional.empty(), "value-" + value);
+            return ItemBuilder.builder(hashKeyAttrType, value)
+                    .someField(S, "value-" + value)
+                    .build();
         }
 
         private String buildTableName(int ordinal) {
