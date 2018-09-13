@@ -249,10 +249,10 @@ class MtAmazonDynamoDbChainTest {
 
         // get item from ctx1
         mtContext.setContext("ctx1");
-        Map<String, AttributeValue> item1 = getItem(HASH_KEY_ATTR_TYPE,
-                amazonDynamoDb,
+        Map<String, AttributeValue> item1 = getItem(amazonDynamoDb,
                 tableName1,
                 HASH_KEY_VALUE,
+                HASH_KEY_ATTR_TYPE,
                 Optional.empty());
         assertItemValue("someValue1", item1);
 
@@ -284,10 +284,10 @@ class MtAmazonDynamoDbChainTest {
 
         // get item from ctx2
         mtContext.setContext("ctx2");
-        assertItemValue("someValue2", getItem(HASH_KEY_ATTR_TYPE,
-                amazonDynamoDb,
+        assertItemValue("someValue2", getItem(amazonDynamoDb,
                 tableName1,
                 HASH_KEY_VALUE,
+                HASH_KEY_ATTR_TYPE,
                 Optional.empty()));
 
         // query item from ctx2 using attribute name placeholders
@@ -370,7 +370,7 @@ class MtAmazonDynamoDbChainTest {
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
         amazonDynamoDb.updateItem(updateItemRequest);
         assertItemValue("someValue1Updated",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
         assertEquals(tableName1, updateItemRequest.getTableName());
 
@@ -383,7 +383,7 @@ class MtAmazonDynamoDbChainTest {
             .addAttributeUpdatesEntry(SOME_FIELD,
                 new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
         assertItemValue("someValue2Updated",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // conditional update, fail
         mtContext.setContext("ctx1");
@@ -402,7 +402,7 @@ class MtAmazonDynamoDbChainTest {
             // OK to ignore(?)
         }
         assertItemValue("someValue1Updated",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // conditional update, success
         mtContext.setContext("ctx1");
@@ -416,7 +416,7 @@ class MtAmazonDynamoDbChainTest {
             .addExpressionAttributeValuesEntry(":newValue", createStringAttribute("someValue1UpdatedAgain"));
         amazonDynamoDb.updateItem(condUpdateItemRequestSuccess);
         assertItemValue("someValue1UpdatedAgain",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
         // put item into table2 in ctx1
         mtContext.setContext("ctx1");
@@ -429,7 +429,7 @@ class MtAmazonDynamoDbChainTest {
         // get item from table2 in ctx1
         mtContext.setContext("ctx1");
         Map<String, AttributeValue> itemTable2
-                = getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2, HASH_KEY_VALUE, Optional.empty());
+                = getItem(amazonDynamoDb, tableName2, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty());
         assertItemValue("someValueTable2", itemTable2);
 
         // delete item in ctx1
@@ -440,17 +440,13 @@ class MtAmazonDynamoDbChainTest {
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName1)
             .withKey(deleteItemKey);
         amazonDynamoDb.deleteItem(deleteItemRequest);
-        assertNull(getItem(HASH_KEY_ATTR_TYPE,
-                amazonDynamoDb,
-                tableName1,
-                "someValue1Updated",
-                Optional.empty()));
+        assertNull(getItem(amazonDynamoDb, tableName1, "someValue1Updated", HASH_KEY_ATTR_TYPE, Optional.empty()));
         mtContext.setContext("ctx2");
         assertItemValue("someValue2Updated",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName1, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         mtContext.setContext("ctx1");
         assertItemValue("someValueTable2",
-                getItem(HASH_KEY_ATTR_TYPE, amazonDynamoDb, tableName2, HASH_KEY_VALUE, Optional.empty()));
+                getItem(amazonDynamoDb, tableName2, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         assertEquals(tableName1, deleteItemRequest.getTableName());
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey));
 

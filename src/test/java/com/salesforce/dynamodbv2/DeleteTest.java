@@ -51,20 +51,20 @@ class DeleteTest {
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE1).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getHashKeyAttrType(),
-                testArgument.getAmazonDynamoDb(),
+        assertNull(getItem(testArgument.getAmazonDynamoDb(),
                 TABLE1,
                 HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
                 Optional.empty()));
         assertEquals(TABLE1, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
         assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .someField(S, SOME_FIELD_VALUE + TABLE2 + org)
                         .build(),
-                   is(getItem(testArgument.getHashKeyAttrType(),
-                           testArgument.getAmazonDynamoDb(),
+                   is(getItem(testArgument.getAmazonDynamoDb(),
                            TABLE2,
                            HASH_KEY_VALUE,
+                           testArgument.getHashKeyAttrType(),
                            Optional.empty()))); // assert different table, same org
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
@@ -72,10 +72,10 @@ class DeleteTest {
             assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + TABLE1 + otherOrg)
                             .build(),
-                       is(getItem(testArgument.getHashKeyAttrType(),
-                               testArgument.getAmazonDynamoDb(),
+                       is(getItem(testArgument.getAmazonDynamoDb(),
                                TABLE1,
                                HASH_KEY_VALUE,
+                               testArgument.getHashKeyAttrType(),
                                Optional.empty())));
         });
     }
@@ -89,10 +89,10 @@ class DeleteTest {
                         .build())
             .withConditionExpression("attribute_exists(#field)")
             .withExpressionAttributeNames(ImmutableMap.of("#field", SOME_FIELD)));
-        assertNull(getItem(testArgument.getHashKeyAttrType(),
-                testArgument.getAmazonDynamoDb(),
+        assertNull(getItem(testArgument.getAmazonDynamoDb(),
                 TABLE1,
                 HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
                 Optional.empty()));
     }
 
@@ -104,10 +104,10 @@ class DeleteTest {
             .withTableName(TABLE1).withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .build())
             .withConditionExpression("attribute_exists(" + SOME_FIELD + ")"));
-        assertNull(getItem(testArgument.getHashKeyAttrType(),
-                testArgument.getAmazonDynamoDb(),
+        assertNull(getItem(testArgument.getAmazonDynamoDb(),
                 TABLE1,
                 HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
                 Optional.empty()));
     }
 
@@ -117,7 +117,8 @@ class DeleteTest {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         try {
             testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
-                .withTableName(TABLE1).withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .withTableName(TABLE1)
+                    .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .build())
                 .withConditionExpression("attribute_exists(#field)")
                 .withExpressionAttributeNames(ImmutableMap.of("#field", "someNonExistentField")));
@@ -136,10 +137,10 @@ class DeleteTest {
                         .build())
             .withConditionExpression("attribute_exists(#field)")
             .withExpressionAttributeNames(ImmutableMap.of("#field", HASH_KEY_FIELD)));
-        assertNull(getItem(testArgument.getHashKeyAttrType(),
-                testArgument.getAmazonDynamoDb(),
+        assertNull(getItem(testArgument.getAmazonDynamoDb(),
                 TABLE1,
                 HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
                 Optional.empty()));
     }
 
@@ -155,8 +156,11 @@ class DeleteTest {
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
         DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE3).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
-        assertNull(getItem(testArgument.getHashKeyAttrType(),
-            testArgument.getAmazonDynamoDb(), TABLE3, HASH_KEY_VALUE, Optional.of(RANGE_KEY_STRING_VALUE)));
+        assertNull(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_STRING_VALUE)));
         assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
         assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
@@ -166,10 +170,10 @@ class DeleteTest {
                             .someField(S, SOME_FIELD_VALUE + TABLE3 + otherOrg)
                             .rangeKey(S, RANGE_KEY_STRING_VALUE)
                             .build(),
-                       is(getItem(testArgument.getHashKeyAttrType(),
-                               testArgument.getAmazonDynamoDb(),
+                       is(getItem(testArgument.getAmazonDynamoDb(),
                                TABLE3,
                                HASH_KEY_VALUE,
+                               testArgument.getHashKeyAttrType(),
                                Optional.of(RANGE_KEY_STRING_VALUE))));
         });
     }

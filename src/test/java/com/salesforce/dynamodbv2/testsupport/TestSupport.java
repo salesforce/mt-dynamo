@@ -14,9 +14,9 @@ import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Helper methods for building, getting, and doing type conversions that are frequently necessary in unit tests.
@@ -51,11 +52,11 @@ public class TestSupport {
     /**
      * Retrieves the item with the provided HK and RK values.
      */
-    public static Map<String, AttributeValue> getItem(ScalarAttributeType hashKeyAttrType,
-        AmazonDynamoDB amazonDynamoDb,
-        String tableName,
-        String hashKeyValue,
-        Optional<String> rangeKeyValueOpt) {
+    public static Map<String, AttributeValue> getItem(AmazonDynamoDB amazonDynamoDb,
+                                                      String tableName,
+                                                      String hashKeyValue,
+                                                      ScalarAttributeType hashKeyAttrType,
+                                                      Optional<String> rangeKeyValueOpt) {
         Map<String, AttributeValue> keys = ItemBuilder.builder(hashKeyAttrType, hashKeyValue)
                 .rangeKeyStringOpt(rangeKeyValueOpt)
                 .build();
@@ -71,18 +72,17 @@ public class TestSupport {
      * Retrieves the items with the provided PKs (as HKs or HK-RK pairs).
      */
     public static Set<Map<String, AttributeValue>> batchGetItem(ScalarAttributeType hashKeyAttrType,
-                                                      AmazonDynamoDB amazonDynamoDb,
-                                                      String tableName,
-                                                      // TODO?: pass these both as a single list
-                                                      List<String> hashKeyValues,
-                                                      Optional<List<String>> rangeKeyValuesOpt) {
-        List<Map<String, AttributeValue>> keys = new ArrayList<>();
-        for (int i = 0; i < hashKeyValues.size(); ++i) {
-            final int finalI = i;
-            keys.add(ItemBuilder.builder(hashKeyAttrType, hashKeyValues.get(i))
-                    .rangeKeyStringOpt(rangeKeyValuesOpt.map(rangeKeyValues -> rangeKeyValues.get(finalI)))
-                    .build());
-        }
+                                                                AmazonDynamoDB amazonDynamoDb,
+                                                                String tableName,
+                                                                // TODO?: pass these both as a single list
+                                                                List<String> hashKeyValues,
+                                                                List<Optional<String>> rangeKeyValueOpts) {
+        Preconditions.checkArgument(hashKeyValues.size() == rangeKeyValueOpts.size());
+        List<Map<String, AttributeValue>> keys = IntStream.range(0, hashKeyValues.size())
+                .mapToObj(i -> ItemBuilder.builder(hashKeyAttrType, hashKeyValues.get(i))
+                        .rangeKeyStringOpt(rangeKeyValueOpts.get(i))
+                        .build())
+                .collect(Collectors.toList());
 
         Set<Map<String, AttributeValue>> originalKeys = new HashSet<>(keys);
         final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
@@ -101,18 +101,17 @@ public class TestSupport {
             requestItems = batchGetItemResult.getUnprocessedKeys();
         } while (!unprocessedKeys.isEmpty());
         assertEquals(originalKeys, resultItems.stream()
-                .map(item -> stripItemToPk(item, rangeKeyValuesOpt.isPresent()))
+                .map(TestSupport::stripItemToPk)
                 .collect(Collectors.toSet()));
         return resultItems;
     }
 
     /**
-     * Strip {@code item} down to its PK (i.e., a two-element map with HK and RK keys if {@code hasRk}, o/w a
-     * one-element map with just an HK key).
+     * Strip {@code item} down to its PK.
      */
-    private static Map<String, AttributeValue> stripItemToPk(Map<String, AttributeValue> item, boolean hasRk) {
+    private static Map<String, AttributeValue> stripItemToPk(Map<String, AttributeValue> item) {
         return item.entrySet().stream()
-                .filter(p -> p.getKey().equals(HASH_KEY_FIELD) || (hasRk && p.getKey().equals(RANGE_KEY_FIELD)))
+                .filter(p -> p.getKey().equals(HASH_KEY_FIELD) || p.getKey().equals(RANGE_KEY_FIELD))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 

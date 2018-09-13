@@ -28,11 +28,11 @@ class GetTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void get(TestArgument testArgument) {
         testArgument.forEachOrgContext(
-            org -> assertThat(getItem(testArgument.getHashKeyAttrType(),
-                        testArgument.getAmazonDynamoDb(),
-                        TABLE1,
-                        HASH_KEY_VALUE,
-                        Optional.empty()),
+            org -> assertThat(getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()),
                     is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
                             .build())));
@@ -42,11 +42,11 @@ class GetTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void getHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(
-            org -> assertThat(getItem(testArgument.getHashKeyAttrType(),
-                        testArgument.getAmazonDynamoDb(),
-                        TABLE3,
-                        HASH_KEY_VALUE,
-                        Optional.of(RANGE_KEY_STRING_VALUE)),
+            org -> assertThat(getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE3,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.of(RANGE_KEY_STRING_VALUE)),
                     is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
                             .rangeKey(S, RANGE_KEY_STRING_VALUE)

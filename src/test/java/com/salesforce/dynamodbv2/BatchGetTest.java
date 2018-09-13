@@ -39,11 +39,12 @@ class BatchGetTest {
         testArgument.forEachOrgContext(
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_OTHER_VALUE);
+                final List<Optional<String>> rangeKeyValueOpts = Arrays.asList(Optional.empty(), Optional.empty());
                 final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
                         testArgument.getAmazonDynamoDb(),
                         TABLE1,
                         hashKeyValues,
-                        Optional.empty());
+                        rangeKeyValueOpts);
                 final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                             hashKeyValues.get(0))
                         .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
@@ -62,13 +63,13 @@ class BatchGetTest {
         testArgument.forEachOrgContext(
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_VALUE);
-                final Optional<List<String>> rangeKeyValues = Optional
-                        .of(Arrays.asList(RANGE_KEY_STRING_VALUE, RANGE_KEY_OTHER_STRING_VALUE));
+                final List<Optional<String>> rangeKeyValueOpts = Arrays.asList(Optional.of(RANGE_KEY_STRING_VALUE),
+                        Optional.of(RANGE_KEY_OTHER_STRING_VALUE));
                 final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
                         testArgument.getAmazonDynamoDb(),
                         TABLE3,
                         hashKeyValues,
-                        rangeKeyValues);
+                        rangeKeyValueOpts);
                 final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                             hashKeyValues.get(0))
                         .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
