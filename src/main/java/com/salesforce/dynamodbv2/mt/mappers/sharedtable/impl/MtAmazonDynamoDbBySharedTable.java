@@ -118,6 +118,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.truncateOnDeleteTable = truncateOnDeleteTable;
     }
 
+    List<CreateTableRequest> getSharedTables() {
+        return tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables();
+    }
+
+    @Override
+    protected MtAmazonDynamoDbContextProvider getMtContext() {
+        return super.getMtContext();
+    }
+
     /**
      * Retrieves batches of items using their primary key.
      */

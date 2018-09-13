@@ -31,8 +31,6 @@ public interface CreateTableRequestFactory {
     /*
      * Returns a list of CreateTableRequests that will be created when the factory is initialized.
      */
-    default List<CreateTableRequest> precreateTables() {
-        return new ArrayList<>();
-    }
+    List<CreateTableRequest> getPhysicalTables();
 
 }

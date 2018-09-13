@@ -47,6 +47,7 @@ public class TableMappingFactory {
                                DynamoSecondaryIndexMapper secondaryIndexMapper,
                                String delimiter,
                                AmazonDynamoDB amazonDynamoDb,
+                               boolean precreateTables,
                                int pollIntervalSeconds) {
         this.createTableRequestFactory = createTableRequestFactory;
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -55,11 +56,17 @@ public class TableMappingFactory {
         this.amazonDynamoDb = amazonDynamoDb;
         this.dynamoDbAdminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.pollIntervalSeconds = pollIntervalSeconds;
-        precreateTables(createTableRequestFactory);
+        if (precreateTables) {
+            precreateTables(createTableRequestFactory);
+        }
+    }
+
+    CreateTableRequestFactory getCreateTableRequestFactory() {
+        return createTableRequestFactory;
     }
 
     private void precreateTables(CreateTableRequestFactory createTableRequestFactory) {
-        createTableRequestFactory.precreateTables().forEach(this::createTableIfNotExists);
+        createTableRequestFactory.getPhysicalTables().forEach(this::createTableIfNotExists);
     }
 
     /*

@@ -100,7 +100,6 @@ import java.util.stream.Collectors;
 public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     private List<CreateTableRequest> createTableRequests;
-    private Boolean precreateTables;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
     private Boolean streamsEnabled;
@@ -117,11 +116,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             this.createTableRequests = new ArrayList<>();
         }
         this.createTableRequests.addAll(Arrays.asList(createTableRequests));
-        return this;
-    }
-
-    public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
-        this.precreateTables = precreateTables;
         return this;
     }
 
@@ -142,7 +136,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         setDefaults();
         withName("SharedTableBuilder");
         withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests,
-            precreateTables,
             getTablePrefix()));
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
         return super.build();
@@ -158,9 +151,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
                 this.streamsEnabled);
-        }
-        if (precreateTables == null) {
-            precreateTables = true;
         }
         super.setDefaults();
     }
@@ -279,19 +269,16 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
         private final PrimaryKeyMapper primaryKeyMapper = new PrimaryKeyMapperByTypeImpl(false);
         private final List<CreateTableRequest> createTableRequests;
-        private final boolean precreateTables;
 
         /**
          * Public constructor.
          */
         SharedTableCreateTableRequestFactory(List<CreateTableRequest> createTableRequests,
-                                             boolean precreateTables,
                                              Optional<String> tablePrefix) {
             this.createTableRequests = createTableRequests.stream()
                 .map(createTableRequest -> createTableRequest.withTableName(
                     prefix(tablePrefix, createTableRequest.getTableName())))
                 .collect(Collectors.toList());
-            this.precreateTables = precreateTables;
         }
 
         @Override
@@ -315,8 +302,8 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         }
 
         @Override
-        public List<CreateTableRequest> precreateTables() {
-            return precreateTables ? createTableRequests : new ArrayList<>();
+        public List<CreateTableRequest> getPhysicalTables() {
+            return createTableRequests;
         }
 
     }

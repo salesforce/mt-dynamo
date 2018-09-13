@@ -91,6 +91,7 @@ public class SharedTableCustomDynamicBuilder {
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
+    private Boolean precreateTables;
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
@@ -107,6 +108,7 @@ public class SharedTableCustomDynamicBuilder {
                 secondaryIndexMapper,
                 delimiter,
                 amazonDynamoDb,
+                precreateTables,
                 pollIntervalSeconds
             );
         }
@@ -175,6 +177,11 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
+    public SharedTableCustomDynamicBuilder withPrecreateTables(boolean precreateTables) {
+        this.precreateTables = precreateTables;
+        return this;
+    }
+
     public SharedTableCustomDynamicBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
         this.pollIntervalSeconds = pollIntervalSeconds;
         return this;
@@ -205,6 +212,9 @@ public class SharedTableCustomDynamicBuilder {
         }
         if (deleteTableAsync == null) {
             deleteTableAsync = false;
+        }
+        if (precreateTables == null) {
+            precreateTables = true;
         }
         if (pollIntervalSeconds == null) {
             pollIntervalSeconds = 0;

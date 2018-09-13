@@ -28,6 +28,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
@@ -138,44 +139,51 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         String rangeKeyField = "rangeKeyField";
         String indexField = "indexField";
         String indexRangeField = "indexRangeField";
-        CreateTableRequestFactory createTableRequestFactory = virtualTableDescription -> {
-            String tableName = virtualTableDescription.getTableName();
-            /*
-             *  This builder is intended to allow for arbitrary table mappings, tableName.endsWith("3") being an
-             *  example of such an arbitrary mapping.
-             */
-            if (tableName.endsWith("3")) {
-                return Optional.of(new CreateTableRequest()
-                    .withTableName(tableName)
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
-                        new AttributeDefinition(rangeKeyField, S),
-                        new AttributeDefinition(indexField, S),
-                        new AttributeDefinition(indexRangeField, S))
-                    .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
-                    .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                        .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                            new KeySchemaElement(indexRangeField, KeyType.RANGE))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true)));
-            } else {
-                return Optional.of(new CreateTableRequest()
-                    .withTableName(tableName)
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S))
-                    .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                    .withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true)));
+        CreateTableRequestFactory createTableRequestFactory = new CreateTableRequestFactory() {
+            @Override
+            public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+                return Optional.of(
+                        virtualTableDescription.getTableName().endsWith("3")
+                                ? getPhysicalTables().get(0)
+                                : getPhysicalTables().get(1)
+                );
+            }
+
+            @Override
+            public List<CreateTableRequest> getPhysicalTables() {
+                return ImmutableList.of(
+                        new CreateTableRequest()
+                                .withTableName("table_3")
+                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
+                                        new AttributeDefinition(rangeKeyField, S),
+                                        new AttributeDefinition(indexField, S),
+                                        new AttributeDefinition(indexRangeField, S))
+                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
+                                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                                        .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
+                                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                                                new KeySchemaElement(indexRangeField, KeyType.RANGE))
+                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .withStreamSpecification(new StreamSpecification()
+                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                        .withStreamEnabled(true)),
+                        new CreateTableRequest()
+                                .withTableName("table_default")
+                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S))
+                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
+                                .withStreamSpecification(new StreamSpecification()
+                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                        .withStreamEnabled(true))
+                );
             }
         };
+
         AmazonDynamoDB sharedTableCustomDynamic = SharedTableCustomDynamicBuilder.builder()
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(amazonDynamoDb)
