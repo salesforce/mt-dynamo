@@ -63,7 +63,6 @@ public class ItemBuilder {
 
     @Override
     public String toString() {
-        // return this.item.toString();
-        return Joiner.on(",").withKeyValueSeparator("=").join(this.item);
+        return this.item.toString();
     }
 }
