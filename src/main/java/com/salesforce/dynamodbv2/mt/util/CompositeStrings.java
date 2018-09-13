@@ -6,7 +6,7 @@ import java.util.NoSuchElementException;
 /**
  * A utility for joining strings such that they can be split again deterministically.
  *
- * TODO Consider adding support for null values
+ * <p>TODO Consider adding support for null values
  */
 public class CompositeStrings {
 
