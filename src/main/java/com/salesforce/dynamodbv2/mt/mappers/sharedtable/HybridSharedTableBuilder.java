@@ -41,8 +41,8 @@ public class HybridSharedTableBuilder {
      * Builds a MtAmazonDynamoDbBySharedTable.
      */
     public MtAmazonDynamoDbBySharedTable build() {
-        IteratingCreateTableRequestFactory iteratingCreateTableRequestFactory =
-            new IteratingCreateTableRequestFactory(ImmutableList.of(
+        CreateTableRequestFactoryEnsemble iteratingCreateTableRequestFactory =
+            new CreateTableRequestFactoryEnsemble(ImmutableList.of(
                 primaryCreateTableRequestFactory,
                 new SharedTableCreateTableRequestFactory(
                     SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, streamsEnabled),
@@ -107,11 +107,11 @@ public class HybridSharedTableBuilder {
     }
 
     @VisibleForTesting
-    static class IteratingCreateTableRequestFactory implements CreateTableRequestFactory {
+    static class CreateTableRequestFactoryEnsemble implements CreateTableRequestFactory {
 
         private final List<CreateTableRequestFactory> createTableRequestFactories;
 
-        IteratingCreateTableRequestFactory(List<CreateTableRequestFactory> createTableRequestFactories) {
+        CreateTableRequestFactoryEnsemble(List<CreateTableRequestFactory> createTableRequestFactories) {
             this.createTableRequestFactories = createTableRequestFactories;
         }
 

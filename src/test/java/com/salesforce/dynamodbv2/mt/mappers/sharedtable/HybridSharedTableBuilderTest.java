@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.HybridSharedTableBuilder.IteratingCreateTableRequestFactory;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.HybridSharedTableBuilder.CreateTableRequestFactoryEnsemble;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,7 +36,7 @@ class HybridSharedTableBuilderTest {
 
     @Test
     void testIteratingCreateTableRequestFactory_getCreateTableRequest() {
-        IteratingCreateTableRequestFactory sut = new IteratingCreateTableRequestFactory(ImmutableList.of(ctrf1, ctrf2));
+        CreateTableRequestFactoryEnsemble sut = new CreateTableRequestFactoryEnsemble(ImmutableList.of(ctrf1, ctrf2));
         // resolved by ctrf1
         assertEquals(createTableRequest1, sut.getCreateTableRequest(virtualTable1).get());
         // resolved by ctrf2
@@ -48,7 +48,7 @@ class HybridSharedTableBuilderTest {
     @Test
     void testIteratingCreateTableRequestFactory_precreateTables() {
         assertEquals(ImmutableList.of(createTableRequest1, createTableRequest2),
-            new IteratingCreateTableRequestFactory(ImmutableList.of(ctrf1, ctrf2)).precreateTables());
+            new CreateTableRequestFactoryEnsemble(ImmutableList.of(ctrf1, ctrf2)).precreateTables());
     }
 
 }
