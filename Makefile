@@ -4,6 +4,9 @@ build:
 test:
 	mvn test -B jacoco:report
 
+checkstyle:
+	mvn checkstyle:check@checkstyle-execution
+
 coveralls:
 	mvn coveralls:report
 

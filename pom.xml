@@ -235,7 +235,7 @@
                 </dependencies>
                 <executions>
                     <execution>
-                        <id>package</id>
+                        <id>checkstyle-execution</id>
                         <phase>package</phase>
                         <configuration>
                             <configLocation>src/test/resources/checkstyle.xml</configLocation>
