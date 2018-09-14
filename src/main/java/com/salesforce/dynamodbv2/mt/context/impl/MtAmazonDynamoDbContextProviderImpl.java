@@ -29,12 +29,7 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
 
     @Override
     public String getContext() {
-        String value = getContextMap().get(CONTEXT_KEY);
-        if (value == null || value.trim().isEmpty()) {
-            throw new IllegalStateException("no context available");
-        } else {
-            return value;
-        }
+        return getContextMap().get(CONTEXT_KEY);
     }
 
     @Override

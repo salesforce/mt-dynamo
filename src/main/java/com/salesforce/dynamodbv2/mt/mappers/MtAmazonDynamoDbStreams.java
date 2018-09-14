@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import org.apache.commons.lang3.NotImplementedException;
@@ -25,6 +26,9 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
         }
 
         if (dynamoDb instanceof MtAmazonDynamoDbBySharedTable) {
+            AmazonDynamoDBStreams streams = dynamoDbStreams instanceof CachingAmazonDynamoDbStreams
+                    ? dynamoDbStreams
+                    : new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).build();
             return new MtAmazonDynamoDbStreamsBySharedTable(dynamoDbStreams, (MtAmazonDynamoDbBySharedTable)dynamoDb);
         }
 

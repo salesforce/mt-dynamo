@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
  * <li>Merge small adjacent segments to avoid cache fragmentation and reduce client calls</li>
  * </ol>
  */
-class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
+public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
 
     private static final Logger LOG = LoggerFactory.getLogger(CachingAmazonDynamoDbStreams.class);
 
@@ -77,7 +77,7 @@ class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
     /**
      * Builder for creating instances of caching streams.
      */
-    static class Builder {
+    public static class Builder {
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private Sleeper sleeper;
@@ -87,36 +87,39 @@ class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
         private long getRecordsLimitExceededBackoffInMillis =
                 DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
 
-        Builder(AmazonDynamoDBStreams amazonDynamoDbStreams) {
+        public Builder(AmazonDynamoDBStreams amazonDynamoDbStreams) {
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
-        Builder withSleeper(Sleeper sleeper) {
+        public Builder withSleeper(Sleeper sleeper) {
             this.sleeper = sleeper;
             return this;
         }
 
-        Builder withMaxIteratorCacheSize(int maxIteratorCacheSize) {
+        public Builder withMaxIteratorCacheSize(int maxIteratorCacheSize) {
             this.maxIteratorCacheSize = maxIteratorCacheSize;
             return this;
         }
 
-        Builder withMaxRecordsCacheSize(int maxRecordsCacheSize) {
+        public Builder withMaxRecordsCacheSize(int maxRecordsCacheSize) {
             this.maxRecordsCacheSize = maxRecordsCacheSize;
             return this;
         }
 
-        Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
+        public Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
             this.maxGetRecordsRetries = maxGetRecordsRetries;
             return this;
         }
 
-        Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
+        public Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
             this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
             return this;
         }
 
-        CachingAmazonDynamoDbStreams build() {
+        /**
+         * Build instance using the configured properties.
+         */
+        public CachingAmazonDynamoDbStreams build() {
             if (sleeper == null) {
                 sleeper = millis -> {
                     try {
