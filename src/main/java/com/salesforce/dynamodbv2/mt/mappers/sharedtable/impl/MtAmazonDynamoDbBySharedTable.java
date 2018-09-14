@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -62,6 +63,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,6 +122,21 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     List<CreateTableRequest> getSharedTables() {
         return tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables();
+    }
+
+    Function<Map<String, AttributeValue>, FieldValue> getFieldValueFunction(String sharedTableName) {
+        // TODO optimize this table lookup
+        CreateTableRequest table = getSharedTables().stream()
+                .filter(t -> t.getTableName().equals(sharedTableName))
+                .findFirst().orElseThrow(IllegalArgumentException::new);
+        // TODO consider representing physical tables as DynamoTableDescription
+        String hashKeyName = table.getKeySchema().stream()
+                .filter(elem -> HASH.toString().equals(elem.getKeyType()))
+                .map(KeySchemaElement::getAttributeName)
+                .findFirst().orElseThrow(IllegalStateException::new);
+        FieldPrefixFunction fpf = new FieldPrefixFunction(".");
+        // TODO support non-string physical table hash key
+        return key -> fpf.reverse(key.get(hashKeyName).getS());
     }
 
     @Override
@@ -241,7 +258,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getItemResult;
     }
 
-    private TableMapping getTableMapping(String virtualTableName) {
+    TableMapping getTableMapping(String virtualTableName) {
         try {
             return tableMappingCache.get(virtualTableName, () ->
                 tableMappingFactory.getTableMapping(
@@ -435,14 +452,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             FieldValue fieldValue = new FieldPrefixFunction(".")
                 .reverse(streamRecord.getKeys().get(physicalTable.getPrimaryKey().getHashKey()).getS());
             MtAmazonDynamoDbContextProvider mtContext = getMtContext();
-            TableMapping tableMapping;
-            try {
-                mtContext.setContext(fieldValue.getMtContext());
-                tableMapping = getTableMapping(
-                    fieldValue.getTableIndex()); // getting a table mapping requires tenant context
-            } finally {
-                mtContext.setContext(null);
-            }
+            // getting a table mapping requires tenant context
+            TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
+                    MtAmazonDynamoDbBySharedTable.this::getTableMapping, fieldValue.getTableIndex());
             ItemMapper itemMapper = tableMapping.getItemMapper();
             streamRecord.setKeys(itemMapper.reverse(streamRecord.getKeys()));
             streamRecord.setOldImage(itemMapper.reverse(streamRecord.getOldImage()));

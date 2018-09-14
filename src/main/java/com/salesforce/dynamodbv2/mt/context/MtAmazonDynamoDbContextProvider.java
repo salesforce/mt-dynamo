@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
+import java.util.function.Function;
+
 /**
  * Interface that holds the tenant context.
  *
@@ -32,6 +34,27 @@ public interface MtAmazonDynamoDbContextProvider {
         try {
             setContext(tenantId);
             runnable.run();
+        } finally {
+            setContext(origContext);
+        }
+    }
+
+    /**
+     * Sets the context to the specified tenantId, executes the function with the given argument, resets back to the
+     * original tenantId, and returns the result of calling the function.
+     *
+     * @param tenantId Context tenantId to use when calling the function.
+     * @param function Function to call within tenant context.
+     * @param t        Parameter to function.
+     * @param <T>      Input type of function.
+     * @param <R>      Output type of function.
+     * @return
+     */
+    default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
+        String origContext = getContext();
+        setContext(tenantId);
+        try {
+            return function.apply(t);
         } finally {
             setContext(origContext);
         }
