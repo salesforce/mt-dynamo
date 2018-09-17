@@ -29,7 +29,7 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
             AmazonDynamoDBStreams streams = dynamoDbStreams instanceof CachingAmazonDynamoDbStreams
                     ? dynamoDbStreams
                     : new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).build();
-            return new MtAmazonDynamoDbStreamsBySharedTable(dynamoDbStreams, (MtAmazonDynamoDbBySharedTable)dynamoDb);
+            return new MtAmazonDynamoDbStreamsBySharedTable(streams, (MtAmazonDynamoDbBySharedTable)dynamoDb);
         }
 
         if (dynamoDb instanceof MtAmazonDynamoDbBase) {

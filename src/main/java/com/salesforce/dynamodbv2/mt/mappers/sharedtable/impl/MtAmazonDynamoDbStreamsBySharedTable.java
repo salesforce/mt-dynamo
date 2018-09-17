@@ -92,7 +92,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends DelegatingAmazonDynamo
             LOG.debug("listStreams request={}", listStreamsRequest);
         }
 
-        checkArgument(mtDynamoDb.getMtContext().getContext() == null,
+        checkArgument(!mtDynamoDb.getMtContext().getContextOpt().isPresent(),
                 "listStreams for shared table currently does not support calling with tenant context");
         checkArgument(listStreamsRequest.getTableName() == null,
                 "listStreams for shared table currently does not support filtering by table name");
@@ -212,8 +212,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends DelegatingAmazonDynamo
     }
 
     private boolean matchesContext(MtRecord mtRecord) {
-        String context = mtDynamoDb.getMtContext().getContext();
-        return context == null || context.equals(mtRecord.getContext());
+        return mtDynamoDb.getMtContext().getContextOpt().map(mtRecord.getContext()::equals).orElse(true);
     }
 
     @Override

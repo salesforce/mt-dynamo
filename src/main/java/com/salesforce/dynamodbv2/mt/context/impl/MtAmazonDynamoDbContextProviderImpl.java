@@ -8,9 +8,9 @@
 package com.salesforce.dynamodbv2.mt.context.impl;
 
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * TODO: write Javadoc.
@@ -28,19 +28,9 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
     }
 
     @Override
-    public String getContext() {
-        return getContextMap().get(CONTEXT_KEY);
-    }
-
-    @Override
-    public void withContext(String org, Runnable runnable) {
-        String origContext = getContext();
-        try {
-            setContext(org);
-            runnable.run();
-        } finally {
-            setContext(origContext);
-        }
+    public Optional<String> getContextOpt() {
+        String value = getContextMap().get(CONTEXT_KEY);
+        return value == null || value.trim().isEmpty() ? Optional.empty() : Optional.of(value);
     }
 
     private Map<String, String> getContextMap() {
