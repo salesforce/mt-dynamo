@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -17,7 +18,11 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface MtAmazonDynamoDbContextProvider {
 
-    String getContext();
+    Optional<String> getContextOpt();
+
+    default String getContext() {
+        return getContextOpt().orElseThrow(IllegalStateException::new);
+    }
 
     /**
      * Sets the tenant context.
@@ -30,12 +35,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * Sets the context to the specific tenantId, executes the runnable, resets back to original tenantId.
      */
     default void withContext(String tenantId, Runnable runnable) {
-        String origContext = getContext();
+        Optional<String> origContext = getContextOpt();
         try {
             setContext(tenantId);
             runnable.run();
         } finally {
-            setContext(origContext);
+            setContext(origContext.orElse(null));
         }
     }
 
@@ -51,12 +56,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * @return
      */
     default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
-        String origContext = getContext();
+        Optional<String> origContext = getContextOpt();
         setContext(tenantId);
         try {
             return function.apply(t);
         } finally {
-            setContext(origContext);
+            setContext(origContext.orElse(null));
         }
     }
 

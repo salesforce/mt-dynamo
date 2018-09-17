@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -28,8 +29,8 @@ class FieldPrefixFunctionTest {
 
         FieldValue applied = SUT.apply(new MtAmazonDynamoDbContextProvider() {
             @Override
-            public String getContext() {
-                return "ctx";
+            public Optional<String> getContextOpt() {
+                return Optional.of("ctx");
             }
 
             @Override
