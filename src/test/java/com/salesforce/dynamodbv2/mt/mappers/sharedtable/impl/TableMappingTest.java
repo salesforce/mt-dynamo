@@ -67,8 +67,6 @@ class TableMappingTest {
                     new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                     1L)
             .build());
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     private final TableMapping sut = new TableMapping(virtualTable,
             new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -203,14 +201,12 @@ class TableMappingTest {
                         false))), sut.getAllPhysicalToVirtualFieldMappings());
     }
 
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void getIndexPrimaryKeyFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings.entrySet().stream()
                         .filter(fieldMappingEntry -> fieldMappingEntry.getKey().contains("gsi"))
                         .flatMap((Function<Entry<String, List<FieldMapping>>, Stream<FieldMapping>>)
-                                fieldMappingEntry -> fieldMappingEntry.getValue().stream())
+                            fieldMappingEntry -> fieldMappingEntry.getValue().stream())
                         .collect(Collectors.toList()),
                 sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").get()));
     }
@@ -260,8 +256,6 @@ class TableMappingTest {
                 "virtual and physical rangekey types mismatch");
     }
 
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
         DynamoSecondaryIndexMapper spyIndexMapper = spy(DynamoSecondaryIndexMapperByTypeImpl.class);
@@ -292,8 +286,6 @@ class TableMappingTest {
                 "failure mapping virtual to physical GSI: incompatible index mapping");
     }
 
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void validateLsiMappings() {
         DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(

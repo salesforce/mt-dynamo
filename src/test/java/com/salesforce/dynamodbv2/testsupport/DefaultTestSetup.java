@@ -62,7 +62,6 @@ public class DefaultTestSetup implements TestSetup {
         });
     }
 
-    @SuppressWarnings("checkstyle:Indentation")
     @Override
     public void setupTableData(AmazonDynamoDB amazonDynamoDb,
         ScalarAttributeType hashKeyAttrType,
@@ -70,7 +69,7 @@ public class DefaultTestSetup implements TestSetup {
         CreateTableRequest createTableRequest) {
         String table = createTableRequest.getTableName();
         boolean hasRangeKey = createTableRequest.getKeySchema().stream().anyMatch(
-                keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE);
+            keySchemaElement -> KeyType.valueOf(keySchemaElement.getKeyType()) == RANGE);
         if (!hasRangeKey) {
             // (hk-only tables) add two rows:
             // (hk1, {no rk}, table-and-org-specific-field-value1)
