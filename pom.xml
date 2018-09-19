@@ -267,9 +267,12 @@
                     <execution>
                         <goals>
                             <goal>javadoc</goal>
-                            <goal>test-javadoc</goal>
                         </goals>
                         <phase>package</phase>
+                        <configuration>
+                            <failOnError>true</failOnError>
+                            <failOnWarnings>true</failOnWarnings>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
