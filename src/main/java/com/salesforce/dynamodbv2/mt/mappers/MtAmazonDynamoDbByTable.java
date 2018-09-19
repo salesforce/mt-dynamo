@@ -292,6 +292,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
         /**
          * TODO: write Javadoc.
+         *
+         * @return the AmazonDynamoDB instance as it was configured using the builder
          */
         public MtAmazonDynamoDbByTable build() {
             setDefaults();

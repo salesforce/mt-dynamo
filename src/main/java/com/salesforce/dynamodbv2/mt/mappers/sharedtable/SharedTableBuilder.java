@@ -111,6 +111,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @param createTableRequests the createTableRequests representing the physical tables
+     * @return the SharedTableBuilder instance as it was configured using the builder
      */
     public SharedTableBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         if (this.createTableRequests == null) {

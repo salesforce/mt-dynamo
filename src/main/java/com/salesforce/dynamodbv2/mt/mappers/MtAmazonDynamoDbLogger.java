@@ -170,6 +170,8 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
 
         /**
          * TODO: write Javadoc.
+         *
+         * @return the AmazonDynamoDB instance as it was configured using the builder
          */
         public MtAmazonDynamoDbLogger build() {
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");

@@ -97,6 +97,8 @@ public class SharedTableCustomDynamicBuilder {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @return the MtAmazonDynamoDbBySharedTable instance as it was configured using the builder
      */
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();

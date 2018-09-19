@@ -39,6 +39,8 @@ public class HybridSharedTableBuilder {
 
     /**
      * Builds a MtAmazonDynamoDbBySharedTable.
+     *
+     * @return the MtAmazonDynamoDbBySharedTable instance as it was configured using the builder
      */
     public MtAmazonDynamoDbBySharedTable build() {
         CreateTableRequestFactoryEnsemble iteratingCreateTableRequestFactory =

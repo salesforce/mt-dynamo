@@ -32,6 +32,11 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @param attributeDefinitions the index's attribute definitions
+     * @param indexName the name of the index
+     * @param primaryKey the primary key of the index
+     * @param type the type of index, GSI vs LSI
      */
     public DynamoSecondaryIndex(List<AttributeDefinition> attributeDefinitions,
                                 String indexName,
