@@ -33,10 +33,10 @@ class SharedTableRangeKeyTest {
 
     @Test
     void test() {
-        AmazonDynamoDB amazonDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+        AmazonDynamoDB amazonDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
         // create table with hashkey and rangekey
-        new TestAmazonDynamoDbAdminUtils(amazonDynamoDB)
+        new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
             .createTableIfNotExists(new CreateTableRequest()
                 .withTableName(TABLE)
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
@@ -49,22 +49,22 @@ class SharedTableRangeKeyTest {
 
         // insert an item that has no range key attribute
         try {
-            amazonDynamoDB.putItem(new PutItemRequest().withTableName(TABLE)
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
                 .withItem(ItemBuilder.builder(S, "hk").build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
-            assertEquals("One of the required keys was not given a value (Service: null; Status Code: 400; Error " +
-                "Code: ValidationException; Request ID: null)", e.getMessage());
+            assertEquals("One of the required keys was not given a value (Service: null; Status Code: 400; Error "
+                + "Code: ValidationException; Request ID: null)", e.getMessage());
         }
 
         // insert an item that has a range key attribute with a null value
         try {
-            amazonDynamoDB.putItem(new PutItemRequest().withTableName(TABLE)
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
                 .withItem(ItemBuilder.builder(S, "hk").rangeKey(S, null).build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
-            assertEquals("Supplied AttributeValue is empty, must contain exactly one of the supported datatypes " +
-                    "(Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
+            assertEquals("Supplied AttributeValue is empty, must contain exactly one of the supported datatypes "
+                    + "(Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
                 e.getMessage());
         }
     }
