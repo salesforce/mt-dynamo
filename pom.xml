@@ -30,7 +30,7 @@
         <connection>scm:git:git@github.com:salesforce/mt-dynamo.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/salesforce/mt-dynamo.git</developerConnection>
       <tag>HEAD</tag>
-  </scm>
+    </scm>
 
     <dependencies>
         <dependency>
