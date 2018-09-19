@@ -67,6 +67,18 @@ class SharedTableRangeKeyTest {
                     + "(Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
                 e.getMessage());
         }
+
+
+        // insert an item that has a range key attribute with a null value
+        try {
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
+                .withItem(ItemBuilder.builder(S, "hk").rangeKey(S, "").build()));
+            fail("expected exception not encountered");
+        } catch (AmazonServiceException e) {
+            assertEquals("One or more parameter values were invalid: An AttributeValue may not contain an "
+                + "empty string (Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
+                e.getMessage());
+        }
     }
 
 }
