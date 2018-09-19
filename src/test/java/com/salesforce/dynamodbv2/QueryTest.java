@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
@@ -29,6 +30,7 @@ import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -235,4 +237,20 @@ class QueryTest {
                     .build()));
         });
     }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryNumberGreaterThan(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            // TODO: set up a table with the appropriate hk/rk types and adding some data
+            QueryRequest queryRequest = new QueryRequest().withTableName("InventoryEvent")
+                .withKeyConditions(ImmutableMap.of(
+                    "sequence_number", new Condition().withAttributeValueList(
+                        new AttributeValue().withN("-1")).withComparisonOperator(GT),
+                    "aggregate_id", new Condition().withAttributeValueList(
+                        new AttributeValue().withS("74be091a-48e4-4d03-aa4d-79743f1e60d2")).withComparisonOperator(EQ)));
+            // TODO: assertions
+        });
+    }
+
 }
