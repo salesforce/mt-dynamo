@@ -4,6 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getPollInterval;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -52,7 +53,8 @@ class SharedTableRangeKeyTest {
                 .withItem(ItemBuilder.builder(S, "hk").build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
-            assertTrue(e.getMessage().contains("One of the required keys was not given a value"));
+            assertEquals("One of the required keys was not given a value (Service: null; Status Code: 400; Error " +
+                "Code: ValidationException; Request ID: null)", e.getMessage());
         }
 
         // insert an item that has a range key attribute with a null value
@@ -61,8 +63,9 @@ class SharedTableRangeKeyTest {
                 .withItem(ItemBuilder.builder(S, "hk").rangeKey(S, null).build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
-            assertTrue(e.getMessage().contains(
-                "Supplied AttributeValue is empty, must contain exactly one of the supported datatypes"));
+            assertEquals("Supplied AttributeValue is empty, must contain exactly one of the supported datatypes " +
+                    "(Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
+                e.getMessage());
         }
     }
 
