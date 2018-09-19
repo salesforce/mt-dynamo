@@ -54,11 +54,11 @@ public interface MtAmazonDynamoDbContextProvider {
      * original tenantId, and returns the result of calling the function.
      *
      * @param tenantId Context tenantId to use when calling the function.
-     * @param function Function to call within tenant context.
-     * @param t        Parameter to function.
-     * @param <T>      Input type of function.
-     * @param <R>      Output type of function.
-     * @return T, R    The result of calling the function
+     * @param function Function to call within tenant context
+     * @param t        Parameter to function
+     * @param <T>      Input type of function
+     * @param <R>      Output type of function
+     * @return         The result of calling the function
      */
     default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
         Optional<String> origContext = getContextOpt();
