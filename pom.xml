@@ -265,6 +265,7 @@
                 <version>3.0.1</version>
                 <executions>
                     <execution>
+                        <id>javadoc-execution</id>
                         <goals>
                             <goal>javadoc</goal>
                         </goals>

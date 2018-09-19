@@ -4,6 +4,7 @@ install:
   - make
 script:
   - make test
+  - make javadoc
   - make checkstyle
 after_success:
   - make coveralls

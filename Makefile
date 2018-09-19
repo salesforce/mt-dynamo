@@ -1,8 +1,11 @@
 build:
-	mvn test-compile -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+	mvn test-compile -DskipTests=true -B -V
 
 test:
 	mvn test -B jacoco:report
+
+javadoc:
+	mvn javadoc:javadoc@javadoc-execution
 
 checkstyle:
 	mvn checkstyle:check@checkstyle-execution
