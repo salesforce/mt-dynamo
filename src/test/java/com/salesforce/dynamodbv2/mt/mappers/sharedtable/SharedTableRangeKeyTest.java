@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
@@ -29,16 +30,17 @@ import org.junit.jupiter.api.Test;
  */
 class SharedTableRangeKeyTest {
 
-    private static final String TABLE = "Table";
+    private static final String TABLE_RK_S = "Table_RK_S";
+    private static final String TABLE_RK_B = "Table_RK_B";
 
     @Test
     void test() {
         AmazonDynamoDB amazonDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-        // create table with hashkey and rangekey
+        // create table with hashkey and rangekey of type string
         new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
             .createTableIfNotExists(new CreateTableRequest()
-                .withTableName(TABLE)
+                .withTableName(TABLE_RK_S)
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                 .withAttributeDefinitions(
                     new AttributeDefinition(HASH_KEY_FIELD, S),
@@ -47,9 +49,21 @@ class SharedTableRangeKeyTest {
                     new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE)), getPollInterval());
 
+        // create table with hashkey and rangekey of type bytearray
+        new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
+            .createTableIfNotExists(new CreateTableRequest()
+                .withTableName(TABLE_RK_B)
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                .withAttributeDefinitions(
+                    new AttributeDefinition(HASH_KEY_FIELD, S),
+                    new AttributeDefinition(RANGE_KEY_FIELD, B))
+                .withKeySchema(
+                    new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                    new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE)), getPollInterval());
+
         // insert an item that has no range key attribute
         try {
-            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE_RK_S)
                 .withItem(ItemBuilder.builder(S, "hk").build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
@@ -59,7 +73,7 @@ class SharedTableRangeKeyTest {
 
         // insert an item that has a range key attribute with a null value
         try {
-            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE_RK_S)
                 .withItem(ItemBuilder.builder(S, "hk").rangeKey(S, null).build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
@@ -68,15 +82,26 @@ class SharedTableRangeKeyTest {
                 e.getMessage());
         }
 
-
         // insert an item that has a range key attribute with a null value
         try {
-            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE)
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE_RK_S)
                 .withItem(ItemBuilder.builder(S, "hk").rangeKey(S, "").build()));
             fail("expected exception not encountered");
         } catch (AmazonServiceException e) {
             assertEquals("One or more parameter values were invalid: An AttributeValue may not contain an "
                 + "empty string (Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)",
+                e.getMessage());
+        }
+
+        // insert an item that has a range key bytearray attribute with an empty value
+        try {
+            amazonDynamoDb.putItem(new PutItemRequest().withTableName(TABLE_RK_B)
+                .withItem(ItemBuilder.builder(S, "hk").rangeKey(B, "").build()));
+            fail("expected exception not encountered");
+        } catch (AmazonServiceException e) {
+            assertEquals("One or more parameter values were invalid: An AttributeValue may not contain a "
+                + "null or empty binary type. (Service: null; Status Code: 400; Error Code: ValidationException; "
+                + "Request ID: null)",
                 e.getMessage());
         }
     }
