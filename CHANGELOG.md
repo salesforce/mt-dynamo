@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.12 (September 19, 2018)
 
-* `SharedTable` support for streams api 
+* `SharedTable` support for streams API 
 
 ## 0.9.11 (September 11, 2018) 
 
