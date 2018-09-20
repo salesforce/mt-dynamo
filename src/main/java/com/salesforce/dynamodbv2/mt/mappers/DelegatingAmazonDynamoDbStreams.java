@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
+package com.salesforce.dynamodbv2.mt.mappers;
 
 import com.amazonaws.AmazonWebServiceRequest;
 import com.amazonaws.ResponseMetadata;
@@ -16,53 +16,57 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 /**
  * Convenience base class for streams adapters.
  */
-class DelegatingAmazonDynamoDbStreams implements AmazonDynamoDBStreams {
+public class DelegatingAmazonDynamoDbStreams implements AmazonDynamoDBStreams {
 
-    protected final AmazonDynamoDBStreams delegate;
+    protected final AmazonDynamoDBStreams dynamoDbStreams;
 
-    DelegatingAmazonDynamoDbStreams(AmazonDynamoDBStreams delegate) {
-        this.delegate = delegate;
+    protected DelegatingAmazonDynamoDbStreams(AmazonDynamoDBStreams dynamoDbStreams) {
+        this.dynamoDbStreams = dynamoDbStreams;
+    }
+
+    public AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
+        return dynamoDbStreams;
     }
 
     @Override
     @Deprecated
     public void setEndpoint(String endpoint) {
-        delegate.setEndpoint(endpoint);
+        dynamoDbStreams.setEndpoint(endpoint);
     }
 
     @Override
     @Deprecated
     public void setRegion(Region region) {
-        delegate.setRegion(region);
+        dynamoDbStreams.setRegion(region);
     }
 
     @Override
     public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
-        return delegate.describeStream(describeStreamRequest);
+        return dynamoDbStreams.describeStream(describeStreamRequest);
     }
 
     @Override
     public GetRecordsResult getRecords(GetRecordsRequest getRecordsRequest) {
-        return delegate.getRecords(getRecordsRequest);
+        return dynamoDbStreams.getRecords(getRecordsRequest);
     }
 
     @Override
     public GetShardIteratorResult getShardIterator(GetShardIteratorRequest getShardIteratorRequest) {
-        return delegate.getShardIterator(getShardIteratorRequest);
+        return dynamoDbStreams.getShardIterator(getShardIteratorRequest);
     }
 
     @Override
     public ListStreamsResult listStreams(ListStreamsRequest listStreamsRequest) {
-        return delegate.listStreams(listStreamsRequest);
+        return dynamoDbStreams.listStreams(listStreamsRequest);
     }
 
     @Override
     public void shutdown() {
-        delegate.shutdown();
+        dynamoDbStreams.shutdown();
     }
 
     @Override
     public ResponseMetadata getCachedResponseMetadata(AmazonWebServiceRequest request) {
-        return delegate.getCachedResponseMetadata(request);
+        return dynamoDbStreams.getCachedResponseMetadata(request);
     }
 }

@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.util.CompositeStrings;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -33,9 +34,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
-
 import javax.annotation.Nonnull;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +143,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * Iterator Position in DynamoDB stream. Facilitates comparison to other iterators and records.
      */
-    interface IteratorPosition extends Comparable<IteratorPosition>, Predicate<Record> {
+    private interface IteratorPosition extends Comparable<IteratorPosition>, Predicate<Record> {
 
         ShardIteratorType getType();
 
@@ -172,7 +171,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * TrimHorizon precedes all other positions and records in the stream.
      */
-    static class TrimHorizon implements IteratorPosition {
+    private static class TrimHorizon implements IteratorPosition {
 
         static final TrimHorizon INSTANCE = new TrimHorizon();
 
@@ -220,7 +219,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * IteratorPosition after a sequence number.
      */
-    static class AfterSequenceNumber implements IteratorPosition {
+    private static class AfterSequenceNumber implements IteratorPosition {
 
         private final String sequenceNumber;
         private final BigInteger parsedSequenceNumber;
@@ -297,7 +296,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * A shard iterator indicates the iterator position within a given stream and shard.
      */
-    static class ShardIterator implements Comparable<ShardIterator> {
+    private static class ShardIterator implements Comparable<ShardIterator> {
 
         static final CompositeStrings compositeStrings = new CompositeStrings('/', '\\');
 

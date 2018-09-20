@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -46,7 +47,6 @@ import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
 import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -101,6 +101,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final TableMappingFactory tableMappingFactory;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
+    private final Map<String, CreateTableRequest> mtTables;
 
     /**
      * TODO: write Javadoc.
@@ -127,17 +128,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
+        this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
+                .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
     }
 
-    List<CreateTableRequest> getSharedTables() {
-        return tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables();
+    protected boolean isMtTable(String tableName) {
+        return mtTables.containsKey(tableName);
     }
 
     Function<Map<String, AttributeValue>, FieldValue> getFieldValueFunction(String sharedTableName) {
-        // TODO optimize this table lookup
-        CreateTableRequest table = getSharedTables().stream()
-                .filter(t -> t.getTableName().equals(sharedTableName))
-                .findFirst().orElseThrow(IllegalArgumentException::new);
+        CreateTableRequest table = mtTables.get(sharedTableName);
+        checkArgument(table != null);
         // TODO consider representing physical tables as DynamoTableDescription
         String hashKeyName = table.getKeySchema().stream()
                 .filter(elem -> HASH.toString().equals(elem.getKeyType()))
@@ -239,9 +240,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
+    @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         TableDescription tableDescription =
             mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE");
@@ -329,7 +328,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // Projection must include primary key, since we use it for paging.
         // (We could add key fields into projection and filter result in the future)
-        Preconditions.checkArgument(projectionContainsKey(scanRequest, key),
+        checkArgument(projectionContainsKey(scanRequest, key),
             "Multitenant scans must include key in projection expression");
 
         // map table name

@@ -120,6 +120,16 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         return mtContext;
     }
 
+    /**
+     * Determines if the table for the given name is a multi-tenant table associated with this instance.
+     *
+     * @param tableName Name of the table.
+     * @return true if the given table name is a multi-tenant table associated with this instance, false otherwise.
+     */
+    protected boolean isMtTable(String tableName) {
+        return true;
+    }
+
     @Override
     @Deprecated
     public void setEndpoint(String endpoint) {

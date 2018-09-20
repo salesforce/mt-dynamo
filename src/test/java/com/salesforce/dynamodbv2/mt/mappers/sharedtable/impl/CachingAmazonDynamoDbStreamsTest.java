@@ -46,6 +46,7 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.CachingAmazonDynamoDbStreams.Sleeper;
 
+import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -63,32 +64,6 @@ import org.slf4j.LoggerFactory;
  * Tests the caching streams adapter.
  */
 class CachingAmazonDynamoDbStreamsTest {
-
-    /**
-     * Counts calls to {@link AmazonDynamoDBStreams#getShardIterator(GetShardIteratorRequest)} and
-     * {@link AmazonDynamoDBStreams#getRecords(GetRecordsRequest)}, so we can make assertions
-     * about cache hits and misses.
-     */
-    static class CountingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
-        int getRecordsCount;
-        int getShardIteratorCount;
-
-        CountingAmazonDynamoDbStreams(AmazonDynamoDBStreams delegate) {
-            super(delegate);
-        }
-
-        @Override
-        public GetShardIteratorResult getShardIterator(GetShardIteratorRequest getShardIteratorRequest) {
-            getShardIteratorCount++;
-            return super.getShardIterator(getShardIteratorRequest);
-        }
-
-        @Override
-        public GetRecordsResult getRecords(GetRecordsRequest getRecordsRequest) {
-            getRecordsCount++;
-            return super.getRecords(getRecordsRequest);
-        }
-    }
 
     private static final int GET_RECORDS_LIMIT = 1000;
     private static Level level;
