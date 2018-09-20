@@ -5,7 +5,7 @@ test:
 	mvn test -B jacoco:report
 
 validate:
-	mvn -X javadoc:javadoc@javadoc-execution
+	mvn javadoc:javadoc@javadoc-execution
 	mvn checkstyle:check@checkstyle-execution
 
 coveralls:
