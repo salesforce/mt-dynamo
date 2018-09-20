@@ -42,7 +42,6 @@ import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +74,17 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         super(mtContext, amazonDynamoDb);
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
+    }
+
+    /**
+     * Determines if the table for the given name is a multi-tenant table associated with this instance.
+     *
+     * @param tableName Name of the table.
+     * @return true if the given table name is a multi-tenant table associated with this instance, false otherwise.
+     */
+    protected boolean isMtTable(String tableName) {
+        String prefix = tablePrefix.orElse("");
+        return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }
 
     /**
@@ -198,7 +208,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     public List<MtStreamDescription> listStreams(IRecordProcessorFactory factory) {
         String prefix = tablePrefix.orElse("");
         return listAllTables().stream() //
-            .filter(n -> n.startsWith(prefix) && n.indexOf(delimiter, prefix.length()) >= 0) //
+            .filter(this::isMtTable) //
             .map(n -> getAmazonDynamoDb().describeTable(n).getTable()) // TODO handle table not exists
             .filter(d -> Optional.ofNullable(d.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
                 .orElse(false)) // only include tables with streaming enabled
@@ -329,4 +339,14 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         Preconditions.checkState(qualifiedTableName.startsWith(tableNamePrefix));
         return qualifiedTableName.substring(tableNamePrefix.length());
     }
+
+    String[] getTenantAndTableName(String qualifiedTableName) {
+        int start = this.tablePrefix.orElse("").length();
+        int idx = qualifiedTableName.indexOf(this.delimiter, start);
+        Preconditions.checkArgument(idx > 0);
+        String tenant = qualifiedTableName.substring(start, idx);
+        String name = qualifiedTableName.substring(idx + delimiter.length());
+        return new String[]{tenant, name};
+    }
+
 }
