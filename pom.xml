@@ -267,10 +267,12 @@
                     <execution>
                         <id>javadoc-execution</id>
                         <goals>
+                            <!-- Only javadoc compliance issues with src/main/java are checked. -->
                             <goal>javadoc</goal>
                         </goals>
                         <phase>package</phase>
                         <configuration>
+                            <!-- All errors and warnings will cause the overall build to fail. -->
                             <failOnError>true</failOnError>
                             <failOnWarnings>true</failOnWarnings>
                         </configuration>
