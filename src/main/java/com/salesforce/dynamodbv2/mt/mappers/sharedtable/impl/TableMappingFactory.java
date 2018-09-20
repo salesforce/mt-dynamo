@@ -46,9 +46,10 @@ public class TableMappingFactory {
      * @param mtContext the multitenant context provider
      * @param secondaryIndexMapper maps virtual to physical indexes
      * @param delimiter the string for delimiting values in hash keys
-     * @param amazonDynamoDb the underlying AmazonDynamoDB delegate
-     * @param precreateTables flag indicating whether to create physical tables eagerly at start time
-     * @param pollIntervalSeconds the interval in seconds between checking the status of the table being created
+     * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
+     * @param precreateTables a flag indicating whether to create physical tables eagerly at start time
+     * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
+     *     created
      */
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,

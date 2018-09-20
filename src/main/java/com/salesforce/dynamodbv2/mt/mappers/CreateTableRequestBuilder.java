@@ -63,9 +63,9 @@ public class CreateTableRequestBuilder {
     /**
      * TODO: write Javadoc.
      *
-     * @param hashKeyField the hash key field name
-     * @param hashKeyType the type of the hash key field
-     * @return the builder
+     * @param hashKeyField the hash-key field name
+     * @param hashKeyType the type of the hash-key field
+     * @return this {@code CreateTableRequestBuilder} object
      */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField, ScalarAttributeType hashKeyType) {
         addAttributeDefinition(hashKeyField, hashKeyType);
@@ -76,11 +76,11 @@ public class CreateTableRequestBuilder {
     /**
      * TODO: write Javadoc.
      *
-     * @param hashKeyField the hashKey value
-     * @param hashKeyType the type of the hash key field
-     * @param rangeKeyField the rangeKey value
-     * @param rangeKeyType the type of the range key field
-     * @return the builder
+     * @param hashKeyField the hash-key field name
+     * @param hashKeyType the type of the hash-key field
+     * @param rangeKeyField the range-key value
+     * @param rangeKeyType the type of the range-key field
+     * @return this {@code CreateTableRequestBuilder} object
      */
     public CreateTableRequestBuilder withTableKeySchema(String hashKeyField,
                                                         ScalarAttributeType hashKeyType,
@@ -97,10 +97,10 @@ public class CreateTableRequestBuilder {
      * TODO: write Javadoc.
      *
      * @param indexName the name of the index
-     * @param indexType the type of index, GSI vs LSI
-     * @param secondaryIndexKey the primary key definition of the index, GSI vs LSI
+     * @param indexType the type of index, GSI vs. LSI
+     * @param secondaryIndexKey the primary key definition of the index, GSI vs. LSI
      * @param provisionedThroughput the provisioned throughput of the secondary index
-     * @return the builder
+     * @return this {@code CreateTableRequestBuilder} object
      */
     public CreateTableRequestBuilder addSi(String indexName,
                                            DynamoSecondaryIndexType indexType,
@@ -130,9 +130,9 @@ public class CreateTableRequestBuilder {
     /**
      * TODO: write Javadoc.
      *
-     * @param readCapacityUnits the read capacity units
-     * @param writeCapacityUnits the write capacity units
-     * @return the builder
+     * @param readCapacityUnits the read-capacity units
+     * @param writeCapacityUnits the write-capacity units
+     * @return this {@code CreateTableRequestBuilder} object
      */
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
         this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits,

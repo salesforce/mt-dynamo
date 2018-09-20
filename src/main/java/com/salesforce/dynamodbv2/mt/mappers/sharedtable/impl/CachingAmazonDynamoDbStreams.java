@@ -119,7 +119,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         /**
          * Build instance using the configured properties.
          *
-         * @return the CachingAmazonDynamoDbStreams instance as it was configured using the builder
+         * @return a newly created {@code CachingAmazonDynamoDbStreams} based on the contents of the {@code Builder}
          */
         public CachingAmazonDynamoDbStreams build() {
             if (sleeper == null) {

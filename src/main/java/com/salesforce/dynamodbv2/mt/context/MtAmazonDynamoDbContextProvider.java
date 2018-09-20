@@ -36,7 +36,7 @@ public interface MtAmazonDynamoDbContextProvider {
     /**
      * Sets the context to the specific tenantId, executes the runnable, resets back to original tenantId.
      *
-     * @param tenantId the tenantId the tenantId that you're setting into the context
+     * @param tenantId the tenantId being set into the context
      * @param runnable the procedure to run after the context is set
      */
     default void withContext(String tenantId, Runnable runnable) {
@@ -53,12 +53,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * Sets the context to the specified tenantId, executes the function with the given argument, resets back to the
      * original tenantId, and returns the result of calling the function.
      *
-     * @param tenantId Context tenantId to use when calling the function.
-     * @param function Function to call within tenant context
-     * @param t        Parameter to function
-     * @param <T>      Input type of function
-     * @param <R>      Output type of function
-     * @return         The result of calling the function
+     * @param tenantId context tenantId to use when calling the function
+     * @param function function to call within tenant context
+     * @param t        parameter to function
+     * @param <T>      input type of function
+     * @param <R>      output type of function
+     * @return         the result of calling {@code function} on {@code t}
      */
     default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
         Optional<String> origContext = getContextOpt();

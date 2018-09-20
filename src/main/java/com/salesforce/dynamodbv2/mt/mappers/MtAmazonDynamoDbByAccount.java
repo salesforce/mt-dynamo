@@ -71,7 +71,8 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         /**
          * TODO: write Javadoc.
          *
-         * @return the AmazonDynamoDB instance as it was configured using the builder
+         * @return a newly created {@code AmazonDynamoDB} based on the contents of the
+         *     {@code MtCredentialsBasedAmazonDynamoDbByAccountBuilder}
          */
         public AmazonDynamoDB build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");
@@ -146,7 +147,8 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         /**
          * TODO: write Javadoc.
          *
-         * @return the AmazonDynamoDB instance as it was configured using the builder
+         * @return a newly created {@code AmazonDynamoDB} based on the contents of the
+         *     {@code MtAmazonDynamoDbByAccountBuilder}
          */
         public AmazonDynamoDB build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");

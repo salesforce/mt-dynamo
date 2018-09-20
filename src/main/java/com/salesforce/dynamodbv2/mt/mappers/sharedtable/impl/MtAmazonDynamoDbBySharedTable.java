@@ -104,13 +104,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      *
-     * @param name the name of the instance of the multitenant AmazonDynamoDB instance
+     * @param name the name of the multitenant AmazonDynamoDB instance
      * @param mtContext the multitenant context provider
-     * @param amazonDynamoDb the underlying AmazonDynamoDB delegate
-     * @param tableMappingFactory the table mapping factory for mapping virtual to physical table instances
-     * @param mtTableDescriptionRepo the table description repo impl
-     * @param deleteTableAsync flag indicating whether to perform delete table operations sync vs async
-     * @param truncateOnDeleteTable flag indicating whether to delete all table data when a virtual table is deleted
+     * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
+     * @param tableMappingFactory the table-mapping factory for mapping virtual to physical table instances
+     * @param mtTableDescriptionRepo the {@code MtTableDescriptionRepo} impl
+     * @param deleteTableAsync a flag indicating whether to perform delete-table operations async. (as opposed to sync.)
+     * @param truncateOnDeleteTable a flag indicating whether to delete all table data when a virtual table is deleted
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,

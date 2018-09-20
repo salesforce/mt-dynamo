@@ -53,7 +53,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     /**
      * TODO: write Javadoc.
      *
-     * @param createTableRequest the CreateTableRequest being wrapped
+     * @param createTableRequest the {@code CreateTableRequest} being wrapped
      */
     public DynamoTableDescriptionImpl(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
@@ -76,7 +76,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     /**
      * TODO: write Javadoc.
      *
-     * @param tableDescription the TableDescription being wrapped
+     * @param tableDescription the {@code TableDescription} being wrapped
      */
     public DynamoTableDescriptionImpl(TableDescription tableDescription) {
         this.createTableRequest = null;

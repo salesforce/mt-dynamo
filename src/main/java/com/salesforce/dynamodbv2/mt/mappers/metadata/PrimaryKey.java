@@ -38,10 +38,10 @@ public class PrimaryKey {
     /**
      * TODO: write Javadoc.
      *
-     * @param hashKey the hashKey value
-     * @param hashKeyType the type of the hash key field
-     * @param rangeKey the rangeKey value
-     * @param rangeKeyType the type of the range key field
+     * @param hashKey the hash-key value
+     * @param hashKeyType the type of the hash-key field
+     * @param rangeKey the range-key value
+     * @param rangeKeyType the type of the range-key field
      */
     public PrimaryKey(String hashKey,
                       ScalarAttributeType hashKeyType,
