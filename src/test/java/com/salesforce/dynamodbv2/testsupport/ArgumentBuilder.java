@@ -34,7 +34,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +67,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
     public static final int ORGS_PER_TEST = 2;
-    private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
+    private static final boolean LOGGING_ENABLED = true; // log DDL and DML operations
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
@@ -109,7 +108,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        return Arrays.asList(ScalarAttributeType.values());
+        return ImmutableList.of(S);
     }
 
     /*
@@ -246,9 +245,9 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
              * concurrently with any of the sharedTable* strategies.
              */
             //byAccount,
-            byTable,
-            sharedTableCustomDynamic,
-            sharedTableCustomStaticBuilder,
+            // byTable,
+            // sharedTableCustomDynamic,
+            // sharedTableCustomStaticBuilder,
             sharedTable
         );
     }

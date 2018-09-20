@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
@@ -243,13 +244,20 @@ class QueryTest {
     void queryNumberGreaterThan(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // TODO: set up a table with the appropriate hk/rk types and adding some data
-            QueryRequest queryRequest = new QueryRequest().withTableName("InventoryEvent")
+            QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
                 .withKeyConditions(ImmutableMap.of(
-                    "sequence_number", new Condition().withAttributeValueList(
-                        new AttributeValue().withN("-1")).withComparisonOperator(GT),
-                    "aggregate_id", new Condition().withAttributeValueList(
-                        new AttributeValue().withS("74be091a-48e4-4d03-aa4d-79743f1e60d2")).withComparisonOperator(EQ)));
-            // TODO: assertions
+                    HASH_KEY_FIELD, new Condition().withAttributeValueList(
+                    new AttributeValue().withS(HASH_KEY_VALUE)).withComparisonOperator(EQ),
+                    RANGE_KEY_FIELD, new Condition().withAttributeValueList(
+                    new AttributeValue().withN("100")).withComparisonOperator(GT)
+            ));
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
+            assertEquals(1, items.size());
+            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                .rangeKey(N, RANGE_KEY_OTHER_VALUE)
+                .indexField(S, INDEX_FIELD_VALUE)
+                .build()));
         });
     }
 

@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -23,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.ArrayList;
@@ -379,7 +381,8 @@ class QueryMapper {
             List<String> keyConditionExpressionParts = new ArrayList<>();
             AtomicInteger counter = new AtomicInteger(1);
             request.getLegacyExpression().forEach((key, condition) -> {
-                checkArgument(ComparisonOperator.valueOf(condition.getComparisonOperator()) == EQ,
+                ComparisonOperator comparisonOperator = ComparisonOperator.valueOf(condition.getComparisonOperator());
+                checkArgument(ImmutableSet.of(EQ, GT).contains(comparisonOperator),
                     "unsupported comparison operator " + condition.getComparisonOperator() + " in condition="
                         + condition);
                 checkArgument(condition.getAttributeValueList().size() == 1,
@@ -387,7 +390,7 @@ class QueryMapper {
                         + ") encountered in condition=" + condition);
                 String field = "#field" + counter;
                 String value = ":value" + counter.getAndIncrement();
-                keyConditionExpressionParts.add(field + " = " + value);
+                keyConditionExpressionParts.add(field + (comparisonOperator == EQ ? " = " : " > ") + value);
                 request.putExpressionAttributeName(field, key);
                 request.putExpressionAttributeValue(value, condition.getAttributeValueList().get(0));
             });
