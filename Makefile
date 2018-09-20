@@ -4,10 +4,8 @@ build:
 test:
 	mvn test -B jacoco:report
 
-javadoc:
+validate:
 	mvn javadoc:javadoc@javadoc-execution
-
-checkstyle:
 	mvn checkstyle:check@checkstyle-execution
 
 coveralls:

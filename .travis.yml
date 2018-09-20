@@ -16,7 +16,6 @@ before_script:
   - _JAVA_OPTIONS=
 script:
   - make test
-  - make javadoc
-  - make checkstyle
+  - make validate
 after_success:
   - make coveralls
