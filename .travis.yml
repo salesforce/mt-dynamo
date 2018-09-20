@@ -13,7 +13,7 @@ before_script:
   #
   # Details: https://github.com/travis-ci/travis-ci/issues/8408
   #
-  - _JAVA_OPTIONS=
+  - unset _JAVA_OPTIONS=
 script:
   - make test
   - make validate
