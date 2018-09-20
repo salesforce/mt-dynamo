@@ -41,6 +41,10 @@ public class AmazonDynamoDbAdminUtils {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @param createTableRequest the description of the table to be created
+     * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
+     *     created
      */
     public void createTableIfNotExists(CreateTableRequest createTableRequest, int pollIntervalSeconds) {
         try {
@@ -69,6 +73,11 @@ public class AmazonDynamoDbAdminUtils {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @param tableName the name of the table to be deleted
+     * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
+     *     created
+     * @param timeoutSeconds the time in seconds to wait for the table to no longer exist
      */
     public void deleteTableIfExists(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         try {

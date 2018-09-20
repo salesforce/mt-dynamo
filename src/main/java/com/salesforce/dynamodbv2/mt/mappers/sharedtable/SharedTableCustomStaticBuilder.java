@@ -57,6 +57,9 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
 
     /**
      * TODO: write Javadoc.
+     *
+     * @param createTableRequests the {@code CreateTableRequest}s representing the physical tables
+     * @return this {@code SharedTableCustomStaticBuilder} object
      */
     public SharedTableCustomStaticBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
         this.createTableRequestsMap = Arrays.stream(createTableRequests)

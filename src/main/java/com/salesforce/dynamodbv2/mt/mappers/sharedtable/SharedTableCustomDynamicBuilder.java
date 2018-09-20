@@ -97,6 +97,9 @@ public class SharedTableCustomDynamicBuilder {
 
     /**
      * TODO: write Javadoc.
+     *
+     * @return a newly created {@code MtAmazonDynamoDbBySharedTable} based on the contents of the
+     *     {@code SharedTableCustomDynamicBuilder}
      */
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();

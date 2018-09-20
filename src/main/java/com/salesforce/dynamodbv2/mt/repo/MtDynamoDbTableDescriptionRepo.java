@@ -269,6 +269,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         /**
          * TODO: write Javadoc.
+         *
+         * @return a newly created {@code MtDynamoDbTableDescriptionRepo} based on the contents of the
+         *     {@code MtDynamoDbTableDescriptionRepoBuilder}
          */
         public MtDynamoDbTableDescriptionRepo build() {
             setDefaults();

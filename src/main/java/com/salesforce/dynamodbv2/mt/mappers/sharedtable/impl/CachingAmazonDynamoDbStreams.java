@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * for caching to be effective. Lack of locality will likely result in
  * cache misses, which in turn requires reading the underlying stream which
  * is slower and may result in throttling when DynamoDB's limit is exceeded
- * (each shard is limited to 5 reads & 2 MB per second).
+ * (each shard is limited to 5 reads &amp; 2 MB per second).
  *
  * <p>Current implementation maintains the following invariants about the records
  * cache:
@@ -118,6 +118,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         /**
          * Build instance using the configured properties.
+         *
+         * @return a newly created {@code CachingAmazonDynamoDbStreams} based on the contents of the {@code Builder}
          */
         public CachingAmazonDynamoDbStreams build() {
             if (sleeper == null) {
