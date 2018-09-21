@@ -36,6 +36,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.amazonaws.services.dynamodbv2.streamsadapter.model.RecordAdapter;
@@ -238,9 +239,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
+    /**
+     * TODO: write Javadoc.
+     */
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
-        return new DescribeTableResult().withTable(
-            mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE"));
+        TableDescription tableDescription =
+            mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE");
+        tableDescription.withLatestStreamArn(
+            getTableMapping(describeTableRequest.getTableName()).getPhysicalTable().getLastStreamArn());
+        return new DescribeTableResult().withTable(tableDescription);
     }
 
     /**
