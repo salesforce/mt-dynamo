@@ -7,7 +7,7 @@ import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
@@ -178,7 +178,7 @@ class UpdateTest {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                     HASH_KEY_VALUE)
-                    .rangeKey(S, RANGE_KEY_VALUE)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build();
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE3)
@@ -191,10 +191,10 @@ class UpdateTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                        is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                               .rangeKey(S, RANGE_KEY_VALUE)
+                               .rangeKey(S, RANGE_KEY_S_VALUE)
                                .build()));
             assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
             assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
@@ -208,7 +208,7 @@ class UpdateTest {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .rangeKey(S, RANGE_KEY_VALUE)
+                        .rangeKey(S, RANGE_KEY_S_VALUE)
                         .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#someField = :currentValue")
@@ -221,10 +221,10 @@ class UpdateTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                        is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                               .rangeKey(S, RANGE_KEY_VALUE)
+                               .rangeKey(S, RANGE_KEY_S_VALUE)
                                .build()));
         });
     }
@@ -236,7 +236,7 @@ class UpdateTest {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .rangeKey(S, RANGE_KEY_VALUE)
+                        .rangeKey(S, RANGE_KEY_S_VALUE)
                         .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#hk = :currentHkValue and #rk = :currentRkValue")
@@ -245,17 +245,17 @@ class UpdateTest {
                 .addExpressionAttributeNamesEntry("#rk", RANGE_KEY_FIELD)
                 .addExpressionAttributeValuesEntry(":currentHkValue",
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
-                .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_VALUE))
+                .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_S_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertThat(getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                 is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                        .rangeKey(S, RANGE_KEY_VALUE)
+                        .rangeKey(S, RANGE_KEY_S_VALUE)
                         .build()));
         });
     }
@@ -268,7 +268,7 @@ class UpdateTest {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE3)
                     .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .rangeKey(S, RANGE_KEY_VALUE)
+                            .rangeKey(S, RANGE_KEY_S_VALUE)
                             .build())
                     .withUpdateExpression("set #name = :newValue")
                     .withConditionExpression("#name = :currentValue")
@@ -284,10 +284,10 @@ class UpdateTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                        is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                                .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                               .rangeKey(S, RANGE_KEY_VALUE)
+                               .rangeKey(S, RANGE_KEY_S_VALUE)
                                .build()));
         });
     }

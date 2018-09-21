@@ -40,8 +40,8 @@ public class TestSupport {
     // we use a number for HASH_KEY_VALUE since it nicely works with each of Dynamo's scalar-attribute types (S, N, B)
     public static final String HASH_KEY_VALUE = "1";
     public static final String HASH_KEY_OTHER_VALUE = "2";
-    public static final String RANGE_KEY_VALUE = "rangeKeyValue";
-    public static final String RANGE_KEY_OTHER_VALUE = RANGE_KEY_VALUE + "2";
+    public static final String RANGE_KEY_S_VALUE = "rangeKeyValue";
+    public static final String RANGE_KEY_OTHER_S_VALUE = RANGE_KEY_S_VALUE + "2";
     public static final String SOME_FIELD_VALUE = "someValue";
     public static final String SOME_OTHER_FIELD_VALUE = SOME_FIELD_VALUE + "2";
     public static final String SOME_OTHER_OTHER_FIELD_VALUE = "someOtherValue";
