@@ -86,9 +86,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -460,15 +458,6 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public AmazonDynamoDBWaiters waiters() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<MtStreamDescription> listStreams(IRecordProcessorFactory factory) {
-        AmazonDynamoDB dynamo = getAmazonDynamoDb();
-        if (dynamo instanceof MtAmazonDynamoDb) {
-            return ((MtAmazonDynamoDb) getAmazonDynamoDb()).listStreams(factory);
-        }
         throw new UnsupportedOperationException();
     }
 

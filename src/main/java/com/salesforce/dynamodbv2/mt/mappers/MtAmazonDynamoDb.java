@@ -5,9 +5,6 @@ import com.amazonaws.services.dynamodbv2.model.Identity;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-
-import java.util.List;
 
 /**
  * This interface (including all contained interfaces and methods) is
@@ -105,55 +102,6 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
                 + '}';
         }
     }
-
-    class MtStreamDescription {
-
-        private String label;
-        private String arn;
-        private IRecordProcessorFactory recordProcessorFactory;
-
-        public String getLabel() {
-            return label;
-        }
-
-        void setLabel(String label) {
-            this.label = label;
-        }
-
-        public MtStreamDescription withLabel(String label) {
-            setLabel(label);
-            return this;
-        }
-
-        public String getArn() {
-            return arn;
-        }
-
-        void setArn(String arn) {
-            this.arn = arn;
-        }
-
-        public MtStreamDescription withArn(String arn) {
-            setArn(arn);
-            return this;
-        }
-
-        public IRecordProcessorFactory getRecordProcessorFactory() {
-            return recordProcessorFactory;
-        }
-
-        public MtStreamDescription withRecordProcessorFactory(IRecordProcessorFactory recordProcessorFactory) {
-            this.recordProcessorFactory = recordProcessorFactory;
-            return this;
-        }
-
-    }
-
-    /*
-     * MtAmazonDynamoDb-specific methods
-     */
-    @Deprecated
-    List<MtStreamDescription> listStreams(IRecordProcessorFactory factory);
 
     default void invalidateCaches() {}
 
