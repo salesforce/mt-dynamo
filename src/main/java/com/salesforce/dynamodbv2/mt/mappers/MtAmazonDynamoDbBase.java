@@ -35,6 +35,8 @@ import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeEndpointsRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeEndpointsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsRequest;
@@ -230,6 +232,11 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     @Override
     public DescribeContinuousBackupsResult describeContinuousBackups(
         DescribeContinuousBackupsRequest describeContinuousBackupsRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public DescribeEndpointsResult describeEndpoints(DescribeEndpointsRequest describeEndpointsRequest) {
         throw new UnsupportedOperationException();
     }
 
