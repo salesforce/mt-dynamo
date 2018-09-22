@@ -32,20 +32,11 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
-import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.streamsadapter.model.RecordAdapter;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
-import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
-import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
-import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
@@ -53,7 +44,6 @@ import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
@@ -419,76 +409,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public String toString() {
         return name;
-    }
-
-    @Override
-    public List<MtStreamDescription> listStreams(IRecordProcessorFactory factory) {
-        return tableMappingCache.asMap().values().stream()
-            .map(TableMapping::getPhysicalTable)
-            .filter(physicalTable -> Optional.ofNullable(physicalTable.getStreamSpecification())
-                .map(StreamSpecification::isStreamEnabled).orElse(false))
-            .map(physicalTable -> new MtStreamDescription()
-                .withLabel(physicalTable.getTableName())
-                .withArn(physicalTable.getLastStreamArn())
-                .withRecordProcessorFactory(newAdapter(factory, physicalTable))).collect(toList());
-    }
-
-    private IRecordProcessorFactory newAdapter(IRecordProcessorFactory factory, DynamoTableDescription physicalTable) {
-        return () -> new RecordProcessor(factory.createProcessor(), physicalTable);
-    }
-
-    @VisibleForTesting
-    class RecordProcessor implements IRecordProcessor {
-
-        private final IRecordProcessor processor;
-        private final DynamoTableDescription physicalTable;
-
-        RecordProcessor(IRecordProcessor processor, DynamoTableDescription physicalTable) {
-            this.processor = processor;
-            this.physicalTable = physicalTable;
-        }
-
-        @Override
-        public void initialize(InitializationInput initializationInput) {
-            processor.initialize(initializationInput);
-        }
-
-        @Override
-        public void processRecords(ProcessRecordsInput processRecordsInput) {
-            List<com.amazonaws.services.kinesis.model.Record> records = processRecordsInput.getRecords().stream()
-                .map(RecordAdapter.class::cast).map(this::toMtRecord).collect(toList());
-            processor.processRecords(processRecordsInput.withRecords(records));
-        }
-
-        private com.amazonaws.services.kinesis.model.Record toMtRecord(RecordAdapter adapter) {
-            Record r = adapter.getInternalObject();
-            StreamRecord streamRecord = r.getDynamodb();
-            FieldValue fieldValue = new FieldPrefixFunction(".")
-                .reverse(streamRecord.getKeys().get(physicalTable.getPrimaryKey().getHashKey()).getS());
-            MtAmazonDynamoDbContextProvider mtContext = getMtContext();
-            // getting a table mapping requires tenant context
-            TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
-                    MtAmazonDynamoDbBySharedTable.this::getTableMapping, fieldValue.getTableIndex());
-            ItemMapper itemMapper = tableMapping.getItemMapper();
-            streamRecord.setKeys(itemMapper.reverse(streamRecord.getKeys()));
-            streamRecord.setOldImage(itemMapper.reverse(streamRecord.getOldImage()));
-            streamRecord.setNewImage(itemMapper.reverse(streamRecord.getNewImage()));
-            return new RecordAdapter(new MtRecord()
-                .withAwsRegion(r.getAwsRegion())
-                .withDynamodb(streamRecord)
-                .withEventID(r.getEventID())
-                .withEventName(r.getEventName())
-                .withEventSource(r.getEventSource())
-                .withEventVersion(r.getEventVersion())
-                .withContext(fieldValue.getMtContext())
-                .withTableName(fieldValue.getTableIndex()));
-        }
-
-        @Override
-        public void shutdown(ShutdownInput shutdownInput) {
-            processor.shutdown(shutdownInput);
-        }
-
     }
 
     @Override
