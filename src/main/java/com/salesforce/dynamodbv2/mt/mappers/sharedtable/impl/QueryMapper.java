@@ -12,7 +12,6 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ConditionMapper.NAME_PLACEHOLDER;
-import static org.apache.commons.lang3.StringUtils.isEmpty;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
@@ -22,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
+import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
@@ -350,7 +350,7 @@ class QueryMapper {
      * Validate that there are keyConditions or a keyConditionExpression, but not both.
      */
     private void validateQueryRequest(QueryRequest queryRequest) {
-        boolean hasKeyConditionExpression = !isEmpty(queryRequest.getKeyConditionExpression());
+        boolean hasKeyConditionExpression = !Strings.isNullOrEmpty(queryRequest.getKeyConditionExpression());
         boolean hasKeyConditions = (queryRequest.getKeyConditions() != null
             && !queryRequest.getKeyConditions().keySet().isEmpty());
         checkArgument(hasKeyConditionExpression || hasKeyConditions,
@@ -360,7 +360,7 @@ class QueryMapper {
     }
 
     private void validateScanRequest(ScanRequest scanRequest) {
-        boolean hasFilterExpression = !isEmpty(scanRequest.getFilterExpression());
+        boolean hasFilterExpression = !Strings.isNullOrEmpty(scanRequest.getFilterExpression());
         boolean hasScanFilter = (scanRequest.getScanFilter() != null
             && !scanRequest.getScanFilter().keySet().isEmpty());
         checkArgument(!hasFilterExpression || !hasScanFilter,

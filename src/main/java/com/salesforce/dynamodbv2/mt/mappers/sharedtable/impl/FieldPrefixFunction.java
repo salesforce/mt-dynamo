@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import com.google.common.base.Splitter;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * TODO: write Javadoc.
@@ -33,7 +32,12 @@ class FieldPrefixFunction {
     }
 
     FieldValue reverse(String qualifiedValue) {
-        int prefixSeparatorIndex = StringUtils.ordinalIndexOf(qualifiedValue, delimiter, 2);
+        final int firstDelimiterOccurrence = qualifiedValue.indexOf(delimiter);
+        final int prefixSeparatorIndex = qualifiedValue.indexOf(delimiter, firstDelimiterOccurrence + 1);
+        if (firstDelimiterOccurrence == -1 || prefixSeparatorIndex == -1) {
+            throw new IllegalArgumentException("Input parameter \"" + qualifiedValue
+                + "\" should have at least two occurrences of " + delimiter);
+        }
         List<String> prefixList = Splitter.on(delimiter).splitToList(qualifiedValue.substring(0, prefixSeparatorIndex));
         return new FieldValue(prefixList.get(0),
             prefixList.get(1),
