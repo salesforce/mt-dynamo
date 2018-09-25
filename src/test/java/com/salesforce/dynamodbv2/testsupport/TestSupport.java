@@ -41,8 +41,11 @@ public class TestSupport {
     // types (S, N, B)
     public static final String HASH_KEY_VALUE = "1";
     public static final String HASH_KEY_OTHER_VALUE = "2";
-    public static final String RANGE_KEY_S_VALUE = "3"; // TODO: rename RANGE_KEY_VALUE
-    public static final String RANGE_KEY_OTHER_S_VALUE = "4"; // TODO: rename RANGE_KEY_OTHER_VALUE
+    public static final String RANGE_KEY_S_VALUE = "3";
+    public static final String RANGE_KEY_OTHER_S_VALUE = "4";
+    public static final String RANGE_KEY_LOW_N_VALUE = "-1";
+    public static final String RANGE_KEY_MIDDLE_N_VALUE = "0";
+    public static final String RANGE_KEY_HIGH_N_VALUE = "1";
     public static final String SOME_FIELD_VALUE = "someValue";
     public static final String SOME_OTHER_FIELD_VALUE = SOME_FIELD_VALUE + "2";
     public static final String SOME_OTHER_OTHER_FIELD_VALUE = "someOtherValue";

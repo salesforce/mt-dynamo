@@ -10,6 +10,9 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_V
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_HIGH_N_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_LOW_N_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_MIDDLE_N_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
@@ -96,19 +99,46 @@ public class DefaultTestSetup implements TestSetup {
             // (hk1, rk1, table-and-org-specific-field-value1)
             // (hk1, rk2, table-and-org-specific-field-value2, index-field-value)
 
-            amazonDynamoDb.putItem(
-                new PutItemRequest().withTableName(table)
-                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + table + org)
-                        .rangeKey(rangeKeyAttributeTypeOpt.get(), TestSupport.RANGE_KEY_S_VALUE)
-                        .build()));
-            amazonDynamoDb.putItem(
-                new PutItemRequest().withTableName(table)
-                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                        .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                        .rangeKey(rangeKeyAttributeTypeOpt.get(), RANGE_KEY_OTHER_S_VALUE)
-                        .indexField(S, INDEX_FIELD_VALUE)
-                        .build()));
+            switch (rangeKeyAttributeTypeOpt.get()) {
+                case S:
+                    amazonDynamoDb.putItem(
+                        new PutItemRequest().withTableName(table)
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                .someField(S, SOME_FIELD_VALUE + table + org)
+                                .rangeKey(S, TestSupport.RANGE_KEY_S_VALUE)
+                                .build()));
+                    amazonDynamoDb.putItem(
+                        new PutItemRequest().withTableName(table)
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+                                .indexField(S, INDEX_FIELD_VALUE)
+                                .build()));
+                    break;
+                case N:
+                    amazonDynamoDb.putItem(
+                        new PutItemRequest().withTableName(table)
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                .someField(S, SOME_FIELD_VALUE + table + org)
+                                .rangeKey(N, RANGE_KEY_LOW_N_VALUE)
+                                .build()));
+                    amazonDynamoDb.putItem(
+                        new PutItemRequest().withTableName(table)
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                                .rangeKey(N, RANGE_KEY_MIDDLE_N_VALUE)
+                                .build()));
+                    amazonDynamoDb.putItem(
+                        new PutItemRequest().withTableName(table)
+                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                                .rangeKey(N, RANGE_KEY_HIGH_N_VALUE)
+                                .build()));
+                    break;
+                default:
+                    throw new IllegalArgumentException("unsupported type " + rangeKeyAttributeTypeOpt.get()
+                        + " encountered");
+            }
         }
     }
 
