@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
@@ -11,9 +12,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
@@ -22,6 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Tests putItem().
@@ -30,6 +38,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class PutTest {
 
+    private static final Logger LOG = LoggerFactory.getLogger(PutTest.class);
     private static final String HASH_KEY_VALUE_NEW = "3";
     private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
@@ -146,6 +155,41 @@ class PutTest {
                     testArgument.getHashKeyAttrType(),
                     Optional.of(RANGE_KEY_VALUE)),
                 is(itemToOverwrite));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void putAttributeNotExists(TestArgument testArgument) {
+        if (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable) {
+            LOG.warn(testArgument.toString()
+                + " ... test skipped: conditional put is not yet implemented for MtAmazonDynamoDbBySharedTable");
+            return;
+        }
+
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE_NEW)
+                .someField(S, SOME_FIELD_VALUE_NEW)
+                .build();
+            PutItemRequest putItemRequest = new PutItemRequest()
+                .withTableName(TABLE1)
+                .withItem(item)
+                .withConditionExpression("attribute_not_exists(#hk)")
+                .withExpressionAttributeNames(ImmutableMap.of("#hk", HASH_KEY_FIELD));
+            testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE1,
+                HASH_KEY_VALUE_NEW,
+                testArgument.getHashKeyAttrType(),
+                Optional.empty()),
+                is(item));
+            try {
+                testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+                fail("expected exception not encountered");
+            } catch (ConditionalCheckFailedException e) {
+                assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
+            }
         });
     }
 
