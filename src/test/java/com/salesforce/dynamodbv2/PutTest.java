@@ -4,7 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 class PutTest {
 
     private static final String HASH_KEY_VALUE_NEW = "3";
-    private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_VALUE + "New";
+    private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_S_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
 
@@ -126,15 +126,15 @@ class PutTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                 is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                        .rangeKey(S, RANGE_KEY_VALUE)
+                        .rangeKey(S, RANGE_KEY_S_VALUE)
                         .build()));
             Map<String, AttributeValue> itemToOverwrite =
                     ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE_OVERWRITTEN)
-                            .rangeKey(S, RANGE_KEY_VALUE)
+                            .rangeKey(S, RANGE_KEY_S_VALUE)
                             .build();
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE3).withItem(itemToOverwrite);
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
@@ -144,7 +144,7 @@ class PutTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                 is(itemToOverwrite));
         });
     }

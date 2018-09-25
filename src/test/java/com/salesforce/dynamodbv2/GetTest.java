@@ -4,7 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -46,10 +46,10 @@ class GetTest {
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE)),
+                    Optional.of(RANGE_KEY_S_VALUE)),
                     is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                             .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                            .rangeKey(S, RANGE_KEY_VALUE)
+                            .rangeKey(S, RANGE_KEY_S_VALUE)
                             .build())));
     }
 

@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -23,6 +24,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.base.Strings;
 import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.ArrayList;
@@ -32,7 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiFunction;
 
 /**
  * Maps query and scan requests against virtual tables to their physical table counterpart according to the provided
@@ -43,6 +47,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 class QueryMapper {
 
     private static final String VALUE_PLACEHOLDER = ":___value___";
+    private static final Map<ComparisonOperator, BiFunction<String, String, String>>
+            FIELD_AND_VALUE_TO_EXPRESSION_STRINGS
+        = new ImmutableMap.Builder<ComparisonOperator, BiFunction<String, String, String>>()
+        .put(EQ, (field, value) -> field + " = " + value)
+        .put(GT, (field, value) -> field + " > " + value)
+        .build();
+    private static final Set<ComparisonOperator> SUPPORTED_COMPARISON_OPERATORS = FIELD_AND_VALUE_TO_EXPRESSION_STRINGS
+        .keySet();
 
     private final FieldMapper fieldMapper;
     private final TableMapping tableMapping;
@@ -379,7 +391,9 @@ class QueryMapper {
             List<String> keyConditionExpressionParts = new ArrayList<>();
             AtomicInteger counter = new AtomicInteger(1);
             request.getLegacyExpression().forEach((key, condition) -> {
-                checkArgument(ComparisonOperator.valueOf(condition.getComparisonOperator()) == EQ,
+                final ComparisonOperator comparisonOperator = ComparisonOperator
+                    .valueOf(condition.getComparisonOperator());
+                checkArgument(SUPPORTED_COMPARISON_OPERATORS.contains(comparisonOperator),
                     "unsupported comparison operator " + condition.getComparisonOperator() + " in condition="
                         + condition);
                 checkArgument(condition.getAttributeValueList().size() == 1,
@@ -387,7 +401,8 @@ class QueryMapper {
                         + ") encountered in condition=" + condition);
                 String field = "#field" + counter;
                 String value = ":value" + counter.getAndIncrement();
-                keyConditionExpressionParts.add(field + " = " + value);
+                keyConditionExpressionParts
+                    .add(FIELD_AND_VALUE_TO_EXPRESSION_STRINGS.get(comparisonOperator).apply(field, value));
                 request.putExpressionAttributeName(field, key);
                 request.putExpressionAttributeValue(value, condition.getAttributeValueList().get(0));
             });

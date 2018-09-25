@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
@@ -19,6 +20,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
@@ -73,7 +75,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
     private static final String HK_TABLE_NAME = "hkTable";
-    private static final String HK_RK_TABLE_NAME = "hkRkTable";
+    private static final String HK_RK_S_TABLE_NAME = "hkRkSTable"; // range-key type: S
+    private static final String HK_RK_N_TABLE_NAME = "hkRkNTable"; // range-key type: N
     private static final String HASH_KEY_FIELD = "HASH_KEY_FIELD";
     private static final String RANGE_KEY_FIELD = "RANGE_KEY_FIELD";
     private static final String INDEX_FIELD = "INDEX_FIELD";
@@ -142,11 +145,27 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         CreateTableRequestFactory createTableRequestFactory = new CreateTableRequestFactory() {
             @Override
             public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
-                return Optional.of(
-                        virtualTableDescription.getTableName().endsWith("3")
-                                ? getPhysicalTables().get(0)
-                                : getPhysicalTables().get(1)
-                );
+                final List<CreateTableRequest> physicalTables = getPhysicalTables();
+                final String virtualTableName = virtualTableDescription.getTableName();
+                final CreateTableRequest retvalInnards;
+                final char virtualTableNameLastChar = virtualTableName.charAt(virtualTableName.length() - 1);
+                boolean isDefault = false;
+                switch (virtualTableNameLastChar) {
+                    case '3':
+                        retvalInnards = physicalTables.get(0);
+                        break;
+                    case '4':
+                        retvalInnards = physicalTables.get(1);
+                        break;
+                    default:
+                        isDefault = true;
+                        retvalInnards = physicalTables.get(2);
+                }
+
+                final String physicalTableName = retvalInnards.getTableName();
+                Preconditions.checkState(isDefault || physicalTableName.charAt(physicalTableName.length() - 1)
+                    == virtualTableNameLastChar);
+                return Optional.of(retvalInnards);
             }
 
             @Override
@@ -157,6 +176,26 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
                                         new AttributeDefinition(rangeKeyField, S),
+                                        new AttributeDefinition(indexField, S),
+                                        new AttributeDefinition(indexRangeField, S))
+                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
+                                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                                        .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
+                                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
+                                                new KeySchemaElement(indexRangeField, KeyType.RANGE))
+                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .withStreamSpecification(new StreamSpecification()
+                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                                        .withStreamEnabled(true)),
+                        new CreateTableRequest()
+                                .withTableName("table_4")
+                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
+                                        new AttributeDefinition(rangeKeyField, N),
                                         new AttributeDefinition(indexField, S),
                                         new AttributeDefinition(indexRangeField, S))
                                 .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
@@ -205,7 +244,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                         .withStreamEnabled(true)),
                 new CreateTableRequest()
-                    .withTableName(HK_RK_TABLE_NAME)
+                    .withTableName(HK_RK_S_TABLE_NAME)
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
                         new AttributeDefinition(RANGE_KEY_FIELD, S),
@@ -223,9 +262,38 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+                        .withStreamEnabled(true)),
+                new CreateTableRequest()
+                    .withTableName(HK_RK_N_TABLE_NAME)
+                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
+                        new AttributeDefinition(RANGE_KEY_FIELD, N),
+                        new AttributeDefinition(INDEX_FIELD, S),
+                        new AttributeDefinition(INDEX_RANGE_FIELD, S))
+                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                        new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
+                    .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                        .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                    .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                        .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                            new KeySchemaElement(INDEX_RANGE_FIELD, KeyType.RANGE))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                    .withStreamSpecification(new StreamSpecification()
+                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
                         .withStreamEnabled(true)))
-            .withTableMapper(virtualTableDescription ->
-                virtualTableDescription.getTableName().endsWith("3") ? HK_RK_TABLE_NAME : HK_TABLE_NAME)
+            .withTableMapper(virtualTableDescription -> {
+                final String virtualTableName = virtualTableDescription.getTableName();
+                switch (virtualTableName.charAt(virtualTableName.length() - 1)) {
+                    case '3':
+                        return HK_RK_S_TABLE_NAME;
+                    case '4':
+                        return HK_RK_N_TABLE_NAME;
+                    default:
+                        return HK_TABLE_NAME;
+                }
+            })
             .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(MT_CONTEXT)
             .withTruncateOnDeleteTable(true)
@@ -324,7 +392,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         @Override
         public String toString() {
             return amazonDynamoDb.getClass().getSimpleName()
-                + ", orgs=" + orgs + '}'
+                + ", orgs=" + orgs
                 + ", hashKeyAttrType=" + hashKeyAttrType.name();
         }
     }

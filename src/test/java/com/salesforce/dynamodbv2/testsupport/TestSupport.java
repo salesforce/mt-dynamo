@@ -37,11 +37,15 @@ public class TestSupport {
 
     public static final boolean IS_LOCAL_DYNAMO = true;
     public static final int TIMEOUT_SECONDS = 60;
-    // we use a number for HASH_KEY_VALUE since it nicely works with each of Dynamo's scalar-attribute types (S, N, B)
+    // we use a number for [HASH|RANGE]_KEY_[|OTHER_]VALUE since it nicely works with each of Dynamo's scalar-attribute
+    // types (S, N, B)
     public static final String HASH_KEY_VALUE = "1";
     public static final String HASH_KEY_OTHER_VALUE = "2";
-    public static final String RANGE_KEY_VALUE = "rangeKeyValue";
-    public static final String RANGE_KEY_OTHER_VALUE = RANGE_KEY_VALUE + "2";
+    public static final String RANGE_KEY_S_VALUE = "3";
+    public static final String RANGE_KEY_OTHER_S_VALUE = "4";
+    public static final String RANGE_KEY_LOW_N_VALUE = "-1";
+    public static final String RANGE_KEY_MIDDLE_N_VALUE = "0";
+    public static final String RANGE_KEY_HIGH_N_VALUE = "1";
     public static final String SOME_FIELD_VALUE = "someValue";
     public static final String SOME_OTHER_FIELD_VALUE = SOME_FIELD_VALUE + "2";
     public static final String SOME_OTHER_OTHER_FIELD_VALUE = "someOtherValue";
