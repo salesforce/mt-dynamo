@@ -331,6 +331,27 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return iteratorPosition;
         }
 
+        /**
+         * Returns whether this iterator is immutable, i.e., does not change as records are added to the underlying
+         * stream. For example, {@link ShardIteratorType#LATEST} is not immutable, since it can resolve to different
+         * offsets in the stream at different times. On the other hand, {@link ShardIteratorType#AFTER_SEQUENCE_NUMBER}
+         * refers to a specific position in the stream that is absolute.
+         *
+         * @return True if this iterator is immutable, false otherwise.
+         */
+        boolean isImmutable() {
+            switch (iteratorPosition.getType()) {
+                case TRIM_HORIZON:
+                case LATEST:
+                    return false;
+                case AT_SEQUENCE_NUMBER:
+                case AFTER_SEQUENCE_NUMBER:
+                    return true;
+                default:
+                    throw new RuntimeException("Unhandled switch case");
+            }
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -495,7 +516,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
 
             // If nothing found, get stream iterator (hopefully from cache)
-            final String shardIterator = iteratorCache.getUnchecked(iterator);
+            final String shardIterator = getIterator(iterator);
 
             // then load records from stream
             final GetRecordsResult loadedRecordsResult;
@@ -514,7 +535,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 if (LOG.isInfoEnabled()) {
                     LOG.info("Underlying iterator {} for cached iterator {} expired.", shardIterator, iterator);
                 }
-                iteratorCache.invalidate(iterator);
+                removeIterator(iterator);
                 continue;
             }
 
@@ -529,7 +550,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 }
 
                 // replace with loaded iterator, so it is used to proceed through stream on next call
-                iteratorCache.put(iterator, loadedRecordsResult.getNextShardIterator());
+                addIterator(iterator, loadedRecordsResult.getNextShardIterator());
                 return new GetRecordsResult()
                     .withRecords(loadedRecordsResult.getRecords())
                     .withNextShardIterator(iterator.toString());
@@ -645,7 +666,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 result = loadedRecordsResult;
             } else {
                 ShardIterator nextIterator = iterator.next(loadedRecords);
-                iteratorCache.put(nextIterator, loadedNextIterator);
+                addIterator(nextIterator, loadedNextIterator);
                 result = new GetRecordsResult()
                         .withRecords(loadedRecords)
                         .withNextShardIterator(nextIterator.toString());
@@ -706,6 +727,24 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         GetRecordsResult result = recordsCache.remove(iterator);
         checkState(result != null);
         recordsCache.put(newIterator, result);
+    }
+
+    private String getIterator(ShardIterator iterator) {
+        return iterator.isImmutable()
+            ? iteratorCache.getUnchecked(iterator)
+            : loadShardIterator(iterator);
+    }
+
+    private void addIterator(ShardIterator iterator, String loadedIterator) {
+        if (iterator.isImmutable()) {
+            iteratorCache.put(iterator, loadedIterator);
+        }
+    }
+
+    private void removeIterator(ShardIterator iterator) {
+        if (iterator.isImmutable()) {
+            iteratorCache.invalidate(iterator);
+        }
     }
 
 }
