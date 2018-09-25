@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
@@ -32,6 +33,7 @@ import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,6 +50,7 @@ public class DefaultTestSetup implements TestSetup {
     public static final String TABLE1 = "Table1"; // has hk
     public static final String TABLE2 = "Table2"; // has hk
     public static final String TABLE3 = "Table3"; // has hk, rk(S)
+    public static final String TABLE4 = "Table4"; // has hk, rk(N)
     private List<CreateTableRequest> createTableRequests;
 
     @Override
@@ -72,11 +75,9 @@ public class DefaultTestSetup implements TestSetup {
         String org,
         CreateTableRequest createTableRequest) {
         String table = createTableRequest.getTableName();
-        final Set<String> setWithRangeKeyAttributeNameIfItExists = createTableRequest.getKeySchema().stream()
-            .filter(keySchemaElement -> KeyType.RANGE.equals(KeyType.fromValue(keySchemaElement.getKeyType())))
-            .map(KeySchemaElement::getAttributeName)
-            .collect(Collectors.toSet());
-        if (setWithRangeKeyAttributeNameIfItExists.isEmpty()) { // no range key
+        final Optional<ScalarAttributeType> rangeKeyAttributeTypeOpt = getScalarAttributeType(createTableRequest,
+            KeyType.RANGE);
+        if (!rangeKeyAttributeTypeOpt.isPresent()) { // no range key
             // (hk-only tables) add two rows:
             // (hk1, {no rk}, table-and-org-specific-field-value1)
             // (hk2, {no rk}, table-and-org-specific-field-value2)
@@ -94,44 +95,54 @@ public class DefaultTestSetup implements TestSetup {
             // (hk-rk tables) add two rows:
             // (hk1, rk1, table-and-org-specific-field-value1)
             // (hk1, rk2, table-and-org-specific-field-value2, index-field-value)
-            Preconditions.checkState(setWithRangeKeyAttributeNameIfItExists.size() == 1,
-                "There should be only 1 range key but there are " + setWithRangeKeyAttributeNameIfItExists.size());
-            final String rangeKeyAttributeName = Iterables.getOnlyElement(setWithRangeKeyAttributeNameIfItExists);
-            final Set<ScalarAttributeType> setWithRangeKeyAttributeType = createTableRequest.getAttributeDefinitions()
+
+            amazonDynamoDb.putItem(
+                new PutItemRequest().withTableName(table)
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE + table + org)
+                        .rangeKey(rangeKeyAttributeTypeOpt.get(), TestSupport.RANGE_KEY_S_VALUE)
+                        .build()));
+            amazonDynamoDb.putItem(
+                new PutItemRequest().withTableName(table)
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                        .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                        .rangeKey(rangeKeyAttributeTypeOpt.get(), RANGE_KEY_OTHER_S_VALUE)
+                        .indexField(S, INDEX_FIELD_VALUE)
+                        .build()));
+        }
+    }
+
+    /**
+     * Gets the {@code ScalarAttributeType} associated with the one key in the key schema with {@code KeyType}
+     * {@code keyType}.
+     */
+    private Optional<ScalarAttributeType> getScalarAttributeType(CreateTableRequest createTableRequest,
+        KeyType keyType) {
+        Optional<ScalarAttributeType> retval;
+        final Set<String> setWithKeyAttributeNameIfItExists = createTableRequest.getKeySchema().stream()
+            .filter(keySchemaElement -> keyType.equals(KeyType.fromValue(keySchemaElement.getKeyType())))
+            .map(KeySchemaElement::getAttributeName)
+            .collect(Collectors.toSet());
+        if (setWithKeyAttributeNameIfItExists.isEmpty()) {
+            retval = Optional.empty();
+        } else {
+            Preconditions.checkState(setWithKeyAttributeNameIfItExists.size() == 1,
+                "There should be only 1 " + keyType + " key but there are "
+                    + setWithKeyAttributeNameIfItExists.size());
+            final String keyAttributeName = Iterables.getOnlyElement(setWithKeyAttributeNameIfItExists);
+            final Set<ScalarAttributeType> setWithKeyAttributeType = createTableRequest.getAttributeDefinitions()
                 .stream()
-                .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(rangeKeyAttributeName))
+                .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(keyAttributeName))
                 .map(AttributeDefinition::getAttributeType)
                 .map(ScalarAttributeType::fromValue)
                 .collect(Collectors.toSet());
-            Preconditions.checkState(setWithRangeKeyAttributeType.size() == 1,
-                "There should be exactly 1 attributeType associated with the range key named "
-                    + rangeKeyAttributeName + ", but there are " + setWithRangeKeyAttributeType.size());
-
-            final ScalarAttributeType rangeKeyAttributeType = Iterables.getOnlyElement(setWithRangeKeyAttributeType);
-            switch (rangeKeyAttributeType) {
-                case S:
-                    amazonDynamoDb.putItem(
-                        new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_FIELD_VALUE + table + org)
-                                .rangeKey(S, TestSupport.RANGE_KEY_S_VALUE)
-                                .build()));
-                    amazonDynamoDb.putItem(
-                        new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                                .indexField(S, INDEX_FIELD_VALUE)
-                                .build()));
-                    break;
-                case N:
-                case B:
-                    throw new UnsupportedOperationException();
-                default:
-                    throw new IllegalArgumentException("Range-key types supported: S, N, B--not "
-                        + rangeKeyAttributeType.toString());
-            }
+            Preconditions.checkState(setWithKeyAttributeType.size() == 1,
+                "There should be exactly 1 attributeType associated with the " + keyType + " key named "
+                    + keyAttributeName + ", but there are " + setWithKeyAttributeType.size());
+            retval = Optional.of(Iterables.getOnlyElement(setWithKeyAttributeType));
         }
+
+        return retval;
     }
 
     private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
@@ -150,6 +161,22 @@ public class DefaultTestSetup implements TestSetup {
                 .withTableName(TABLE3)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, S),
+                    new AttributeDefinition(INDEX_FIELD, S))
+                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                    new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                    .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                        new KeySchemaElement(INDEX_FIELD, RANGE))
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL))),
+            new CreateTableRequest()
+                .withTableName(TABLE4)
+                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                    new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
                     new AttributeDefinition(INDEX_FIELD, S))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
