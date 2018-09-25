@@ -19,7 +19,6 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;

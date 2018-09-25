@@ -108,7 +108,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     public PutItemResult putItem(PutItemRequest putItemRequest) {
-        log("putItem", tableToString(putItemRequest.getTableName()), itemToString(putItemRequest.getItem()));
+        log("putItem", tableToString(putItemRequest.getTableName()), putItemRequestToString(putItemRequest));
         return super.putItem(putItemRequest);
     }
 
@@ -208,6 +208,22 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         return "filterExpression=" + scanRequest.getFilterExpression()
             + ", names=" + scanRequest.getExpressionAttributeNames()
             + ", values=" + scanRequest.getExpressionAttributeValues();
+    }
+
+    private String putItemRequestToString(PutItemRequest putRequest) {
+        return (putRequest.getConditionExpression() != null
+            ? ", updateExpression=" + putRequest.getConditionExpression()
+            : "")
+            + ", " + itemToString(putRequest.getItem())
+            + (putRequest.getConditionExpression() != null
+            ? ", conditionExpression=" + putRequest.getConditionExpression()
+            : "")
+            + (putRequest.getExpressionAttributeNames() != null
+            ? ", names=" + putRequest.getExpressionAttributeNames()
+            : "")
+            + (putRequest.getExpressionAttributeValues() != null
+            ? ", values=" + putRequest.getExpressionAttributeValues()
+            : "");
     }
 
     private String updateItemRequestToString(UpdateItemRequest updateRequest) {
