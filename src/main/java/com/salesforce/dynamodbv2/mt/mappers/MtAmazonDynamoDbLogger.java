@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
@@ -211,11 +213,11 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     private String putItemRequestToString(PutItemRequest putRequest) {
-        return (putRequest.getConditionExpression() != null
+        return (!isNullOrEmpty(putRequest.getConditionExpression())
             ? ", updateExpression=" + putRequest.getConditionExpression()
             : "")
             + ", " + itemToString(putRequest.getItem())
-            + (putRequest.getConditionExpression() != null
+            + (!isNullOrEmpty(putRequest.getConditionExpression())
             ? ", conditionExpression=" + putRequest.getConditionExpression()
             : "")
             + (putRequest.getExpressionAttributeNames() != null
@@ -227,14 +229,14 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     private String updateItemRequestToString(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() != null
+        return (!isNullOrEmpty(updateRequest.getUpdateExpression())
                 ? ", updateExpression=" + updateRequest.getUpdateExpression()
                 : "")
             + (updateRequest.getAttributeUpdates() != null
                 ? ", attributeUpdates=" + updateRequest.getAttributeUpdates()
                 : "")
             + ", key=" + updateRequest.getKey()
-            + (updateRequest.getConditionExpression() != null
+            + (!isNullOrEmpty(updateRequest.getConditionExpression())
                 ? ", conditionExpression=" + updateRequest.getConditionExpression()
                 : "")
             + (updateRequest.getExpressionAttributeNames() != null
@@ -247,7 +249,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
 
     private String deleteItemRequestToString(DeleteItemRequest deleteItemRequest) {
         return "key=" + deleteItemRequest.getKey()
-            + (deleteItemRequest.getConditionExpression() != null
+            + (!isNullOrEmpty(deleteItemRequest.getConditionExpression())
             ? ", conditionExpression=" + deleteItemRequest.getConditionExpression()
             : "")
             + (deleteItemRequest.getExpressionAttributeNames() != null
