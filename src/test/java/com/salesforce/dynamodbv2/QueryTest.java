@@ -93,7 +93,7 @@ class QueryTest {
         });
     }
 
-    // legacy
+    // test legacy calls (see {@code QueryMapper} for more on "legacy".
     /**
      * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk > rkLow, so there
      * should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
@@ -156,7 +156,7 @@ class QueryTest {
         });
     }
 
-    // TODO: non-legacy query test; legacy & non-legacy scan tests
+    // TODO: non-legacy query test(s); legacy & non-legacy scan tests
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
