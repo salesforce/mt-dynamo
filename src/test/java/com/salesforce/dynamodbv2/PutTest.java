@@ -161,12 +161,6 @@ class PutTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void putAttributeNotExists(TestArgument testArgument) {
-        if (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable) {
-            LOG.warn(testArgument.toString()
-                + " ... test skipped: conditional put is not yet implemented for MtAmazonDynamoDbBySharedTable");
-            return;
-        }
-
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE_NEW)

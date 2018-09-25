@@ -281,6 +281,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         TableMapping tableMapping = getTableMapping(putItemRequest.getTableName());
         putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
+        // map conditions
+        tableMapping.getConditionMapper().apply(new PutItemRequestWrapper(putItemRequest));
+
         // map item
         putItemRequest.setItem(tableMapping.getItemMapper().apply(putItemRequest.getItem()));
 
@@ -452,6 +455,98 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return primaryKey.getRangeKey()
             .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
+    }
+
+    private static class PutItemRequestWrapper implements RequestWrapper {
+
+        private final PutItemRequest putItemRequest;
+
+        PutItemRequestWrapper(PutItemRequest putItemRequest) {
+            this.putItemRequest = putItemRequest;
+            if (this.putItemRequest.getExpressionAttributeNames() != null) {
+                this.putItemRequest.setExpressionAttributeNames(new HashMap<>(this.getExpressionAttributeNames()));
+            }
+            if (this.putItemRequest.getExpressionAttributeValues() != null) {
+                this.putItemRequest.setExpressionAttributeValues(new HashMap<>(this.getExpressionAttributeValues()));
+            }
+        }
+
+        @Override
+        public Map<String, String> getExpressionAttributeNames() {
+            return putItemRequest.getExpressionAttributeNames();
+        }
+
+        @Override
+        public void putExpressionAttributeName(String key, String value) {
+            if (putItemRequest.getExpressionAttributeNames() == null) {
+                putItemRequest.setExpressionAttributeNames(new HashMap<>());
+            }
+            putItemRequest.getExpressionAttributeNames().put(key, value);
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExpressionAttributeValues() {
+            if (putItemRequest.getExpressionAttributeValues() == null) {
+                putItemRequest.setExpressionAttributeValues(new HashMap<>());
+            }
+            return putItemRequest.getExpressionAttributeValues();
+        }
+
+        @Override
+        public void putExpressionAttributeValue(String key, AttributeValue value) {
+            putItemRequest.getExpressionAttributeValues().put(key, value);
+        }
+
+        @Override
+        public String getPrimaryExpression() {
+            return putItemRequest.getConditionExpression();
+        }
+
+        @Override
+        public void setPrimaryExpression(String expression) {
+            putItemRequest.setConditionExpression(expression);
+        }
+
+        @Override
+        public String getFilterExpression() {
+            return putItemRequest.getConditionExpression();
+        }
+
+        @Override
+        public void setFilterExpression(String conditionalExpression) {
+            putItemRequest.setConditionExpression(conditionalExpression);
+        }
+
+        @Override
+        public String getIndexName() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setIndexName(String indexName) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, Condition> getLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void clearLegacyExpression() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Map<String, AttributeValue> getExclusiveStartKey() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
+            throw new UnsupportedOperationException();
+        }
+
     }
 
     private static class UpdateItemRequestWrapper implements RequestWrapper {
