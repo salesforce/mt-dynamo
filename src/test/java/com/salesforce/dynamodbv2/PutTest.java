@@ -162,22 +162,15 @@ class PutTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void putAttributeNotExists(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                HASH_KEY_VALUE_NEW)
-                .someField(S, SOME_FIELD_VALUE_NEW)
-                .build();
             PutItemRequest putItemRequest = new PutItemRequest()
                 .withTableName(TABLE1)
-                .withItem(item)
+                .withItem(ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                    HASH_KEY_VALUE_NEW)
+                    .someField(S, SOME_FIELD_VALUE_NEW)
+                    .build())
                 .withConditionExpression("attribute_not_exists(#hk)")
                 .withExpressionAttributeNames(ImmutableMap.of("#hk", HASH_KEY_FIELD));
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
-                TABLE1,
-                HASH_KEY_VALUE_NEW,
-                testArgument.getHashKeyAttrType(),
-                Optional.empty()),
-                is(item));
             try {
                 testArgument.getAmazonDynamoDb().putItem(putItemRequest);
                 fail("expected exception not encountered");
