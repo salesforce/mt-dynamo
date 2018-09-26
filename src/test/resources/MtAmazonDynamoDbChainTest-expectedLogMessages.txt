@@ -11,13 +11,13 @@ method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#field1
 method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=#name = :value and begins_with(#___name___, :___value___), names={#___name___=hk, #name=someField}, values={:___value___={S: ctx2.Table1.,}, :value={S: someValue2,}}
 method=scan(), table=ctx1.mt_sharedtablestatic_s_nolsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx1.Table1.,}}
 method=scan(), table=ctx2.mt_sharedtablestatic_s_nolsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx2.Table1.,}}
-method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, , attributeUpdates={someField={Value: {S: someValue1Updated,},}}, key={hk={S: ctx1.Table1.1,}}
+method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}, attributeUpdates={someField={Value: {S: someValue1Updated,},}}
 method=getItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}
-method=updateItem(), table=ctx2.mt_sharedtablestatic_s_nolsi, , attributeUpdates={someField={Value: {S: someValue2Updated,},}}, key={hk={S: ctx2.Table1.1,}}
+method=updateItem(), table=ctx2.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx2.Table1.1,}}, attributeUpdates={someField={Value: {S: someValue2Updated,},}}
 method=getItem(), table=ctx2.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx2.Table1.1,}}
-method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, , updateExpression=set #name = :newValue, key={hk={S: ctx1.Table1.1,}}, conditionExpression=#name = :currentValue, names={#name=someField}, values={:currentValue={S: invalidValue,}, :newValue={S: someValue1UpdatedAgain,}}
+method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}, updateExpression=set #name = :newValue, #name = :currentValue, names={#name=someField}, values={:currentValue={S: invalidValue,}, :newValue={S: someValue1UpdatedAgain,}}
 method=getItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}
-method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, , updateExpression=set #name = :newValue, key={hk={S: ctx1.Table1.1,}}, conditionExpression=#name = :currentValue, names={#name=someField}, values={:currentValue={S: someValue1Updated,}, :newValue={S: someValue1UpdatedAgain,}}
+method=updateItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}, updateExpression=set #name = :newValue, #name = :currentValue, names={#name=someField}, values={:currentValue={S: someValue1Updated,}, :newValue={S: someValue1UpdatedAgain,}}
 method=getItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table1.1,}}
 method=putItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, item={hk={S: ctx1.Table2.1,}, someField={S: someValueTable2,}}
 method=getItem(), table=ctx1.mt_sharedtablestatic_s_nolsi, key={hk={S: ctx1.Table2.1,}}

@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
@@ -56,6 +58,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     private final List<String> methodsToLog;
     private final Optional<Consumer<List<String>>> logCallback;
     private final boolean logAll;
+    private static final String LOG_SEPARATOR = ", ";
 
     private MtAmazonDynamoDbLogger(MtAmazonDynamoDbContextProvider mtContext,
                                    AmazonDynamoDB amazonDynamoDb,
@@ -103,12 +106,12 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     public GetItemResult getItem(GetItemRequest getItemRequest) {
-        log("getItem", tableToString(getItemRequest.getTableName()), keyToString(getItemRequest.getKey()));
+        log("getItem", tableToString(getItemRequest.getTableName()), "key=" + getItemRequest.getKey());
         return super.getItem(getItemRequest);
     }
 
     public PutItemResult putItem(PutItemRequest putItemRequest) {
-        log("putItem", tableToString(putItemRequest.getTableName()), itemToString(putItemRequest.getItem()));
+        log("putItem", tableToString(putItemRequest.getTableName()), putItemRequestToString(putItemRequest));
         return super.putItem(putItemRequest);
     }
 
@@ -186,65 +189,79 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         return "table=" + tableName;
     }
 
-    private String keyToString(Map<String, AttributeValue> key) {
-        return "key=" + key;
+    private String indexToString(String index) {
+        return !isNullOrEmpty(index) ? "index=" + index : null;
     }
 
-    private String itemToString(Map<String, AttributeValue> item) {
-        return "item=" + item;
+    private String itemToString(String prefix, Map<String, AttributeValue> item) {
+        return prefix + "=" + item;
     }
 
     private String queryRequestToString(QueryRequest queryRequest) {
-        return "keyConditionExpression=" + queryRequest.getKeyConditionExpression()
-            + (queryRequest.getFilterExpression() != null
-            ? ", filterExpression=" + queryRequest.getFilterExpression()
-            : "")
-            + ", names=" + queryRequest.getExpressionAttributeNames()
-            + ", values=" + queryRequest.getExpressionAttributeValues()
-            + (queryRequest.getIndexName() != null ? ", index=" + queryRequest.getIndexName() : "");
+        return Joiner.on(LOG_SEPARATOR).skipNulls().join(expressionToString(
+            "keyConditionExpression", queryRequest.getKeyConditionExpression()),
+            expressionToString("filterExpression", queryRequest.getFilterExpression()),
+            expressionAttributeNamesToString(queryRequest.getExpressionAttributeNames()),
+            expressionAttributeValuesToString(queryRequest.getExpressionAttributeValues()),
+            indexToString(queryRequest.getIndexName()));
     }
 
     private String scanRequestToString(ScanRequest scanRequest) {
-        return "filterExpression=" + scanRequest.getFilterExpression()
-            + ", names=" + scanRequest.getExpressionAttributeNames()
-            + ", values=" + scanRequest.getExpressionAttributeValues();
+        return Joiner.on(LOG_SEPARATOR).skipNulls().join(expressionToString("filterExpression",
+            scanRequest.getFilterExpression()),
+            expressionAttributeNamesToString(scanRequest.getExpressionAttributeNames()),
+            expressionAttributeValuesToString(scanRequest.getExpressionAttributeValues()),
+            indexToString(scanRequest.getIndexName()));
+    }
+
+    private String putItemRequestToString(PutItemRequest putRequest) {
+        return Joiner.on(LOG_SEPARATOR).skipNulls().join(
+            itemToString("item", putRequest.getItem()),
+            expressionToString("updateExpression", putRequest.getConditionExpression()),
+            expressionAttributeNamesToString(putRequest.getExpressionAttributeNames()),
+            expressionAttributeValuesToString(putRequest.getExpressionAttributeValues()));
     }
 
     private String updateItemRequestToString(UpdateItemRequest updateRequest) {
-        return (updateRequest.getUpdateExpression() != null
-                ? ", updateExpression=" + updateRequest.getUpdateExpression()
-                : "")
-            + (updateRequest.getAttributeUpdates() != null
-                ? ", attributeUpdates=" + updateRequest.getAttributeUpdates()
-                : "")
-            + ", key=" + updateRequest.getKey()
-            + (updateRequest.getConditionExpression() != null
-                ? ", conditionExpression=" + updateRequest.getConditionExpression()
-                : "")
-            + (updateRequest.getExpressionAttributeNames() != null
-                ? ", names=" + updateRequest.getExpressionAttributeNames()
-                : "")
-            + (updateRequest.getExpressionAttributeValues() != null
-                ? ", values=" + updateRequest.getExpressionAttributeValues()
-                : "");
+        return Joiner.on(LOG_SEPARATOR).skipNulls().join(
+            itemToString("key", updateRequest.getKey()),
+            expressionToString("updateExpression", updateRequest.getUpdateExpression()),
+            updateRequest.getAttributeUpdates() != null && !updateRequest.getAttributeUpdates().isEmpty()
+                ? "attributeUpdates=" + updateRequest.getAttributeUpdates()
+                : null,
+            updateRequest.getConditionExpression(),
+            expressionAttributeNamesToString(updateRequest.getExpressionAttributeNames()),
+            expressionAttributeValuesToString(updateRequest.getExpressionAttributeValues()));
     }
 
     private String deleteItemRequestToString(DeleteItemRequest deleteItemRequest) {
-        return "key=" + deleteItemRequest.getKey()
-            + (deleteItemRequest.getConditionExpression() != null
-            ? ", conditionExpression=" + deleteItemRequest.getConditionExpression()
-            : "")
-            + (deleteItemRequest.getExpressionAttributeNames() != null
-            ? ", names=" + deleteItemRequest.getExpressionAttributeNames()
-            : "")
-            + (deleteItemRequest.getExpressionAttributeValues() != null
-            ? ", values=" + deleteItemRequest.getExpressionAttributeValues()
-            : "");
+        return Joiner.on(LOG_SEPARATOR).skipNulls().join(
+            itemToString("key", deleteItemRequest.getKey()),
+            expressionToString("conditionExpression", deleteItemRequest.getConditionExpression()),
+            deleteItemRequest.getConditionExpression(),
+            expressionAttributeNamesToString(deleteItemRequest.getExpressionAttributeNames()),
+            expressionAttributeValuesToString(deleteItemRequest.getExpressionAttributeValues()));
+    }
+
+    private String expressionToString(String expressionName, String filterExpression) {
+        return !isNullOrEmpty(filterExpression) ? expressionName + "=" + filterExpression : null;
+    }
+
+    private String expressionAttributeNamesToString(Map<String, String> expressionAttributeNames) {
+        return expressionAttributeNames != null && !expressionAttributeNames.isEmpty()
+            ? "names=" + expressionAttributeNames
+            : null;
+    }
+
+    private String expressionAttributeValuesToString(Map<String, AttributeValue> expressionAttributeValues) {
+        return expressionAttributeValues != null && !expressionAttributeValues.isEmpty()
+            ? "values=" + expressionAttributeValues
+            : null;
     }
 
     private void log(String method, String... messages) {
         if (logAll || methodsToLog.contains(method)) {
-            String concatenatedMessage = "method=" + method + "(), " + Joiner.on(", ").join(messages);
+            String concatenatedMessage = "method=" + method + "(), " + Joiner.on(LOG_SEPARATOR).join(messages);
             if (logCallback.isPresent()) {
                 logCallback.get().accept(ImmutableList.of(concatenatedMessage));
             } else {

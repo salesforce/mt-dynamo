@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
@@ -11,9 +12,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
+import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
@@ -34,6 +39,7 @@ class PutTest {
     private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_S_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
+    private static final String ATTRIBUTE_NOT_EXISTS = "attribute_not_exists";
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
@@ -146,6 +152,29 @@ class PutTest {
                     testArgument.getHashKeyAttrType(),
                     Optional.of(RANGE_KEY_S_VALUE)),
                 is(itemToOverwrite));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void putAttributeNotExists(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            PutItemRequest putItemRequest = new PutItemRequest()
+                .withTableName(TABLE1)
+                .withItem(ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                    HASH_KEY_VALUE_NEW)
+                    .someField(S, SOME_FIELD_VALUE_NEW)
+                    .build())
+                .withConditionExpression(ATTRIBUTE_NOT_EXISTS + "(#hk)")
+                .withExpressionAttributeNames(ImmutableMap.of("#hk", HASH_KEY_FIELD));
+            testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+            try {
+                testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+                fail("expected exception not encountered");
+            } catch (ConditionalCheckFailedException e) {
+                assertTrue(e.getMessage().equals("The conditional request failed (Service: null; Status Code: 400; "
+                    + "Error Code: ConditionalCheckFailedException; Request ID: null)"));
+            }
         });
     }
 
