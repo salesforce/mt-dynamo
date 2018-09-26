@@ -27,8 +27,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Tests putItem().
@@ -37,11 +35,11 @@ import org.slf4j.LoggerFactory;
  */
 class PutTest {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PutTest.class);
     private static final String HASH_KEY_VALUE_NEW = "3";
     private static final String RANGE_KEY_VALUE_NEW = RANGE_KEY_VALUE + "New";
     private static final String SOME_FIELD_VALUE_NEW = SOME_FIELD_VALUE + "New";
     private static final String SOME_FIELD_VALUE_OVERWRITTEN = SOME_FIELD_VALUE + "Overwritten";
+    private static final String ATTRIBUTE_NOT_EXISTS = "attribute_not_exists";
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
@@ -167,14 +165,15 @@ class PutTest {
                     HASH_KEY_VALUE_NEW)
                     .someField(S, SOME_FIELD_VALUE_NEW)
                     .build())
-                .withConditionExpression("attribute_not_exists(#hk)")
+                .withConditionExpression(ATTRIBUTE_NOT_EXISTS + "(#hk)")
                 .withExpressionAttributeNames(ImmutableMap.of("#hk", HASH_KEY_FIELD));
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             try {
                 testArgument.getAmazonDynamoDb().putItem(putItemRequest);
                 fail("expected exception not encountered");
             } catch (ConditionalCheckFailedException e) {
-                assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
+                assertTrue(e.getMessage().equals("The conditional request failed (Service: null; Status Code: 400; "
+                    + "Error Code: ConditionalCheckFailedException; Request ID: null)"));
             }
         });
     }

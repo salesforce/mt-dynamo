@@ -58,7 +58,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     private final List<String> methodsToLog;
     private final Optional<Consumer<List<String>>> logCallback;
     private final boolean logAll;
-    private final String LOG_SEPARATOR = ", ";
+    private static final String LOG_SEPARATOR = ", ";
 
     private MtAmazonDynamoDbLogger(MtAmazonDynamoDbContextProvider mtContext,
                                    AmazonDynamoDB amazonDynamoDb,
@@ -226,7 +226,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         return Joiner.on(LOG_SEPARATOR).skipNulls().join(
             itemToString("key", updateRequest.getKey()),
             expressionToString("updateExpression", updateRequest.getUpdateExpression()),
-            updateRequest.getAttributeUpdates() !=null && !updateRequest.getAttributeUpdates().isEmpty()
+            updateRequest.getAttributeUpdates() != null && !updateRequest.getAttributeUpdates().isEmpty()
                 ? "attributeUpdates=" + updateRequest.getAttributeUpdates()
                 : null,
             updateRequest.getConditionExpression(),
@@ -248,7 +248,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     }
 
     private String expressionAttributeNamesToString(Map<String, String> expressionAttributeNames) {
-        return expressionAttributeNames !=null && !expressionAttributeNames.isEmpty()
+        return expressionAttributeNames != null && !expressionAttributeNames.isEmpty()
             ? "names=" + expressionAttributeNames
             : null;
     }
