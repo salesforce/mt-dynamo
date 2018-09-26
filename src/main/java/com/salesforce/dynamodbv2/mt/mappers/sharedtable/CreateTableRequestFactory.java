@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
