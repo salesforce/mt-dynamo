@@ -198,7 +198,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
                 .collect(toList()));
     }
 
-    private boolean matchesContext(MtRecord mtRecord) {
+    protected boolean matchesContext(MtRecord mtRecord) {
         return mtDynamoDb.getMtContext().getContextOpt().map(mtRecord.getContext()::equals).orElse(true);
     }
 

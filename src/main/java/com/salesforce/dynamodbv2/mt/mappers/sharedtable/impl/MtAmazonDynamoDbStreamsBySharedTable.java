@@ -70,6 +70,17 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     @Override
+    protected boolean matchesContext(MtRecord mtRecord) {
+        return
+            mtDynamoDb.getMtContext().withContext(mtRecord.getContext(), this::isStreamEnabled, mtRecord.getTableName())
+                && super.matchesContext(mtRecord);
+    }
+
+    private boolean isStreamEnabled(String tableName) {
+        return mtDynamoDb.getTableMapping(tableName).getVirtualTable().getStreamSpecification().isStreamEnabled();
+    }
+
+    @Override
     protected Function<Record, MtRecord> getMtRecordMapper(String tableName) {
         Function<Map<String, AttributeValue>, FieldValue> fieldValueFunction =
             mtDynamoDb.getFieldValueFunction(tableName);
@@ -81,6 +92,9 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         FieldValue fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
         MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
         // execute in record tenant context to get table mapping
+        System.out.println(
+            fieldValue.getMtContext() + " " + fieldValue.getTableIndex() + " " + fieldValue.getUnqualifiedValue());
+
         TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
             mtDynamoDb::getTableMapping, fieldValue.getTableIndex());
         ItemMapper itemMapper = tableMapping.getItemMapper();
