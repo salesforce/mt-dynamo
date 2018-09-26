@@ -13,7 +13,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.15 (September 24, 2018)
 
-* Remove custom listStreams method and KCL dependency
+* Remove custom `listStreams` method and KCL dependency
 
 ## 0.9.14 (September 22, 2018)
 
