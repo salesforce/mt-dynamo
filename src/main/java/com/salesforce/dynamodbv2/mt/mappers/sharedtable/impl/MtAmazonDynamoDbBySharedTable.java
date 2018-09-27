@@ -301,7 +301,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         queryRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map query request
-        tableMapping.getQueryMapper().apply(queryRequest);
+        tableMapping.getQueryAndScanMapper().apply(queryRequest);
 
         // map result
         QueryResult queryResult = getAmazonDynamoDb().query(queryRequest);
@@ -333,7 +333,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
         clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
             .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
-        tableMapping.getQueryMapper().apply(clonedScanRequest);
+        tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
 
         // scan until we find at least one record for current tenant or reach end
         ScanResult scanResult;

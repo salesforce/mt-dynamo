@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-class QueryMapperTest {
+class QueryAndScanMapperTest {
 
     private static final DynamoTableDescription VIRTUAL_TABLE_DESCRIPTION = new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
@@ -64,8 +64,8 @@ class QueryMapperTest {
         "."
     );
 
-    private QueryMapper getMockQueryMapper() {
-        return new QueryMapper(TABLE_MAPPING, null);
+    private QueryAndScanMapper getMockQueryMapper() {
+        return new QueryAndScanMapper(TABLE_MAPPING, null);
     }
 
     @Test
@@ -194,7 +194,7 @@ class QueryMapperTest {
         FieldValue fieldValue = mock(FieldValue.class);
         when(fieldValue.getQualifiedValue()).thenReturn("prefixed");
         when(fieldPrefixFunction.apply(any(), any(), any())).thenReturn(fieldValue);
-        new QueryMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
+        new QueryAndScanMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
 
         assertEquals(new ScanRequest()
                         .withFilterExpression("begins_with(#___name___, :___value___)")

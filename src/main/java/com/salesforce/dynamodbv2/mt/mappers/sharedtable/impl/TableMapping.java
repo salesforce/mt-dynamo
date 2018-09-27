@@ -53,7 +53,7 @@ class TableMapping {
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> secondaryIndexFieldMappings;
 
     private final ItemMapper itemMapper;
-    private final QueryMapper queryMapper;
+    private final QueryAndScanMapper queryAndScanMapper;
     private final ConditionMapper conditionMapper;
 
     TableMapping(DynamoTableDescription virtualTable,
@@ -74,7 +74,7 @@ class TableMapping {
             virtualTable.getTableName(),
             new FieldPrefixFunction(delimiter));
         itemMapper = new ItemMapper(this, fieldMapper);
-        queryMapper = new QueryMapper(this, fieldMapper);
+        queryAndScanMapper = new QueryAndScanMapper(this, fieldMapper);
         conditionMapper = new ConditionMapper(this, fieldMapper);
     }
 
@@ -90,8 +90,8 @@ class TableMapping {
         return itemMapper;
     }
 
-    QueryMapper getQueryMapper() {
-        return queryMapper;
+    QueryAndScanMapper getQueryAndScanMapper() {
+        return queryAndScanMapper;
     }
 
     ConditionMapper getConditionMapper() {

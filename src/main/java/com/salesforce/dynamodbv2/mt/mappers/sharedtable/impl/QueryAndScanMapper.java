@@ -39,12 +39,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 /**
- * Maps query and scan requests against virtual tables to their physical table counterpart according to the provided
- * TableMapping, delegating field mapping to the provided FieldMapper.
+ * Maps query and scan requests against virtual tables to their physical table counterparts according to the provided
+ * {@code TableMapping}, delegating field mapping to the provided {@code FieldMapper}.
  *
  * @author msgroi
  */
-class QueryMapper {
+class QueryAndScanMapper {
 
     private static final String VALUE_PLACEHOLDER = ":___value___";
     private static final Map<ComparisonOperator, BiFunction<String, String, String>>
@@ -59,7 +59,7 @@ class QueryMapper {
     private final FieldMapper fieldMapper;
     private final TableMapping tableMapping;
 
-    QueryMapper(TableMapping tableMapping, FieldMapper fieldMapper) {
+    QueryAndScanMapper(TableMapping tableMapping, FieldMapper fieldMapper) {
         this.fieldMapper = fieldMapper;
         this.tableMapping = tableMapping;
     }
@@ -398,8 +398,8 @@ class QueryMapper {
                     "unsupported comparison operator " + condition.getComparisonOperator() + " in condition="
                         + condition);
                 checkArgument(condition.getAttributeValueList().size() == 1,
-                    "keyCondition with more than one(" + condition.getAttributeValueList().size()
-                        + ") encountered in condition=" + condition);
+                    "keyCondition with more than one (" + condition.getAttributeValueList().size()
+                        + ") attribute value encountered in condition=" + condition);
                 String field = "#field" + counter;
                 String value = ":value" + counter.getAndIncrement();
                 keyConditionExpressionParts

@@ -17,7 +17,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryMapper.QueryRequestWrapper;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryAndScanMapper.QueryRequestWrapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
