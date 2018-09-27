@@ -14,9 +14,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Allows a client to provide a custom mapping of virtual CreateTableRequest's to physical ones.
+ * Allows a client to provide a custom mapping of virtual {@code CreateTableRequest}s to physical ones.
  *
- * <p>See TableMappingFactory for details.
+ * <p>See {@code TableMappingFactory} for details.
  *
  * @author msgroi
  */

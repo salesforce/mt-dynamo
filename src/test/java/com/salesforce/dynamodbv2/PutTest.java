@@ -12,7 +12,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -172,8 +171,8 @@ class PutTest {
                 testArgument.getAmazonDynamoDb().putItem(putItemRequest);
                 fail("expected exception not encountered");
             } catch (ConditionalCheckFailedException e) {
-                assertTrue(e.getMessage().equals("The conditional request failed (Service: null; Status Code: 400; "
-                    + "Error Code: ConditionalCheckFailedException; Request ID: null)"));
+                assertEquals(e.getMessage(), "The conditional request failed (Service: null; Status Code: 400; "
+                    + "Error Code: ConditionalCheckFailedException; Request ID: null)");
             }
         });
     }

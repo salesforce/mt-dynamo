@@ -8,51 +8,57 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 
 /**
- * Default implementation of the ArgumentProvider interface.  It is meant to be referenced in a @ParameterizedTest's
- * &#064;ArgumentProvider annotation.
+ * Default implementation of the {@code ArgumentProvider} interface.  It is meant to be referenced in a
+ * {@code @ParameterizedTest}'s {@code @ArgumentProvider} annotation.
  *
- * <p>It delegates to the ArgumentBuilder to get a list of TestArguments.  Each TestArgument will be used as an input
- * to a test invocation.  Before returning the list of TestArgument's, it calls setTestSetup on its DefaultTestSetup.
- * The DefaultTestSetup implementation creates tables for each TestArgument's org/AmazonDynamoDB/hashKeyAttrType
- * combination.
+ * <p>It delegates to the {@code ArgumentBuilder} to get a list of {@code TestArgument}s.  Each {@code TestArgument}
+ * will be used as an input to a test invocation.  Before returning the list of {@code TestArgument}s, it calls
+ * {@code setTestSetup} on its {@code DefaultTestSetup}.  The {@code DefaultTestSetup} implementation creates tables for
+ * each {@code TestArgument}'s {@code org}/{@code AmazonDynamoDB}/{@code hashKeyAttrType} combination.
  *
- * <p>To use with the DefaultArgumentBuilder and DefaultTestSetup add the following annotation on your test ...
+ * <p>To use with the {@code DefaultArgumentBuilder} and {@code DefaultTestSetup} add the following annotation on your
+ * test ...
  *
- *     <p>&#064;ParameterizedTest
- *     &#064;ArgumentsSource(DefaultArgumentProvider.class)
+ *     <p>{@code @ParameterizedTest
+ *     @ArgumentsSource(DefaultArgumentProvider.class)
+ *     }
  *
- * <p>To use with a custom ArgumentBuilder and custom TestSetup, declare a static inner class ...
+ * <p>To use with a custom {@code ArgumentBuilder} and custom {@code TestSetup}, declare a static inner class ...
  *
- *     <p>static class MyArgumentProvider extends DefaultArgumentProvider {
+ *     <p>{@code static class MyArgumentProvider extends DefaultArgumentProvider {
  *         public MyArgumentProvider() {
  *             super(new MyArgumentBuilder(), new MyTestSetup());
  *         }
  *     }
+ *     }
  *
  *     <p>... then reference that class in your test method annotation ...
  *
- *     <p>&#064;ParameterizedTest
- *     &#064;ArgumentsSource(MyArgumentProvider.class)
+ *     <p>{@code ParameterizedTest
+ *     @ArgumentsSource(MyArgumentProvider.class)
+ *     }
  *
- * <p>To use with a custom ArgumentBuilder and default TestSetup, declare a static inner class ...
+ * <p>To use with a custom {@code ArgumentBuilder} and default {@code TestSetup}, declare a static inner class ...
  *
- *     <p>static class MyArgumentProvider extends DefaultArgumentProvider {
+ *     <p>{@code static class MyArgumentProvider extends DefaultArgumentProvider {
  *         public MyArgumentProvider() {
  *             super(new MyArgumentBuilder());
  *         }
  *     }
+ *     }
  *
- * <p>To use with the default ArgumentBuilder and a custom TestSetup, declare a static inner class ...
+ * <p>To use with the default {@code ArgumentBuilder} and a custom {@code TestSetup}, declare a static inner class ...
  *
- *     <p>static class MyArgumentProvider extends DefaultArgumentProvider {
+ *     <p>{@code static class MyArgumentProvider extends DefaultArgumentProvider {
  *         public MyArgumentProvider() {
  *             super(new MyTestSetup());
  *         }
  *     }
+ *     }
  *
- * <p>Of course, if you want the default test data plus the ability to add your own, in the above example, MyTestSetup
- * could extend DefaultTestSetup and the setupTest() implementation could call super.setupTest() before adding its own
- * data.
+ * <p>Of course, if you want the default test data plus the ability to add your own, in the above example,
+ * {@code MyTestSetup} could extend {@code DefaultTestSetup} and the {@code setupTest()} implementation could call
+ * {@code super.setupTest()} before adding its own data.
  *
  * @author msgroi
  */

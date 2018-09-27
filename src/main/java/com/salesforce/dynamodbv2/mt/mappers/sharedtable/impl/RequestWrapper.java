@@ -6,8 +6,8 @@ import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
 
 /**
- * Wrapper class that allows application code to handle QueryRequest, ScanRequest, PutItemRequest, UpdateItemRequest,
- * and DeleteItemRequest objects consistently.
+ * Wrapper class that allows application code to handle {@code QueryRequest}s, {@code ScanRequest}s,
+ * {@code PutItemRequest}s, {@code UpdateItemRequest}s, and {@code DeleteItemRequest}s consistently.
  *
  * @author msgroi
  */

@@ -18,15 +18,15 @@ import java.util.function.Function;
 
 /**
  * Allows for dividing tenants into different AWS accounts.  To use, pass in AmazonDynamoDBClientBuilder and
- * MtAccountCredentialsMapper.  At run-time, a String representing the multi-tenant will be passed to your
+ * MtAccountCredentialsMapper.  At run-time, a String representing the multitenant will be passed to your
  * credentials mapper, allowing you map the context to different AWS credentials implementations.
  *
  * <p>MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end
  * of the chain when it is used.
  *
  * <p>To use, call the static builder() method.  The following parameters are required ...
- * - a multi-tenant context
- * - a MtAccountCredentialsMapper implementation that maps context to AWSCredentialsProvider's
+ * - a multitenant context
+ * - a MtAccountCredentialsMapper implementation that maps a context to an AWSCredentialsProvider
  *
  * <p>Supported:
  * - methods: batchGet|get|put Item, create|describe|delete Table, scan|query

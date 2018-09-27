@@ -112,12 +112,13 @@ class QueryMapper {
             String physicalHashKey = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping ->
                 fieldMapping.getSource().getName().equals(virtualHashKey)).findFirst()
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hashkey field " + virtualHashKey)).getTarget()
+                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey))
+                .getTarget()
                 .getName();
             FieldMapping fieldMapping = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping1 ->
                 fieldMapping1.getSource().getName().equals(virtualHashKey)).findFirst()
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hashkey field " + virtualHashKey));
+                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey));
             addBeginsWith(request, physicalHashKey, fieldMapping);
         }
 
@@ -380,10 +381,10 @@ class QueryMapper {
     }
 
     /*
-     * Converts QueryRequest's containing keyConditions to keyConditionExpression and ScanRequest's containing
-     * scanFilters.  According to the DynamoDB docs, QueryRequest keyConditions and ScanRequest scanFilter's are
-     * considered 'legacy parameters'.  However, since we support them by converting them to keyConditionExpressions
-     * and filterExpression's respectively because they are used by the DynamoDB document API
+     * Converts QueryRequest objects containing keyConditions to keyConditionExpression and ScanRequest objects
+     * containing scanFilters.  According to the DynamoDB docs, QueryRequest keyConditions and ScanRequest scanFilter
+     * fields are considered 'legacy parameters'.  However, we support them by converting them to keyConditionExpression
+     * and filterExpression fields respectively because they are used by the DynamoDB document API
      * (https://docs.aws.amazon.com/AWSJavaSDK/latest/javadoc/com/amazonaws/services/dynamodbv2/document/DynamoDB.html).
      */
     private void convertLegacyExpression(RequestWrapper request) {

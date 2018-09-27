@@ -247,7 +247,7 @@ class TableMapping {
     }
 
     /*
-     * Helper method for adding a single FieldMapping to the existing list of FieldMapping's.
+     * Helper method for adding a single FieldMapping object to the existing list of FieldMapping objects.
      */
     private void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
         String key = fieldMappingToAdd.getSource().getName();
@@ -312,8 +312,8 @@ class TableMapping {
                 DynamoSecondaryIndex physicalLsi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLsi,
                                                                                                      physicalTable);
                 checkArgument(!usedPhysicalLsis.containsKey(physicalLsi),
-                    "two virtual LSI's(one:" + usedPhysicalLsis.get(physicalLsi) + ", two:"
-                        + virtualLsi + ", mapped to one physical LSI: " + physicalLsi);
+                    "two virtual LSIs (one:" + usedPhysicalLsis.get(physicalLsi) + ", two:"
+                        + virtualLsi + "), mapped to one physical LSI: " + physicalLsi);
                 usedPhysicalLsis.put(physicalLsi, virtualLsi);
             } catch (MappingException e) {
                 throw new IllegalArgumentException("failure mapping virtual to physical " + virtualLsi.getType() + ": "
@@ -330,14 +330,14 @@ class TableMapping {
     @VisibleForTesting
     void validateCompatiblePrimaryKey(PrimaryKey virtualPrimaryKey, PrimaryKey physicalPrimaryKey)
         throws IllegalArgumentException, NullPointerException {
-        checkNotNull(virtualPrimaryKey.getHashKey(), "hashkey is required on virtual table");
-        checkNotNull(physicalPrimaryKey.getHashKey(), "hashkey is required on physical table");
-        checkArgument(physicalPrimaryKey.getHashKeyType() == S, "hashkey must be of type S");
+        checkNotNull(virtualPrimaryKey.getHashKey(), "hash key is required on virtual table");
+        checkNotNull(physicalPrimaryKey.getHashKey(), "hash key is required on physical table");
+        checkArgument(physicalPrimaryKey.getHashKeyType() == S, "hash key must be of type S");
         if (virtualPrimaryKey.getRangeKey().isPresent()) {
             checkArgument(physicalPrimaryKey.getRangeKey().isPresent(),
                           "rangeKey exists on virtual primary key but not on physical");
             checkArgument(virtualPrimaryKey.getRangeKeyType().get() == physicalPrimaryKey.getRangeKeyType().get(),
-                          "virtual and physical rangekey types mismatch");
+                          "virtual and physical range-key types mismatch");
         }
     }
 
@@ -358,7 +358,7 @@ class TableMapping {
 
     private void validatePrimaryKey(PrimaryKey primaryKey, String msgPrefix) {
         checkArgument(primaryKey.getHashKeyType() == S,
-            msgPrefix + " primary key hashkey must be type S, encountered type "
+            msgPrefix + " primary-key hash key must be type S, encountered type "
                 + primaryKey.getHashKeyType());
     }
 

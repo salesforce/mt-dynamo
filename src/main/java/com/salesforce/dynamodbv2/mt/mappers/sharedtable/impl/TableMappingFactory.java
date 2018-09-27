@@ -21,9 +21,9 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import java.util.Optional;
 
 /**
- * Creates TableMapping objects that contain the state of given mapping of a virtual table to a physical table.  The
- * TableMapping also includes methods for retrieving the virtual and physical descriptions, and logic for mapping
- * of fields from virtual to physical and back.
+ * Creates {@code TableMapping}s that contain the state of given mapping of a virtual table to a physical table.  The
+ * {@code TableMapping} also includes methods for retrieving the virtual and physical descriptions, and logic for
+ * mapping of fields from virtual to physical and back.
  *
  * <p>This class is also responsible for triggering the creation of the physical tables appropriately.
  *

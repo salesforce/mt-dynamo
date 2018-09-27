@@ -236,7 +236,7 @@ class ConditionMapperTest {
 
     private static Stream<KeyConditionTestInvocation> applyKeyConditionToFieldInvocations() {
         return ImmutableList.of(
-                // map table's hashkey field name field and value on a primary expression on a table with hk only
+                // map table's hash-key field name field and value on a primary expression on a table with hk only
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx")
@@ -254,7 +254,7 @@ class ConditionMapperTest {
                                 .attributeNames("#field1", "physicalhk")
                                 .attributeValues(":value", "ctx.virtualTable.hkvalue").build()
                 ),
-                // map gsi hashkey field name and value on a primary expression on a table with hk only
+                // map gsi hash-key field name and value on a primary expression on a table with hk only
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx")
@@ -273,7 +273,7 @@ class ConditionMapperTest {
                                 .attributeNames("#field", "physicalgsihk")
                                 .attributeValues(":value", "ctx.virtualgsi.hkgsivalue").build()
                 ),
-                // map table's hashkey field name and value on a primary expression on a table with hk and rk
+                // map table's hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -291,7 +291,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1.Table3.1").build()
                 ),
-                // map table's rangekey field name on a primary expression on a table with hk and rk
+                // map table's range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -309,7 +309,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name2", "rk")
                                 .attributeValues(":value2", "rangeKeyValue").build()
                 ),
-                // map table's hashkey field name on a filter expression on a table with hk and rk
+                // map table's hash-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -328,7 +328,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1.Table3.hashKeyValue3").build()
                 ),
-                // map table's rangekey field name on a filter expression on a table with hk and rk
+                // map table's range-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("Org-51")
@@ -348,7 +348,7 @@ class ConditionMapperTest {
                                 .attributeNames("#rk", "rk")
                                 .attributeValues(":currentRkValue", "rangeKeyValue").build()
                 ),
-                // map gsi hashkey field name and value on a primary expression on a table with hk and rk
+                // map gsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -366,7 +366,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "gsi_s_hk")
                                 .attributeValues(":value", "ctx1.testgsi.indexFieldValue").build()
                 ),
-                // map lsi hashkey field name and value on a primary expression on a table with hk and rk
+                // map lsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -385,7 +385,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1.Table3.1").build()
                 ),
-                // map lsi rangekey field name on a primary expression on a table with hk and rk
+                // map lsi range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -404,7 +404,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name2", "lsi_s_s_rk")
                                 .attributeValues(":value2", "indexFieldValue").build()
                 ),
-                // map gsi hashkey field name and value on a primary expression on a table with hk and rk
+                // map gsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")

@@ -215,21 +215,21 @@ class TableMappingTest {
     void validateVirtualPhysicalCompatibility_missingVirtualHk() {
         assertException((TestFunction<NullPointerException>) () ->
                         sut.validateCompatiblePrimaryKey(new PrimaryKey(null, S), null),
-                "hashkey is required on virtual table");
+                "hash key is required on virtual table");
     }
 
     @Test
     void validateVirtualPhysicalCompatibility_missingPhysicalHk() {
         assertException((TestFunction<NullPointerException>) () ->
                         sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S), new PrimaryKey(null, S)),
-                "hashkey is required on physical table");
+                "hash key is required on physical table");
     }
 
     @Test
     void validateVirtualPhysicalCompatibility_invalidVirtualHkType() {
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S), new PrimaryKey("hk", N)),
-                "hashkey must be of type S");
+                "hash key must be of type S");
     }
 
     @Test
@@ -245,7 +245,7 @@ class TableMappingTest {
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S, "rk", S),
                                 new PrimaryKey("hk", S, "rk", N)),
-                "virtual and physical rangekey types mismatch");
+                "virtual and physical range-key types mismatch");
     }
 
     @Test
@@ -253,7 +253,7 @@ class TableMappingTest {
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validateCompatiblePrimaryKey(new PrimaryKey("hk", S, "rk", S),
                                 new PrimaryKey("hk", S, "rk", N)),
-                "virtual and physical rangekey types mismatch");
+                "virtual and physical range-key types mismatch");
     }
 
     @Test
@@ -318,7 +318,7 @@ class TableMappingTest {
                         null,
                         null
                 ),
-                "two virtual LSI's");
+                "two virtual LSIs");
     }
 
     @Test
@@ -330,7 +330,7 @@ class TableMappingTest {
                                         .withTableName("physicalTableName")
                                         .withTableKeySchema("physicalhk", N)
                                         .build())),
-                "physical table physicalTableName's primary key hashkey must be type S, encountered type N");
+                "physical table physicalTableName's primary-key hash key must be type S, encountered type N");
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
                                 CreateTableRequestBuilder
@@ -342,7 +342,7 @@ class TableMappingTest {
                                                 new PrimaryKey("physicalgsihk", N),
                                                 1L)
                                         .build())),
-                "physical table physicalTableName's GSI physicalgsi's primary key hashkey must be type S, encountered "
+                "physical table physicalTableName's GSI physicalgsi's primary-key hash key must be type S, encountered "
                         + "type N");
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
@@ -353,17 +353,17 @@ class TableMappingTest {
                                         .addSi("physicallsi", LSI, new PrimaryKey("physicalgsihk", N),
                                                 1L)
                                         .build())),
-                "physical table physicalTableName's LSI physicallsi's primary key hashkey must be type S, encountered "
+                "physical table physicalTableName's LSI physicallsi's primary-key hash key must be type S, encountered "
                         + "type N");
     }
 
-    private static void assertException(TestFunction test, String expectedMessage) {
+    private static void assertException(TestFunction test, String expectedMessagePrefix) {
         try {
             test.run();
-            throw new RuntimeException("expected exception '" + expectedMessage + "' not encountered");
+            throw new RuntimeException("expected exception '" + expectedMessagePrefix + "' not encountered");
         } catch (IllegalArgumentException | NullPointerException e) {
-            assertTrue(e.getMessage().equals(expectedMessage) || e.getMessage().startsWith(expectedMessage),
-                    "expected=" + expectedMessage + ", actual=" + e.getMessage());
+            assertTrue(e.getMessage().startsWith(expectedMessagePrefix),
+                    "expectedPrefix=" + expectedMessagePrefix + ", actual=" + e.getMessage());
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }

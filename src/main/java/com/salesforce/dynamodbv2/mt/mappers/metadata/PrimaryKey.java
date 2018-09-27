@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
+import com.google.common.base.Preconditions;
 import java.util.Optional;
 
 /**
@@ -47,6 +48,8 @@ public class PrimaryKey {
                       ScalarAttributeType hashKeyType,
                       Optional<String> rangeKey,
                       Optional<ScalarAttributeType> rangeKeyType) {
+        Preconditions.checkState(rangeKey.isPresent() == rangeKeyType.isPresent(),
+            "rangeKey and rangeKeyType must both be present or both be absent");
         this.hashKey = hashKey;
         this.hashKeyType = hashKeyType;
         this.rangeKey = rangeKey;
