@@ -39,7 +39,7 @@ import java.util.Optional;
  * primary key if the physical primary key has a hash key of type S and either, range keys that are undefined on both
  * the virtual and physical tables or they are defined on both and have types that match.
  *
- * <p>The builder required ...
+ * <p>The builder requires ...
  *
  * <p>- A {@code CreateTableRequestFactory} implementation which allows the client to map virtual
  * {@code CreateTableRequest}s to physical {@code CreateTableRequest}s.  By default, requests that reference secondary
@@ -56,16 +56,23 @@ import java.util.Optional;
  *   Default: {@code DynamoSecondaryIndexMapperByNameImpl}.
  * - {@code delimiter}: a {@code String} delimiter used to separate the tenant identifier prefix from the hash-key
  *   value.  Default: '-'.
- *   ??? See Javadoc below.  Default: true.
  * - {@code tablePrefix}: a {@code String} used to prefix all tables with, independently of multitenant context, to
  *   provide the ability to support multiple environments within an account.
  * - {@code MtTableDescriptionRepo}: responsible for storing and retrieving table descriptions.
  *   Default: {@code MtDynamoDbTableDescriptionRepo}
  *   which stores table definitions in DynamoDB itself.
  * - {@code deleteTableAsync}: a {@code boolean} to indicate whether table data deletion may happen asynchronously after
- *   the table is dropped.  Default: FALSE
+ *   the table is dropped.  Default: FALSE.
  * - {@code truncateOnDeleteTable}: a {@code boolean} to indicate whether all of a table's data should be deleted when a
- *   table is dropped.  Default: FALSE
+ *   table is dropped.  Default: FALSE.
+ * - {@code precreateTables}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
+ *   Default: TRUE.
+ * - {@code tableMappingFactory}: the {@code TableMappingFactory} that maps virtual to physical table instances.
+ *   Default: a table mapping factory that implements shared table behavior.
+ * - {@code name}: a {@code String} representing the name of the multitenant AmazonDynamoDB instance.
+ *   Default: "MtAmazonDynamoDbBySharedTable".
+ * - {@code pollIntervalSeconds}: an {@code Integer} representing the interval in seconds between attempts at checking
+ *   the status of the table being created.  Default: 0.
  *
  * <p>Limitations ...
  *
