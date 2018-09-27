@@ -50,13 +50,13 @@ import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
- * Builds of a list of TestArgument objects.  Each TestArgument consists of 3 elements ...
+ * Builds of a list of {@code TestArgument}s.  Each {@code TestArgument} consists of 3 elements:
  *
- * <p>- the AmazonDynamoDB instance to be tested
+ * <p>- the {@code AmazonDynamoDB} instance to be tested
  * - the attribute type of the hash key of the table to be tested
  * - a list of orgs that have been designated to be used for the given test invocation
  *
- * <p>The ArgumentBuilder is used by the DefaultArgumentProvider which can be referenced in a JUnit5
+ * <p>The {@code ArgumentBuilder} is used by the {@code DefaultArgumentProvider} which can be referenced in a JUnit 5
  * {@code @ParameterizedTest} {@code @ArgumentSource} annotation.  See {@link DefaultArgumentProvider} for details.
  *
  * @author msgroi

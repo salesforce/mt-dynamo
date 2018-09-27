@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Allows a developer using the mt-dynamo library to provide a custom mapping between tables that clients interact with
  * and the physical tables where the data for those tables are stored.  It support mapping many virtual tables to a
- * single physical table, mapping field names and types, secondary indexes.  It supports for allowing multi-tenant
+ * single physical table, mapping field names and types, secondary indexes.  It supports for allowing multitenant
  * context to be added to table and index hash key fields.  Throughout this documentation, virtual tables are meant to
  * represent tables as they are understood by the developer using the DynamoDB Java API.  Physical tables represent the
  * tables that store the data in AWS.
@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <p>Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
  *
  * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
- * control behavior that is specific to deleteTable. ** Only EQ conditions are supported.
+ * control behavior that is specific to deleteTable. ** Only EQ and GT conditions are supported.
  *
  * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
  * results.

@@ -39,13 +39,13 @@ import java.util.Optional;
 
 /**
  * Allows for dividing tenants into their own tables by prefixing table names
- * with the multi-tenant context.
+ * with the multitenant context.
  *
- * <p>The multi-tenant context is separated from the table name by the delimiter,
+ * <p>The multitenant context is separated from the table name by the delimiter,
  * which is '.' by default.
  *
  * <p>To use, call the static builder() method. The following parameters are
- * required ... - an AmazonDynamoDB instance - a multi-tenant context
+ * required ... - an AmazonDynamoDB instance - a multitenant context
  *
  * <p>The following are optional arguments ... - delimiter: a String delimiter used
  * to separate the tenant identifier prefix from the table name
@@ -67,10 +67,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Determines if the table for the given name is a multi-tenant table associated with this instance.
+     * Determines if the table for the given name is a multitenant table associated with this instance.
      *
      * @param tableName Name of the table.
-     * @return true if the given table name is a multi-tenant table associated with this instance, false otherwise.
+     * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
     protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");

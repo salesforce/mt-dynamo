@@ -49,23 +49,23 @@ import java.util.stream.Collectors;
  * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
  * with a primary key whose elements are compatible.  It also requires that for any secondary index on a virtual
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
- * type(global vs local) where the primary keys are compatible.
+ * type (global vs. local) where the primary keys are compatible.
  *
  * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
  * The builder requires ...
  *
- * - an AmazonDynamoDB instance
- * - a multi-tenant context
+ * - an {@code AmazonDynamoDB} instance
+ * - a multitenant context
  *
  * Optionally ...
- * - a list of CreateTableRequest's representing physical tables.  Default: See enumerated list of tables below.
+ * - a list of {@code CreateTableRequest}s representing physical tables.  Default: See enumerated list of tables below.
  *
- * See SharedTableCustomDynamicBuilder for optional arguments and limitations.
+ * See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
  *
  * Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi tables
  * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
- * counterpart based on the rules described in PrimaryKeyMapperByTypeImpl.
+ * counterpart based on the rules described in {@code PrimaryKeyMapperByTypeImpl}.
  *
  *                                  table           gsi                                                                                             lsi
  *                                  hash    range   hash        range       hash        range       hash        range       hash        range       hash    range       hash    range       hash        range
@@ -82,8 +82,8 @@ import java.util.stream.Collectors;
  *
  * Design constraints:
  *
- * - In order to support multi-tenancy, all HK's(table and index-level) must be prefixed with the alphanumeric tenant
- *   id.  Therefore, all HK's must be of type S.
+ * - In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric tenant ID.
+ *   Therefore, all HKs must be of type S.
  * - Tables with LSIs are limited to 10GB
  *   (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.ItemCollections.SizeLimit).
  *   Therefore, we have two sets of tables, one set with LSIs and one set without.
@@ -163,7 +163,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private static final String RANGE_KEY_FIELD = "rk";
 
     /**
-     * Builds the tables that underly the SharedTable implementation as described in the class-level Javadoc.
+     * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
     static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
         boolean streamsEnabled) {

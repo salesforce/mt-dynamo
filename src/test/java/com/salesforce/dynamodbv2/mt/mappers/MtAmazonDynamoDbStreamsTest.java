@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 public class MtAmazonDynamoDbStreamsTest {
 
     /**
-     * Verifies that getting a streams client for a non-multi-tenant dynamo instance throws an exception..
+     * Verifies that getting a streams client for a non-multitenant dynamo instance throws an exception.
      */
     @Test
     void testCreateFromDynamoNotMultitenant() {
@@ -32,7 +32,7 @@ public class MtAmazonDynamoDbStreamsTest {
             .createFromDynamo(mock(MtAmazonDynamoDbByTable.class), mock(AmazonDynamoDBStreams.class));
 
         assertTrue(actual instanceof MtAmazonDynamoDbStreamsByTable,
-            "Expected an instance of MtAmazonDynamoDbStreamsPassthrough");
+            "Expected an instance of MtAmazonDynamoDbStreamsByTable");
     }
 
     @Test

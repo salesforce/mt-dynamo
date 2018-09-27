@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Interface that allows DynamoTableDescriptionImpl's and CreateTableRequests to be used interchangeably.
+ * Interface that allows {@code DynamoTableDescriptionImpl}s and {@code CreateTableRequest}s to be used interchangeably.
  *
  * @author msgroi
  */

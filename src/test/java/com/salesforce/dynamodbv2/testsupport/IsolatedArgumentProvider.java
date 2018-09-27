@@ -13,15 +13,15 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClientBuilder;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 
 /**
- * Run with an independent, isolated DynamoDB instance when run locally.  Also disables all table setup but still
- * feeds TestArgument's as supplied by the ArgumentBuilder.  DynamoDB will start up as an external process
- * that can be accessed via the local network.  It picks an open port randomly, then will restart the DynamoDB
- * server process between each test run, effectively dropping the database.
+ * Run with an independent, isolated DynamoDB instance when run locally.  Also disables all table setup but still feeds
+ * {@code TestArgument}s as supplied by the {@code ArgumentBuilder}.  DynamoDB will start up as an external process that
+ * can be accessed via the local network.  It picks an open port randomly, then will restart the DynamoDB server process
+ * between each test run, effectively dropping the database.
  *
  * <p>Note that tests that running such tests in the same surefire run as other tests that use the default
- * locally-networked DynamoDB typically fail with sqlite related errors.  The workaround is to run with these tests
- * with forkCount=1/reuseForks=false.  There are existing tests set up this way and are annotated
- * with @Tag("isolated-tests").  The default surefire configuration excludes tests with this annotation.  There is a
+ * locally networked DynamoDB typically fail with sqlite related errors.  The workaround is to run with these tests
+ * with forkCount=1/reuseForks=false.  There are existing tests set up this way and are annotated with
+ * {@code @Tag("isolated-tests")}.  The default surefire configuration excludes tests with this annotation.  There is a
  * separate Maven profile, 'isolated-tests', that runs just these tests.
  *
  * @author msgroi

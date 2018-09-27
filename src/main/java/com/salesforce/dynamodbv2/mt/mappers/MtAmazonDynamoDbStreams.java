@@ -9,7 +9,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 
 /**
- * A multi-tenant version of {@link AmazonDynamoDBStreams} that returns only results for the appropriate tenant.
+ * A multitenant version of {@link AmazonDynamoDBStreams} that returns only results for the appropriate tenant.
  */
 public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
 

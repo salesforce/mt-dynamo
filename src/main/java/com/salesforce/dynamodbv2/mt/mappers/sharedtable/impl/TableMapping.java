@@ -247,7 +247,7 @@ class TableMapping {
     }
 
     /*
-     * Helper method for adding a single FieldMapping to the existing list of FieldMapping's.
+     * Helper method for adding a single FieldMapping object to the existing list of FieldMapping objects.
      */
     private void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
         String key = fieldMappingToAdd.getSource().getName();
@@ -312,8 +312,8 @@ class TableMapping {
                 DynamoSecondaryIndex physicalLsi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLsi,
                                                                                                      physicalTable);
                 checkArgument(!usedPhysicalLsis.containsKey(physicalLsi),
-                    "two virtual LSI's(one:" + usedPhysicalLsis.get(physicalLsi) + ", two:"
-                        + virtualLsi + ", mapped to one physical LSI: " + physicalLsi);
+                    "two virtual LSIs (one:" + usedPhysicalLsis.get(physicalLsi) + ", two:"
+                        + virtualLsi + "), mapped to one physical LSI: " + physicalLsi);
                 usedPhysicalLsis.put(physicalLsi, virtualLsi);
             } catch (MappingException e) {
                 throw new IllegalArgumentException("failure mapping virtual to physical " + virtualLsi.getType() + ": "

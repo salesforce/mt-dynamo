@@ -318,7 +318,7 @@ class TableMappingTest {
                         null,
                         null
                 ),
-                "two virtual LSI's");
+                "two virtual LSIs");
     }
 
     @Test
@@ -357,13 +357,13 @@ class TableMappingTest {
                         + "type N");
     }
 
-    private static void assertException(TestFunction test, String expectedMessage) {
+    private static void assertException(TestFunction test, String expectedMessagePrefix) {
         try {
             test.run();
-            throw new RuntimeException("expected exception '" + expectedMessage + "' not encountered");
+            throw new RuntimeException("expected exception '" + expectedMessagePrefix + "' not encountered");
         } catch (IllegalArgumentException | NullPointerException e) {
-            assertTrue(e.getMessage().equals(expectedMessage) || e.getMessage().startsWith(expectedMessage),
-                    "expected=" + expectedMessage + ", actual=" + e.getMessage());
+            assertTrue(e.getMessage().startsWith(expectedMessagePrefix),
+                    "expectedPrefix=" + expectedMessagePrefix + ", actual=" + e.getMessage());
         } catch (Throwable t) {
             throw new RuntimeException(t);
         }

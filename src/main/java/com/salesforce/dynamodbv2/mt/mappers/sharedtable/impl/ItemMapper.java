@@ -34,11 +34,11 @@ class ItemMapper {
     }
 
     /*
-     * Takes a map representing a record in a virtual table that is effectively unqualified with respect to multi-tenant
-     * context and returns a map representing a record in the physical table that is qualified with multi-tenant
+     * Takes a map representing a record in a virtual table that is effectively unqualified with respect to multitenant
+     * context and returns a map representing a record in the physical table that is qualified with multitenant
      * context appropriately.
      *
-     * Used for adding context to GetItemRequest, PutItemRequest, UpdateItemRequest, or DeleteItemRequest's.
+     * Used for adding context to GetItemRequest, PutItemRequest, UpdateItemRequest, or DeleteItemRequest objects.
      */
     Map<String, AttributeValue> apply(Map<String, AttributeValue> unqualifiedItem) {
         Map<String, AttributeValue> qualifiedItem = new HashMap<>();
@@ -60,10 +60,10 @@ class ItemMapper {
     }
 
     /*
-     * Takes a map representing a record in a physical table that is effectively qualified with multi-tenant context
-     * and returns a map representing a record in the virtual table with qualifications removed.
+     * Takes a map representing a record in a physical table that is effectively qualified with multitenant context and
+     * returns a map representing a record in the virtual table with qualifications removed.
      *
-     * Used for removing context from GetItemResult, QueryResult, or ScanResult's.
+     * Used for removing context from GetItemResult, QueryResult, or ScanResult objects.
      */
     Map<String, AttributeValue> reverse(Map<String, AttributeValue> qualifiedItem) {
         if (qualifiedItem == null) {

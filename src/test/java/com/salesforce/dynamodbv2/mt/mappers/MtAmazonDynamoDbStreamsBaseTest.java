@@ -47,10 +47,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -127,7 +125,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     }
 
     /**
-     * Puts an item into the table in the given tenant context for the given id and returns the expected MT record.
+     * Puts an item into the table in the given tenant context for the given {@code id} and returns the expected MT
+     * record.
      */
     protected static MtRecord putTestItem(AmazonDynamoDB dynamoDb, String tenant, int id) {
         return MT_CONTEXT.withContext(tenant, sid -> {

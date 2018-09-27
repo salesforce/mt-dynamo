@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Builds a map of attribute names to {@code AttributeValue} objects.
+ * Builds a map of attribute names to {@code AttributeValue}s.
  */
 public class ItemBuilder {
     public static final String HASH_KEY_FIELD = "hashKeyField";

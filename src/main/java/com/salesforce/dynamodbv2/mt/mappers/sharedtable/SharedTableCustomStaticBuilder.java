@@ -22,29 +22,29 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * Maps virtual tables to a set of physical tables by comparing the types of the elements of the virtual table'
- * s primary key against the corresponding types on the physical tables.  The list of physical tables is provided
- * to the builder when it is constructed along with a TableMapping implementation.  When build() is called on the
- * builder, the physical tables are created.  When requests are received for operations on a given table, the
- * TableMapper is called, passing in a virtual table description.  The TableMapper implementation returns the
- * name of the corresponding physical table.  The TableMapper may return the name of any physical table as long as
- * the table's virtual and physical primary key types are compatible.  Also for any secondary
- * index on a virtual table referenced by a client, there must exist a secondary index on the corresponding physical
- * table of the same type(global vs local) where the primary keys are compatible.
+ * Maps virtual tables to a set of physical tables by comparing the types of the elements of the virtual table's
+ * primary key against the corresponding types on the physical tables.  The list of physical tables is provided
+ * to the builder when it is constructed along with a {@code TableMapping} implementation.  When {@code build()} is
+ * called on the builder, the physical tables are created.  When requests are received for operations on a given table,
+ * the {@code TableMapper} is called, passing in a virtual table description.  The {@code TableMapper} implementation
+ * returns the name of the corresponding physical table.  The {@code TableMapper} may return the name of any physical
+ * table as long as the table's virtual and physical primary key types are compatible.  Also for any secondary index on
+ * a virtual table referenced by a client, there must exist a secondary index on the corresponding physical table of the
+ * same type (global vs. local) where the primary keys are compatible.
  *
  * <p>See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
  * <p>It requires ...
  *
- * <p>- an AmazonDynamoDB instance
- * - a multi-tenant context
- * - array of CreateTableRequest's: CreateTableRequest's representing the physical tables to be created when
- *   build() is called.
- * - a TableMapper implementation: implementation of the TableMapper interface that takes a DynamoTableDescription
- *   representing the virtual table being referenced by the API client and returns the name of a physical table.
- *   The table name returned must match one of the names of the tables passed in in the array of CreateTableRequest's.
+ * <p>- an {@code AmazonDynamoDB} instance
+ * - a multitenant context
+ * - {@code CreateTableRequest}s representing the physical tables to be created when build() is called.
+ * - a {@code TableMapper} implementation: implementation of the {@code TableMapper} interface that takes a
+ *   {@code DynamoTableDescription} representing the virtual table being referenced by the API client and returns the
+ *   name of a physical table.  The table name returned must match one of the names of the tables passed in in the
+ *   aforementioned {@code CreateTableRequest}s.
  *
- * <p>See SharedTableCustomDynamicBuilder for optional arguments and limitations.
+ * <p>See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
  */
 public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuilder {
 
