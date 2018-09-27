@@ -7,7 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,6 +16,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
@@ -31,6 +31,8 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction
 import java.util.HashMap;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * TODO: write Javadoc.
@@ -85,12 +87,17 @@ class QueryAndScanMapperTest {
                 queryRequest);
     }
 
-    @Test
-    void queryWithKeyConditions() {
+    /*
+     * not testing with GT parameter since test would fail, since queryContainsHashKeyCondition will return false (it
+     * currently looks for a " = " substring)
+     */
+    @ParameterizedTest
+    @EnumSource(value = ComparisonOperator.class, names = { "EQ" })
+    void queryWithKeyConditions(ComparisonOperator comparisonOperator) {
         QueryRequest queryRequest = new QueryRequest()
                 .withKeyConditions(ImmutableMap.of("virtualhk",
                         new Condition()
-                                .withComparisonOperator(EQ)
+                                .withComparisonOperator(comparisonOperator)
                                 .withAttributeValueList(new AttributeValue().withS("hkvalue"))));
 
         getMockQueryMapper().apply(queryRequest);
@@ -138,13 +145,14 @@ class QueryAndScanMapperTest {
                 queryRequest);
     }
 
-    @Test
-    void queryWithKeyConditionExpressionAndKeyConditions() {
+    @ParameterizedTest
+    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT" })
+    void queryWithKeyConditionExpressionAndKeyConditions(ComparisonOperator comparisonOperator) {
         try {
             getMockQueryMapper()
                     .apply(new QueryRequest().withKeyConditions(ImmutableMap.of("virtualhk",
                             new Condition()
-                                    .withComparisonOperator(EQ)
+                                    .withComparisonOperator(comparisonOperator)
                                     .withAttributeValueList(new AttributeValue().withS("hkvalue"))))
                             .withKeyConditionExpression("#field = :value"));
             fail("expected exception not encountered");
@@ -204,13 +212,14 @@ class QueryAndScanMapperTest {
                 scanRequest);
     }
 
-    @Test
-    void scanWithFilterExpressionAndScanFilter() {
+    @ParameterizedTest
+    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT" })
+    void scanWithFilterExpressionAndScanFilter(ComparisonOperator comparisonOperator) {
         try {
             getMockQueryMapper()
                     .apply(new ScanRequest().withScanFilter(ImmutableMap.of("virtualhk",
                             new Condition()
-                                    .withComparisonOperator(EQ)
+                                    .withComparisonOperator(comparisonOperator)
                                     .withAttributeValueList(new AttributeValue().withS("hkvalue"))))
                     .withFilterExpression("#field = :value"));
             fail("expected exception not encountered");
