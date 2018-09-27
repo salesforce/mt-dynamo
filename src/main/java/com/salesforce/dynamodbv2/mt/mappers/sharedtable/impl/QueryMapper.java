@@ -112,12 +112,13 @@ class QueryMapper {
             String physicalHashKey = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping ->
                 fieldMapping.getSource().getName().equals(virtualHashKey)).findFirst()
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hashkey field " + virtualHashKey)).getTarget()
+                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey))
+                .getTarget()
                 .getName();
             FieldMapping fieldMapping = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping1 ->
                 fieldMapping1.getSource().getName().equals(virtualHashKey)).findFirst()
                 .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hashkey field " + virtualHashKey));
+                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey));
             addBeginsWith(request, physicalHashKey, fieldMapping);
         }
 

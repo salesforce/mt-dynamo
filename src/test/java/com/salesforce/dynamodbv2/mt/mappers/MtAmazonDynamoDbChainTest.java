@@ -214,7 +214,7 @@ class MtAmazonDynamoDbChainTest {
         logAggregator.messages.clear();
 
         // log start
-        String testDescription = amazonDynamoDb + " with hashkey type=" + HASH_KEY_ATTR_TYPE;
+        String testDescription = amazonDynamoDb + " with hash-key type=" + HASH_KEY_ATTR_TYPE;
         LOG.info("START test " + testDescription);
 
         // table with hk only

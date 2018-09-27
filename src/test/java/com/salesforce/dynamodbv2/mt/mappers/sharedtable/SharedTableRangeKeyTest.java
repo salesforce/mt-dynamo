@@ -40,7 +40,7 @@ class SharedTableRangeKeyTest {
         // table name
         String tableName = TABLENAME_PREFIX + scalarAttributeType.name();
 
-        // create table with hashkey and rangekey of type string
+        // create table with hash key and range key of type string
         new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)
             .createTableIfNotExists(new CreateTableRequest()
                 .withTableName(tableName)

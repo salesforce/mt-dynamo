@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * called on the builder, the physical tables are created.  When requests are received for operations on a given table,
  * the {@code TableMapper} is called, passing in a virtual table description.  The {@code TableMapper} implementation
  * returns the name of the corresponding physical table.  The {@code TableMapper} may return the name of any physical
- * table as long as the table's virtual and physical primary key types are compatible.  Also for any secondary index on
+ * table as long as the table's virtual and physical primary-key types are compatible.  Also for any secondary index on
  * a virtual table referenced by a client, there must exist a secondary index on the corresponding physical table of the
  * same type (global vs. local) where the primary keys are compatible.
  *
