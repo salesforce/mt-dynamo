@@ -92,8 +92,6 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         FieldValue fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
         MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
         // execute in record tenant context to get table mapping
-        System.out.println(
-            fieldValue.getMtContext() + " " + fieldValue.getTableIndex() + " " + fieldValue.getUnqualifiedValue());
 
         TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
             mtDynamoDb::getTableMapping, fieldValue.getTableIndex());
