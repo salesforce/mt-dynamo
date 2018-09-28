@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,16 +49,13 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.CachingAmazonDynamoDbStreams.Sleeper;
-
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
-
 import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -300,6 +298,14 @@ class CachingAmazonDynamoDbStreamsTest {
             .withSequenceNumber(formatSequenceNumber(sequenceNumber));
     }
 
+    private static GetShardIteratorRequest newAtSequenceNumberRequest(int sequenceNumber) {
+        return new GetShardIteratorRequest()
+            .withStreamArn(streamArn)
+            .withShardId(shardId)
+            .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
+            .withSequenceNumber(formatSequenceNumber(sequenceNumber));
+    }
+
     private static void mockGetShardIterator(AmazonDynamoDBStreams streams,
         GetShardIteratorRequest iteratorRequest,
         String iterator) {
@@ -399,8 +405,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertGetRecords(cachingStreams, iteratorRequest, null, 0, 10);
 
-        verify(streams, times(1)).getShardIterator(any());
-        verify(streams, times(1)).getRecords(any());
+        assertCacheMisses(streams,1,1);
 
         return cachingStreams;
     }
@@ -417,7 +422,7 @@ class CachingAmazonDynamoDbStreamsTest {
     void testLatestNotSupported() {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
+        assertThrows(IllegalArgumentException.class, () ->
             cachingStreams.getShardIterator(new GetShardIteratorRequest()
                 .withStreamArn(streamArn)
                 .withShardId(shardId)
@@ -425,17 +430,35 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that {@link ShardIteratorType#AT_SEQUENCE_NUMBER} shard iterator type is not supported.
+     * Verifies that invalid sequence numbers are rejected.
      */
     @Test
-    void testAtSequenceNumberNotSupported() {
+    void testInvalidSequenceNumbers() {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
-        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
-            cachingStreams.getShardIterator(new GetShardIteratorRequest()
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        // no sequence number
+        assertThrows(IllegalArgumentException.class,
+            () -> cachingStreams.getShardIterator(new GetShardIteratorRequest()
                 .withStreamArn(streamArn)
                 .withShardId(shardId)
-                .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)));
+                .withShardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)));
+
+        // invalid sequence number (not a number)
+        assertThrows(IllegalArgumentException.class,
+            () -> cachingStreams.getShardIterator(new GetShardIteratorRequest()
+                .withStreamArn(streamArn)
+                .withShardId(shardId)
+                .withShardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
+                .withSequenceNumber("a")));
+
+        // negative sequence number
+        assertThrows(IllegalArgumentException.class,
+            () -> cachingStreams.getShardIterator(new GetShardIteratorRequest()
+                .withStreamArn(streamArn)
+                .withShardId(shardId)
+                .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
+                .withSequenceNumber("-1")));
     }
 
     /**
@@ -478,6 +501,39 @@ class CachingAmazonDynamoDbStreamsTest {
 
         // verify that underlying stream was still accessed only once
         assertCacheMisses(streams, 1, 1);
+    }
+
+    /**
+     * Verifies that {@link ShardIteratorType#AT_SEQUENCE_NUMBER} is serviced from same cache.
+     */
+    @Test
+    void testAtSequence() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
+
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(50), 10, 5, 10);
+
+        // verify that underlying stream was still accessed only once
+        assertCacheMisses(streams, 1, 1);
+    }
+
+    @Test
+    void testAtSequenceIteratorCache() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest request = newTrimHorizonRequest();
+        String iterator = mockGetShardIterator(streams, request);
+        String nextIterator = mockGetRecords(streams, iterator, 0, 5);
+
+        mockGetRecords(streams, nextIterator, 5, 10);
+
+        // get exact overlapping records with and without limit
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        assertGetRecords(cachingStreams, request, null, 0, 5);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(41), null, 5, 10);
+
+        assertCacheMisses(streams, 1, 2);
     }
 
     /**
