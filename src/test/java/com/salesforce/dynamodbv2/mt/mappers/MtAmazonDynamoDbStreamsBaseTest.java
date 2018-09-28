@@ -140,8 +140,12 @@ public class MtAmazonDynamoDbStreamsBaseTest {
      * record.
      */
     protected static MtRecord putTestItem(AmazonDynamoDB dynamoDb, String tenant, int id) {
+        return putTestItem(dynamoDb, TENANT_TABLE_NAME, tenant, id);
+    }
+
+    protected static MtRecord putTestItem(AmazonDynamoDB dynamoDb, String table, String tenant, int id) {
         return MT_CONTEXT.withContext(tenant, sid -> {
-            PutItemRequest put = new PutItemRequest(TENANT_TABLE_NAME, ImmutableMap.of(
+            PutItemRequest put = new PutItemRequest(table, ImmutableMap.of(
                 ID_ATTR_NAME, new AttributeValue(sid),
                 INDEX_ID_ATTR_NAME, new AttributeValue(String.valueOf(id * 10))));
             dynamoDb.putItem(put);
@@ -201,6 +205,14 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 TABLE_PREFIX + context.getTestMethod().orElseThrow(IllegalStateException::new).getName() + ".";
 
             AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+
+            boolean loggingEnabled = false;
+            if (loggingEnabled) {
+                dynamoDb = MtAmazonDynamoDbLogger.builder()
+                    .withAmazonDynamoDb(dynamoDb)
+                    .withLogAll()
+                    .withContext(MT_CONTEXT).build();
+            }
 
             MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
                 .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
@@ -285,6 +297,61 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 assertNotNull(streamArn);
                 String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
                 assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2);
+            });
+        } finally {
+            deleteMtTables(mtDynamoDb);
+        }
+    }
+
+    /**
+     * Verifies that reading virtual tables with streams disabled doesn't return records.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(Args.class)
+    void testDisabledStreams(MtAmazonDynamoDbBase mtDynamoDb) {
+        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
+            AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
+        try {
+            String tenant = TENANTS[0];
+
+            // create table with streams enabled
+            String tableWithStreamsEnabled = TENANT_TABLE_NAME + "_streams_enabled";
+            CreateTableRequest createTableRequestStreamsEnabled =
+                newCreateTableRequest(tableWithStreamsEnabled)
+                    .withStreamSpecification(new StreamSpecification()
+                        .withStreamEnabled(true)
+                        .withStreamViewType(NEW_AND_OLD_IMAGES));
+            MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(createTableRequestStreamsEnabled));
+
+            // create table with streams disabled
+            String tableWithStreamsDisabled = TENANT_TABLE_NAME + "_streams_disabled";
+            CreateTableRequest createTableRequestStreamsDisabled =
+                newCreateTableRequest(tableWithStreamsDisabled)
+                    .withStreamSpecification(new StreamSpecification()
+                        .withStreamEnabled(false)
+                    );
+            MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(createTableRequestStreamsDisabled));
+
+            // put an item in each table
+            final MtRecord streamsEnabledRecord = putTestItem(mtDynamoDb, tableWithStreamsEnabled, tenant, 1);
+            putTestItem(mtDynamoDb, tableWithStreamsDisabled, tenant, 2);
+
+            // verify that the record from the stream enabled table is returned
+            MT_CONTEXT.withContext(tenant, () -> {
+                String streamArn = mtDynamoDb.describeTable(tableWithStreamsEnabled).getTable().getLatestStreamArn();
+                assertNotNull(streamArn);
+                String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                assertGetRecords(mtDynamoDbStreams, iterator, streamsEnabledRecord);
+            });
+
+            // verify that either the streamArn is null(for ByTable or ByAccount) or the iterator returns no records
+            MT_CONTEXT.withContext(tenant, () -> {
+                String streamArn = mtDynamoDb.describeTable(tableWithStreamsDisabled).getTable().getLatestStreamArn();
+                if (streamArn != null) {
+                    // for byIndex, the streamArn will not be null, but it should return no records
+                    String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                    assertGetRecords(mtDynamoDbStreams, iterator);
+                }
             });
         } finally {
             deleteMtTables(mtDynamoDb);
