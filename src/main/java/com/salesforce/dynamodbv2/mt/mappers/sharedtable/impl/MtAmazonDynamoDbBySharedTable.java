@@ -73,7 +73,9 @@ import org.slf4j.LoggerFactory;
  * <p>Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
  *
  * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
- * control behavior that is specific to deleteTable. ** Only EQ and GT conditions are supported.
+ * control behavior that is specific to deleteTable.
+ *
+ * <p>** Only EQ and GT conditions are supported; GT via KeyConditions only
  *
  * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
  * results.
