@@ -55,6 +55,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
+import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -405,7 +406,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertGetRecords(cachingStreams, iteratorRequest, null, 0, 10);
 
-        assertCacheMisses(streams,1,1);
+        assertCacheMisses(streams, 1, 1);
 
         return cachingStreams;
     }
@@ -804,7 +805,6 @@ class CachingAmazonDynamoDbStreamsTest {
     @Test
     void testTrimHorizonChange() {
         // setup
-
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
         GetShardIteratorRequest iteratorRequest = new GetShardIteratorRequest()
@@ -843,4 +843,50 @@ class CachingAmazonDynamoDbStreamsTest {
         assertFalse(cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(it2)).getRecords().isEmpty());
     }
 
+    /**
+     * Verifies that asking for records starting at trim horizon always returns records at the actual trim horizon
+     * offset (not cached). Why is this important, i.e., why can't we just cache 'TRIM_HORIZON' records?
+     * <p>
+     * Consider the following scenario:
+     * <ol>
+     * <li>Client 1 queries for records with TRIM_HORIZON: stream returns records 1-1000</li>
+     * <li>We cache entry (TRIM_HORIZON -> [1,...,1000])</li>
+     * <li>Client 1 stops retrieving records.</li>
+     * <li>Stream moves trim horizon to 2001 (i.e., deletes records up to 2000)</li>
+     * <li>Client 2 queries for records with TRIM_HORIZON: we service records 1-1000 from cache.</li>
+     * <li>Client 2 immediately queries using next iterator, i.e. AFTER_SEQUENCE_NUMBER(1000): we have no records
+     * cached, so we query underlying stream, which throws TrimmedDataAccessException.</li>
+     * </ol>
+     * </p>
+     * The problem with this sequence is not that a TDAE was thrown. The sequence above is possible without caching in
+     * the picture, since TRIM_HORIZON may advance between receiving some records and going to fetch the next. The
+     * problem is that caching TRIM_HORIZON makes this situation more likely.
+     */
+    @Test
+    @Ignore
+    void testTrimHorizonMoves() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest trimHorizonRequest = new GetShardIteratorRequest()
+            .withStreamArn(streamArn)
+            .withShardId(shardId)
+            .withShardIteratorType(ShardIteratorType.TRIM_HORIZON);
+
+        String trimHorizonIterator1 = mockShardIterator(trimHorizonRequest);
+        String trimHorizonIterator2 = mockShardIterator(trimHorizonRequest);
+
+        when(streams.getShardIterator(eq(trimHorizonRequest)))
+            .thenReturn(new GetShardIteratorResult().withShardIterator(trimHorizonIterator1))
+            .thenReturn(new GetShardIteratorResult().withShardIterator(trimHorizonIterator2));
+
+        when(streams.getRecords(eq(new GetRecordsRequest().withShardIterator(trimHorizonIterator1))))
+            .thenReturn(new GetRecordsResult().withRecords(records.subList(0, 5)));
+        when(streams.getRecords(eq(new GetRecordsRequest().withShardIterator(trimHorizonIterator2))))
+            .thenReturn(new GetRecordsResult().withRecords(records.subList(5, 10)));
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        assertGetRecords(cachingStreams, trimHorizonRequest, null, 0, 5, null);
+        assertGetRecords(cachingStreams, trimHorizonRequest, null, 5, 10, null);
+    }
 }
