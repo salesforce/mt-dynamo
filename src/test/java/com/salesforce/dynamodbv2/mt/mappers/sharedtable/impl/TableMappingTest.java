@@ -118,7 +118,7 @@ class TableMappingTest {
 
     @Test
     void getQueryMapper() {
-        assertNotNull(sut.getQueryMapper());
+        assertNotNull(sut.getQueryAndScanMapper());
     }
 
     @Test
