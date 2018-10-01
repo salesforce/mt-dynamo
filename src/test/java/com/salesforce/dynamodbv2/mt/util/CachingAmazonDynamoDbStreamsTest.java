@@ -1,4 +1,4 @@
-package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
+package com.salesforce.dynamodbv2.mt.util;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
@@ -48,7 +48,7 @@ import com.amazonaws.services.dynamodbv2.model.TrimmedDataAccessException;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.CachingAmazonDynamoDbStreams.Sleeper;
+import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.util.Arrays;
 import java.util.Collections;
@@ -171,9 +171,9 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIteratorClient2);
             records = result.getRecords();
             assertEquals(limit, records.size());
-            // results should still have been serviced from cache
-            assertEquals(1, countingDynamoDbStreams.getRecordsCount);
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            // trim horizon results are not serviced from cache
+            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // second client fetches next range, which extends beyond first fetched page
             result = cachingDynamoDbStreams.getRecords(new GetRecordsRequest()
@@ -194,10 +194,10 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIteratorClient2);
             records = result.getRecords();
             assertEquals(limit, records.size());
-            // the records count should now be 2, since we fetched the second page
-            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
-            // the shard iterator count should still be 1, since we cached 'next iterator' of first page
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            // the records count should now be 3, since we fetched the second page
+            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            // the shard iterator count should still be 2, since we cached 'next iterator' of first page
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // second client retrieves remaining chunk of second page
             result = cachingDynamoDbStreams.getRecords(new GetRecordsRequest()
@@ -207,10 +207,10 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIteratorClient2);
             records = result.getRecords();
             assertEquals(GET_RECORDS_LIMIT - limit, records.size());
-            // the records count should now be 2, since we fetched the second page
-            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
-            // the shard iterator count should still be 1, since we cached 'next iterator' of first page
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            // the records count should still be 3, since we fetched the second page
+            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            // the shard iterator count should still be 2, since we cached 'next iterator' of first page
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // first client now fetches second page (without limit)
             result = cachingDynamoDbStreams.getRecords(new GetRecordsRequest()
@@ -219,8 +219,8 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIterator);
             records = result.getRecords();
             assertEquals(GET_RECORDS_LIMIT, records.size());
-            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // first client now tries to go beyond second page which has no records yet
             result = cachingDynamoDbStreams.getRecords(new GetRecordsRequest()
@@ -229,8 +229,9 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIterator);
             records = result.getRecords();
             assertEquals(0, records.size());
-            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            // another getRecords call to fetch empty page
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // second client now tries to go beyond second page which still has no records
             result = cachingDynamoDbStreams.getRecords(new GetRecordsRequest()
@@ -239,8 +240,9 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIterator);
             records = result.getRecords();
             assertEquals(0, records.size());
-            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
-            assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
+            // another getRecords call to fetch empty page
+            assertEquals(5, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
         } finally {
             // cleanup after ourselves (want to be able to run against hosted DynamoDB as well)
             dynamoDb.deleteTable(tableName);
@@ -270,8 +272,13 @@ class CachingAmazonDynamoDbStreamsTest {
                 .withSequenceNumber(formatSequenceNumber(sequenceNumber)));
     }
 
-    private static int getMockRecordSequenceNumber(int idx) {
-        return Integer.parseInt(records.get(idx).getDynamodb().getSequenceNumber());
+    private static String getMockRecordSequenceNumber(int idx) {
+        return records.get(idx).getDynamodb().getSequenceNumber();
+    }
+
+    private static String getMockRecordSequenceNumberPlusOne(int index) {
+        String sequenceNumber = getMockRecordSequenceNumber(index);
+        return String.valueOf(Integer.parseInt(sequenceNumber) + 1);
     }
 
     private static String mockShardIterator(GetShardIteratorRequest iteratorRequest) {
@@ -291,24 +298,23 @@ class CachingAmazonDynamoDbStreamsTest {
             .withShardIteratorType(ShardIteratorType.TRIM_HORIZON);
     }
 
-    private static GetShardIteratorRequest newAfterSequenceNumberRequest(int sequenceNumber) {
+    private static GetShardIteratorRequest newAfterSequenceNumberRequest(int index) {
         return new GetShardIteratorRequest()
             .withStreamArn(streamArn)
             .withShardId(shardId)
             .withShardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
-            .withSequenceNumber(formatSequenceNumber(sequenceNumber));
+            .withSequenceNumber(getMockRecordSequenceNumber(index));
     }
 
-    private static GetShardIteratorRequest newAtSequenceNumberRequest(int sequenceNumber) {
+    private static GetShardIteratorRequest newAtSequenceNumberRequest(int index) {
         return new GetShardIteratorRequest()
             .withStreamArn(streamArn)
             .withShardId(shardId)
             .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
-            .withSequenceNumber(formatSequenceNumber(sequenceNumber));
+            .withSequenceNumber(getMockRecordSequenceNumber(index));
     }
 
-    private static void mockGetShardIterator(AmazonDynamoDBStreams streams,
-        GetShardIteratorRequest iteratorRequest,
+    private static void mockGetShardIterator(AmazonDynamoDBStreams streams, GetShardIteratorRequest iteratorRequest,
         String iterator) {
         GetShardIteratorResult result = new GetShardIteratorResult().withShardIterator(iterator);
         when(streams.getShardIterator(eq(iteratorRequest))).thenReturn(result);
@@ -327,63 +333,38 @@ class CachingAmazonDynamoDbStreamsTest {
         when(streams.getRecords(eq(request))).thenReturn(result);
     }
 
-    private static String mockGetRecords(AmazonDynamoDBStreams streams, String iterator, int from, int to,
-        Integer next) {
+    private static String mockGetRecords(AmazonDynamoDBStreams streams, String iterator, int from, int to) {
         List<Record> mockRecords = records.subList(from, to);
-        String nextIterator = next == null ? null : mockShardIterator(newAfterSequenceNumberRequest(next));
+        String nextIterator = to < records.size() ? mockShardIterator(newAfterSequenceNumberRequest(to - 1)) : null;
         mockGetRecords(streams, iterator, mockRecords, nextIterator);
         return nextIterator;
     }
 
-    private static String mockGetRecords(AmazonDynamoDBStreams streams, String iterator, int from, int to) {
-        return mockGetRecords(streams, iterator, from, to, getMockRecordSequenceNumber(to - 1));
+    private static String mockGetAllRecords(AmazonDynamoDBStreams streams, String iterator) {
+        mockGetRecords(streams, iterator, records, null);
+        return null;
     }
 
-    private static void assertGetRecords(AmazonDynamoDBStreams streams,
+    private static String assertGetRecords(AmazonDynamoDBStreams
+        streams,
         String iterator,
         Integer limit,
-        List<Record> records,
-        String nextIterator) {
-        GetRecordsRequest request = new GetRecordsRequest()
-            .withShardIterator(iterator)
-            .withLimit(limit);
-        GetRecordsResult expectedResult = new GetRecordsResult()
-            .withRecords(records)
-            .withNextShardIterator(nextIterator);
+        List<Record> expectedRecords) {
+        GetRecordsRequest request = new GetRecordsRequest().withShardIterator(iterator).withLimit(limit);
         GetRecordsResult result = streams.getRecords(request);
-        assertEquals(expectedResult, result);
+        assertEquals(expectedRecords, result.getRecords());
+        return result.getNextShardIterator();
     }
 
-    private static void assertGetRecords(AmazonDynamoDBStreams streams,
-        GetShardIteratorRequest iteratorRequest,
-        Integer limit,
-        int from,
-        int to,
-        Integer next) {
-        final String iterator = streams.getShardIterator(iteratorRequest).getShardIterator();
-        assertNotNull(iterator);
-        final String nextIterator;
-        if (next == null) {
-            nextIterator = null;
-        } else {
-            nextIterator = streams.getShardIterator(new GetShardIteratorRequest()
-                .withStreamArn(iteratorRequest.getStreamArn())
-                .withShardId(iteratorRequest.getShardId())
-                .withShardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
-                .withSequenceNumber(formatSequenceNumber(next)))
-                .getShardIterator();
-            assertNotNull(nextIterator);
-        }
-        final List<Record> mockRecords = records.subList(from, to);
-        assertGetRecords(streams, iterator, limit, mockRecords, nextIterator);
-    }
-
-    private static void assertGetRecords(AmazonDynamoDBStreams streams,
+    private static String assertGetRecords(AmazonDynamoDBStreams streams,
         GetShardIteratorRequest iteratorRequest,
         Integer limit,
         int from,
         int to) {
-        assertGetRecords(streams, iteratorRequest, limit, from, to, getMockRecordSequenceNumber(to - 1));
+        final String iterator = streams.getShardIterator(iteratorRequest).getShardIterator();
+        assertNotNull(iterator);
+        final List<Record> mockRecords = records.subList(from, to);
+        return assertGetRecords(streams, iterator, limit, mockRecords);
     }
 
     private static GetShardIteratorRequest mockTrimHorizonRequest(AmazonDynamoDBStreams streams,
@@ -394,7 +375,7 @@ class CachingAmazonDynamoDbStreamsTest {
             .withShardId(shardId)
             .withShardIteratorType(ShardIteratorType.TRIM_HORIZON);
         String iterator = mockGetShardIterator(streams, thRequest);
-        mockGetRecords(streams, iterator, 0, 10);
+        mockGetAllRecords(streams, iterator);
         return thRequest;
     }
 
@@ -414,20 +395,6 @@ class CachingAmazonDynamoDbStreamsTest {
     private static void assertCacheMisses(AmazonDynamoDBStreams streams, int numGetShardIterators, int numGetRecords) {
         verify(streams, times(numGetShardIterators)).getShardIterator(any());
         verify(streams, times(numGetRecords)).getRecords(any());
-    }
-
-    /**
-     * Verifies that {@link ShardIteratorType#LATEST} shard iterator type is not supported.
-     */
-    @Test
-    void testLatestNotSupported() {
-        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
-        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
-        assertThrows(IllegalArgumentException.class, () ->
-            cachingStreams.getShardIterator(new GetShardIteratorRequest()
-                .withStreamArn(streamArn)
-                .withShardId(shardId)
-                .withShardIteratorType(ShardIteratorType.LATEST)));
     }
 
     /**
@@ -452,14 +419,20 @@ class CachingAmazonDynamoDbStreamsTest {
                 .withShardId(shardId)
                 .withShardIteratorType(ShardIteratorType.AFTER_SEQUENCE_NUMBER)
                 .withSequenceNumber("a")));
+    }
 
-        // negative sequence number
-        assertThrows(IllegalArgumentException.class,
-            () -> cachingStreams.getShardIterator(new GetShardIteratorRequest()
-                .withStreamArn(streamArn)
-                .withShardId(shardId)
-                .withShardIteratorType(ShardIteratorType.AT_SEQUENCE_NUMBER)
-                .withSequenceNumber("-1")));
+    /**
+     * Verifies that {@link ShardIteratorType#TRIM_HORIZON} requests do not cache iterators or records.
+     */
+    @Test
+    void testTrimHorizonNotCached() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
+
+        assertGetRecords(cachingStreams, newTrimHorizonRequest(), null, 0, 10);
+
+        // verify that underlying stream was still accessed for each request
+        assertCacheMisses(streams, 2, 2);
     }
 
     /**
@@ -470,7 +443,7 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
 
-        assertGetRecords(cachingStreams, newTrimHorizonRequest(), null, 0, 10);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10);
 
         // verify that underlying stream was still accessed only once
         assertCacheMisses(streams, 1, 1);
@@ -484,7 +457,7 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
 
-        assertGetRecords(cachingStreams, newTrimHorizonRequest(), 5, 0, 5);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), 5, 0, 5);
 
         // verify that underlying stream was still accessed only once
         assertCacheMisses(streams, 1, 1);
@@ -498,7 +471,7 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
 
-        assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(40), 10, 5, 10);
+        assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(4), 10, 5, 10);
 
         // verify that underlying stream was still accessed only once
         assertCacheMisses(streams, 1, 1);
@@ -512,29 +485,10 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
 
-        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(50), 10, 5, 10);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(5), 10, 5, 10);
 
         // verify that underlying stream was still accessed only once
         assertCacheMisses(streams, 1, 1);
-    }
-
-    @Test
-    void testAtSequenceIteratorCache() {
-        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
-
-        GetShardIteratorRequest request = newTrimHorizonRequest();
-        String iterator = mockGetShardIterator(streams, request);
-        String nextIterator = mockGetRecords(streams, iterator, 0, 5);
-
-        mockGetRecords(streams, nextIterator, 5, 10);
-
-        // get exact overlapping records with and without limit
-        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
-
-        assertGetRecords(cachingStreams, request, null, 0, 5);
-        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(41), null, 5, 10);
-
-        assertCacheMisses(streams, 1, 2);
     }
 
     /**
@@ -546,9 +500,9 @@ class CachingAmazonDynamoDbStreamsTest {
         // setup
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
-        GetShardIteratorRequest afterSnIteratorRequest = newAfterSequenceNumberRequest(40);
+        GetShardIteratorRequest afterSnIteratorRequest = newAfterSequenceNumberRequest(4);
         String afterSnIterator = mockGetShardIterator(streams, afterSnIteratorRequest);
-        mockGetRecords(streams, afterSnIterator, 5, 10, null);
+        mockGetRecords(streams, afterSnIterator, 5, 10);
 
         GetShardIteratorRequest trimHorizonIteratorRequest = newTrimHorizonRequest();
         String trimHorizonIterator = mockGetShardIterator(streams, trimHorizonIteratorRequest);
@@ -559,13 +513,12 @@ class CachingAmazonDynamoDbStreamsTest {
         // test
 
         // first get records after sequence number, then get records from trim horizon (before)
-        assertGetRecords(cachingStreams, afterSnIteratorRequest, null, 5, 10, null);
-        assertGetRecords(cachingStreams, trimHorizonIteratorRequest, null, 0, 5);
+        assertGetRecords(cachingStreams, afterSnIteratorRequest, null, 5, 10);
+        assertGetRecords(cachingStreams, trimHorizonIteratorRequest, null, 0, 10);
         assertCacheMisses(streams, 2, 2);
 
-        // now page through and make sure requests serviced from cache
-        assertGetRecords(cachingStreams, trimHorizonIteratorRequest, null, 0, 5);
-        assertGetRecords(cachingStreams, afterSnIteratorRequest, null, 5, 10, null);
+        // now retrieve a page and make sure requests serviced from cache (implying ranges were merged)
+        assertNull(assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(2), null, 3, 10));
         assertCacheMisses(streams, 2, 2);
     }
 
@@ -580,11 +533,12 @@ class CachingAmazonDynamoDbStreamsTest {
         // setup
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
-        GetShardIteratorRequest afterSnIteratorRequest = newAfterSequenceNumberRequest(55); // start between records
+        GetShardIteratorRequest afterSnIteratorRequest = newAfterSequenceNumberRequest(5)
+            .withSequenceNumber(getMockRecordSequenceNumberPlusOne(5)); // start between records
         String afterSnIterator = mockGetShardIterator(streams, afterSnIteratorRequest);
         mockGetRecords(streams, afterSnIterator, 6, 9);
 
-        GetShardIteratorRequest afterRecordIteratorRequest = newAfterSequenceNumberRequest(50);
+        GetShardIteratorRequest afterRecordIteratorRequest = newAfterSequenceNumberRequest(5);
         String afterRecordIterator = mockGetShardIterator(streams, afterRecordIteratorRequest);
         mockGetRecords(streams, afterRecordIterator, 6, 10);
 
@@ -615,17 +569,16 @@ class CachingAmazonDynamoDbStreamsTest {
 
         GetShardIteratorRequest thIteratorRequest = newTrimHorizonRequest();
         String thIterator = mockGetShardIterator(streams, thIteratorRequest);
-        String nextIterator = mockGetRecords(streams, thIterator, 0, 10);
-
-        GetShardIteratorRequest nextIteratorRequest = newAfterSequenceNumberRequest(90);
-        mockGetShardIterator(streams, nextIteratorRequest, nextIterator);
-        mockGetRecords(streams, nextIterator, Collections.emptyList(), null);
+        GetShardIteratorRequest afterEndRequest = newAfterSequenceNumberRequest(9);
+        String afterEndIterator = mockGetShardIterator(streams, afterEndRequest);
+        mockGetRecords(streams, thIterator, records, afterEndIterator);
+        mockGetRecords(streams, afterEndIterator, Collections.emptyList(), null);
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
 
         // test
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10);
-        assertGetRecords(cachingStreams, nextIteratorRequest, null, 0, 0, null);
+        String next = assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10);
+        assertNull(assertGetRecords(cachingStreams, next, null, Collections.emptyList()));
 
         assertCacheMisses(streams, 1, 2);
     }
@@ -651,11 +604,11 @@ class CachingAmazonDynamoDbStreamsTest {
             .withSleeper(sleeper)
             .build();
 
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10, null);
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10, null);
+        assertNull(assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10));
+        assertNull(assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10));
 
         // trim horizon shard iterators should not be cached, so 2 calls expected
-        assertCacheMisses(streams, 2, 2);
+        assertCacheMisses(streams, 1, 2);
 
         // one backoff with specified interval
         verify(sleeper, times(1)).sleep(eq(10000L));
@@ -679,7 +632,6 @@ class CachingAmazonDynamoDbStreamsTest {
             .withMaxGetRecordsRetries(3)
             .withSleeper(sleeper)
             .withMaxRecordsCacheSize(100)
-            .withMaxIteratorCacheSize(100)
             .build();
 
         final String iterator = cachingStreams.getShardIterator(thIteratorRequest).getShardIterator();
@@ -691,7 +643,7 @@ class CachingAmazonDynamoDbStreamsTest {
         }
 
         // trim horizon shard iterator not cached, so 3 expected
-        assertCacheMisses(streams, 3, 3);
+        assertCacheMisses(streams, 1, 3);
 
         ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
         verify(sleeper, times(3)).sleep(captor.capture());
@@ -708,17 +660,11 @@ class CachingAmazonDynamoDbStreamsTest {
 
         // mock iterators: expect two calls
         GetShardIteratorRequest iteratorRequest = newTrimHorizonRequest();
-        String expiredIterator = mockShardIterator(iteratorRequest);
-        String newIterator = mockShardIterator(iteratorRequest);
-        when(streams.getShardIterator(iteratorRequest)).thenReturn(
-            new GetShardIteratorResult().withShardIterator(expiredIterator),
-            new GetShardIteratorResult().withShardIterator(newIterator));
+        String iterator = mockGetShardIterator(streams, iteratorRequest);
 
         // calling with expired iterator fails
-        when(streams.getRecords(eq(new GetRecordsRequest().withShardIterator(expiredIterator))))
+        when(streams.getRecords(eq(new GetRecordsRequest().withShardIterator(iterator))))
             .thenThrow(new ExpiredIteratorException(""));
-        // calling with new iterator passes
-        mockGetRecords(streams, newIterator, 0, 10);
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
@@ -726,9 +672,11 @@ class CachingAmazonDynamoDbStreamsTest {
             .withSleeper(sleeper)
             .build();
 
-        assertGetRecords(cachingStreams, iteratorRequest, 5, 0, 5);
+        String logicalIterator = cachingStreams.getShardIterator(iteratorRequest).getShardIterator();
+        assertThrows(ExpiredIteratorException.class,
+            () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(logicalIterator)));
 
-        assertCacheMisses(streams, 2, 2);
+        assertCacheMisses(streams, 1, 1);
     }
 
     /**
@@ -739,36 +687,35 @@ class CachingAmazonDynamoDbStreamsTest {
         // setup
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
-        GetShardIteratorRequest thIteratorRequest = newTrimHorizonRequest();
-        String thIterator = mockGetShardIterator(streams, thIteratorRequest);
-        mockGetRecords(streams, thIterator, 0, 5);
+        GetShardIteratorRequest firstRequest = newAtSequenceNumberRequest(1);
+        String firstIterator = mockGetShardIterator(streams, firstRequest);
+        mockGetRecords(streams, firstIterator, 0, 4);
 
-        GetShardIteratorRequest asnIteratorRequest = newAfterSequenceNumberRequest(40);
-        String asnIterator = mockGetShardIterator(streams, asnIteratorRequest);
-        mockGetRecords(streams, asnIterator, 5, 10);
+        GetShardIteratorRequest secondRequest = newAtSequenceNumberRequest(5);
+        String secondIterator = mockGetShardIterator(streams, secondRequest);
+        mockGetRecords(streams, secondIterator, 5, 10);
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withMaxIteratorCacheSize(0)
             .withMaxRecordsCacheSize(1)
             .build();
 
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 5);
+        assertGetRecords(cachingStreams, firstRequest, null, 0, 4);
         // nothing cached, so both should be misses
         assertCacheMisses(streams, 1, 1);
 
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 5);
+        assertGetRecords(cachingStreams, firstRequest, null, 0, 4);
         // records are now cached, so no need to load records or iterator
         assertCacheMisses(streams, 1, 1);
 
-        assertGetRecords(cachingStreams, asnIteratorRequest, null, 5, 10);
+        assertGetRecords(cachingStreams, secondRequest, null, 5, 10);
         // new segment not cached, so need to load records and iterator
         assertCacheMisses(streams, 2, 2);
 
-        assertGetRecords(cachingStreams, asnIteratorRequest, null, 5, 10);
+        assertGetRecords(cachingStreams, secondRequest, null, 5, 10);
         // new segment still cached, so no need to load records and iterator
         assertCacheMisses(streams, 2, 2);
 
-        assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 5);
+        assertGetRecords(cachingStreams, firstRequest, null, 0, 4);
         // first segment should have been evicted on previous round, so new loads needed
         assertCacheMisses(streams, 3, 3);
     }
@@ -886,7 +833,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
 
-        assertGetRecords(cachingStreams, trimHorizonRequest, null, 0, 5, null);
-        assertGetRecords(cachingStreams, trimHorizonRequest, null, 5, 10, null);
+        assertNull(assertGetRecords(cachingStreams, trimHorizonRequest, null, 0, 5));
+        assertNull(assertGetRecords(cachingStreams, trimHorizonRequest, null, 5, 10));
     }
 }
