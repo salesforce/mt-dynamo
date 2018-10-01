@@ -81,7 +81,7 @@ import java.util.Optional;
  * <p>* See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
  * ** Updates on gsi hash keys are unsupported
- * *** Only EQ and GT conditions are supported.
+ * *** Only EQ and GT conditions are supported; GT via KeyConditions only
  *
  * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield
  * unexpected results.

@@ -9,7 +9,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.16 (September 26, 2018)
 
-* `SharedTable` support for 'greater than' (GT) queries on tables with numeric range-key fields
+* `SharedTable` support for 'greater than' (GT) queries on tables with numeric range-key fields (via KeyConditions only)
 * `SharedTable` support for conditional puts
 * `SharedTable` fixed `TrimmedDataAccessException` for `TRIM_HORIZON` iterators
 
