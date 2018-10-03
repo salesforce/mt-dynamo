@@ -1,6 +1,9 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
+import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AT_SEQUENCE_NUMBER;
+import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.LATEST;
+import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.TRIM_HORIZON;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getLast;
@@ -31,7 +34,6 @@ import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -63,11 +65,6 @@ import org.slf4j.LoggerFactory;
  */
 public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
 
-    private static final Logger LOG = LoggerFactory.getLogger(CachingAmazonDynamoDbStreams.class);
-
-    // DynamoDB's limit. Constant defined in AmazonDynamoDBStreamsAdapterClient (but not on classpath).
-    static final int GET_RECORDS_LIMIT = 1000;
-
     /**
      * Replace with com.amazonaws.services.dynamodbv2.streamsadapter.utils.Sleeper when we upgrade
      */
@@ -97,21 +94,37 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
+        /**
+         * The maximum total sum of {@link StreamRecord#getSizeBytes()} the cache may hold. This is an approximation for
+         * heap size. The actual {@link GetRecordsResult} objects stored in the cache carry additional overhead, so this
+         * value should be used as a rough guideline.
+         */
         public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
             this.maxRecordsByteSize = maxRecordsByteSize;
             return this;
         }
 
+        /**
+         * Sleep function to use for retry backoff. Defaults to {@link Thread#sleep(long)}.
+         */
         public Builder withSleeper(Sleeper sleeper) {
             this.sleeper = sleeper;
             return this;
         }
 
+        /**
+         * Maximum number of retries if {@link LimitExceededException}s are encountered when loading records from the
+         * underlying stream into the cache.
+         */
         public Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
             this.maxGetRecordsRetries = maxGetRecordsRetries;
             return this;
         }
 
+        /**
+         * Backoff time for each retry after a {@link LimitExceededException} is caught while loading records from the
+         * underlying stream into the cache.
+         */
         public Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
             this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
             return this;
@@ -142,22 +155,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
-    private static BigInteger parseSequenceNumber(String sequenceNumber) {
-        try {
-            return new BigInteger(sequenceNumber);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-
-    private static BigInteger parseSequenceNumber(Record record) {
-        return parseSequenceNumber(record.getDynamodb().getSequenceNumber());
-    }
-
     /**
-     * Iterator position is a sequence number in a stream shard.
+     * An absolute position in a stream expressed as a triple of streamArn, shardId, and sequence number.
      */
-    private static class IteratorPosition implements Comparable<IteratorPosition>, Predicate<Record> {
+    private static final class IteratorPosition implements Comparable<IteratorPosition>, Predicate<Record> {
 
         private final String streamArn;
         private final String shardId;
@@ -167,16 +168,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.streamArn = checkNotNull(streamArn);
             this.shardId = checkNotNull(shardId);
             this.sequenceNumber = checkNotNull(sequenceNumber);
-        }
-
-        /**
-         * Checks whether the given iterator position is for the same stream and shard.
-         *
-         * @param o Other iterator position.
-         * @return true if the other iterator position is for the same stream and shard.
-         */
-        boolean equalsShard(IteratorPosition o) {
-            return streamArn.equals(o.streamArn) && shardId.equals(o.shardId);
         }
 
         @Override
@@ -210,6 +201,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return new IteratorPosition(streamArn, shardId, parseSequenceNumber(getLast(result.getRecords()))).next();
         }
 
+        /**
+         * Compares the given position to this position. Sorts positions in different stream shards lexicographically by
+         * their streamArn and shardId. Within a given stream shard, positions are sorted numerically by their sequence
+         * number.
+         *
+         * @param o Other position.
+         * @return negative integer, zero, or positive integer as this position is less than, equal, or greater other.
+         */
         @Override
         public int compareTo(@Nonnull IteratorPosition o) {
             int c = streamArn.compareTo(o.streamArn);
@@ -223,6 +222,22 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return sequenceNumber.compareTo(o.sequenceNumber);
         }
 
+        /**
+         * Checks whether the given iterator position has the same streamArn and shardId.
+         *
+         * @param o Other iterator position.
+         * @return true if the other iterator position has the same same streamArn and shardId, false otherwise.
+         */
+        boolean equalsShard(IteratorPosition o) {
+            return streamArn.equals(o.streamArn) && shardId.equals(o.shardId);
+        }
+
+        /**
+         * Checks given object for equality.
+         *
+         * @param o Other object.
+         * @return True if the given object is an IteratorPosition with the same streamArn, shardId, and sequenceNumber.
+         */
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -237,6 +252,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 && Objects.equals(sequenceNumber, that.sequenceNumber);
         }
 
+        /**
+         * Hash code of this iterator position including streamArn, shardId, and sequence number.
+         *
+         * @return Hash code.
+         */
         @Override
         public int hashCode() {
             return Objects.hash(streamArn, shardId, sequenceNumber);
@@ -248,7 +268,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * A logical shard iterator that optionally wraps an underlying DynamoDB iterator.
      */
-    private static class ShardIterator {
+    private static final class ShardIterator {
 
         private static final CompositeStrings compositeStrings = new CompositeStrings('/', '\\');
 
@@ -269,17 +289,43 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             );
         }
 
-        // TODO pick better serialization format
+        /**
+         * Parses a ShardIterator instance from its external String representation.
+         *
+         * @param value External string form.
+         * @return ShardIterator instance.
+         */
         static ShardIterator fromExternalString(String value) {
-            Function<String, String> f = s -> "null".equals(s) ? null : s;
             Iterator<String> it = compositeStrings.split(value);
-            return new ShardIterator(
-                it.next(),
-                it.next(),
-                ShardIteratorType.fromValue(it.next()),
-                f.apply(it.next()),
-                f.apply(it.next())
-            );
+            String streamArn = it.next();
+            String shardId = it.next();
+            String pointer = it.next();
+            ShardIteratorType type;
+            String sequenceNumber;
+            if (TRIM_HORIZON.toString().equals(pointer)) {
+                type = TRIM_HORIZON;
+                sequenceNumber = null;
+            } else if (LATEST.toString().equals(pointer)) {
+                type = LATEST;
+                sequenceNumber = null;
+            } else if (pointer.startsWith(AFTER_SEQUENCE_NUMBER.toString())) {
+                type = AFTER_SEQUENCE_NUMBER;
+                sequenceNumber = getSequenceNumber(pointer, AFTER_SEQUENCE_NUMBER);
+            } else if (pointer.startsWith(AT_SEQUENCE_NUMBER.toString())) {
+                type = AT_SEQUENCE_NUMBER;
+                sequenceNumber = getSequenceNumber(pointer, AT_SEQUENCE_NUMBER);
+            } else {
+                throw new IllegalArgumentException("Invalid position segment in shard iterator string " + value);
+            }
+            String dynamoDbIterator = it.hasNext() ? it.next() : null;
+            return new ShardIterator(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
+        }
+
+        private static String getSequenceNumber(String pointer, ShardIteratorType type) {
+            int length = type.toString().length();
+            checkArgument(pointer.length() > length + 2);
+            checkArgument(pointer.charAt(length) == '.');
+            return pointer.substring(length + 1);
         }
 
         @Nonnull
@@ -344,7 +390,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         String getDynamoDbIterator(AmazonDynamoDBStreams streams) {
             if (dynamoDbIterator == null) {
                 if (LOG.isDebugEnabled()) {
-                    LOG.debug("getRecords loading DynamoDB iterator: iterator={}", this);
+                    LOG.debug("Loading DynamoDB iterator: iterator={}", this);
                 }
                 dynamoDbIterator = streams.getShardIterator(toRequest()).getShardIterator();
             }
@@ -378,15 +424,16 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         /**
          * Resolves the position of this iterator relative to the first record returned by a query using this iterator.
-         * If the iterator is absolute, its position is returned. Otherwise the position of the given record in the
+         * If the iterator is absolute, its position is returned. Otherwise the position of the first record in the
          * shard is returned.
          *
-         * @param firstReturnedRecord First record returned for the given iterator by the underlying stream.
-         * @return Iterator position.
+         * @param records Non-empty records list loaded for this iterator.
+         * @return Resolved iterator position.
          */
-        IteratorPosition resolvePosition(Record firstReturnedRecord) {
+        IteratorPosition resolvePosition(List<Record> records) {
+            assert !records.isEmpty();
             return resolvePosition()
-                .orElseGet(() -> new IteratorPosition(streamArn, shardId, parseSequenceNumber(firstReturnedRecord)));
+                .orElseGet(() -> new IteratorPosition(streamArn, shardId, parseSequenceNumber(records.get(0))));
         }
 
         /**
@@ -396,7 +443,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param records Non-empty records list.
          * @return New shard iterator that starts after the last record in the list.
          */
-        ShardIterator afterLast(List<Record> records) {
+        ShardIterator nextShardIterator(List<Record> records) {
             assert !records.isEmpty();
             return new ShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
                 getLast(records).getDynamodb().getSequenceNumber(), null);
@@ -415,23 +462,76 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 .withSequenceNumber(sequenceNumber);
         }
 
-        // TODO pick better serialization format
+        /**
+         * Serializes this ShardIterator into its external string format.
+         *
+         * @return Externalized string.
+         */
         String toExternalString() {
             List<String> fields = new ArrayList<>(4);
             fields.add(streamArn);
             fields.add(shardId);
-            fields.add(type.toString());
-            fields.add(sequenceNumber == null ? "null" : sequenceNumber);
-            fields.add(dynamoDbIterator == null ? "null" : dynamoDbIterator);
+            switch (type) {
+                case TRIM_HORIZON:
+                case LATEST:
+                    fields.add(type.toString());
+                    break;
+                case AT_SEQUENCE_NUMBER:
+                case AFTER_SEQUENCE_NUMBER:
+                    fields.add(String.format("%s.%s", type.toString(), sequenceNumber));
+                    break;
+                default:
+                    throw new RuntimeException("Unhandled case in switch statement");
+            }
+            if (dynamoDbIterator != null) {
+                fields.add(dynamoDbIterator);
+            }
             return compositeStrings.join(fields);
         }
 
         @Override
         public String toString() {
-            return String.join("/", streamArn, shardId, type.toString(), sequenceNumber);
+            return toExternalString();
         }
     }
 
+    // logger instance
+    private static final Logger LOG = LoggerFactory.getLogger(CachingAmazonDynamoDbStreams.class);
+
+    // DynamoDB's GetRecords limit. Constant defined in AmazonDynamoDBStreamsAdapterClient (but not on classpath).
+    static final int GET_RECORDS_LIMIT = 1000;
+
+    /**
+     * Parses the given string representation of a DynamoDB sequence number into a BigInteger.
+     *
+     * @param sequenceNumber String representation of sequence number.
+     * @return BigInteger value.
+     */
+    private static BigInteger parseSequenceNumber(String sequenceNumber) {
+        try {
+            return new BigInteger(sequenceNumber);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    /**
+     * Parses the sequence number of the given record into a BigInteger.
+     *
+     * @param record Record with sequence number.
+     * @return BigInteger sequence number value.
+     */
+    private static BigInteger parseSequenceNumber(Record record) {
+        return parseSequenceNumber(record.getDynamodb().getSequenceNumber());
+    }
+
+    /**
+     * Returns a shortened string representation of the given GetRecordsResult intended for debug logs that doesn't
+     * include individual records.
+     *
+     * @param result Result to format.
+     * @return Shortened string representation of the given GetRecordsResult.
+     */
     private static String toShortString(GetRecordsResult result) {
         List<Record> records = result.getRecords();
         String nextIterator = result.getNextShardIterator();
@@ -601,7 +701,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             writeLock.lock();
             try {
                 // Resolve iterator position (either to sequence number it specifies or first record sequence number)
-                IteratorPosition loadedPosition = iterator.resolvePosition(loadedRecordsResult.getRecords().get(0));
+                IteratorPosition loadedPosition = iterator.resolvePosition(loadedRecordsResult.getRecords());
 
                 // Add retrieved records to cache under that position
                 cachedResult = addToCache(loadedPosition, loadedRecordsResult);
@@ -643,7 +743,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             List<Record> records = loadedResult.getRecords().subList(0, limit);
             result = new GetRecordsResult()
                 .withRecords(records)
-                .withNextShardIterator(iterator.afterLast(records).toExternalString());
+                .withNextShardIterator(iterator.nextShardIterator(records).toExternalString());
         }
         return result;
     }
@@ -816,6 +916,5 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private Entry<IteratorPosition, GetRecordsResult> getHigherCacheEntry(IteratorPosition position) {
         return recordsCacheIndex.higherEntry(position);
     }
-
 
 }
