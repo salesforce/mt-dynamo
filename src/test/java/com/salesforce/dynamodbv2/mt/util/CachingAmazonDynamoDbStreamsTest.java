@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -562,6 +563,40 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that if a gap is closed, adjacent segments are merged. Example here:
+     * <ol>
+     * <li>Retrieve 5 records starting at trim horizon: creates segment [0, 40].</li>
+     * <li>Retrieve 5 records starting with 50: creates segment [50, 90].</li>
+     * <li>Retrieve records starting at 41: detects no more records between 40 and 50 and merges into [0, 90]</li>
+     * </ol>
+     */
+    @Test
+    void testCloseGap() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest thRequest = newTrimHorizonRequest();
+        String thIterator = mockGetShardIterator(streams, thRequest);
+        mockGetRecords(streams, thIterator, 0, 5);
+
+        GetShardIteratorRequest atRequest = newAtSequenceNumberRequest(5);
+        String atIterator = mockGetShardIterator(streams, atRequest);
+        mockGetRecords(streams, atIterator, 5, 10);
+
+        GetShardIteratorRequest afterRequest = newAfterSequenceNumberRequest(4);
+        String afterIterator = mockGetShardIterator(streams, afterRequest);
+        mockGetRecords(streams, afterIterator, 5, 10);
+
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        assertGetRecords(cachingStreams, thRequest, null, 0, 5);
+        assertGetRecords(cachingStreams, atRequest, null, 5, 10);
+        assertGetRecords(cachingStreams, afterRequest, null, 5, 10);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10);
+
+        assertCacheMisses(streams, 3, 3);
+    }
+
+    /**
      * Verify that we correctly handle an empty page at the end of a stream.
      */
     @Test
@@ -837,5 +872,39 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertNull(assertGetRecords(cachingStreams, trimHorizonRequest, null, 0, 5));
         assertNull(assertGetRecords(cachingStreams, trimHorizonRequest, null, 5, 10));
+    }
+
+    /**
+     * Verifies that concurrent requests detect overlapping records and merge cache records.
+     */
+    @Test
+    void testConcurrentRetrieves() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest request = newAtSequenceNumberRequest(0);
+
+        String iterator1 = mockShardIterator(request);
+        String iterator2 = mockShardIterator(request);
+
+        when(streams.getShardIterator(eq(request)))
+            .thenReturn(new GetShardIteratorResult().withShardIterator(iterator1))
+            .thenReturn(new GetShardIteratorResult().withShardIterator(iterator2));
+
+        // pretend more records have come along by the time the second iterator is used to get records
+        mockGetRecords(streams, iterator2, 0, 5);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        doAnswer(invocation -> {
+            assertGetRecords(cachingStreams, request, null, 0, 5);
+            return new GetRecordsResult().withRecords(records.subList(0, 7));
+        }).when(streams).getRecords(new GetRecordsRequest().withShardIterator(iterator1));
+
+        assertGetRecords(cachingStreams, request, null, 0, 7);
+        assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 7);
+
+        // Only the two trim horizon calls should result in iterator and record lookups. The final call should be
+        // serviced from the merged cache segment without needing to lookup another iterator.
+        assertCacheMisses(streams, 2, 2);
     }
 }

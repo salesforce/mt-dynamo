@@ -58,9 +58,6 @@ import org.slf4j.LoggerFactory;
  * <ol>
  * <li>Reduce lock contention: avoid locking all streams/shards when adding segment</li>
  * <li>Lock shard when loading records to avoid hitting throttling</li>
- * <li>Merge small adjacent segments to avoid cache fragmentation and reduce client calls</li>
- * <li>Revisit TRIM_HORIZON record caching (since the trim horizon changes over time)</li>
- * <li>Add support for LATEST.</li>
  * </ol>
  */
 public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
@@ -156,7 +153,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     }
 
     /**
-     * An absolute position in a stream expressed as a triple of streamArn, shardId, and sequence number.
+     * An absolute position in a stream expressed as a triple of streamArn, shardId, and sequence number. Note: there is
+     * no guarantee that there is actually a record at the given position in the stream.
      */
     private static final class IteratorPosition implements Comparable<IteratorPosition>, Predicate<Record> {
 
@@ -170,6 +168,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.sequenceNumber = checkNotNull(sequenceNumber);
         }
 
+        /**
+         * Implementation of Predicate interface so this position can be used directly to filter records. Also enables
+         * negating the precedes check if this position succeeds records.
+         */
         @Override
         public boolean test(Record record) {
             return precedes(record);
@@ -188,17 +190,50 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return sequenceNumber.compareTo(parseSequenceNumber(record)) <= 0;
         }
 
+        /**
+         * Returns true if this position precedes any records in the given result. Since DynamoDB orders records by
+         * sequence number that equivalent to checking whether this position precedes the last record.
+         *
+         * @param result Result to check. Records list must not be empty.
+         * @return True if this position precedes any records in the given result, false otherwise.
+         */
         boolean precedesAny(GetRecordsResult result) {
             assert !result.getRecords().isEmpty();
             return precedes(getLast(result.getRecords()));
         }
 
+        /**
+         * Returns the position immediately following this one, i.e., the next sequence number in the same stream
+         * shard.
+         *
+         * @return Next iterator position.
+         */
         IteratorPosition next() {
             return new IteratorPosition(streamArn, shardId, sequenceNumber.add(ONE));
         }
 
-        IteratorPosition nextAfterLastRecord(GetRecordsResult result) {
+        /**
+         * Returns the position immediately following the last record in the given result.
+         *
+         * @param result Result to position after. Record list must not be empty.
+         * @return IteratorPosition immediately following the last record sequence number in the result.
+         */
+        IteratorPosition next(GetRecordsResult result) {
+            assert !result.getRecords().isEmpty();
             return new IteratorPosition(streamArn, shardId, parseSequenceNumber(getLast(result.getRecords()))).next();
+        }
+
+        /**
+         * Returns a shard iterator that starts after the last record in the given result.
+         *
+         * @param result Result to position the iterator after. Record list must not be empty.
+         * @param dynamoDbIterator Optional DynamoDB-level iterator after the last record.
+         * @return ShardIterator that is positioned after the given result.
+         */
+        ShardIterator nextShardIterator(GetRecordsResult result, @Nullable String dynamoDbIterator) {
+            assert !result.getRecords().isEmpty();
+            return new ShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
+                getLast(result.getRecords()).getDynamodb().getSequenceNumber(), dynamoDbIterator);
         }
 
         /**
@@ -538,7 +573,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         if (records.isEmpty()) {
             return String.format("{records.size=0, nextIterator=%s}", nextIterator);
         } else {
-            return String.format("{records.size=%d, first.sn=%s, last.sn=%s, nextIterator=%s",
+            return String.format("{records.size=%d, first.sn=%s, last.sn=%s, nextIterator=%s}",
                 records.size(), records.get(0).getDynamodb().getSequenceNumber(),
                 getLast(records).getDynamodb().getSequenceNumber(), nextIterator);
         }
@@ -674,7 +709,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 sleeper.sleep(backoff);
                 getRecordsRetries++;
                 continue;
-            } // could catch ExpiredIteratorException and automatically renew shard iterators in cached results
+            } // TODO could catch ExpiredIteratorException and automatically renew shard iterators in cached results
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("getRecords loaded records: iterator={}, result={}", iterator,
@@ -682,7 +717,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
 
             // if we didn't load anything, return without adding cache segment (preserves non-empty range invariant)
-            // could cache empty results for (short) time period to avoid having every client hit the stream.
+            // TODO could cache empty results for (short) time period to avoid having every client hit the stream.
             if (loadedRecordsResult.getRecords().isEmpty()) {
                 if (loadedRecordsResult.getNextShardIterator() == null) {
                     return loadedRecordsResult;
@@ -792,17 +827,26 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
+    /**
+     * Adds the given loaded result into the cache under the given loaded position. Discards records that overlap with
+     * existing cache entries. If the entry is adjacent to existing entries, it will merge them, provided the resulting
+     * record list does not exceed {@link #GET_RECORDS_LIMIT}. Returns the result that was actually added to the cache
+     * (which may include merged records). The loaded position may precede the first record, since seqeuence numbers are
+     * not contiguous.
+     *
+     * @param loadedPosition Position from which the result was loaded in the stream.
+     * @param loadedResult Result loaded for the given position.
+     * @return Result actually added to cache. Empty if all records were already present in cache for position.
+     */
     private Optional<GetRecordsResult> addToCache(IteratorPosition loadedPosition, GetRecordsResult loadedResult) {
         final Lock writeLock = recordsCacheLock.writeLock();
         writeLock.lock();
         try {
             IteratorPosition cachePosition = loadedPosition;
-            GetRecordsResult cacheResult = new GetRecordsResult()
-                .withRecords(loadedResult.getRecords())
-                .withNextShardIterator(loadedResult.getNextShardIterator() == null ? null
-                    : new ShardIterator(loadedPosition.streamArn, loadedPosition.shardId, AFTER_SEQUENCE_NUMBER,
-                        getLast(loadedResult.getRecords()).getDynamodb().getSequenceNumber(),
-                        loadedResult.getNextShardIterator()).toExternalString());
+            GetRecordsResult cacheResult = new GetRecordsResult().withRecords(loadedResult.getRecords());
+            Optional.ofNullable(loadedResult.getNextShardIterator())
+                .map(nextIterator -> loadedPosition.nextShardIterator(loadedResult, nextIterator).toExternalString())
+                .ifPresent(cacheResult::setNextShardIterator);
 
             boolean predecessorAdjacent = false;
             final Entry<IteratorPosition, GetRecordsResult> predecessor = getFloorCacheEntry(loadedPosition);
@@ -811,7 +855,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 if (loadedPosition.precedesAny(predecessorResult)) {
                     // the previous cache entry overlaps with the records we retrieved: filter out overlapping records
                     // (by reducing the loaded records to those that come after the last predecessor record)
-                    cachePosition = loadedPosition.nextAfterLastRecord(predecessorResult);
+                    cachePosition = loadedPosition.next(predecessorResult);
                     cacheResult.setRecords(cacheResult.getRecords().stream()
                         .filter(cachePosition)
                         .collect(toList()));
@@ -821,7 +865,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     }
                     predecessorAdjacent = true;
                 } else {
-                    predecessorAdjacent = loadedPosition.equals(loadedPosition.nextAfterLastRecord(predecessorResult));
+                    //
+                    predecessorAdjacent = loadedPosition.equals(loadedPosition.next(predecessorResult));
                 }
             }
 
@@ -844,13 +889,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     } else {
                         // if some of the retrieved records are not contained in the next segment,
                         cacheResult.setNextShardIterator(
-                            new ShardIterator(cachePosition.streamArn, cachePosition.shardId, AFTER_SEQUENCE_NUMBER,
-                                getLast(loadedResult.getRecords()).getDynamodb().getSequenceNumber(), null)
-                                .toExternalString());
+                            cachePosition.nextShardIterator(cacheResult, null).toExternalString());
                         successorAdjacent = true;
                     }
                 } else {
-                    successorAdjacent = successorPosition.equals(cachePosition.nextAfterLastRecord(cacheResult));
+                    successorAdjacent = successorPosition.equals(cachePosition.next(cacheResult));
                 }
             }
 
@@ -861,6 +904,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     mergedRecords.addAll(predecessor.getValue().getRecords());
                     mergedRecords.addAll(cacheResult.getRecords());
                     cacheResult.setRecords(mergedRecords);
+                    cachePosition = predecessor.getKey();
                     removeCacheEntry(predecessor);
                 }
             }
