@@ -8,7 +8,6 @@ import static java.math.BigInteger.ONE;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreamsClient;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
@@ -16,12 +15,12 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import java.math.BigInteger;
 import java.util.ArrayList;
-import java.util.Deque;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -66,6 +65,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     private static final Logger LOG = LoggerFactory.getLogger(CachingAmazonDynamoDbStreams.class);
 
+    // DynamoDB's limit. Constant defined in AmazonDynamoDBStreamsAdapterClient (but not on classpath).
+    static final int GET_RECORDS_LIMIT = 1000;
+
     /**
      * Replace with com.amazonaws.services.dynamodbv2.streamsadapter.utils.Sleeper when we upgrade
      */
@@ -80,13 +82,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      */
     public static class Builder {
 
-        private static final int DEFAULT_MAX_RECORDS_CACHE_SIZE = 1000;
+        private static final int DEFAULT_MAX_RECORD_BYTES_CACHED = 1000;
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private Sleeper sleeper;
-        private int maxRecordsCacheSize = DEFAULT_MAX_RECORDS_CACHE_SIZE;
+        private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxGetRecordsRetries = DEFAULT_MAX_GET_RECORDS_RETRIES;
         private long getRecordsLimitExceededBackoffInMillis =
             DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
@@ -95,13 +97,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
-        public Builder withSleeper(Sleeper sleeper) {
-            this.sleeper = sleeper;
+        public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
+            this.maxRecordsByteSize = maxRecordsByteSize;
             return this;
         }
 
-        public Builder withMaxRecordsCacheSize(int maxRecordsCacheSize) {
-            this.maxRecordsCacheSize = maxRecordsCacheSize;
+        public Builder withSleeper(Sleeper sleeper) {
+            this.sleeper = sleeper;
             return this;
         }
 
@@ -133,10 +135,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
             return new CachingAmazonDynamoDbStreams(
                 amazonDynamoDbStreams,
-                maxRecordsCacheSize,
+                sleeper,
+                maxRecordsByteSize,
                 maxGetRecordsRetries,
-                getRecordsLimitExceededBackoffInMillis,
-                sleeper);
+                getRecordsLimitExceededBackoffInMillis);
         }
     }
 
@@ -442,27 +444,42 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
-    // cache values are quasi-immutable
-    private final NavigableMap<IteratorPosition, GetRecordsResult> recordsCache;
-    private final Deque<IteratorPosition> evictionDeque;
-    private final ReadWriteLock recordsCacheLock;
-    private final int maxRecordsCacheSize;
+    // configuration properties
+    private final Sleeper sleeper;
     private final int maxGetRecordsRetries;
     private final long getRecordsLimitExceededBackoffInMillis;
-    private final Sleeper sleeper;
+
+    // cache for quasi-immutable values that maintains insertion order for LRU removal
+    private final Map<IteratorPosition, GetRecordsResult> recordsCache;
+    // index on position for efficient position-based cache lookups
+    private final NavigableMap<IteratorPosition, GetRecordsResult> recordsCacheIndex;
+    // looks for mutating lock
+    private final ReadWriteLock recordsCacheLock;
+    // size of cache >= 0
+    private long recordsCacheByteSize;
 
     private CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
-        int maxRecordCacheSize,
+        Sleeper sleeper,
+        long maxRecordsByteSize,
         int maxGetRecordsRetries,
-        long getRecordsLimitExceededBackoffInMillis,
-        Sleeper sleeper) {
+        long getRecordsLimitExceededBackoffInMillis) {
         super(amazonDynamoDbStreams);
-        this.maxRecordsCacheSize = maxRecordCacheSize;
-        this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.sleeper = sleeper;
+        this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
-        this.recordsCache = new TreeMap<>();
-        this.evictionDeque = new LinkedList<>();
+
+        this.recordsCache = new LinkedHashMap<IteratorPosition, GetRecordsResult>() {
+            @Override
+            protected boolean removeEldestEntry(Entry<IteratorPosition, GetRecordsResult> eldest) {
+                if (recordsCacheByteSize > maxRecordsByteSize) {
+                    removedCacheEntry(eldest);
+                    return true;
+                }
+                return false;
+            }
+        };
+        this.recordsCacheIndex = new TreeMap<>();
+        this.recordsCacheByteSize = 0L;
         this.recordsCacheLock = new ReentrantReadWriteLock();
     }
 
@@ -610,6 +627,28 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     }
 
     /**
+     * Reduces the result based on the limit if present.
+     *
+     * @param limit Limit specified in the request
+     * @param iterator Iterator specified in the request
+     * @param loadedResult Loaded result to limit
+     * @return Result that is limited to the number of records specified in the request
+     */
+    private GetRecordsResult applyLimit(Integer limit, ShardIterator iterator, GetRecordsResult loadedResult) {
+        checkArgument(limit == null || limit > 0);
+        final GetRecordsResult result;
+        if (limit == null || limit >= loadedResult.getRecords().size()) {
+            result = loadedResult;
+        } else {
+            List<Record> records = loadedResult.getRecords().subList(0, limit);
+            result = new GetRecordsResult()
+                .withRecords(records)
+                .withNextShardIterator(iterator.afterLast(records).toExternalString());
+        }
+        return result;
+    }
+
+    /**
      * Looks up cached result for given position. Acquires read lock to access cache, but may be called with read or
      * write lock held, since lock is reentrant.
      *
@@ -621,7 +660,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         readLock.lock();
         try {
             final Optional<GetRecordsResult> cachedRecordsResult;
-            final Map.Entry<IteratorPosition, GetRecordsResult> previousCacheEntry = recordsCache.floorEntry(position);
+            final Map.Entry<IteratorPosition, GetRecordsResult> previousCacheEntry = getFloorCacheEntry(position);
             if (previousCacheEntry == null) {
                 // no matching cache entry found
                 cachedRecordsResult = Optional.empty();
@@ -666,7 +705,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                         loadedResult.getNextShardIterator()).toExternalString());
 
             boolean predecessorAdjacent = false;
-            final Entry<IteratorPosition, GetRecordsResult> predecessor = recordsCache.floorEntry(loadedPosition);
+            final Entry<IteratorPosition, GetRecordsResult> predecessor = getFloorCacheEntry(loadedPosition);
             if (predecessor != null && loadedPosition.equalsShard(predecessor.getKey())) {
                 GetRecordsResult predecessorResult = predecessor.getValue();
                 if (loadedPosition.precedesAny(predecessorResult)) {
@@ -687,7 +726,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
 
             boolean successorAdjacent = false;
-            final Entry<IteratorPosition, GetRecordsResult> successor = recordsCache.higherEntry(cachePosition);
+            final Entry<IteratorPosition, GetRecordsResult> successor = getHigherCacheEntry(cachePosition);
             if (successor != null && cachePosition.equalsShard(successor.getKey())) {
                 IteratorPosition successorPosition = successor.getKey();
                 if (successorPosition.precedesAny(cacheResult)) {
@@ -699,7 +738,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
                     if (cacheResult.getRecords().isEmpty()) {
                         // if all retrieved records are contained in the successor, reindex (and maybe merge) successor
-                        recordsCache.remove(successorPosition);
+                        removeCacheEntry(successor);
                         cacheResult = successor.getValue();
                         successorAdjacent = false;
                     } else {
@@ -717,32 +756,27 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
             if (predecessorAdjacent) {
                 int totalSize = predecessor.getValue().getRecords().size() + cacheResult.getRecords().size();
-                // TODO find constant for max result size
-                if (totalSize <= 1000) {
+                if (totalSize <= GET_RECORDS_LIMIT) {
                     List<Record> mergedRecords = new ArrayList<>(totalSize);
                     mergedRecords.addAll(predecessor.getValue().getRecords());
                     mergedRecords.addAll(cacheResult.getRecords());
                     cacheResult.setRecords(mergedRecords);
-                    recordsCache.remove(predecessor.getKey());
+                    removeCacheEntry(predecessor);
                 }
             }
             if (successorAdjacent) {
                 int totalSize = cacheResult.getRecords().size() + successor.getValue().getRecords().size();
-                if (totalSize <= 1000) {
+                if (totalSize <= GET_RECORDS_LIMIT) {
                     List<Record> mergedRecords = new ArrayList<>(totalSize);
                     mergedRecords.addAll(cacheResult.getRecords());
                     mergedRecords.addAll(successor.getValue().getRecords());
                     cacheResult.setRecords(mergedRecords);
                     cacheResult.setNextShardIterator(successor.getValue().getNextShardIterator());
-                    recordsCache.remove(successor.getKey());
+                    removeCacheEntry(successor);
                 }
             }
 
-            recordsCache.put(cachePosition, cacheResult);
-            evictionDeque.add(cachePosition);
-            while (recordsCache.size() > maxRecordsCacheSize) {
-                recordsCache.remove(evictionDeque.remove());
-            }
+            addCacheEntry(cachePosition, cacheResult);
 
             return Optional.of(cacheResult);
         } finally {
@@ -750,26 +784,37 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
-    /**
-     * Reduces the result based on the limit if present.
-     *
-     * @param limit Limit specified in the request
-     * @param iterator Iterator specified in the request
-     * @param loadedResult Loaded result to limit
-     * @return Result that is limited to the number of records specified in the request
-     */
-    private GetRecordsResult applyLimit(Integer limit, ShardIterator iterator, GetRecordsResult loadedResult) {
-        checkArgument(limit == null || limit > 0);
-        final GetRecordsResult result;
-        if (limit == null || limit >= loadedResult.getRecords().size()) {
-            result = loadedResult;
-        } else {
-            List<Record> records = loadedResult.getRecords().subList(0, limit);
-            result = new GetRecordsResult()
-                .withRecords(records)
-                .withNextShardIterator(iterator.afterLast(records).toExternalString());
-        }
-        return result;
+    private void addCacheEntry(IteratorPosition key, GetRecordsResult value) {
+        GetRecordsResult previous = recordsCache.put(key, value);
+        assert previous == null;
+        previous = recordsCacheIndex.put(key, value);
+        assert previous == null;
+        recordsCacheByteSize += getByteSize(value);
+    }
+
+    private void removeCacheEntry(Entry<IteratorPosition, GetRecordsResult> entry) {
+        GetRecordsResult value = recordsCache.remove(entry.getKey());
+        assert value == entry.getValue();
+        removedCacheEntry(entry);
+    }
+
+    private void removedCacheEntry(Entry<IteratorPosition, GetRecordsResult> entry) {
+        GetRecordsResult value = recordsCacheIndex.remove(entry.getKey());
+        assert value == entry.getValue();
+        recordsCacheByteSize -= getByteSize(entry.getValue());
+        assert recordsCacheByteSize >= 0;
+    }
+
+    private long getByteSize(GetRecordsResult value) {
+        return value.getRecords().stream().map(Record::getDynamodb).mapToLong(StreamRecord::getSizeBytes).sum();
+    }
+
+    private Entry<IteratorPosition, GetRecordsResult> getFloorCacheEntry(IteratorPosition position) {
+        return recordsCacheIndex.floorEntry(position);
+    }
+
+    private Entry<IteratorPosition, GetRecordsResult> getHigherCacheEntry(IteratorPosition position) {
+        return recordsCacheIndex.higherEntry(position);
     }
 
 

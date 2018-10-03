@@ -4,6 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_IMAGE;
 import static com.google.common.collect.Iterables.getLast;
+import static com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.GET_RECORDS_LIMIT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -67,7 +68,6 @@ import org.slf4j.LoggerFactory;
  */
 class CachingAmazonDynamoDbStreamsTest {
 
-    private static final int GET_RECORDS_LIMIT = 1000;
     private static Level level;
 
     @BeforeAll
@@ -269,7 +269,9 @@ class CachingAmazonDynamoDbStreamsTest {
             .withEventVersion("1.1")
             .withAwsRegion("ddblocal")
             .withDynamodb(new StreamRecord()
-                .withSequenceNumber(formatSequenceNumber(sequenceNumber)));
+                .withSequenceNumber(formatSequenceNumber(sequenceNumber))
+                .withSizeBytes(1L)
+            );
     }
 
     private static String getMockRecordSequenceNumber(int idx) {
@@ -631,7 +633,7 @@ class CachingAmazonDynamoDbStreamsTest {
             .withGetRecordsLimitExceededBackoffInMillis(500)
             .withMaxGetRecordsRetries(3)
             .withSleeper(sleeper)
-            .withMaxRecordsCacheSize(100)
+            .withMaxRecordsByteSize(100L)
             .build();
 
         final String iterator = cachingStreams.getShardIterator(thIteratorRequest).getShardIterator();
@@ -696,7 +698,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, secondIterator, 5, 10);
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withMaxRecordsCacheSize(1)
+            .withMaxRecordsByteSize(1L)
             .build();
 
         assertGetRecords(cachingStreams, firstRequest, null, 0, 4);
