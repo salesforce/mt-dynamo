@@ -41,6 +41,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -107,6 +108,21 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     }
 
     private static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
+        return getShardIterator(mtDynamoDbStreams, streamArn, ShardIteratorType.TRIM_HORIZON, null);
+    }
+
+    protected static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn,
+        ShardIteratorType type, String sequenceNumber) {
+        return getShardId(mtDynamoDbStreams, streamArn).map(shardId ->
+            mtDynamoDbStreams.getShardIterator(new GetShardIteratorRequest()
+                .withStreamArn(streamArn)
+                .withShardId(shardId)
+                .withShardIteratorType(type)
+                .withSequenceNumber(sequenceNumber)).getShardIterator()
+        );
+    }
+
+    private static Optional<String> getShardId(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
         DescribeStreamResult dsResult = mtDynamoDbStreams.describeStream(
             new DescribeStreamRequest().withStreamArn(streamArn));
 
@@ -116,12 +132,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
         // assumes we are running against local MT dynamo that has one shard per stream
         Assumptions.assumeTrue(dsResult.getStreamDescription().getShards().size() == 1);
-        String shardId = dsResult.getStreamDescription().getShards().get(0).getShardId();
-
-        return Optional.of(mtDynamoDbStreams.getShardIterator(new GetShardIteratorRequest()
-            .withStreamArn(streamArn)
-            .withShardId(shardId)
-            .withShardIteratorType(ShardIteratorType.TRIM_HORIZON)).getShardIterator());
+        return Optional.of(dsResult.getStreamDescription().getShards().get(0).getShardId());
     }
 
     /**
@@ -153,7 +164,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         assertEquals(expected.getDynamodb().getOldImage(), actual.getDynamodb().getOldImage());
     }
 
-    protected static void assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
+    protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
         GetRecordsResult result = streams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
         assertNotNull(result.getNextShardIterator());
         List<Record> records = result.getRecords();
@@ -161,6 +172,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         for (int i = 0; i < expected.length; i++) {
             assertMtRecord(expected[i], records.get(i));
         }
+        return records.isEmpty() ? null : records.get(0).getDynamodb().getSequenceNumber();
     }
 
     private static void assertGetRecords(MtAmazonDynamoDbStreams streams, Collection<String> iterators,
@@ -196,14 +208,21 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withTablePrefix(prefix)
                 .withContext(MT_CONTEXT)
                 .build();
+            MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
+                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build());
 
             MtAmazonDynamoDbByTable tableMtDynamoDb = MtAmazonDynamoDbByTable.builder()
                 .withTablePrefix(prefix)
                 .withAmazonDynamoDb(dynamoDb)
                 .withContext(MT_CONTEXT)
                 .build();
+            MtAmazonDynamoDbStreams tableMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(tableMtDynamoDb,
+                AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
-            return java.util.stream.Stream.of(Arguments.of(indexMtDynamoDb), Arguments.of(tableMtDynamoDb));
+            return java.util.stream.Stream.of(
+                Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams),
+                Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams)
+            );
         }
     }
 
@@ -218,9 +237,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
      */
     @ParameterizedTest
     @ArgumentsSource(Args.class)
-    void testStream(MtAmazonDynamoDbBase mtDynamoDb) {
-        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
-            AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
+    void testStream(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
             // create tenant tables and test data
             createTenantTables(mtDynamoDb);
@@ -252,9 +269,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
      */
     @ParameterizedTest
     @ArgumentsSource(Args.class)
-    void testTableStream(MtAmazonDynamoDbBase mtDynamoDb) {
-        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
-            AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
+    void testTableStream(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
             // create tenant tables and test data
             createTenantTables(mtDynamoDb);
