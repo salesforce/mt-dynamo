@@ -95,6 +95,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * The maximum total sum of {@link StreamRecord#getSizeBytes()} the cache may hold. This is an approximation for
          * heap size. The actual {@link GetRecordsResult} objects stored in the cache carry additional overhead, so this
          * value should be used as a rough guideline.
+         *
+         * @param maxRecordsByteSize Maximum cache size in sum of record bytes.
+         * @return This builder.
          */
         public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
             this.maxRecordsByteSize = maxRecordsByteSize;
@@ -103,6 +106,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         /**
          * Sleep function to use for retry backoff. Defaults to {@link Thread#sleep(long)}.
+         *
+         * @param sleeper Sleeper implementation.
+         * @return This builder.
          */
         public Builder withSleeper(Sleeper sleeper) {
             this.sleeper = sleeper;
@@ -112,6 +118,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         /**
          * Maximum number of retries if {@link LimitExceededException}s are encountered when loading records from the
          * underlying stream into the cache.
+         *
+         * @param maxGetRecordsRetries Maximum number of retries.
+         * @return This builder.
          */
         public Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
             this.maxGetRecordsRetries = maxGetRecordsRetries;
@@ -121,6 +130,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         /**
          * Backoff time for each retry after a {@link LimitExceededException} is caught while loading records from the
          * underlying stream into the cache.
+         *
+         * @param getRecordsLimitExceededBackoffInMillis Backoff time in millis.
+         * @return This builder.
          */
         public Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
             this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
