@@ -19,6 +19,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.util.Iterator;
 import java.util.List;
@@ -115,7 +116,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             CountingAmazonDynamoDbStreams dynamoDbStreams =
                 new CountingAmazonDynamoDbStreams(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
-                dynamoDbStreams);
+                new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).build());
             String iterator = getShardIterator(mtDynamoDbStreams);
 
             // test without context
@@ -127,7 +128,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 () -> assertGetRecords(mtDynamoDbStreams, iterator, expected3, expected4));
 
             // once to fetch records, once per getRecords (3) to find empty range
-            assertEquals(4, dynamoDbStreams.getRecordsCount);
+            assertEquals(6, dynamoDbStreams.getRecordsCount);
             assertEquals(1, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
