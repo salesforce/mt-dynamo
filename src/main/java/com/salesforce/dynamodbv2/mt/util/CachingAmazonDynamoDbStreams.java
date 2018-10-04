@@ -76,7 +76,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      */
     public static class Builder {
 
-        private static final int DEFAULT_MAX_RECORD_BYTES_CACHED = 1000;
+        private static final int DEFAULT_MAX_RECORD_BYTES_CACHED = 100 * 1024 * 1024;
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
 
@@ -100,6 +100,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return This builder.
          */
         public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
+            checkArgument(maxRecordsByteSize >= 0);
             this.maxRecordsByteSize = maxRecordsByteSize;
             return this;
         }
@@ -123,6 +124,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return This builder.
          */
         public Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
+            checkArgument(maxGetRecordsRetries >= 0);
             this.maxGetRecordsRetries = maxGetRecordsRetries;
             return this;
         }
@@ -135,6 +137,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return This builder.
          */
         public Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
+            checkArgument(getRecordsLimitExceededBackoffInMillis >= 0);
             this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
             return this;
         }
@@ -230,7 +233,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param result Result to position after. Record list must not be empty.
          * @return IteratorPosition immediately following the last record sequence number in the result.
          */
-        IteratorPosition next(GetRecordsResult result) {
+        IteratorPosition positionAfterResult(GetRecordsResult result) {
             assert !result.getRecords().isEmpty();
             return new IteratorPosition(streamArn, shardId, parseSequenceNumber(getLast(result.getRecords()))).next();
         }
@@ -242,7 +245,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param dynamoDbIterator Optional DynamoDB-level iterator after the last record.
          * @return ShardIterator that is positioned after the given result.
          */
-        ShardIterator nextShardIterator(GetRecordsResult result, @Nullable String dynamoDbIterator) {
+        ShardIterator iteratorAfterResult(GetRecordsResult result, @Nullable String dynamoDbIterator) {
             assert !result.getRecords().isEmpty();
             return new ShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
                 getLast(result.getRecords()).getDynamodb().getSequenceNumber(), dynamoDbIterator);
@@ -384,9 +387,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         @Nullable
         private final String sequenceNumber;
         @Nullable
-        private final BigInteger parsedSequenceNumber;
-        @Nullable
         private String dynamoDbIterator;
+
+        // derived cached state
+        private final BigInteger parsedSequenceNumber;
 
         private ShardIterator(
             @Nonnull String streamArn,
@@ -593,6 +597,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     // configuration properties
     private final Sleeper sleeper;
+    private final long maxRecordsByteSize;
     private final int maxGetRecordsRetries;
     private final long getRecordsLimitExceededBackoffInMillis;
 
@@ -612,19 +617,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         long getRecordsLimitExceededBackoffInMillis) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
+        this.maxRecordsByteSize = maxRecordsByteSize;
         this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
 
-        this.recordsCache = new LinkedHashMap<IteratorPosition, GetRecordsResult>() {
-            @Override
-            protected boolean removeEldestEntry(Entry<IteratorPosition, GetRecordsResult> eldest) {
-                if (recordsCacheByteSize > maxRecordsByteSize) {
-                    removedCacheEntry(eldest);
-                    return true;
-                }
-                return false;
-            }
-        };
+        this.recordsCache = new LinkedHashMap<>();
         this.recordsCacheIndex = new TreeMap<>();
         this.recordsCacheByteSize = 0L;
         this.recordsCacheLock = new ReentrantReadWriteLock();
@@ -754,7 +751,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 cachedResult = addToCache(loadedPosition, loadedRecordsResult);
 
                 // now lookup result: may not be exactly what we loaded if we merged result with other segments.
-                result = getFromCache(loadedPosition).get();
+                // can also be empty if the cache is too small to hold the result, in which case we just return loaded.
+                result = getFromCache(loadedPosition).orElse(loadedRecordsResult);
             } finally {
                 writeLock.unlock();
             }
@@ -857,7 +855,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             IteratorPosition cachePosition = loadedPosition;
             GetRecordsResult cacheResult = new GetRecordsResult().withRecords(loadedResult.getRecords());
             Optional.ofNullable(loadedResult.getNextShardIterator())
-                .map(nextIterator -> loadedPosition.nextShardIterator(loadedResult, nextIterator).toExternalString())
+                .map(nextIterator -> loadedPosition.iteratorAfterResult(loadedResult, nextIterator).toExternalString())
                 .ifPresent(cacheResult::setNextShardIterator);
 
             boolean predecessorAdjacent = false;
@@ -867,7 +865,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 if (loadedPosition.precedesAny(predecessorResult)) {
                     // the previous cache entry overlaps with the records we retrieved: filter out overlapping records
                     // (by reducing the loaded records to those that come after the last predecessor record)
-                    cachePosition = loadedPosition.next(predecessorResult);
+                    cachePosition = loadedPosition.positionAfterResult(predecessorResult);
                     cacheResult.setRecords(cacheResult.getRecords().stream()
                         .filter(cachePosition)
                         .collect(toList()));
@@ -878,7 +876,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     predecessorAdjacent = true;
                 } else {
                     //
-                    predecessorAdjacent = loadedPosition.equals(loadedPosition.next(predecessorResult));
+                    predecessorAdjacent = loadedPosition.equals(loadedPosition.positionAfterResult(predecessorResult));
                 }
             }
 
@@ -901,11 +899,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     } else {
                         // if some of the retrieved records are not contained in the next segment,
                         cacheResult.setNextShardIterator(
-                            cachePosition.nextShardIterator(cacheResult, null).toExternalString());
+                            cachePosition.iteratorAfterResult(cacheResult, null).toExternalString());
                         successorAdjacent = true;
                     }
                 } else {
-                    successorAdjacent = successorPosition.equals(cachePosition.next(cacheResult));
+                    successorAdjacent = successorPosition.equals(cachePosition.positionAfterResult(cacheResult));
                 }
             }
 
@@ -946,17 +944,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         previous = recordsCacheIndex.put(key, value);
         assert previous == null;
         recordsCacheByteSize += getByteSize(value);
+        // LRU behavior
+        while (recordsCacheByteSize > maxRecordsByteSize) {
+            removeCacheEntry(recordsCache.entrySet().iterator().next());
+        }
     }
 
     private void removeCacheEntry(Entry<IteratorPosition, GetRecordsResult> entry) {
-        GetRecordsResult value = recordsCache.remove(entry.getKey());
-        assert value == entry.getValue();
-        removedCacheEntry(entry);
-    }
-
-    private void removedCacheEntry(Entry<IteratorPosition, GetRecordsResult> entry) {
-        GetRecordsResult value = recordsCacheIndex.remove(entry.getKey());
-        assert value == entry.getValue();
+        GetRecordsResult previous = recordsCache.remove(entry.getKey());
+        assert previous == entry.getValue();
+        previous = recordsCacheIndex.remove(entry.getKey());
+        assert previous == entry.getValue();
         recordsCacheByteSize -= getByteSize(entry.getValue());
         assert recordsCacheByteSize >= 0;
     }
