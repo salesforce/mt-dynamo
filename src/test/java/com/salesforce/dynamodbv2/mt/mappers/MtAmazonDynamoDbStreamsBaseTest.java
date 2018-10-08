@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import org.junit.jupiter.api.Assumptions;
@@ -103,6 +104,12 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 new DeleteTableRequest(name)));
     }
 
+    protected static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams,
+        AmazonDynamoDB mtDynamoDb) {
+        return getShardIterator(mtDynamoDbStreams,
+            mtDynamoDb.describeTable(TENANT_TABLE_NAME).getTable().getLatestStreamArn());
+    }
+
     protected static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, Stream stream) {
         return getShardIterator(mtDynamoDbStreams, stream.getStreamArn());
     }
@@ -158,14 +165,20 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         }, String.valueOf(id));
     }
 
-    protected static void assertMtRecord(MtRecord expected, Record actual) {
-        assertTrue(actual instanceof MtRecord);
+    protected static boolean equals(MtRecord expected, Record actual) {
+        if (!(actual instanceof MtRecord)) {
+            return false;
+        }
         MtRecord mtRecord = (MtRecord) actual;
-        assertEquals(expected.getContext(), mtRecord.getContext());
-        assertEquals(expected.getTableName(), mtRecord.getTableName());
-        assertEquals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys());
-        assertEquals(expected.getDynamodb().getNewImage(), actual.getDynamodb().getNewImage());
-        assertEquals(expected.getDynamodb().getOldImage(), actual.getDynamodb().getOldImage());
+        return Objects.equals(expected.getContext(), mtRecord.getContext())
+            && Objects.equals(expected.getTableName(), mtRecord.getTableName())
+            && Objects.equals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys())
+            && Objects.equals(expected.getDynamodb().getNewImage(), actual.getDynamodb().getNewImage())
+            && Objects.equals(expected.getDynamodb().getOldImage(), actual.getDynamodb().getOldImage());
+    }
+
+    protected static void assertMtRecord(MtRecord expected, Record actual) {
+        assertTrue(equals(expected, actual));
     }
 
     protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {

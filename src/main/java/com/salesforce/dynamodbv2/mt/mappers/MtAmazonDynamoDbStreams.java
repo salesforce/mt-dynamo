@@ -38,10 +38,4 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
         throw new UnsupportedOperationException(dynamoDb.getClass().getName() + " is currently not supported");
     }
 
-    /**
-     * Gets the underlying {@link AmazonDynamoDBStreams} instance.
-     *
-     * @return the underlying {@link AmazonDynamoDBStreams} instance
-     */
-    AmazonDynamoDBStreams getAmazonDynamoDbStreams();
 }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
@@ -117,19 +118,24 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 new CountingAmazonDynamoDbStreams(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).build());
-            String iterator = getShardIterator(mtDynamoDbStreams);
 
             // test without context
+            String iterator = getShardIterator(mtDynamoDbStreams);
             assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+
             // test with each tenant context
-            MT_CONTEXT.withContext(TENANTS[0],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2));
-            MT_CONTEXT.withContext(TENANTS[1],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator, expected3, expected4));
+            MT_CONTEXT.withContext(TENANTS[0], () -> {
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
+            });
+            MT_CONTEXT.withContext(TENANTS[1], () -> {
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+            });
 
             // once to fetch records, once per getRecords (3) to find empty range
             assertEquals(6, dynamoDbStreams.getRecordsCount);
-            assertEquals(1, dynamoDbStreams.getShardIteratorCount);
+            assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
         }
@@ -171,9 +177,9 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             // now query change streams
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
-            String iterator = getShardIterator(mtDynamoDbStreams);
 
             MT_CONTEXT.withContext(TENANTS[0], () -> {
+                String iterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
                 GetRecordsResult result = mtDynamoDbStreams.getRecords(new GetRecordsRequest()
                     .withShardIterator(iterator)
                     .withLimit(3));

@@ -27,11 +27,14 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,7 +144,14 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         describeTableRequest = describeTableRequest.clone();
         describeTableRequest.withTableName(buildPrefixedTableName(describeTableRequest.getTableName()));
         DescribeTableResult describeTableResult = getAmazonDynamoDb().describeTable(describeTableRequest);
-        describeTableResult.getTable().setTableName(unqualifiedTableName);
+        TableDescription description = describeTableResult.getTable();
+        description.setTableName(unqualifiedTableName);
+        if (Optional.ofNullable(description.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
+            .orElse(false)) {
+            description.setLatestStreamArn(StreamArn
+                .fromString(description.getLatestStreamArn(), getMtContext().getContext(), unqualifiedTableName)
+                .toString());
+        }
         return describeTableResult;
     }
 

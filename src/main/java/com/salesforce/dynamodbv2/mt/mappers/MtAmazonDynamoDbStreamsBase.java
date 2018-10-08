@@ -13,12 +13,12 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import com.salesforce.dynamodbv2.mt.util.ShardIterator;
+import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,68 +31,12 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
     private static final Logger LOG = LoggerFactory.getLogger(MtAmazonDynamoDbStreamsBase.class);
 
-    /**
-     * Encapsulates logic of prefixing shard iterator with (physical) table name.
-     */
-    private static class ShardIterator {
-
-        private static final String DELIMITER = "/";
-
-        static ShardIterator parse(String s) {
-            int idx = s.indexOf(DELIMITER);
-            checkArgument(idx > 0, "Invalid shard iterator");
-            String tableName = s.substring(0, idx);
-            String shardIterator = s.substring(idx + 1);
-            return new ShardIterator(tableName, shardIterator);
-        }
-
-        private final String tableName;
-        private final String iterator;
-
-        ShardIterator(String tableName, String iterator) {
-            this.tableName = tableName;
-            this.iterator = iterator;
-        }
-
-        ShardIterator next(String iterator) {
-            return new ShardIterator(tableName, iterator);
-        }
-
-        @Override
-        public String toString() {
-            return String.join(DELIMITER, tableName, iterator);
-        }
-    }
 
     protected final T mtDynamoDb;
-    private final LoadingCache<String, String> streamArnToTableName;
 
     protected MtAmazonDynamoDbStreamsBase(AmazonDynamoDBStreams streams, T mtDynamoDb) {
         super(streams);
         this.mtDynamoDb = mtDynamoDb;
-        this.streamArnToTableName = CacheBuilder.newBuilder().build(CacheLoader.from(this::getTableName));
-    }
-
-    /**
-     * Looks up the table name for the given stream.
-     *
-     * @param streamArn Stream to look up
-     * @return Corresponding table name.
-     */
-    private String getTableName(String streamArn) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("getTableName streamArn={}", streamArn);
-        }
-
-        DescribeStreamResult result = super.describeStream(new DescribeStreamRequest()
-            .withStreamArn(streamArn)
-            .withLimit(1)); // we don't need shards, but limit value must be > 0
-        String tableName = result.getStreamDescription().getTableName();
-
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("getTableName result={}", tableName);
-        }
-        return tableName;
     }
 
     /**
@@ -113,14 +57,11 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             "listStreams currently does not support filtering by table name");
 
         // filter to mt tables
-        ListStreamsResult result = super.listStreams(listStreamsRequest);
+        ListStreamsResult result = dynamoDbStreams.listStreams(listStreamsRequest);
 
         result.setStreams(result.getStreams().stream()
             .filter(stream -> mtDynamoDb.isMtTable(stream.getTableName()))
             .collect(toList()));
-
-        // cache result before returning
-        result.getStreams().forEach(s -> streamArnToTableName.put(s.getStreamArn(), s.getTableName()));
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("listStreams #streams={}, lastEvaluatedStreamArn={}",
@@ -130,23 +71,40 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
     }
 
     /**
-     * Prepend physical table name to shard iterator, so that we can reverse transform records.
+     * Translates between virtual and physical stream arns.
      *
-     * @param request Shard iterator request.
+     * @param describeStreamRequest Describe stream request.
+     * @return Result
+     */
+    @Override
+    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+        String arn = describeStreamRequest.getStreamArn();
+        DescribeStreamRequest request = describeStreamRequest.clone().withStreamArn(parse(arn).toDynamoDbArn());
+        DescribeStreamResult result = dynamoDbStreams.describeStream(request);
+        return result.withStreamDescription(result.getStreamDescription().withStreamArn(arn));
+    }
+
+    /**
+     * Translates between virtual and physical stream arns.
+     *
+     * @param getShardIteratorRequest Shard iterator request.
      * @return Mt shard iterator.
      */
     @Override
-    public GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
+    public GetShardIteratorResult getShardIterator(GetShardIteratorRequest getShardIteratorRequest) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("getShardIterator request={}", request);
+            LOG.debug("getShardIterator request={}", getShardIteratorRequest);
         }
 
-        GetShardIteratorResult result = super.getShardIterator(request);
+        String arn = getShardIteratorRequest.getStreamArn();
+        String dynamoDbArn = parse(arn).toDynamoDbArn();
+        GetShardIteratorRequest request = getShardIteratorRequest.clone().withStreamArn(dynamoDbArn);
 
-        // prepend table name
-        String tableName = streamArnToTableName.getUnchecked(request.getStreamArn());
-        ShardIterator shardIterator = new ShardIterator(tableName, result.getShardIterator());
-        result.setShardIterator(shardIterator.toString());
+        GetShardIteratorResult result = dynamoDbStreams.getShardIterator(request);
+
+        ShardIterator iterator = ShardIterator.fromString(result.getShardIterator());
+        checkArgument(dynamoDbArn.equals(iterator.getArn()));
+        result.setShardIterator(iterator.withArn(arn).toString());
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getShardIterator result={}", result);
@@ -166,15 +124,17 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             LOG.debug("getRecords request={}", request);
         }
 
-        ShardIterator iterator = ShardIterator.parse(request.getShardIterator());
+        ShardIterator iterator = ShardIterator.fromString(request.getShardIterator());
+        String arn = iterator.getArn();
+        StreamArn streamArn = parse(arn);
 
         GetRecordsResult result = getRecords(
-            getMtRecordMapper(iterator.tableName),
-            request.withShardIterator(iterator.iterator));
+            getMtRecordMapper(streamArn),
+            getMtRecordFilter(streamArn),
+            request.withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString()));
 
         Optional.ofNullable(result.getNextShardIterator())
-            .map(iterator::next)
-            .map(ShardIterator::toString)
+            .map(nextIterator -> ShardIterator.fromString(nextIterator).withArn(arn).toString())
             .ifPresent(result::setNextShardIterator);
 
         if (LOG.isDebugEnabled()) {
@@ -184,24 +144,32 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         return result;
     }
 
-    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper,
+    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
         GetRecordsRequest getRecordsRequest) {
-        return mapResult(recordMapper, super.getRecords(getRecordsRequest));
+        return processResult(recordMapper, recordFilter, super.getRecords(getRecordsRequest));
     }
 
-    protected GetRecordsResult mapResult(Function<Record, MtRecord> recordMapper, GetRecordsResult result) {
+    protected GetRecordsResult processResult(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
+        GetRecordsResult result) {
         return new GetRecordsResult()
             .withNextShardIterator(result.getNextShardIterator())
             .withRecords(result.getRecords().stream()
                 .map(recordMapper)
-                .filter(this::matchesContext)
+                .filter(recordFilter)
                 .collect(toList()));
     }
 
-    protected boolean matchesContext(MtRecord mtRecord) {
-        return mtDynamoDb.getMtContext().getContextOpt().map(mtRecord.getContext()::equals).orElse(true);
+    protected abstract Function<Record, MtRecord> getMtRecordMapper(StreamArn arn);
+
+    protected Predicate<MtRecord> getMtRecordFilter(StreamArn arn) {
+        return arn::matches;
     }
 
-    protected abstract Function<Record, MtRecord> getMtRecordMapper(String tableName);
+    private StreamArn parse(String arn) {
+        StreamArn parsedArn = StreamArn.fromString(arn);
+        checkArgument(parsedArn.getContextOpt().equals(mtDynamoDb.getMtContext().getContextOpt()),
+            "Current context does not match arn context");
+        return parsedArn;
+    }
 
 }

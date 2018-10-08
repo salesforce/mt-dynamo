@@ -1,19 +1,24 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
+import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
+import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.Stream;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opentest4j.AssertionFailedError;
@@ -89,36 +94,36 @@ class MtAmazonDynamoDbStreamsByTableTest extends MtAmazonDynamoDbStreamsBaseTest
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
+            // test without context
             final List<Stream> streams = mtDynamoDbStreams.listStreams(new ListStreamsRequest()).getStreams();
-            final Function<String, Stream> getTenantStream = tenant -> streams.stream()
-                .filter(matchesTenant(mtDynamoDb, tenant))
-                .findFirst()
-                .orElseThrow(AssertionFailedError::new);
+            final List<Record> actual = streams.stream()
+                .map(stream -> getShardIterator(mtDynamoDbStreams, stream))
+                .map(Optional::get)
+                .map(iterator -> mtDynamoDbStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator))
+                    .getRecords())
+                .flatMap(List::stream)
+                .collect(toList());
+            assertRecordsEquals(actual, expected1, expected2, expected3, expected4);
 
-            final Stream tenant1Stream = getTenantStream.apply(TENANTS[0]);
-            final String iterator1 = getShardIterator(mtDynamoDbStreams, tenant1Stream).get();
-            assertGetRecords(mtDynamoDbStreams, iterator1, expected1, expected2);
-            MT_CONTEXT.withContext(TENANTS[0],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator1, expected1, expected2));
-            // should we fail here instead of returning no records?
-            MT_CONTEXT.withContext(TENANTS[1],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator1));
-
-            final Stream tenant2Stream = getTenantStream.apply(TENANTS[1]);
-            final String iterator2 = getShardIterator(mtDynamoDbStreams, tenant2Stream).get();
-            assertGetRecords(mtDynamoDbStreams, iterator2, expected3, expected4);
-            MT_CONTEXT.withContext(TENANTS[0],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator2));
-            // should we fail here instead of returning no records?
-            MT_CONTEXT.withContext(TENANTS[1],
-                () -> assertGetRecords(mtDynamoDbStreams, iterator2, expected3, expected4));
+            // test with tenant contexts
+            MT_CONTEXT.withContext(TENANTS[0], () -> {
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
+            });
+            MT_CONTEXT.withContext(TENANTS[1], () -> {
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+            });
         } finally {
             deleteMtTables(mtDynamoDb);
         }
     }
 
-    private static Predicate<Stream> matchesTenant(MtAmazonDynamoDbByTable mtDynamoDb, String tenant) {
-        return stream -> tenant.equals(mtDynamoDb.getTenantAndTableName(stream.getTableName())[0]);
+    private void assertRecordsEquals(List<Record> actual, MtRecord... expected) {
+        assertEquals(expected.length, actual.size());
+        for (MtRecord expectedRecord : expected) {
+            assertTrue(actual.stream().anyMatch(actualRecord -> equals(expectedRecord, actualRecord)));
+        }
     }
 
 }
