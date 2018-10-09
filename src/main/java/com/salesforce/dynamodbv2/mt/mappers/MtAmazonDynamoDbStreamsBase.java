@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
@@ -78,10 +79,24 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      */
     @Override
     public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("describeStream request={}", describeStreamRequest);
+        }
+
         String arn = describeStreamRequest.getStreamArn();
-        DescribeStreamRequest request = describeStreamRequest.clone().withStreamArn(parse(arn).toDynamoDbArn());
+        StreamArn streamArn = parse(arn);
+        DescribeStreamRequest request = describeStreamRequest.clone().withStreamArn(streamArn.toDynamoDbArn());
+
         DescribeStreamResult result = dynamoDbStreams.describeStream(request);
-        return result.withStreamDescription(result.getStreamDescription().withStreamArn(arn));
+
+        StreamDescription description = result.getStreamDescription();
+        streamArn.getMtTableName().ifPresent(description::setTableName);
+        description.setStreamArn(arn);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("describeStream result={}", result);
+        }
+        return result;
     }
 
     /**
@@ -167,8 +182,8 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
     private StreamArn parse(String arn) {
         StreamArn parsedArn = StreamArn.fromString(arn);
-        checkArgument(parsedArn.getContextOpt().equals(mtDynamoDb.getMtContext().getContextOpt()),
-            "Current context does not match arn context");
+        checkArgument(parsedArn.getContext().equals(mtDynamoDb.getMtContext().getContextOpt()),
+            "Current context does not match ARN context");
         return parsedArn;
     }
 

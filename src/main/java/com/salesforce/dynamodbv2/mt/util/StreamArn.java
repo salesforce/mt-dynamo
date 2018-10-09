@@ -30,8 +30,13 @@ public class StreamArn {
         }
 
         @Override
-        public Optional<String> getContextOpt() {
+        public Optional<String> getContext() {
             return Optional.of(context);
+        }
+
+        @Override
+        public Optional<String> getMtTableName() {
+            return Optional.of(mtTableName);
         }
 
         @Override
@@ -93,7 +98,6 @@ public class StreamArn {
      * @return Parsed arn.
      */
     public static StreamArn fromString(String arn) {
-        System.out.println(arn);
         Matcher m = ARN_PATTERN.matcher(arn);
         checkArgument(m.matches());
         String partition = m.group("partition");
@@ -146,7 +150,16 @@ public class StreamArn {
      *
      * @return Context in this arn. May be empty.
      */
-    public Optional<String> getContextOpt() {
+    public Optional<String> getContext() {
+        return Optional.empty();
+    }
+
+    /**
+     * Returns the tenant table name in this arn.
+     *
+     * @return Tenant table name in this arn. May be empty.
+     */
+    public Optional<String> getMtTableName() {
         return Optional.empty();
     }
 

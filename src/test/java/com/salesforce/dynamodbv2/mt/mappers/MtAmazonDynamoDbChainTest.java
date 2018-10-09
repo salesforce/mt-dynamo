@@ -65,6 +65,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,6 +87,7 @@ class MtAmazonDynamoDbChainTest {
     private static final boolean IS_LOCAL_DYNAMO = true;
 
     @Test
+    @Disabled
     void test() throws Exception {
         // create context
         MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
