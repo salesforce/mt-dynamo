@@ -5,8 +5,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Stream ARN that includes a virtual table name in addition to the physical table name and stream label. See <a
@@ -17,16 +15,16 @@ public class StreamArn {
 
     static class MtStreamArn extends StreamArn {
 
-        private static final String VIRTUAL_FORMAT = "%s/context/%s/mttable/%s";
+        private static final String VIRTUAL_FORMAT =
+            "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
 
         private final String context;
-        private final String mtTableName;
+        private final String tenantTableName;
 
-        MtStreamArn(String partition, String service, String region, String accountId, String tableName,
-            String streamLabel, String context, String mtTableName) {
-            super(partition, service, region, accountId, tableName, streamLabel);
+        MtStreamArn(String prefix, String tableName, String streamLabel, String context, String tenantTableName) {
+            super(prefix, tableName, streamLabel);
             this.context = context;
-            this.mtTableName = mtTableName;
+            this.tenantTableName = tenantTableName;
         }
 
         @Override
@@ -35,13 +33,13 @@ public class StreamArn {
         }
 
         @Override
-        public Optional<String> getMtTableName() {
-            return Optional.of(mtTableName);
+        public Optional<String> getTenantTableName() {
+            return Optional.of(tenantTableName);
         }
 
         @Override
         public boolean matches(MtRecord record) {
-            return context.equals(record.getContext()) && mtTableName.equals(record.getTableName());
+            return context.equals(record.getContext()) && tenantTableName.equals(record.getTableName());
         }
 
         @Override
@@ -56,26 +54,30 @@ public class StreamArn {
                 return false;
             }
             MtStreamArn that = (MtStreamArn) o;
-            return Objects.equals(context, that.context)
-                && Objects.equals(mtTableName, that.mtTableName);
+            return Objects.equals(context, that.context) && Objects.equals(tenantTableName, that.tenantTableName);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), context, mtTableName);
+            return Objects.hash(super.hashCode(), context, tenantTableName);
         }
 
         @Override
         public String toString() {
-            return String.format(VIRTUAL_FORMAT, super.toString(), context, mtTableName);
+            return String.format(VIRTUAL_FORMAT, super.toString(), context, tenantTableName);
         }
+
     }
 
-    private static final String FORMAT = "arn:%s:%s:%s:%s:table/%s/stream/%s";
-
-    private static final Pattern ARN_PATTERN = Pattern.compile("arn:(?<partition>[^:]+):(?<service>[^:]+):"
-        + "(?<region>[^:]+):(?<accountId>[^:]+):table/(?<tableName>[^/]+)/stream/(?<streamLabel>[^/]+)"
-        + "(?:/context/(?<context>[^/]+)/mttable/(?<mtTableName>[^/]+))?");
+    private static final char QUALIFIER_SEPARATOR = ':';
+    private static final char RESOURCE_SEPARATOR = '/';
+    private static final String ARN_PREFIX = "arn" + QUALIFIER_SEPARATOR;
+    private static final String TABLE_SEGMENT = "table" + RESOURCE_SEPARATOR;
+    private static final String STREAM_SEGMENT = "stream" + RESOURCE_SEPARATOR;
+    private static final String CONTEXT_SEGMENT = "context" + RESOURCE_SEPARATOR;
+    private static final String TENANT_TABLE_SEGMENT = "tenantTable" + RESOURCE_SEPARATOR;
+    private static final String FORMAT =
+        ARN_PREFIX + "%s" + TABLE_SEGMENT + "%s" + RESOURCE_SEPARATOR + STREAM_SEGMENT + "%s";
 
     /**
      * Parses arn from string value and assigns the given context and tenant table.
@@ -87,8 +89,7 @@ public class StreamArn {
      */
     public static StreamArn fromString(String arn, String context, String mtTableName) {
         StreamArn streamArn = fromString(arn);
-        return new MtStreamArn(streamArn.partition, streamArn.service, streamArn.region, streamArn.accountId,
-            streamArn.tableName, streamArn.streamLabel, context, mtTableName);
+        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, context, mtTableName);
     }
 
     /**
@@ -98,40 +99,63 @@ public class StreamArn {
      * @return Parsed arn.
      */
     public static StreamArn fromString(String arn) {
-        Matcher m = ARN_PATTERN.matcher(arn);
-        checkArgument(m.matches());
-        String partition = m.group("partition");
-        String service = m.group("service");
-        String region = m.group("region");
-        String accountId = m.group("accountId");
-        String tableName = m.group("tableName");
-        String streamLabel = m.group("streamLabel");
-        Optional<String> context = Optional.ofNullable(m.group("context"));
-        Optional<String> virtualTableName = Optional.ofNullable(m.group("mtTableName"));
+        // arn prefix
+        checkArgument(arn.startsWith(ARN_PREFIX), "ARN missing '" + ARN_PREFIX + "' qualifier");
+        int start = ARN_PREFIX.length();
+        int end = start;
 
-        if (context.isPresent() && virtualTableName.isPresent()) {
-            return new MtStreamArn(partition, service, region, accountId, tableName, streamLabel, context.get(),
-                virtualTableName.get());
-        } else if (!context.isPresent() && !virtualTableName.isPresent()) {
-            return new StreamArn(partition, service, region, accountId, tableName, streamLabel);
-        } else {
-            throw new IllegalArgumentException("Invalid stream arn " + arn);
+        // qualifier (partition, service, region, and accountId)
+        for (int i = 0; i < 4; i++) {
+            end = arn.indexOf(QUALIFIER_SEPARATOR, end) + 1;
+            checkArgument(end > 0);
         }
+        String qualifier = arn.substring(start, end);
+
+        // table name
+        start = end;
+        checkArgument(arn.regionMatches(start, TABLE_SEGMENT, 0, TABLE_SEGMENT.length()));
+        start += TABLE_SEGMENT.length();
+        end = arn.indexOf(RESOURCE_SEPARATOR, start);
+        checkArgument(end != -1);
+        String tableName = arn.substring(start, end);
+
+        // stream label
+        start = end + 1;
+        checkArgument(arn.regionMatches(start, STREAM_SEGMENT, 0, STREAM_SEGMENT.length()));
+        start += STREAM_SEGMENT.length();
+        end = arn.indexOf(RESOURCE_SEPARATOR, start);
+        String streamLabel = end == -1 ? arn.substring(start) : arn.substring(start, end);
+
+        // no tenant part (standard DynamoDB ARN)
+        if (end == -1) {
+            return new StreamArn(qualifier, tableName, streamLabel);
+        }
+
+        // tenant context
+        start = end + 1;
+        checkArgument(arn.regionMatches(start, CONTEXT_SEGMENT, 0, CONTEXT_SEGMENT.length()));
+        start += CONTEXT_SEGMENT.length();
+        end = arn.indexOf(RESOURCE_SEPARATOR, start);
+        checkArgument(end != -1);
+        String context = arn.substring(start, end);
+
+        // tenant table
+        start = end + 1;
+        checkArgument(arn.regionMatches(start, TENANT_TABLE_SEGMENT, 0, TENANT_TABLE_SEGMENT.length()));
+        start += TENANT_TABLE_SEGMENT.length();
+        end = arn.indexOf(RESOURCE_SEPARATOR, start);
+        checkArgument(end == -1);
+        String tenantTableName = arn.substring(start);
+
+        return new MtStreamArn(qualifier, tableName, streamLabel, context, tenantTableName);
     }
 
-    private final String partition;
-    private final String service;
-    private final String region;
-    private final String accountId;
+    private final String qualifier;
     private final String tableName;
     private final String streamLabel;
 
-    StreamArn(String partition, String service, String region, String accountId,
-        String tableName, String streamLabel) {
-        this.partition = partition;
-        this.service = service;
-        this.region = region;
-        this.accountId = accountId;
+    StreamArn(String qualifier, String tableName, String streamLabel) {
+        this.qualifier = qualifier;
         this.tableName = tableName;
         this.streamLabel = streamLabel;
     }
@@ -159,12 +183,12 @@ public class StreamArn {
      *
      * @return Tenant table name in this arn. May be empty.
      */
-    public Optional<String> getMtTableName() {
+    public Optional<String> getTenantTableName() {
         return Optional.empty();
     }
 
     /**
-     * Checks whether this arn matches the given record given the context and mtTableName configured in it.
+     * Checks whether this arn matches the given record given the context and tenantTableName configured in it.
      *
      * @param record Record to test
      * @return true if arn context and table name matches record, false otherwise.
@@ -179,7 +203,7 @@ public class StreamArn {
      * @return DynamoDB-compatible representation.
      */
     public String toDynamoDbArn() {
-        return String.format(FORMAT, partition, service, region, accountId, tableName, streamLabel);
+        return String.format(FORMAT, qualifier, tableName, streamLabel);
     }
 
     @Override
@@ -196,16 +220,13 @@ public class StreamArn {
             return false;
         }
         StreamArn that = (StreamArn) o;
-        return Objects.equals(partition, that.partition)
-            && Objects.equals(service, that.service)
-            && Objects.equals(region, that.region)
-            && Objects.equals(accountId, that.accountId)
+        return Objects.equals(qualifier, that.qualifier)
             && Objects.equals(tableName, that.tableName)
             && Objects.equals(streamLabel, that.streamLabel);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(partition, service, region, accountId, tableName, streamLabel);
+        return Objects.hash(qualifier, tableName, streamLabel);
     }
 }

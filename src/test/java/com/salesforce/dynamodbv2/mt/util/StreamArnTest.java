@@ -11,23 +11,19 @@ import org.junit.jupiter.params.provider.MethodSource;
 class StreamArnTest {
 
     static Stream<Arguments> args() {
-        String partition = "aws";
-        String service = "dynamodb";
-        String region = "us-east-1";
-        String accountId = "123456789012";
+        String qualifier = "aws:dynamodb:us-east-1:123456789012:";
         String tableName = "mt_sharedtablestatic_s_s";
         String streamLabel = "2015-05-11T21:21:33.291";
         String context = "tenant1";
         String virtualTableName = "books_table";
 
         String expectedString1 =
-            "arn:" + partition + ":" + service + ":" + region + ":" + accountId + ":table/" + tableName + "/stream/"
+            "arn:" + qualifier + "table/" + tableName + "/stream/"
                 + streamLabel;
-        StreamArn expectedObject1 = new StreamArn(partition, service, region, accountId, tableName, streamLabel);
+        StreamArn expectedObject1 = new StreamArn(qualifier, tableName, streamLabel);
 
-        String expectedString2 = expectedString1 + "/context/" + context + "/mttable/" + virtualTableName;
-        StreamArn expectedObject2 = new MtStreamArn(partition, service, region, accountId, tableName, streamLabel,
-            context, virtualTableName);
+        String expectedString2 = expectedString1 + "/context/" + context + "/tenantTable/" + virtualTableName;
+        StreamArn expectedObject2 = new MtStreamArn(qualifier, tableName, streamLabel, context, virtualTableName);
 
         return Stream
             .of(Arguments.of(expectedString1, expectedObject1), Arguments.of(expectedString2, expectedObject2));

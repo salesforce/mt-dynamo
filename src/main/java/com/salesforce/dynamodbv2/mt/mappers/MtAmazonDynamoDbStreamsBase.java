@@ -90,7 +90,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         DescribeStreamResult result = dynamoDbStreams.describeStream(request);
 
         StreamDescription description = result.getStreamDescription();
-        streamArn.getMtTableName().ifPresent(description::setTableName);
+        streamArn.getTenantTableName().ifPresent(description::setTableName);
         description.setStreamArn(arn);
 
         if (LOG.isDebugEnabled()) {
