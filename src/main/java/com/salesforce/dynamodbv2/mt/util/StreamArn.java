@@ -152,7 +152,7 @@ public class StreamArn {
 
     private final String qualifier;
     private final String tableName;
-    private final String streamLabel;a
+    private final String streamLabel;
 
     StreamArn(String qualifier, String tableName, String streamLabel) {
         this.qualifier = qualifier;
