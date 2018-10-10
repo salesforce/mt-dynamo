@@ -89,7 +89,6 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -333,23 +332,6 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     public ListTablesResult listTables(Integer limit) {
         throw new UnsupportedOperationException();
-    }
-
-    List<String> listAllTables() {
-        List<String> tables = new ArrayList<>();
-        ListTablesResult result;
-        String lastEvaluated = null;//Below loop is to iterate through pages
-        do {
-            result = (lastEvaluated == null)
-                ? getAmazonDynamoDb().listTables()
-                : getAmazonDynamoDb().listTables(lastEvaluated);
-            if (result != null) {
-                tables.addAll(result.getTableNames());
-                lastEvaluated = result.getLastEvaluatedTableName();
-            }
-        } while (lastEvaluated != null);
-
-        return tables;
     }
 
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {

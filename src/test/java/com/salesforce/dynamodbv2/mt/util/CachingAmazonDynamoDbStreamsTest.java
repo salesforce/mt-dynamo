@@ -286,9 +286,9 @@ class CachingAmazonDynamoDbStreamsTest {
 
     private static String mockShardIterator(GetShardIteratorRequest iteratorRequest) {
         return String.join(
-            "/",
-            "mock-shard-iterator" + UUID.randomUUID(),
+            "|",
             iteratorRequest.getStreamArn(),
+            "mock-shard-iterator" + UUID.randomUUID(),
             iteratorRequest.getShardId(),
             iteratorRequest.getShardIteratorType(),
             iteratorRequest.getSequenceNumber());

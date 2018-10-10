@@ -34,6 +34,7 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
@@ -48,6 +49,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -236,8 +238,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         TableDescription tableDescription =
             mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE");
-        tableDescription.withLatestStreamArn(
-            getTableMapping(describeTableRequest.getTableName()).getPhysicalTable().getLastStreamArn());
+        if (Optional.ofNullable(tableDescription.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
+            .orElse(false)) {
+            String arn = getTableMapping(describeTableRequest.getTableName()).getPhysicalTable().getLastStreamArn();
+            tableDescription.setLatestStreamArn(
+                StreamArn.fromString(arn, getMtContext().getContext(), tableDescription.getTableName()).toString());
+        }
         return new DescribeTableResult().withTable(tableDescription);
     }
 

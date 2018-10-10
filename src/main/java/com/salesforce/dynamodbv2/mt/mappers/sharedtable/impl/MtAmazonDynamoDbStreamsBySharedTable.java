@@ -4,17 +4,21 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
+import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
+import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
+import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,9 +40,15 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     @Override
-    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper, GetRecordsRequest request) {
+    public GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
+        return super.getShardIterator(request);
+    }
+
+    @Override
+    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
+        GetRecordsRequest request) {
         GetRecordsResult result = dynamoDbStreams.getRecords(request);
-        GetRecordsResult mtResult = mapResult(recordMapper, result);
+        GetRecordsResult mtResult = processResult(recordMapper, recordFilter, result);
 
         // keep fetching records if we haven't reached the limit yet
         int limit = Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT);
@@ -54,7 +64,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withShardIterator(result.getNextShardIterator())
                 .withLimit(limit);
             GetRecordsResult nextResult = dynamoDbStreams.getRecords(nextRequest);
-            GetRecordsResult nextMtResult = mapResult(recordMapper, nextResult);
+            GetRecordsResult nextMtResult = processResult(recordMapper, recordFilter, nextResult);
             int unionSize = mtResult.getRecords().size() + nextMtResult.getRecords().size();
             if (unionSize > limit) {
                 break;
@@ -70,9 +80,21 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     @Override
-    protected Function<Record, MtRecord> getMtRecordMapper(String tableName) {
+    protected Predicate<MtRecord> getMtRecordFilter(StreamArn arn) {
+        Predicate<MtRecord> defaultPredicate = super.getMtRecordFilter(arn);
+        return mtRecord ->
+            mtDynamoDb.getMtContext().withContext(mtRecord.getContext(), this::isStreamEnabled, mtRecord.getTableName())
+                && defaultPredicate.test(mtRecord);
+    }
+
+    private boolean isStreamEnabled(String tableName) {
+        return mtDynamoDb.getTableMapping(tableName).getVirtualTable().getStreamSpecification().isStreamEnabled();
+    }
+
+    @Override
+    protected Function<Record, MtRecord> getMtRecordMapper(StreamArn arn) {
         Function<Map<String, AttributeValue>, FieldValue> fieldValueFunction =
-            mtDynamoDb.getFieldValueFunction(tableName);
+            mtDynamoDb.getFieldValueFunction(arn.getTableName());
         return record -> mapRecord(fieldValueFunction, record);
     }
 
@@ -81,6 +103,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         FieldValue fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
         MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
         // execute in record tenant context to get table mapping
+
         TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
             mtDynamoDb::getTableMapping, fieldValue.getTableIndex());
         ItemMapper itemMapper = tableMapping.getItemMapper();
