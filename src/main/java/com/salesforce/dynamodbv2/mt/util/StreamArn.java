@@ -137,7 +137,7 @@ public class StreamArn {
         start += CONTEXT_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end != -1);
-        String context = arn.substring(start, end);
+        final String context = arn.substring(start, end);
 
         // tenant table
         start = end + 1;
@@ -152,7 +152,7 @@ public class StreamArn {
 
     private final String qualifier;
     private final String tableName;
-    private final String streamLabel;
+    private final String streamLabel;a
 
     StreamArn(String qualifier, String tableName, String streamLabel) {
         this.qualifier = qualifier;
