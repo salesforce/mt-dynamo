@@ -139,7 +139,7 @@
                  see the maven-surefire-plugin declaration in the "isolated-tests" profile below. -->
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.22.0</version>
+                <version>2.22.1</version>
                 <dependencies>
                     <dependency>
                         <groupId>org.junit.platform</groupId>
@@ -294,7 +294,7 @@
                          "mvn clean test -P isolated-tests".  -->
                     <plugin>
                         <artifactId>maven-surefire-plugin</artifactId>
-                        <version>2.22.0</version>
+                        <version>2.22.1</version>
                         <dependencies>
                             <dependency>
                                 <groupId>org.junit.platform</groupId>
