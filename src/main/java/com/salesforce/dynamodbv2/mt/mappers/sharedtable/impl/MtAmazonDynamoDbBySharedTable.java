@@ -197,7 +197,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        return new CreateTableResult().withTableDescription(mtTableDescriptionRepo.createTable(createTableRequest));
+        return new CreateTableResult()
+            .withTableDescription(withTenantStreamArn(mtTableDescriptionRepo.createTable(createTableRequest)));
     }
 
     /**
@@ -238,13 +239,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         TableDescription tableDescription =
             mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE");
+        withTenantStreamArn(tableDescription);
+        return new DescribeTableResult().withTable(withTenantStreamArn(tableDescription));
+    }
+
+    private TableDescription withTenantStreamArn(TableDescription tableDescription) {
         if (Optional.ofNullable(tableDescription.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
             .orElse(false)) {
-            String arn = getTableMapping(describeTableRequest.getTableName()).getPhysicalTable().getLastStreamArn();
+            String arn = getTableMapping(tableDescription.getTableName()).getPhysicalTable().getLastStreamArn();
             tableDescription.setLatestStreamArn(
                 StreamArn.fromString(arn, getMtContext().getContext(), tableDescription.getTableName()).toString());
         }
-        return new DescribeTableResult().withTable(tableDescription);
+        return tableDescription;
     }
 
     /**
