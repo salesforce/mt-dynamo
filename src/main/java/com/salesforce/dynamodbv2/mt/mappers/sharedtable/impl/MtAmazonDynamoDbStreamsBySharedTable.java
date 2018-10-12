@@ -2,8 +2,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
-import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
@@ -13,20 +11,12 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStreamsBase<MtAmazonDynamoDbBySharedTable> {
-
-    private static final Logger LOG = LoggerFactory.getLogger(MtAmazonDynamoDbStreamsBySharedTable.class);
-    private static final int MAX_LIMIT = 1000;
 
     /**
      * Default constructor.
@@ -42,41 +32,6 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     @Override
     public GetShardIteratorResult getShardIterator(GetShardIteratorRequest request) {
         return super.getShardIterator(request);
-    }
-
-    @Override
-    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
-        GetRecordsRequest request) {
-        GetRecordsResult result = dynamoDbStreams.getRecords(request);
-        GetRecordsResult mtResult = processResult(recordMapper, recordFilter, result);
-
-        // keep fetching records if we haven't reached the limit yet
-        int limit = Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT);
-        while (mtResult.getRecords().size() < limit
-            && !result.getRecords().isEmpty()
-            && result.getNextShardIterator() != null) {
-
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Fetching more records. limit={}, current={}", limit, mtResult.getRecords().size());
-            }
-
-            GetRecordsRequest nextRequest = new GetRecordsRequest()
-                .withShardIterator(result.getNextShardIterator())
-                .withLimit(limit);
-            GetRecordsResult nextResult = dynamoDbStreams.getRecords(nextRequest);
-            GetRecordsResult nextMtResult = processResult(recordMapper, recordFilter, nextResult);
-            int unionSize = mtResult.getRecords().size() + nextMtResult.getRecords().size();
-            if (unionSize > limit) {
-                break;
-            }
-            result = nextResult;
-            List<Record> union = new ArrayList<>(unionSize);
-            union.addAll(mtResult.getRecords());
-            union.addAll(nextMtResult.getRecords());
-            mtResult = nextMtResult.withRecords(union);
-        }
-
-        return mtResult;
     }
 
     @Override

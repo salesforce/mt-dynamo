@@ -133,8 +133,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
 
-            // once to fetch records, once per getRecords (3) to find empty range
-            assertEquals(6, dynamoDbStreams.getRecordsCount);
+            // once per fetch (since they are all trim horizon)
+            assertEquals(3, dynamoDbStreams.getRecordsCount);
             assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
@@ -165,14 +165,10 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             putTestItem(mtDynamoDb, TENANTS[1], i++);
             final MtRecord expected1 = putTestItem(mtDynamoDb, TENANTS[0], i++);
             putTestItem(mtDynamoDb, TENANTS[1], i++);
-            // one record for tenant 1 on page 2 (expect to get that record)
+            // one record for tenant 1 on page 2 (don't expect to get)
             putTestItem(mtDynamoDb, TENANTS[1], i++);
             final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i++);
             putTestItem(mtDynamoDb, TENANTS[1], i++);
-            // two records for tenant 1 on page 3 (expect to get neither)
-            putTestItem(mtDynamoDb, TENANTS[0], i++);
-            putTestItem(mtDynamoDb, TENANTS[0], i++);
-            putTestItem(mtDynamoDb, TENANTS[1], i);
 
             // now query change streams
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
@@ -186,10 +182,9 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 assertNotNull(result.getNextShardIterator());
 
                 // we only expect to see 2 records, since the last page would exceed limit
-                assertEquals(2, result.getRecords().size());
+                assertEquals(1, result.getRecords().size());
                 Iterator<Record> it = result.getRecords().iterator();
                 assertMtRecord(expected1, it.next());
-                assertMtRecord(expected2, it.next());
             });
         } finally {
             deleteMtTables(mtDynamoDb);
