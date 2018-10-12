@@ -110,9 +110,13 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        createTableRequest = createTableRequest.clone();
-        createTableRequest.withTableName(buildPrefixedTableName(createTableRequest.getTableName()));
-        return getAmazonDynamoDb().createTable(createTableRequest);
+        CreateTableRequest request = createTableRequest.clone()
+            .withTableName(buildPrefixedTableName(createTableRequest.getTableName()));
+        CreateTableResult result = getAmazonDynamoDb().createTable(request);
+        TableDescription description = result.getTableDescription();
+        description.setTableName(createTableRequest.getTableName());
+        setTenantStreamArn(description);
+        return result;
     }
 
     /**
@@ -146,13 +150,17 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         DescribeTableResult describeTableResult = getAmazonDynamoDb().describeTable(describeTableRequest);
         TableDescription description = describeTableResult.getTable();
         description.setTableName(unqualifiedTableName);
+        setTenantStreamArn(description);
+        return describeTableResult;
+    }
+
+    private void setTenantStreamArn(TableDescription description) {
         if (Optional.ofNullable(description.getStreamSpecification()).map(StreamSpecification::isStreamEnabled)
             .orElse(false)) {
             description.setLatestStreamArn(StreamArn
-                .fromString(description.getLatestStreamArn(), getMtContext().getContext(), unqualifiedTableName)
+                .fromString(description.getLatestStreamArn(), getMtContext().getContext(), description.getTableName())
                 .toString());
         }
-        return describeTableResult;
     }
 
     /**
