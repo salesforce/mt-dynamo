@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -130,48 +131,39 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
     /**
      * Returns records from the underlying stream for the given context.
      *
-     * @param request Record request. Maybe with or without tenant context.
+     * @param getRecordsRequest Record request. Maybe with or without tenant context.
      * @return Records for current context for the given request.
      */
     @Override
-    public GetRecordsResult getRecords(GetRecordsRequest request) {
+    public GetRecordsResult getRecords(GetRecordsRequest getRecordsRequest) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("getRecords request={}", request);
+            LOG.debug("getRecords request={}", getRecordsRequest);
         }
 
-        ShardIterator iterator = ShardIterator.fromString(request.getShardIterator());
+        ShardIterator iterator = ShardIterator.fromString(getRecordsRequest.getShardIterator());
         String arn = iterator.getArn();
         StreamArn streamArn = parse(arn);
 
-        GetRecordsResult result = getRecords(
-            getMtRecordMapper(streamArn),
-            getMtRecordFilter(streamArn),
-            request.withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString()));
+        // transform tenant-aware into DynamoDB iterator request
+        GetRecordsRequest request = getRecordsRequest.clone()
+            .withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString());
 
-        Optional.ofNullable(result.getNextShardIterator())
-            .map(nextIterator -> ShardIterator.fromString(nextIterator).withArn(arn).toString())
-            .ifPresent(result::setNextShardIterator);
+        GetRecordsResult result = dynamoDbStreams.getRecords(request);
+
+        // transform and filter records and transform next iterator
+        GetRecordsResult getRecordsResult = new GetRecordsResult()
+            .withRecords(result.getRecords().stream()
+                .map(getMtRecordMapper(streamArn))
+                .filter(getMtRecordFilter(streamArn))
+                .collect(toList()))
+            .withNextShardIterator(result.getNextShardIterator() == null ? null
+                : ShardIterator.fromString(result.getNextShardIterator()).withArn(arn).toString());
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getRecords response=(#records={}, iterator={})",
-                result.getRecords().size(), result.getNextShardIterator());
+                getRecordsResult.getRecords().size(), getRecordsResult.getNextShardIterator());
         }
-        return result;
-    }
-
-    protected GetRecordsResult getRecords(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
-        GetRecordsRequest getRecordsRequest) {
-        return processResult(recordMapper, recordFilter, super.getRecords(getRecordsRequest));
-    }
-
-    protected GetRecordsResult processResult(Function<Record, MtRecord> recordMapper, Predicate<MtRecord> recordFilter,
-        GetRecordsResult result) {
-        return new GetRecordsResult()
-            .withNextShardIterator(result.getNextShardIterator())
-            .withRecords(result.getRecords().stream()
-                .map(recordMapper)
-                .filter(recordFilter)
-                .collect(toList()));
+        return getRecordsResult;
     }
 
     protected abstract Function<Record, MtRecord> getMtRecordMapper(StreamArn arn);
