@@ -12,6 +12,7 @@ import static java.math.BigInteger.ONE;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.ExpiredIteratorException;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
@@ -20,6 +21,9 @@ import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -80,10 +84,12 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final int DEFAULT_MAX_RECORD_BYTES_CACHED = 100 * 1024 * 1024;
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
+        private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private Sleeper sleeper;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
+        private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int maxGetRecordsRetries = DEFAULT_MAX_GET_RECORDS_RETRIES;
         private long getRecordsLimitExceededBackoffInMillis =
             DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
@@ -144,6 +150,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Maximum number of shard iterators to cache.
+         *
+         * @param maxIteratorCacheSize  Maximum number of iterators to cache.
+         * @return this builder.
+         */
+        public Builder withMaxIteratorCacheSize(int maxIteratorCacheSize) {
+            this.maxIteratorCacheSize = maxIteratorCacheSize;
+            return this;
+        }
+
+        /**
          * Build instance using the configured properties.
          *
          * @return a newly created {@code CachingAmazonDynamoDbStreams} based on the contents of the {@code Builder}
@@ -164,7 +181,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 sleeper,
                 maxRecordsByteSize,
                 maxGetRecordsRetries,
-                getRecordsLimitExceededBackoffInMillis);
+                getRecordsLimitExceededBackoffInMillis,
+                maxIteratorCacheSize);
         }
     }
 
@@ -243,13 +261,12 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * Returns a shard iterator that starts after the last record in the given result.
          *
          * @param result Result to position the iterator after. Record list must not be empty.
-         * @param dynamoDbIterator Optional DynamoDB-level iterator after the last record.
          * @return CachingShardIterator that is positioned after the given result.
          */
-        CachingShardIterator iteratorAfterResult(GetRecordsResult result, @Nullable String dynamoDbIterator) {
+        CachingShardIterator iteratorAfterResult(GetRecordsResult result) {
             assert !result.getRecords().isEmpty();
             return new CachingShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
-                getLast(result.getRecords()).getDynamodb().getSequenceNumber(), dynamoDbIterator);
+                getLast(result.getRecords()).getDynamodb().getSequenceNumber(), null);
         }
 
         /**
@@ -400,7 +417,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         @Nullable
         private final String sequenceNumber;
         @Nullable
-        private String dynamoDbIterator;
+        private final String dynamoDbIterator;
 
         // derived cached state
         private final BigInteger parsedSequenceNumber;
@@ -414,20 +431,23 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.streamArn = checkNotNull(streamArn);
             this.shardId = checkNotNull(shardId);
             this.type = type;
-            this.dynamoDbIterator = dynamoDbIterator;
 
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
                     checkArgument(sequenceNumber == null);
+                    checkArgument(dynamoDbIterator != null);
                     this.sequenceNumber = null;
                     this.parsedSequenceNumber = null;
+                    this.dynamoDbIterator = dynamoDbIterator;
                     break;
                 case AT_SEQUENCE_NUMBER:
                 case AFTER_SEQUENCE_NUMBER:
                     checkArgument(sequenceNumber != null);
+                    checkArgument(dynamoDbIterator == null);
                     this.sequenceNumber = sequenceNumber;
                     this.parsedSequenceNumber = parseSequenceNumber(sequenceNumber);
+                    this.dynamoDbIterator = null;
                     break;
                 default:
                     throw new RuntimeException("Missing case statement for ShardIteratorType");
@@ -435,30 +455,22 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Returns a new iterator with the given dynamoDbIterator.
+         * Returns the DynamoDB shard iterator, may be empty.
          *
-         * @param dynamoDbIterator DynamoDb iterator.
-         * @return New iterator.
+         * @return DynamoDB shard iterator
          */
-        CachingShardIterator withDynamoDbIterator(String dynamoDbIterator) {
-            this.dynamoDbIterator = dynamoDbIterator;
-            return this;
+        Optional<String> getDynamoDbIterator() {
+            return Optional.ofNullable(dynamoDbIterator);
         }
 
         /**
-         * Returns underlying streams iterator, loading it if present.
+         * Returns a new iterator with the given dynamoDbIterator.
          *
-         * @param streams Streams instance to use for loading iterator if needed.
-         * @return DynamoDB iterator.
+         * @param dynamoDbIterator DynamoDb iterator.
+         * @return A new iterator.
          */
-        String getDynamoDbIterator(AmazonDynamoDBStreams streams) {
-            if (dynamoDbIterator == null) {
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Loading DynamoDB iterator: iterator={}", this);
-                }
-                dynamoDbIterator = streams.getShardIterator(toRequest()).getShardIterator();
-            }
-            return dynamoDbIterator;
+        CachingShardIterator withDynamoDbIterator(String dynamoDbIterator) {
+            return new CachingShardIterator(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
         }
 
         /**
@@ -558,6 +570,28 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         public String toString() {
             return toExternalString();
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            CachingShardIterator that = (CachingShardIterator) o;
+            return Objects.equals(streamArn, that.streamArn)
+                && Objects.equals(shardId, that.shardId)
+                && type == that.type
+                && Objects.equals(sequenceNumber, that.sequenceNumber)
+                && Objects.equals(dynamoDbIterator, that.dynamoDbIterator)
+                && Objects.equals(parsedSequenceNumber, that.parsedSequenceNumber);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(streamArn, shardId, type, sequenceNumber, dynamoDbIterator, parsedSequenceNumber);
+        }
     }
 
     // logger instance
@@ -624,11 +658,15 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     // size of cache >= 0
     private long recordsCacheByteSize;
 
+    // iterator cache
+    private final LoadingCache<CachingShardIterator, String> iteratorCache;
+
     private CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
         Sleeper sleeper,
         long maxRecordsByteSize,
         int maxGetRecordsRetries,
-        long getRecordsLimitExceededBackoffInMillis) {
+        long getRecordsLimitExceededBackoffInMillis,
+        int maxIteratorCacheSize) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.maxRecordsByteSize = maxRecordsByteSize;
@@ -639,6 +677,18 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.recordsCacheIndex = new TreeMap<>();
         this.recordsCacheByteSize = 0L;
         this.recordsCacheLock = new ReentrantReadWriteLock();
+
+        this.iteratorCache = CacheBuilder
+            .newBuilder()
+            .maximumSize(maxIteratorCacheSize)
+            .build(CacheLoader.from(this::loadShardIterator));
+    }
+
+    private String loadShardIterator(CachingShardIterator iterator) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Cache miss for iterator {}", iterator);
+        }
+        return super.getShardIterator(iterator.toRequest()).getShardIterator();
     }
 
     @Override
@@ -660,7 +710,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 break;
             case AT_SEQUENCE_NUMBER:
             case AFTER_SEQUENCE_NUMBER:
-                // TODO add 15 min timeout to lazy iterators?
                 dynamoDbIterator = null;
                 break;
             default:
@@ -716,13 +765,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
 
             // If we have a cache miss, get DynamoDB iterator (load if needed)
-            final String shardIterator = iterator.getDynamoDbIterator(dynamoDbStreams);
+            final String dynamoDbIterator = iterator.getDynamoDbIterator()
+                .orElseGet(() -> iteratorCache.getUnchecked(iterator));
 
             // next load records from stream
             final GetRecordsResult loadedRecordsResult;
             try {
                 loadedRecordsResult = dynamoDbStreams.getRecords(
-                    new GetRecordsRequest().withShardIterator(shardIterator));
+                    new GetRecordsRequest().withShardIterator(dynamoDbIterator));
             } catch (LimitExceededException e) {
                 long backoff = (getRecordsRetries + 1) * getRecordsLimitExceededBackoffInMillis;
                 if (LOG.isWarnEnabled()) {
@@ -732,36 +782,60 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 sleeper.sleep(backoff);
                 getRecordsRetries++;
                 continue;
-            } // TODO could catch ExpiredIteratorException and automatically renew shard iterators in cached results
+            } catch (ExpiredIteratorException e) {
+                // if we loaded the iterator from our cache, reload it
+                if (!iterator.getDynamoDbIterator().isPresent()) {
+                    if (LOG.isInfoEnabled()) {
+                        LOG.info("Cached iterator expired: iterator={}, expired={}.", iterator, dynamoDbIterator);
+                    }
+                    iteratorCache.invalidate(iterator);
+                    continue;
+                }
+                // otherwise, make the client obtain a new iterator as usual
+                throw e;
+            }
 
             if (LOG.isDebugEnabled()) {
-                LOG.debug("getRecords loaded records: iterator={}, result={}", iterator,
-                    toShortString(loadedRecordsResult));
+                LOG.debug("getRecords loaded records: result={}, iterator={}", toShortString(loadedRecordsResult),
+                    iterator);
             }
+
+            List<Record> loadedRecords = loadedRecordsResult.getRecords();
+            String loadedNextIterator = loadedRecordsResult.getNextShardIterator();
 
             // if we didn't load anything, return without adding cache segment (preserves non-empty range invariant)
             // TODO could cache empty results for (short) time period to avoid having every client hit the stream.
-            if (loadedRecordsResult.getRecords().isEmpty()) {
-                if (loadedRecordsResult.getNextShardIterator() == null) {
+            if (loadedRecords.isEmpty()) {
+                // end of shard, just return
+                if (loadedNextIterator == null) {
                     return loadedRecordsResult;
                 }
-                // replace with loaded iterator, so it is used to proceed through stream on next call
+                // otherwise compute next iterator (update cache for lazy iterators)
+                CachingShardIterator nextIterator = iterator.getDynamoDbIterator()
+                    .map(iterator::withDynamoDbIterator)
+                    .orElseGet(() -> {
+                        iteratorCache.put(iterator, loadedNextIterator);
+                        return iterator;
+                    });
                 return new GetRecordsResult()
-                    .withRecords(loadedRecordsResult.getRecords())
-                    .withNextShardIterator(
-                        iterator.withDynamoDbIterator(loadedRecordsResult.getNextShardIterator()).toExternalString());
+                    .withRecords(loadedRecords)
+                    .withNextShardIterator(nextIterator.toExternalString());
             }
 
-            // otherwise (if we found records), try to update the cache
+            // update iterator cache
+            if (loadedNextIterator != null) {
+                iteratorCache.put(iterator.nextShardIterator(loadedRecords), loadedNextIterator);
+            }
+
+            // update record cache
+            // First resolve iterator position (either to sequence number it specifies or first record sequence number)
+            IteratorPosition loadedPosition = iterator.resolvePosition(loadedRecords);
             Optional<GetRecordsResult> cachedResult;
             GetRecordsResult result;
             final Lock writeLock = recordsCacheLock.writeLock();
             writeLock.lock();
             try {
-                // Resolve iterator position (either to sequence number it specifies or first record sequence number)
-                IteratorPosition loadedPosition = iterator.resolvePosition(loadedRecordsResult.getRecords());
-
-                // Add retrieved records to cache under that position
+                // Add retrieved records to cache under resolved position
                 cachedResult = addToCache(loadedPosition, loadedRecordsResult);
 
                 // now lookup result: may not be exactly what we loaded if we merged result with other segments.
@@ -867,10 +941,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         writeLock.lock();
         try {
             IteratorPosition cachePosition = loadedPosition;
-            GetRecordsResult cacheResult = new GetRecordsResult().withRecords(loadedResult.getRecords());
-            Optional.ofNullable(loadedResult.getNextShardIterator())
-                .map(nextIterator -> loadedPosition.iteratorAfterResult(loadedResult, nextIterator).toExternalString())
-                .ifPresent(cacheResult::setNextShardIterator);
+            GetRecordsResult cacheResult = new GetRecordsResult()
+                .withRecords(loadedResult.getRecords())
+                .withNextShardIterator(loadedResult.getNextShardIterator() == null ? null
+                    : loadedPosition.iteratorAfterResult(loadedResult).toExternalString());
 
             boolean predecessorAdjacent = false;
             final Entry<IteratorPosition, GetRecordsResult> predecessor = getFloorCacheEntry(loadedPosition);
@@ -913,7 +987,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     } else {
                         // if some of the retrieved records are not contained in the next segment,
                         cacheResult.setNextShardIterator(
-                            cachePosition.iteratorAfterResult(cacheResult, null).toExternalString());
+                            cachePosition.iteratorAfterResult(cacheResult).toExternalString());
                         successorAdjacent = true;
                     }
                 } else {
