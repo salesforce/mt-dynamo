@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.20 (unreleased)
 
-* Fixed NPE in `SharedTable` when performing an update request on a GSI hash key attribute
+* Fixed `NullPointerException` in `SharedTable` when performing an update request on a GSI hash key attribute
 
 ## 0.9.18 (October 11, 2018)
 
