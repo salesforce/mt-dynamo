@@ -17,7 +17,6 @@ import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
-import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -148,27 +147,35 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         GetRecordsRequest request = getRecordsRequest.clone()
             .withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString());
 
-        GetRecordsResult result = dynamoDbStreams.getRecords(request);
+        // create tenant record mapper and filter
+        Function<Record, MtRecord> recordMapper = getRecordMapper(streamArn);
+        Predicate<MtRecord> recordFilter = getRecordFilter(streamArn);
 
-        // transform and filter records and transform next iterator
-        GetRecordsResult getRecordsResult = new GetRecordsResult()
-            .withRecords(result.getRecords().stream()
-                .map(getMtRecordMapper(streamArn))
-                .filter(getMtRecordFilter(streamArn))
-                .collect(toList()))
-            .withNextShardIterator(result.getNextShardIterator() == null ? null
-                : ShardIterator.fromString(result.getNextShardIterator()).withArn(arn).toString());
+        // perform actual lookup
+        GetRecordsResult result = getRecords(request, recordMapper, recordFilter);
+
+        // translate back to tenant-aware iterator
+        Optional.ofNullable(result.getNextShardIterator())
+            .map(it -> ShardIterator.fromString(it).withArn(arn).toString())
+            .ifPresent(result::setNextShardIterator);
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getRecords response=(#records={}, iterator={})",
-                getRecordsResult.getRecords().size(), getRecordsResult.getNextShardIterator());
+                result.getRecords().size(), result.getNextShardIterator());
         }
-        return getRecordsResult;
+        return result;
     }
 
-    protected abstract Function<Record, MtRecord> getMtRecordMapper(StreamArn arn);
+    protected GetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
+        Predicate<MtRecord> recordFilter) {
+        GetRecordsResult result = dynamoDbStreams.getRecords(request);
+        return result.withRecords(
+            result.getRecords().stream().map(recordMapper).filter(recordFilter).collect(toList()));
+    }
 
-    protected Predicate<MtRecord> getMtRecordFilter(StreamArn arn) {
+    protected abstract Function<Record, MtRecord> getRecordMapper(StreamArn arn);
+
+    protected Predicate<MtRecord> getRecordFilter(StreamArn arn) {
         return arn::matches;
     }
 

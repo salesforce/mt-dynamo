@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.function.Function.identity;
@@ -37,6 +38,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
@@ -51,11 +53,13 @@ import java.util.Optional;
 import java.util.function.Function;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.opentest4j.AssertionFailedError;
 
 /**
  * Verifies behavior that applies all multitenant streams implementations.
@@ -182,14 +186,20 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     }
 
     protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
-        GetRecordsResult result = streams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
+        return assertGetRecords(streams, iterator, null, expected);
+    }
+
+    protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, Integer limit,
+        MtRecord... expected) {
+        GetRecordsResult result = streams
+            .getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(limit));
         assertNotNull(result.getNextShardIterator());
         List<Record> records = result.getRecords();
         assertEquals(expected.length, records.size());
         for (int i = 0; i < expected.length; i++) {
             assertMtRecord(expected[i], records.get(i));
         }
-        return records.isEmpty() ? null : records.get(0).getDynamodb().getSequenceNumber();
+        return records.isEmpty() ? null : Iterables.getLast(records).getDynamodb().getSequenceNumber();
     }
 
     private static void assertGetRecords(MtAmazonDynamoDbStreams streams, Collection<String> iterators,
@@ -321,9 +331,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
      */
     @ParameterizedTest
     @ArgumentsSource(Args.class)
-    void testDisabledStreams(MtAmazonDynamoDbBase mtDynamoDb) {
-        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
-            AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
+    void testDisabledStreams(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
             String tenant = TENANTS[0];
 
@@ -371,4 +379,35 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         }
     }
 
+    /**
+     * Verifies that clients find records with 'after' iterator even if there are gaps, i.e., records inserted by other
+     * tenants.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(Args.class)
+    void testGap(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
+        try {
+            createTenantTables(mtDynamoDb);
+            final MtRecord expected1 = putTestItem(mtDynamoDb, TENANTS[0], 0);
+            putTestItem(mtDynamoDb, TENANTS[1], 1);
+            final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], 3);
+
+            MT_CONTEXT.withContext(TENANTS[0], () -> {
+                String streamArn = mtDynamoDb.describeTable(TENANT_TABLE_NAME).getTable().getLatestStreamArn();
+
+                // first start at trim horizon
+                String thIterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                String lastSn = assertGetRecords(mtDynamoDbStreams, thIterator, 1, expected1);
+                assertNotNull(lastSn);
+
+                // now start at last record: expect to get next record
+                String afterIterator = getShardIterator(mtDynamoDbStreams, streamArn, AFTER_SEQUENCE_NUMBER, lastSn)
+                    .get();
+                assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
+            });
+
+        } finally {
+            deleteMtTables(mtDynamoDb);
+        }
+    }
 }

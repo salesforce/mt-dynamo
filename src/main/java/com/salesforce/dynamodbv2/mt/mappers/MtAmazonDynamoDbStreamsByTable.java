@@ -19,7 +19,7 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
     }
 
     @Override
-    protected Function<Record, MtRecord> getMtRecordMapper(StreamArn arn) {
+    protected Function<Record, MtRecord> getRecordMapper(StreamArn arn) {
         String[] tenantAndTableName = mtDynamoDb.getTenantAndTableName(arn.getTableName());
         return record -> mapRecord(tenantAndTableName[0], tenantAndTableName[1], record);
     }
