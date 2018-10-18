@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 class ConditionMapper {
 
     static final String NAME_PLACEHOLDER = "#___name___";
-    private static final String SPACE_OR_PIPE = " |,";
 
     private final TableMapping tableMapping;
     private final FieldMapper fieldMapper;
