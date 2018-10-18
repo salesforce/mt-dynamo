@@ -170,24 +170,11 @@ class ConditionMapper {
         if (conditionExpression == null) {
             return Optional.empty();
         }
-        // conditionExpression = "set #ue1 = :ue1, #ue2 = :ue2"
+
         // TODO add support for non-EQ operators
-        String toFind = keyFieldName + " = "; // "#ue1 = "
-        int start = conditionExpression.indexOf(toFind); // 4
-        if (start == -1) {
-            return Optional.empty();
-        }
-
-        String remainder = conditionExpression.substring(start + toFind.length()); // ":ue1, #ue2 = :ue2"
-
-        int end = indexOfUsingRegex(SPACE_OR_PIPE, remainder); // 4
-
-        return Optional.of(end == -1 ? remainder : remainder.substring(0, end)); // ":ue1"
-    }
-
-    private static int indexOfUsingRegex(String regex, String str) {
-        Matcher matcher = Pattern.compile(regex).matcher(str);
-        return matcher.find() ? matcher.start() : -1;
+        final Pattern p = Pattern.compile(keyFieldName + " = ([^ ,]*)");
+        final Matcher m = p.matcher(conditionExpression);
+        return m.find() ? Optional.of(m.group(1)) : Optional.empty();
     }
 
 }
