@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 class ConditionMapper {
 
     static final String NAME_PLACEHOLDER = "#___name___";
+    private static final String SPACE_OR_PIPE = " |,";
 
     private final TableMapping tableMapping;
     private final FieldMapper fieldMapper;
@@ -177,7 +178,7 @@ class ConditionMapper {
 
         String remainder = conditionExpression.substring(start + toFind.length());
 
-        int end = indexOfUsingRegex(" |,", remainder);
+        int end = indexOfUsingRegex(SPACE_OR_PIPE, remainder);
 
         return Optional.of(end == -1 ? remainder : remainder.substring(0, end));
     }
