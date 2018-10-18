@@ -72,12 +72,15 @@ import org.slf4j.LoggerFactory;
  * <p>SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
  * preconfigured to support a number of common mappings.  See Javadoc for each provided builder for details.
  *
- * <p>Supported methods: create|describe|delete* Table, get|put|update Item, query**, scan**
+ * <p>Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
  *
  * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
  *
- * <p>** Only EQ and GT conditions are supported; GT via KeyConditions only
+ * <p>** Performing updates via UpdateItemRequest's withAttributeUpdates and addAttributeUpdateEntry is not supported
+ * since they are considered 'legacy parameters' according DynamoDB docs.  Standard update expressions are supported.
+ *
+ * <p>*** Only EQ and GT conditions are supported; GT via KeyConditions only
  *
  * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
  * results.
@@ -406,6 +409,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
+        // validate that attributeUpdates are not being used
+        validateUpdateItemRequest(updateItemRequest);
+
         // map table name
         updateItemRequest = updateItemRequest.clone();
         TableMapping tableMapping = getTableMapping(updateItemRequest.getTableName());
@@ -414,13 +420,20 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // map key
         updateItemRequest.setKey(tableMapping.getItemMapper().apply(updateItemRequest.getKey()));
 
-        // map attributeUpdates // TODO todo
-
         // map conditions
         tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
+    }
+
+    /**
+     * See class level Javadoc for explanation of why the use of addAttributeUpdateEntry and withAttributeUpdates is
+     * not supported.
+     */
+    private static void validateUpdateItemRequest(UpdateItemRequest updateItemRequest) {
+        checkArgument(updateItemRequest.getAttributeUpdates() == null,
+            "Use of attributeUpdates in UpdateItemRequest's is not supported.  Use UpdateExpression instead.");
     }
 
     @Override

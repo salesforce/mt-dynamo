@@ -18,12 +18,14 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
@@ -50,9 +52,10 @@ class UpdateTest {
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
-                .addAttributeUpdatesEntry(SOME_FIELD,
-                    new AttributeValueUpdate()
-                        .withValue(createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                .withUpdateExpression("set #someField = :someValue")
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
             assertThat(getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
@@ -131,10 +134,6 @@ class UpdateTest {
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build())
                 .withUpdateExpression("set #indexField = :newValue")
-                /*
-                 * Using ImmutableMap's for expressionAttributeNames and expressionAttributeValues here to
-                 * intentionally test that they are properly handled.
-                 */
                 .withExpressionAttributeNames(ImmutableMap.of("#indexField", INDEX_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":newValue",
                     createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"))));
@@ -217,9 +216,10 @@ class UpdateTest {
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(updateItemKey)
-                .addAttributeUpdatesEntry(SOME_FIELD,
-                    new AttributeValueUpdate().withValue(
-                        createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+                .withUpdateExpression("set #someField = :someValue")
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
             assertThat(getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
@@ -358,6 +358,26 @@ class UpdateTest {
                                .rangeKey(S, RANGE_KEY_S_VALUE)
                                .build()));
         });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void attributeUpdatesNotSupportedInSharedTable(TestArgument testArgument) {
+        if (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable) {
+            try {
+                testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                    .withTableName(TABLE1)
+                    .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE).build())
+                    .addAttributeUpdatesEntry(SOME_FIELD,
+                        new AttributeValueUpdate()
+                            .withValue(createStringAttribute(SOME_FIELD_VALUE + TABLE1 + "Updated"))));
+                fail("expected IllegalArgumentException not encountered");
+            } catch (IllegalArgumentException e) {
+                assertEquals(
+                    "Use of attributeUpdates in UpdateItemRequest's is not supported.  Use UpdateExpression instead.",
+                    e.getMessage());
+            }
+        }
     }
 
 }

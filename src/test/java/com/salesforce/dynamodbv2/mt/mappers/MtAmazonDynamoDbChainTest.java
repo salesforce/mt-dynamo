@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -65,7 +64,6 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,7 +85,6 @@ class MtAmazonDynamoDbChainTest {
     private static final boolean IS_LOCAL_DYNAMO = true;
 
     @Test
-    @Disabled
     void test() throws Exception {
         // create context
         MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
@@ -368,8 +365,11 @@ class MtAmazonDynamoDbChainTest {
         UpdateItemRequest updateItemRequest = new UpdateItemRequest()
             .withTableName(tableName1)
             .withKey(updateItemKey)
-            .addAttributeUpdatesEntry(SOME_FIELD,
-                new AttributeValueUpdate().withValue(createStringAttribute("someValue1Updated")));
+            .withUpdateExpression("set #someField = :someValue")
+            .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+            .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                createStringAttribute("someValue1Updated")));
+
         amazonDynamoDb.updateItem(updateItemRequest);
         assertItemValue("someValue1Updated",
                 getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
@@ -381,9 +381,12 @@ class MtAmazonDynamoDbChainTest {
         amazonDynamoDb.updateItem(new UpdateItemRequest()
             .withTableName(tableName1)
             .withKey(new HashMap<>(ImmutableMap.of(HASH_KEY_FIELD,
-                createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))))
-            .addAttributeUpdatesEntry(SOME_FIELD,
-                new AttributeValueUpdate().withValue(createStringAttribute("someValue2Updated"))));
+                    createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE))))
+                .withUpdateExpression("set #someField = :someValue")
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                createStringAttribute("someValue2Updated"))));
+
         assertItemValue("someValue2Updated",
                 getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
 
