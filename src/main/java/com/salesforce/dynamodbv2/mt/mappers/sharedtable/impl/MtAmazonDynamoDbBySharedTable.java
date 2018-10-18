@@ -569,6 +569,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         UpdateItemRequestWrapper(UpdateItemRequest updateItemRequest) {
             this.updateItemRequest = updateItemRequest;
+            if (this.updateItemRequest.getExpressionAttributeNames() != null) {
+                this.updateItemRequest.setExpressionAttributeNames(
+                    new HashMap<>(updateItemRequest.getExpressionAttributeNames()));
+            }
+            if (this.updateItemRequest.getExpressionAttributeValues() != null) {
+                this.updateItemRequest.setExpressionAttributeValues(
+                    new HashMap<>(updateItemRequest.getExpressionAttributeValues()));
+            }
         }
 
         @Override
