@@ -30,7 +30,6 @@ import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -238,7 +237,6 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @Disabled // TODO uncomment when https://github.com/salesforce/mt-dynamo/pull/169 is merged
     void updateHkRkTableWithGsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
