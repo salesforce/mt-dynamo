@@ -4,9 +4,11 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
@@ -21,12 +23,14 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.AttributeValueUpdate;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -196,6 +200,41 @@ class UpdateTest {
                                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
                                .rangeKey(S, RANGE_KEY_S_VALUE)
                                .build()));
+            assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
+            assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @Disabled // TODO uncomment when https://github.com/salesforce/mt-dynamo/pull/169 is merged
+    void updateHkRkTableWithGsi(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE3)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #indexField = :indexValue, #someField = :someValue")
+                .withExpressionAttributeNames(ImmutableMap.of(
+                    "#indexField", INDEX_FIELD,
+                    "#someField", SOME_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(
+                    ":indexValue", createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"),
+                    ":someValue", createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_S_VALUE)),
+                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build()));
             assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
             assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
         });
