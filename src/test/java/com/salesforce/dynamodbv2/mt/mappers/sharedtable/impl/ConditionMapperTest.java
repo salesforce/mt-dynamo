@@ -504,6 +504,9 @@ class ConditionMapperTest {
         assertFalse(ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentValue", "#invalid").isPresent());
+        assertEquals(":ue1", ConditionMapper.findVirtualValuePlaceholder(
+            "set #ue1 = :ue1, #ue2 = :ue2",
+            null, "#ue1").get());
         assertFalse(ConditionMapper.findVirtualValuePlaceholder(
             null, null, "#invalid").isPresent());
     }
@@ -518,6 +521,8 @@ class ConditionMapperTest {
             "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").get());
         assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").get());
+        assertEquals(Optional.of(":ue1"), ConditionMapper.findVirtualValuePlaceholder(
+            "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
         assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
             null, null));
     }

@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 /**
@@ -167,14 +169,11 @@ class ConditionMapper {
         if (conditionExpression == null) {
             return Optional.empty();
         }
-        String toFind = keyFieldName + " = ";
-        int start = conditionExpression.indexOf(toFind);
-        if (start == -1) {
-            return Optional.empty();
-        }
-        int end = conditionExpression.indexOf(" ", start + toFind.length()); // -1
-        return Optional.of(conditionExpression.substring(start + toFind.length(),
-            end == -1 ? conditionExpression.length() : end)); // ":value" // TODO add support for non-EQ operators
+
+        // TODO add support for non-EQ operators
+        final Pattern p = Pattern.compile(keyFieldName + " = ([^ ,]*)");
+        final Matcher m = p.matcher(conditionExpression);
+        return m.find() ? Optional.of(m.group(1)) : Optional.empty();
     }
 
 }
