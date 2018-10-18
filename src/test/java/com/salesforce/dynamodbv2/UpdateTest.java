@@ -30,7 +30,6 @@ import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -121,6 +120,37 @@ class UpdateTest {
         });
     }
 
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateConditionalOnGsiHkSuccess(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE3)
+                .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build())
+                .withUpdateExpression("set #indexField = :newValue")
+                /*
+                 * Using ImmutableMap's for expressionAttributeNames and expressionAttributeValues here to
+                 * intentionally test that they are properly handled.
+                 */
+                .withExpressionAttributeNames(ImmutableMap.of("#indexField", INDEX_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(":newValue",
+                    createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"))));
+            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_S_VALUE)),
+                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                    .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build()));
+        });
+    }
+
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void updateConditionalOnHkWithLiteralsSuccess(TestArgument testArgument) {
@@ -207,7 +237,6 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @Disabled // TODO uncomment when https://github.com/salesforce/mt-dynamo/pull/169 is merged
     void updateHkRkTableWithGsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
