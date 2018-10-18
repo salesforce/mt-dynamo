@@ -614,16 +614,15 @@ class CachingAmazonDynamoDbStreamsTest {
     void testCloseGap() {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 
-        GetShardIteratorRequest thRequest = newTrimHorizonRequest();
-        String thIterator = mockGetShardIterator(streams, thRequest);
-        mockGetRecords(streams, thIterator, 0, 5);
+        final GetShardIteratorRequest thRequest = newTrimHorizonRequest();
+        final String thIterator = mockGetShardIterator(streams, thRequest);
+        final String afterIterator = mockGetRecords(streams, thIterator, 0, 5);
 
-        GetShardIteratorRequest atRequest = newAtSequenceNumberRequest(5);
-        String atIterator = mockGetShardIterator(streams, atRequest);
+        final GetShardIteratorRequest atRequest = newAtSequenceNumberRequest(5);
+        final String atIterator = mockGetShardIterator(streams, atRequest);
         mockGetRecords(streams, atIterator, 5, 10);
 
-        GetShardIteratorRequest afterRequest = newAfterSequenceNumberRequest(4);
-        String afterIterator = mockGetShardIterator(streams, afterRequest);
+        final GetShardIteratorRequest afterRequest = newAfterSequenceNumberRequest(4);
         mockGetRecords(streams, afterIterator, 5, 10);
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
@@ -633,7 +632,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertGetRecords(cachingStreams, afterRequest, null, 5, 10);
         assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10);
 
-        assertCacheMisses(streams, 3, 3);
+        assertCacheMisses(streams, 2, 3);
     }
 
     /**
@@ -774,6 +773,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMaxRecordsByteSize(4L)
+            .withMaxIteratorCacheSize(1)
             .build();
 
         assertGetRecords(cachingStreams, firstRequest, null, 0, 4);
@@ -810,6 +810,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMaxRecordsByteSize(0L)
+            .withMaxIteratorCacheSize(0)
             .build();
 
         assertGetRecords(cachingStreams, request, null, 0, 5);
@@ -955,7 +956,9 @@ class CachingAmazonDynamoDbStreamsTest {
         // pretend more records have come along by the time the second iterator is used to get records
         mockGetRecords(streams, iterator2, 0, 5);
 
-        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withMaxIteratorCacheSize(0)
+            .build();
 
         doAnswer(invocation -> {
             assertGetRecords(cachingStreams, request, null, 0, 5);
