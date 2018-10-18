@@ -170,17 +170,19 @@ class ConditionMapper {
         if (conditionExpression == null) {
             return Optional.empty();
         }
-        String toFind = keyFieldName + " = ";
-        int start = conditionExpression.indexOf(toFind);
+        // conditionExpression = "set #ue1 = :ue1, #ue2 = :ue2"
+        // TODO add support for non-EQ operators
+        String toFind = keyFieldName + " = "; // "#ue1 = "
+        int start = conditionExpression.indexOf(toFind); // 4
         if (start == -1) {
             return Optional.empty();
         }
 
-        String remainder = conditionExpression.substring(start + toFind.length());
+        String remainder = conditionExpression.substring(start + toFind.length()); // ":ue1, #ue2 = :ue2"
 
-        int end = indexOfUsingRegex(SPACE_OR_PIPE, remainder);
+        int end = indexOfUsingRegex(SPACE_OR_PIPE, remainder); // 4
 
-        return Optional.of(end == -1 ? remainder : remainder.substring(0, end));
+        return Optional.of(end == -1 ? remainder : remainder.substring(0, end)); // ":ue1"
     }
 
     private static int indexOfUsingRegex(String regex, String str) {
