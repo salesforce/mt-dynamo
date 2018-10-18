@@ -77,8 +77,9 @@ import org.slf4j.LoggerFactory;
  * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
  * control behavior that is specific to deleteTable.
  *
- * <p>** Performing updates via UpdateItemRequest's withAttributeUpdates and addAttributeUpdateEntry is not supported
- * since they are considered 'legacy parameters' according DynamoDB docs.  Standard update expressions are supported.
+ * <p>** Performing updates via UpdateItemRequest objects withAttributeUpdates and addAttributeUpdateEntry is not
+ * supported since they are considered 'legacy parameters' according DynamoDB docs.  Standard update expressions are
+ * supported.
  *
  * <p>*** Only EQ and GT conditions are supported; GT via KeyConditions only
  *
@@ -433,7 +434,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     private static void validateUpdateItemRequest(UpdateItemRequest updateItemRequest) {
         checkArgument(updateItemRequest.getAttributeUpdates() == null,
-            "Use of attributeUpdates in UpdateItemRequest's is not supported.  Use UpdateExpression instead.");
+            "Use of attributeUpdates in UpdateItemRequest objects is not supported.  Use UpdateExpression instead.");
     }
 
     @Override

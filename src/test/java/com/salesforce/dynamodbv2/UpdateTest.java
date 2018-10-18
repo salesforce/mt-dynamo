@@ -374,7 +374,8 @@ class UpdateTest {
                 fail("expected IllegalArgumentException not encountered");
             } catch (IllegalArgumentException e) {
                 assertEquals(
-                    "Use of attributeUpdates in UpdateItemRequest's is not supported.  Use UpdateExpression instead.",
+                    "Use of attributeUpdates in UpdateItemRequest objects is not supported.  "
+                        + "Use UpdateExpression instead.",
                     e.getMessage());
             }
         }
