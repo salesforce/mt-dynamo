@@ -5,6 +5,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
@@ -39,19 +40,26 @@ public class StreamArn {
             this.tenantTableName = slashFreeTenantTableName;
         }
 
+        /**
+         * Get the URL-decoded version of the context.
+         */
         @Override
         public Optional<String> getContext() {
-            return Optional.of(context);
+            return Optional.of(wrappedDecoder(context));
         }
 
+        /**
+         * Get the URL-decoded version of the tenantTableName.
+         */
         @Override
         public Optional<String> getTenantTableName() {
-            return Optional.of(tenantTableName);
+            return Optional.of(wrappedDecoder(tenantTableName));
         }
 
         @Override
         public boolean matches(MtRecord record) {
-            return context.equals(record.getContext()) && tenantTableName.equals(record.getTableName());
+            return this.getContext().equals(Optional.of(record.getContext()))
+                && this.getTenantTableName().equals(Optional.of(record.getTableName()));
         }
 
         @Override
@@ -82,12 +90,22 @@ public class StreamArn {
 
     }
 
+    // TODO: don't decode every time (i.e., do it once and save it)?
+    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
+    private static String wrappedDecoder(String s) {
+        try {
+            return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException uee) {
+            throw new IllegalArgumentException("Cannot decode " + s, uee);
+        }
+    }
+
     // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
     private static String wrappedEncoder(String s) {
         try {
             return URLEncoder.encode(s, StandardCharsets.UTF_8.name());
         } catch (UnsupportedEncodingException uee) {
-            throw new IllegalArgumentException(uee);
+            throw new IllegalArgumentException("Cannot encode " + s, uee);
         }
     }
 
@@ -102,18 +120,18 @@ public class StreamArn {
         ARN_PREFIX + "%s" + TABLE_SEGMENT + "%s" + RESOURCE_SEPARATOR + STREAM_SEGMENT + "%s";
 
     /**
-     * Parses ARN from string value and assigns the given context and tenant table, URL escaping both (since the
+     * Parses ARN from string value and assigns the given context and tenant table, URL encoding both (since the
      * {@code MtStreamArn} constructor requires no '/'s in its last two arguments.
      *
      * @param arn Arn to parse.
-     * @param unescapedContext Tenant context.
-     * @param unescapedMtTableName Tenant table.
+     * @param unencodedContext Tenant context.
+     * @param unencodedMtTableName Tenant table.
      * @return Parsed arn.
      */
-    public static StreamArn fromString(String arn, String unescapedContext, String unescapedMtTableName) {
+    public static StreamArn fromString(String arn, String unencodedContext, String unencodedMtTableName) {
         final StreamArn streamArn = fromString(arn);
         return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel,
-            wrappedEncoder(unescapedContext), wrappedEncoder(unescapedMtTableName));
+            wrappedEncoder(unencodedContext), wrappedEncoder(unencodedMtTableName));
     }
 
     /**
