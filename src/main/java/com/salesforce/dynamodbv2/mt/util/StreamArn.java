@@ -22,21 +22,21 @@ public class StreamArn {
         private static final String VIRTUAL_FORMAT =
             "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
 
-        private final String context; // URL escaped (in order to escape '/'s)
-        private final String tenantTableName; // URL escaped (in order to escape '/'s)
+        private final String context; // must have no '/'s
+        private final String tenantTableName; // must have no '/'s
 
         MtStreamArn(String prefix,
             String tableName,
             String streamLabel,
-            String escapedContext,
-            String escapedTenantTableName) {
+            String slashFreeContext,
+            String slashFreeTenantTableName) {
             super(prefix, tableName, streamLabel);
-            Preconditions.checkArgument(!escapedContext.contains("/"),
-                "escapedContent parameter must not contain '/'s: " + escapedContext);
-            Preconditions.checkArgument(!escapedTenantTableName.contains("/"),
-                "escapedTenantTableName parameter must not contain '/'s: " + escapedTenantTableName);
-            this.context = escapedContext;
-            this.tenantTableName = escapedTenantTableName;
+            Preconditions.checkArgument(!slashFreeContext.contains("/"),
+                "slashFreeContext parameter must not contain '/'s: " + slashFreeContext);
+            Preconditions.checkArgument(!slashFreeTenantTableName.contains("/"),
+                "slashFreeTenantTableName parameter must not contain '/'s: " + slashFreeTenantTableName);
+            this.context = slashFreeContext;
+            this.tenantTableName = slashFreeTenantTableName;
         }
 
         @Override
@@ -102,7 +102,8 @@ public class StreamArn {
         ARN_PREFIX + "%s" + TABLE_SEGMENT + "%s" + RESOURCE_SEPARATOR + STREAM_SEGMENT + "%s";
 
     /**
-     * Parses arn from string value and assigns the given context and tenant table, URL escaping both.
+     * Parses ARN from string value and assigns the given context and tenant table, URL escaping both (since the
+     * {@code MtStreamArn} constructor requires no '/'s in its last two arguments.
      *
      * @param arn Arn to parse.
      * @param unescapedContext Tenant context.
@@ -116,7 +117,7 @@ public class StreamArn {
     }
 
     /**
-     * Parses arn from string value. "context" and "tenantTable" segments must be URL encoded.
+     * Parses arn from string value. "context" and "tenantTable" segments must have no '/'s.
      *
      * @param arn String value.
      * @return Parsed arn.
@@ -160,7 +161,7 @@ public class StreamArn {
         start += CONTEXT_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end != -1);
-        final String escapedContext = arn.substring(start, end);
+        final String slashFreeContext = arn.substring(start, end);
 
         // tenant table
         start = end + 1;
@@ -168,9 +169,9 @@ public class StreamArn {
         start += TENANT_TABLE_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end == -1);
-        final String escapedTenantTableName = arn.substring(start);
+        final String slashFreeTenantTableName = arn.substring(start);
 
-        return new MtStreamArn(qualifier, tableName, streamLabel, escapedContext, escapedTenantTableName);
+        return new MtStreamArn(qualifier, tableName, streamLabel, slashFreeContext, slashFreeTenantTableName);
     }
 
     private final String qualifier;

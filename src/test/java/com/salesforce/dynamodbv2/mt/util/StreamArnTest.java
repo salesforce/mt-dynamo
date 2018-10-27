@@ -59,33 +59,33 @@ class StreamArnTest {
         String qualifier = "aws:dynamodb:us-east-1:123456789012:";
         String tableName = "mt_sharedtablestatic_s_s";
         String streamLabel = "2015-05-11T21:21:33.291";
-        String context = "account/tenant1";
-        String virtualTableName = "books_table/x";
+        String slashContainingContext = "account/tenant1";
+        String slashContainingVirtualTableName = "books_table/x";
 
-        String expectedString1 =
-            "arn:" + qualifier + "table/" + tableName + "/stream/"
-                + streamLabel;
-        StreamArn expectedObject1 = new StreamArn(qualifier, tableName, streamLabel);
+        final String string1 = "arn:" + qualifier + "table/" + tableName + "/stream/" + streamLabel;
+        final StreamArn object1 = new StreamArn(qualifier, tableName, streamLabel);
 
-        StreamArn actualObject = StreamArn.fromString(expectedString1);
-        assertEquals(expectedObject1, actualObject);
+        StreamArn derivedObject = StreamArn.fromString(string1);
+        assertEquals(object1, derivedObject);
 
-        String actualString = expectedObject1.toString();
-        assertEquals(expectedString1, actualString);
+        String derivedString = object1.toString();
+        assertEquals(string1, derivedString);
 
-        String expectedString2 = expectedString1 + "/context/" + context + "/tenantTable/" + virtualTableName;
+        String string2 = string1 + "/context/" + slashContainingContext + "/tenantTable/"
+            + slashContainingVirtualTableName;
         try {
-            StreamArn.fromString(expectedString2);
+            StreamArn.fromString(string2);
             fail("Expected IllegalArgumentException not encountered");
         } catch (IllegalArgumentException iae) {
             assertNull(iae.getMessage());
         }
 
         try {
-            new MtStreamArn(qualifier, tableName, streamLabel, context, virtualTableName);
+            new MtStreamArn(qualifier, tableName, streamLabel, slashContainingContext, slashContainingVirtualTableName);
             fail("Expected IllegalArgumentException not encountered");
         } catch (IllegalArgumentException iae) {
-            assertEquals("escapedContent parameter must not contain '/'s: " + context, iae.getMessage());
+            assertEquals("slashFreeContext parameter must not contain '/'s: " + slashContainingContext,
+                iae.getMessage());
         }
     }
 }
