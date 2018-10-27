@@ -2,7 +2,11 @@ package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -18,13 +22,21 @@ public class StreamArn {
         private static final String VIRTUAL_FORMAT =
             "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
 
-        private final String context;
-        private final String tenantTableName;
+        private final String context; // URL escaped (in order to escape '/'s)
+        private final String tenantTableName; // URL escaped (in order to escape '/'s)
 
-        MtStreamArn(String prefix, String tableName, String streamLabel, String context, String tenantTableName) {
+        MtStreamArn(String prefix,
+            String tableName,
+            String streamLabel,
+            String escapedContext,
+            String escapedTenantTableName) {
             super(prefix, tableName, streamLabel);
-            this.context = context;
-            this.tenantTableName = tenantTableName;
+            Preconditions.checkArgument(!escapedContext.contains("/"),
+                "escapedContent parameter must not contain '/'s: " + escapedContext);
+            Preconditions.checkArgument(!escapedTenantTableName.contains("/"),
+                "escapedTenantTableName parameter must not contain '/'s: " + escapedTenantTableName);
+            this.context = escapedContext;
+            this.tenantTableName = escapedTenantTableName;
         }
 
         @Override
@@ -62,11 +74,21 @@ public class StreamArn {
             return Objects.hash(super.hashCode(), context, tenantTableName);
         }
 
+        // NB: {@code context} and {@code tenantTableName} are URL encoded.
         @Override
         public String toString() {
             return String.format(VIRTUAL_FORMAT, super.toString(), context, tenantTableName);
         }
 
+    }
+
+    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
+    private static String wrappedEncoder(String s) {
+        try {
+            return URLEncoder.encode(s, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException uee) {
+            throw new IllegalArgumentException(uee);
+        }
     }
 
     private static final char QUALIFIER_SEPARATOR = ':';
@@ -80,20 +102,21 @@ public class StreamArn {
         ARN_PREFIX + "%s" + TABLE_SEGMENT + "%s" + RESOURCE_SEPARATOR + STREAM_SEGMENT + "%s";
 
     /**
-     * Parses arn from string value and assigns the given context and tenant table.
+     * Parses arn from string value and assigns the given context and tenant table, URL escaping both.
      *
      * @param arn Arn to parse.
-     * @param context Tenant context.
-     * @param mtTableName Tenant table.
+     * @param unescapedContext Tenant context.
+     * @param unescapedMtTableName Tenant table.
      * @return Parsed arn.
      */
-    public static StreamArn fromString(String arn, String context, String mtTableName) {
-        StreamArn streamArn = fromString(arn);
-        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, context, mtTableName);
+    public static StreamArn fromString(String arn, String unescapedContext, String unescapedMtTableName) {
+        final StreamArn streamArn = fromString(arn);
+        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel,
+            wrappedEncoder(unescapedContext), wrappedEncoder(unescapedMtTableName));
     }
 
     /**
-     * Parses arn from string value.
+     * Parses arn from string value. "context" and "tenantTable" segments must be URL encoded.
      *
      * @param arn String value.
      * @return Parsed arn.
@@ -137,7 +160,7 @@ public class StreamArn {
         start += CONTEXT_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end != -1);
-        final String context = arn.substring(start, end);
+        final String escapedContext = arn.substring(start, end);
 
         // tenant table
         start = end + 1;
@@ -145,9 +168,9 @@ public class StreamArn {
         start += TENANT_TABLE_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end == -1);
-        String tenantTableName = arn.substring(start);
+        final String escapedTenantTableName = arn.substring(start);
 
-        return new MtStreamArn(qualifier, tableName, streamLabel, context, tenantTableName);
+        return new MtStreamArn(qualifier, tableName, streamLabel, escapedContext, escapedTenantTableName);
     }
 
     private final String qualifier;
