@@ -33,8 +33,7 @@ class StreamArnTest {
 
         String expectedString2 = expectedString1 + "/context/" + escapedContext + "/tenantTable/"
             + escapedVirtualTableName;
-        StreamArn expectedObject2 = new MtStreamArn(qualifier, tableName, streamLabel, escapedContext,
-            escapedVirtualTableName);
+        StreamArn expectedObject2 = new MtStreamArn(qualifier, tableName, streamLabel, context, virtualTableName);
 
         return Stream
             .of(Arguments.of(expectedString1, expectedObject1), Arguments.of(expectedString2, expectedObject2));
@@ -55,7 +54,7 @@ class StreamArnTest {
     }
 
     @Test
-    void testUnencodedInputsFromAndToString() {
+    void testUnencodedInputsFromAndToString() throws UnsupportedEncodingException {
         String qualifier = "aws:dynamodb:us-east-1:123456789012:";
         String tableName = "mt_sharedtablestatic_s_s";
         String streamLabel = "2015-05-11T21:21:33.291";
@@ -71,8 +70,10 @@ class StreamArnTest {
         String derivedString = object1.toString();
         assertEquals(string1, derivedString);
 
-        String string2 = string1 + "/context/" + slashContainingContext + "/tenantTable/"
+        final String string2 = string1 + "/context/" + slashContainingContext + "/tenantTable/"
             + slashContainingVirtualTableName;
+        final StreamArn object2 = new MtStreamArn(qualifier, tableName, streamLabel, slashContainingContext,
+            slashContainingVirtualTableName);
         try {
             StreamArn.fromString(string2);
             fail("Expected IllegalArgumentException not encountered");
@@ -80,12 +81,11 @@ class StreamArnTest {
             assertNull(iae.getMessage());
         }
 
-        try {
-            new MtStreamArn(qualifier, tableName, streamLabel, slashContainingContext, slashContainingVirtualTableName);
-            fail("Expected IllegalArgumentException not encountered");
-        } catch (IllegalArgumentException iae) {
-            assertEquals("slashFreeContext parameter must not contain '/'s: " + slashContainingContext,
-                iae.getMessage());
-        }
+        final String derivedString2 = object2.toString();
+        final String expectedString2 = string1 + "/context/"
+            + URLEncoder.encode(slashContainingContext, StandardCharsets.UTF_8.name())
+            + "/tenantTable/"
+            + URLEncoder.encode(slashContainingVirtualTableName, StandardCharsets.UTF_8.name());
+        assertEquals(expectedString2, derivedString2);
     }
 }
