@@ -3,6 +3,10 @@ package com.salesforce.dynamodbv2.mt.util;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -18,8 +22,8 @@ public class StreamArn {
         private static final String VIRTUAL_FORMAT =
             "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
 
-        private final String context;
-        private final String tenantTableName;
+        private final String context; // (not URL encoded)
+        private final String tenantTableName; // (not URL encoded)
 
         MtStreamArn(String prefix, String tableName, String streamLabel, String context, String tenantTableName) {
             super(prefix, tableName, streamLabel);
@@ -39,7 +43,8 @@ public class StreamArn {
 
         @Override
         public boolean matches(MtRecord record) {
-            return context.equals(record.getContext()) && tenantTableName.equals(record.getTableName());
+            return this.getContext().equals(Optional.of(record.getContext()))
+                && this.getTenantTableName().equals(Optional.of(record.getTableName()));
         }
 
         @Override
@@ -62,11 +67,32 @@ public class StreamArn {
             return Objects.hash(super.hashCode(), context, tenantTableName);
         }
 
+        // URL encodes {@code context} and {@code tenantTableName}
+        // TODO: don't re-encode on multiple calls to {@code toString}? (i.e., do it once and save it)?
         @Override
         public String toString() {
-            return String.format(VIRTUAL_FORMAT, super.toString(), context, tenantTableName);
+            return String.format(VIRTUAL_FORMAT, super.toString(), wrappedEncoder(context),
+                wrappedEncoder(tenantTableName));
         }
 
+    }
+
+    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
+    private static String wrappedDecoder(String s) {
+        try {
+            return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException uee) {
+            throw new IllegalArgumentException("Cannot decode " + s, uee);
+        }
+    }
+
+    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
+    private static String wrappedEncoder(String s) {
+        try {
+            return URLEncoder.encode(s, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException uee) {
+            throw new IllegalArgumentException("Cannot encode " + s, uee);
+        }
     }
 
     private static final char QUALIFIER_SEPARATOR = ':';
@@ -80,20 +106,21 @@ public class StreamArn {
         ARN_PREFIX + "%s" + TABLE_SEGMENT + "%s" + RESOURCE_SEPARATOR + STREAM_SEGMENT + "%s";
 
     /**
-     * Parses arn from string value and assigns the given context and tenant table.
+     * Parses ARN from string value and assigns the given context and tenant table.
      *
      * @param arn Arn to parse.
-     * @param context Tenant context.
-     * @param mtTableName Tenant table.
+     * @param unencodedContext Tenant context (not URL encoded).
+     * @param unencodedMtTableName Tenant table (not URL encoded).
      * @return Parsed arn.
      */
-    public static StreamArn fromString(String arn, String context, String mtTableName) {
-        StreamArn streamArn = fromString(arn);
-        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, context, mtTableName);
+    public static StreamArn fromString(String arn, String unencodedContext, String unencodedMtTableName) {
+        final StreamArn streamArn = fromString(arn);
+        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, unencodedContext,
+            unencodedMtTableName);
     }
 
     /**
-     * Parses arn from string value.
+     * Parses arn from string value. "context" and "tenantTable" segments must be URL encoded.
      *
      * @param arn String value.
      * @return Parsed arn.
@@ -137,7 +164,7 @@ public class StreamArn {
         start += CONTEXT_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end != -1);
-        final String context = arn.substring(start, end);
+        final String decodedContext = wrappedDecoder(arn.substring(start, end));
 
         // tenant table
         start = end + 1;
@@ -145,9 +172,9 @@ public class StreamArn {
         start += TENANT_TABLE_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end == -1);
-        String tenantTableName = arn.substring(start);
+        final String decodedTenantTableName = wrappedDecoder(arn.substring(start));
 
-        return new MtStreamArn(qualifier, tableName, streamLabel, context, tenantTableName);
+        return new MtStreamArn(qualifier, tableName, streamLabel, decodedContext, decodedTenantTableName);
     }
 
     private final String qualifier;
