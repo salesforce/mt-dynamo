@@ -9,6 +9,10 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 * Improved logging of table mappings in `SharedTable` implementation.
 
+## 0.9.21 (October 29, 2018)
+
+* URL encode `context` and `tenantTableName` in multitenant prefixes.
+
 ## 0.9.20 (October 19, 2018)
 
 * Fixed `NullPointerException` in `SharedTable` when performing an update request on a GSI hash key attribute
