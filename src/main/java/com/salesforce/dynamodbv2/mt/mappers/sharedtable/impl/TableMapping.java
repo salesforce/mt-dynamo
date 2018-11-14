@@ -116,7 +116,7 @@ class TableMapping {
 
     @Override
     public String toString() {
-        return format("created virtual to physical table mapping: %s -> %s, virtual: %s, physical: %s"
+        return format("%s -> %s, virtual: %s, physical: %s"
                       + ", tableFieldMappings: %s, secondaryIndexFieldMappings: %s",
                       virtualTable.getTableName(), physicalTable.getTableName(),
                       virtualTable.toString(), physicalTable.toString(),

@@ -96,7 +96,7 @@ public class TableMappingFactory {
             mtContext,
             delimiter);
         tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
-        LOG.info("created table mapping " + tableMapping.toString());
+        LOG.info("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
     }
 
