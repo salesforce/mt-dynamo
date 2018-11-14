@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static java.lang.String.format;
+
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 
 /**
@@ -98,6 +100,11 @@ class FieldMapping {
             return name.equals(field.name)
                 && type == field.type;
         }
+
+        @Override
+        public String toString() {
+            return format("{name=%s, type=%s}", name, type);
+        }
     }
 
     @Override
@@ -118,4 +125,11 @@ class FieldMapping {
             && physicalIndexName.equals(that.physicalIndexName)
             && indexType == that.indexType;
     }
+
+    @Override
+    public String toString() {
+        return format("{source=%s, target=%s, virtualIndexName=%s, physicalIndexName=%s, indexType=%s}",
+                      source, target, virtualIndexName, physicalIndexName, indexType);
+    }
+
 }

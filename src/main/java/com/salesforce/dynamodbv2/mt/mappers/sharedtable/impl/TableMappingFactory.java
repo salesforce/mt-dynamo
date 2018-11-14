@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static java.lang.String.format;
+
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
@@ -19,6 +21,8 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Creates {@code TableMapping}s that contain the state of given mapping of a virtual table to a physical table.  The
@@ -30,6 +34,8 @@ import java.util.Optional;
  * @author msgroi
  */
 public class TableMappingFactory {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TableMappingFactory.class);
 
     private final AmazonDynamoDbAdminUtils dynamoDbAdminUtils;
     private final CreateTableRequestFactory createTableRequestFactory;
@@ -90,12 +96,16 @@ public class TableMappingFactory {
             mtContext,
             delimiter);
         tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
+        LOG.info("created table mapping " + tableMapping.toString());
         return tableMapping;
     }
 
     private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
-        if (!getTableDescription(physicalTable.getTableName()).isPresent()) {
+        if (getTableDescription(physicalTable.getTableName()).isPresent()) {
+            LOG.info(format("using existing physical table %s", physicalTable.getTableName()));
+        } else {
+            LOG.info(format("creating physical table %s", physicalTable.getTableName()));
             dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
         }
         return new DynamoTableDescriptionImpl(amazonDynamoDb.describeTable(physicalTable.getTableName()).getTable());

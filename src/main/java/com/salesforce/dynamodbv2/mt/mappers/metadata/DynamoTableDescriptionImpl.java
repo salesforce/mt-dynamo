@@ -185,7 +185,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
     @Override
     public String toString() {
-        return "DynamoTableDescriptionImpl{"
+        return "{"
             + "tableName='" + tableName + '\''
             + ", attributeDefinitions=" + attributeDefinitions
             + ", primaryKey=" + primaryKey
