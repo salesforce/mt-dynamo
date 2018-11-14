@@ -23,6 +23,11 @@
     -->
     <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable" level="error"/>
 
+    <!--
+        Setting to error reduces verbosity during tests.
+    -->
+    <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory" level="error"/>
+
     <root level="info">
         <appender-ref ref="STDOUT" />
     </root>

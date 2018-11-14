@@ -13,6 +13,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
+import static java.lang.String.format;
 
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
@@ -111,6 +112,15 @@ class TableMapping {
      */
     Map<String, FieldMapping> getAllVirtualToPhysicalFieldMappingsDeduped() {
         return dedupeFieldMappings(virtualToPhysicalMappings);
+    }
+
+    @Override
+    public String toString() {
+        return format("%s -> %s, virtual: %s, physical: %s"
+                      + ", tableFieldMappings: %s, secondaryIndexFieldMappings: %s",
+                      virtualTable.getTableName(), physicalTable.getTableName(),
+                      virtualTable.toString(), physicalTable.toString(),
+                      virtualToPhysicalMappings, secondaryIndexFieldMappings);
     }
 
     /*
