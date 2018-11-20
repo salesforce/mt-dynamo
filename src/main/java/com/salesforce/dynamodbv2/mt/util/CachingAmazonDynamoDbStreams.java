@@ -811,12 +811,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     return loadedRecordsResult;
                 }
                 // otherwise compute next iterator (update cache for lazy iterators)
-                CachingShardIterator nextIterator = iterator.getDynamoDbIterator()
-                    .map(iterator::withDynamoDbIterator)
-                    .orElseGet(() -> {
-                        iteratorCache.put(iterator, loadedNextIterator);
-                        return iterator;
-                    });
+                CachingShardIterator nextIterator;
+                if (iterator.getDynamoDbIterator().isPresent()) {
+                    nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
+                } else {
+                    iteratorCache.put(iterator, loadedNextIterator);
+                    nextIterator = iterator;
+                }
                 return new GetRecordsResult()
                     .withRecords(loadedRecords)
                     .withNextShardIterator(nextIterator.toExternalString());
