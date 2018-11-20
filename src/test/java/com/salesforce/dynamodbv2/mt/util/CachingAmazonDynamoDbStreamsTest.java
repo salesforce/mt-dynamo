@@ -8,6 +8,7 @@ import static com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.GET
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -355,8 +356,7 @@ class CachingAmazonDynamoDbStreamsTest {
         return null;
     }
 
-    private static String assertGetRecords(AmazonDynamoDBStreams
-        streams,
+    private static String assertGetRecords(AmazonDynamoDBStreams streams,
         String iterator,
         Integer limit,
         List<Record> expectedRecords) {
@@ -971,5 +971,28 @@ class CachingAmazonDynamoDbStreamsTest {
         // Only the two trim horizon calls should result in iterator and record lookups. The final call should be
         // serviced from the merged cache segment without needing to lookup another iterator.
         assertCacheMisses(streams, 2, 2);
+    }
+
+    /**
+     * Verifies that trim horizon iterator advances even if there are no records in the stream.
+     */
+    @Test
+    void testTrimHorizonAdvances() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest request = newTrimHorizonRequest();
+        String dynamoDbIterator = mockShardIterator(request);
+        mockGetShardIterator(streams, request, dynamoDbIterator);
+
+        String nextDynamoDbIterator = mockShardIterator(request);
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        String iterator = cachingStreams.getShardIterator(request).getShardIterator();
+        String nextIterator = assertGetRecords(cachingStreams, iterator, null, Collections.emptyList());
+
+        assertNotEquals(iterator, nextIterator);
+        assertTrue(nextIterator.contains(nextDynamoDbIterator));
     }
 }
