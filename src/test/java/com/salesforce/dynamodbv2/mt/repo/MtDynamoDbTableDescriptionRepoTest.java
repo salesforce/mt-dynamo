@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -41,8 +41,18 @@ public class MtDynamoDbTableDescriptionRepoTest {
         dynamoDb.updateTable(new UpdateTableRequest(tableName, new ProvisionedThroughput(6L, 6L)));
 
         MtDynamoDbTableDescriptionRepo repo2 = b.build();
-        ctx.withContext("1", () ->
-            assertNotNull(repo2.getTableDescription("test"))
-        );
+        try {
+            ctx.withContext("1", () -> repo2.getTableDescription("test"));
+            // if no exception was thrown, the repo properly initialized using the existing metadata table
+        } catch (Exception e) {
+            // otherwise, check which exception was thrown to distinguish between test failure and error
+            Throwable cause = e;
+            while ((cause = cause.getCause()) != null) {
+                if (cause instanceof IllegalArgumentException && cause.getMessage().contains("table does not match")) {
+                    fail("Description repo rejected metadata table after provisioned throughput change.", e);
+                }
+            }
+            throw e;
+        }
     }
 }
