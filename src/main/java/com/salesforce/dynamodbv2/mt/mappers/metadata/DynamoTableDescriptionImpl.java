@@ -214,4 +214,14 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             && lsiMap.equals(that.lsiMap);
     }
 
+    @Override
+    public int hashCode() {
+        int result = tableName != null ? tableName.hashCode() : 0;
+        result = 31 * result + (attributeDefinitions != null ? attributeDefinitions.hashCode() : 0);
+        result = 31 * result + (primaryKey != null ? primaryKey.hashCode() : 0);
+        result = 31 * result + (gsiMap != null ? gsiMap.hashCode() : 0);
+        result = 31 * result + (lsiMap != null ? lsiMap.hashCode() : 0);
+        result = 31 * result + (streamSpecification != null ? streamSpecification.hashCode() : 0);
+        return result;
+    }
 }
