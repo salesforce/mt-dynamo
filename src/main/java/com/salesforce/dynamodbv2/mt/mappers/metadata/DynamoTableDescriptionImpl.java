@@ -17,13 +17,10 @@ import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,7 +41,6 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     private final PrimaryKey primaryKey;
     private final Map<String, DynamoSecondaryIndex> gsiMap;
     private final Map<String, DynamoSecondaryIndex> lsiMap;
-    private final ProvisionedThroughputDescription provisionedThroughput;
     private final StreamSpecification streamSpecification;
     private final String lastStreamArn;
 
@@ -68,7 +64,6 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
                 new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
-        provisionedThroughput = fromProvisionedThroughput(createTableRequest.getProvisionedThroughput());
         streamSpecification = createTableRequest.getStreamSpecification();
         lastStreamArn = null;
     }
@@ -91,7 +86,6 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             tableDescription.getLocalSecondaryIndexes().stream().map(lsi ->
                 new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
-        provisionedThroughput = tableDescription.getProvisionedThroughput();
         lastStreamArn = tableDescription.getLatestStreamArn();
         streamSpecification = tableDescription.getStreamSpecification();
     }
@@ -170,10 +164,12 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         return si.get();
     }
 
+    @Override
     public StreamSpecification getStreamSpecification() {
         return streamSpecification;
     }
 
+    @Override
     public String getLastStreamArn() {
         return lastStreamArn;
     }
@@ -215,17 +211,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             && attributeDefinitions.equals(that.attributeDefinitions)
             && primaryKey.equals(that.primaryKey)
             && gsiMap.equals(that.gsiMap)
-            && lsiMap.equals(that.lsiMap)
-            && provisionedThroughput.getReadCapacityUnits()
-                .equals(that.provisionedThroughput.getReadCapacityUnits())
-            && provisionedThroughput.getWriteCapacityUnits()
-                .equals(that.provisionedThroughput.getWriteCapacityUnits());
-    }
-
-    private ProvisionedThroughputDescription fromProvisionedThroughput(ProvisionedThroughput provisionedThroughput) {
-        return new ProvisionedThroughputDescription()
-            .withReadCapacityUnits(provisionedThroughput.getReadCapacityUnits())
-            .withWriteCapacityUnits(provisionedThroughput.getWriteCapacityUnits());
+            && lsiMap.equals(that.lsiMap);
     }
 
 }
