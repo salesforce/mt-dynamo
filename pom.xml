@@ -144,7 +144,7 @@
                     <dependency>
                         <groupId>org.junit.platform</groupId>
                         <artifactId>junit-platform-surefire-provider</artifactId>
-                        <version>1.3.1</version>
+                        <version>1.3.2</version>
                     </dependency>
                 </dependencies>
                 <configuration>
@@ -299,7 +299,7 @@
                             <dependency>
                                 <groupId>org.junit.platform</groupId>
                                 <artifactId>junit-platform-surefire-provider</artifactId>
-                                <version>1.3.1</version>
+                                <version>1.3.2</version>
                             </dependency>
                             <!--
                                  This dependency works around this(https://github.com/junit-team/junit5/issues/1367) bug
