@@ -7,7 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
-import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -18,11 +17,7 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface MtAmazonDynamoDbContextProvider {
 
-    Optional<String> getContextOpt();
-
-    default String getContext() {
-        return getContextOpt().orElseThrow(IllegalStateException::new);
-    }
+    String getContext();
 
     /**
      * Sets the tenant context.
