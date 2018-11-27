@@ -20,6 +20,7 @@ import java.util.Optional;
 public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbContextProvider {
 
     private static final String CONTEXT_KEY = "multitenant-context";
+    public static final String BASE_CONTEXT = "";
     private final ThreadLocal<Object> threadLocal = new ThreadLocal<>();
 
     @Override
@@ -30,7 +31,7 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
     @Override
     public Optional<String> getContextOpt() {
         String value = getContextMap().get(CONTEXT_KEY);
-        return value == null || value.trim().isEmpty() ? Optional.empty() : Optional.of(value);
+        return value == null || value.trim().isEmpty() ? Optional.of(BASE_CONTEXT) : Optional.of(value);
     }
 
     private Map<String, String> getContextMap() {

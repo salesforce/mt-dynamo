@@ -40,12 +40,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * @param runnable the procedure to run after the context is set
      */
     default void withContext(String tenantId, Runnable runnable) {
-        Optional<String> origContext = getContextOpt();
+        final String origContext = getContext();
+        setContext(tenantId);
         try {
-            setContext(tenantId);
             runnable.run();
         } finally {
-            setContext(origContext.orElse(null));
+            setContext(origContext);
         }
     }
 
@@ -61,13 +61,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * @return         the result of calling {@code function} on {@code t}
      */
     default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
-        Optional<String> origContext = getContextOpt();
+        final String origContext = getContext();
         setContext(tenantId);
         try {
             return function.apply(t);
         } finally {
-            setContext(origContext.orElse(null));
+            setContext(origContext);
         }
     }
-
 }

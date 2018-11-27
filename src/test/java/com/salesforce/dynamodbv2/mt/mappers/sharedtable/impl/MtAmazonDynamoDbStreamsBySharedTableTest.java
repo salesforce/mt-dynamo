@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
@@ -67,7 +66,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withPrecreateTables(true)
-            .withContext(Optional::empty)
+            .withContext(() -> Optional.of(""))
             .build();
         try {
             TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName));
