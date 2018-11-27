@@ -22,7 +22,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
 
 import java.nio.charset.Charset;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
@@ -146,11 +145,11 @@ class FieldMapperTest {
 
     private MtAmazonDynamoDbContextProvider buildMtContext() {
         return new MtAmazonDynamoDbContextProvider() {
-            String context = random();
+            final String context = random();
 
             @Override
-            public Optional<String> getContextOpt() {
-                return Optional.of(context);
+            public String getContext() {
+                return this.context;
             }
 
             @Override

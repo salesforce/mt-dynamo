@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl.BASE_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -7,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
@@ -67,7 +67,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withPrecreateTables(true)
-            .withContext(Optional::empty)
+            .withContext(() -> BASE_CONTEXT)
             .build();
         try {
             TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName));

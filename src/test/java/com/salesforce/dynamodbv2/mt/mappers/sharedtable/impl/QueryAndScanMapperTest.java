@@ -29,7 +29,6 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import java.util.HashMap;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -55,8 +54,8 @@ class QueryAndScanMapperTest {
         new DynamoSecondaryIndexMapperByTypeImpl(),
         new MtAmazonDynamoDbContextProvider() {
             @Override
-            public Optional<String> getContextOpt() {
-                return Optional.of("ctx");
+            public String getContext() {
+                return "ctx";
             }
 
             @Override

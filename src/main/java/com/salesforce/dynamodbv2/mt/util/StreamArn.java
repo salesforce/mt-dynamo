@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl.BASE_CONTEXT;
 
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.io.UnsupportedEncodingException;
@@ -32,8 +33,8 @@ public class StreamArn {
         }
 
         @Override
-        public Optional<String> getContext() {
-            return Optional.of(context);
+        public String getContext() {
+            return this.context;
         }
 
         @Override
@@ -43,7 +44,7 @@ public class StreamArn {
 
         @Override
         public boolean matches(MtRecord record) {
-            return this.getContext().equals(Optional.of(record.getContext()))
+            return this.getContext().equals(record.getContext())
                 && this.getTenantTableName().equals(Optional.of(record.getTableName()));
         }
 
@@ -199,10 +200,10 @@ public class StreamArn {
     /**
      * Returns the context contained in this arn.
      *
-     * @return Context in this arn. May be empty.
+     * @return Context in this arn.
      */
-    public Optional<String> getContext() {
-        return Optional.empty();
+    public String getContext() {
+        return BASE_CONTEXT;
     }
 
     /**

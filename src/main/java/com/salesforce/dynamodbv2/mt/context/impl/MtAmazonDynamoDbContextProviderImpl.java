@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.context.impl;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * TODO: write Javadoc.
@@ -20,6 +19,7 @@ import java.util.Optional;
 public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbContextProvider {
 
     private static final String CONTEXT_KEY = "multitenant-context";
+    public static final String BASE_CONTEXT = "";
     private final ThreadLocal<Object> threadLocal = new ThreadLocal<>();
 
     @Override
@@ -28,9 +28,9 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
     }
 
     @Override
-    public Optional<String> getContextOpt() {
-        String value = getContextMap().get(CONTEXT_KEY);
-        return value == null || value.trim().isEmpty() ? Optional.empty() : Optional.of(value);
+    public String getContext() {
+        final String value = getContextMap().get(CONTEXT_KEY);
+        return value == null || value.trim().isEmpty() ? BASE_CONTEXT : value;
     }
 
     private Map<String, String> getContextMap() {
