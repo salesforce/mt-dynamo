@@ -2,7 +2,6 @@ package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import java.util.Objects;
 
 /**
@@ -11,8 +10,8 @@ import java.util.Objects;
  */
 public class ShardIterator {
 
-    public static final char ITERATOR_SEPERATOR = '|';
-    private static final String LOCAL_DYNAMODB_PREFIX = "000" + ITERATOR_SEPERATOR;
+    public static final char ITERATOR_SEPARATOR = '|';
+    private static final String LOCAL_DYNAMODB_PREFIX = "000" + ITERATOR_SEPARATOR;
 
     /**
      * Parses shard iterator from string representation.
@@ -25,7 +24,7 @@ public class ShardIterator {
         if (local) {
             value = value.substring(LOCAL_DYNAMODB_PREFIX.length());
         }
-        final int idx = value.indexOf(ITERATOR_SEPERATOR);
+        final int idx = value.indexOf(ITERATOR_SEPARATOR);
         final String arn = value.substring(0, idx);
         final String rest = value.substring(idx + 1);
         return new ShardIterator(local, arn, rest);
@@ -63,7 +62,7 @@ public class ShardIterator {
 
     @Override
     public String toString() {
-        String value = arn + ITERATOR_SEPERATOR + rest;
+        String value = arn + ITERATOR_SEPARATOR + rest;
         if (local) {
             value = LOCAL_DYNAMODB_PREFIX + value;
         }
