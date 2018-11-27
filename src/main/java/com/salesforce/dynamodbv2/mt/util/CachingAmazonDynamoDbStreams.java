@@ -7,7 +7,7 @@ import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.TRIM_HOR
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getLast;
-import static com.salesforce.dynamodbv2.mt.util.ShardIterator.ITERATOR_SEPERATOR;
+import static com.salesforce.dynamodbv2.mt.util.ShardIterator.ITERATOR_SEPARATOR;
 import static java.math.BigInteger.ONE;
 import static java.util.stream.Collectors.toList;
 
@@ -368,7 +368,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             String streamArn = iterator.getArn();
 
             String rest = iterator.getRest();
-            int idx = rest.lastIndexOf(ITERATOR_SEPERATOR);
+            int idx = rest.lastIndexOf(ITERATOR_SEPARATOR);
             String dynamoDbIterator;
             if (idx == -1) {
                 dynamoDbIterator = null;
@@ -560,9 +560,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
             String rest = compositeStrings.join(fields);
             if (dynamoDbIterator == null) {
-                return streamArn + ITERATOR_SEPERATOR + rest;
+                return streamArn + ITERATOR_SEPARATOR + rest;
             } else {
-                return dynamoDbIterator + ITERATOR_SEPERATOR + rest;
+                return dynamoDbIterator + ITERATOR_SEPARATOR + rest;
             }
         }
 
