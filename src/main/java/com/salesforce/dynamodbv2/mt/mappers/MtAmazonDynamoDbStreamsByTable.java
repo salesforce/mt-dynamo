@@ -5,8 +5,6 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.function.Function;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Table per tenant type streams implementation.

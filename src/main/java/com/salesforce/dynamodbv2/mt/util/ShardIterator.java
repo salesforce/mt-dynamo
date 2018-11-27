@@ -1,8 +1,5 @@
 package com.salesforce.dynamodbv2.mt.util;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import java.util.Objects;
 
 /**
