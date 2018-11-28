@@ -5,6 +5,10 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
+## 0.9.25 (November 28, 2018)
+
+* Fixed issue by advancing trim horizon iterator even if no records found
+
 ## 0.9.22 (November 14, 2018)
 
 * Improved logging of table mappings in `SharedTable` implementation.
