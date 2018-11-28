@@ -5,13 +5,18 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
+## 0.9.25 (November 28, 2018)
+
+* Fixed issue by advancing trim-horizon iterator even if no records found
+* Disallow *no* context (was `Optional.empty()`)---base context is now `""`; replace `MtAmazonDynamoDbContextProvider`'s one abstract method, `Optional<String> getContextOpt()`, with `String getContext()`
+
 ## 0.9.22 (November 14, 2018)
 
-* Improved logging of table mappings in `SharedTable` implementation.
+* Improved logging of table mappings in `SharedTable` implementation
 
 ## 0.9.21 (October 29, 2018)
 
-* URL encode `context` and `tenantTableName` in multitenant prefixes.
+* URL encode `context` and `tenantTableName` in multitenant prefixes
 
 ## 0.9.20 (October 19, 2018)
 
@@ -22,11 +27,11 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.19 (October 11, 2018)
 
-* `CachingAmazonDynamoDbStreams` improvements.
+* `CachingAmazonDynamoDbStreams` improvements
 
 ## 0.9.16 (September 26, 2018)
 
-* `SharedTable` support for 'greater than' (GT) queries on tables with numeric range-key fields (via KeyConditions only)
+* `SharedTable` support for 'greater than' (GT) queries on tables with numeric range-key fields (via `KeyConditions` only)
 * `SharedTable` support for conditional puts
 * `SharedTable` fixed `TrimmedDataAccessException` for `TRIM_HORIZON` iterators
 
@@ -37,7 +42,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 ## 0.9.14 (September 22, 2018)
 
 * `ByTable` support for streams API*
-* 'SharedTable' support for latestStreamArn*
+* `SharedTable` support for latestStreamArn*
 
 ## 0.9.13 (September 20, 2018)
 
