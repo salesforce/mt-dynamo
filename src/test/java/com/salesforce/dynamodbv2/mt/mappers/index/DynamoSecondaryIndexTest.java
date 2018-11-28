@@ -74,7 +74,7 @@ class DynamoSecondaryIndexTest {
                 "index3",
                 ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
                 GSI);
-            fail("It was expected that the constructor throws IllegalArgumentException");
+            fail("Expected IllegalArgumentException not thrown");
         } catch (IllegalArgumentException ignore) {
             // expected
         }

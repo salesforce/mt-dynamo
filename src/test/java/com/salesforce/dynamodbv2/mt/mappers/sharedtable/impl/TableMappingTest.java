@@ -360,7 +360,7 @@ class TableMappingTest {
     private static void assertException(TestFunction test, String expectedMessagePrefix) {
         try {
             test.run();
-            fail("It was expected exception '" + expectedMessagePrefix + "' not encountered");
+            fail("Expected exception '" + expectedMessagePrefix + "' not encountered");
         } catch (IllegalArgumentException | NullPointerException e) {
             assertTrue(e.getMessage().startsWith(expectedMessagePrefix),
                     "expectedPrefix=" + expectedMessagePrefix + ", actual=" + e.getMessage());

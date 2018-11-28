@@ -57,7 +57,7 @@ class DynamoSecondaryIndexMapperByTypeImplTest {
             GSI)));
         try {
             new DynamoSecondaryIndexMapperByTypeImpl().lookupPhysicalSecondaryIndex(vsi, physicalTable);
-            fail("It was expected that #lookupPhysicalSecondaryIndex throws MappingException");
+            fail("Expected MappingException not thrown");
         } catch (MappingException ignore) {
             // expected
         }

@@ -111,7 +111,7 @@ class PrimaryKeyMapperByTypeImplTest {
     private static void assertMappingException(TestFunction test) {
         try {
             HasPrimaryKey hasPrimaryKey = test.run();
-            fail("It was expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
+            fail("Expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
         } catch (MappingException ignored) { /* expected */ }
     }
 
