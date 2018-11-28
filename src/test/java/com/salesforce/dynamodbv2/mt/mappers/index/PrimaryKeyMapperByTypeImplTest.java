@@ -12,6 +12,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.collect.ImmutableList.of;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
@@ -110,8 +111,7 @@ class PrimaryKeyMapperByTypeImplTest {
     private static void assertMappingException(TestFunction test) {
         try {
             HasPrimaryKey hasPrimaryKey = test.run();
-            throw new RuntimeException("expected MappingException not encountered, found:"
-                    + hasPrimaryKey.getPrimaryKey());
+            fail("It was expected MappingException not encountered, found:" + hasPrimaryKey.getPrimaryKey());
         } catch (MappingException ignored) { /* expected */ }
     }
 
