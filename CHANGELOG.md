@@ -8,7 +8,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 ## 0.9.25 (November 28, 2018)
 
 * Fixed issue by advancing trim-horizon iterator even if no records found
-* disallow *no* context (was `Optional.empty()`)---base context is now `""`; replace `MtAmazonDynamoDbContextProvider`'s one abstract method, `Optional<String> getContextOpt()`, with `String getContext()`
+* Disallow *no* context (was `Optional.empty()`)---base context is now `""`; replace `MtAmazonDynamoDbContextProvider`'s one abstract method, `Optional<String> getContextOpt()`, with `String getContext()`
 
 ## 0.9.22 (November 14, 2018)
 
