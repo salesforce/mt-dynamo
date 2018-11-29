@@ -36,14 +36,12 @@ To use, pass your `AmazonDynamoDBClientBuilder`, `MtAccountCredentialsMapper`, a
 ```java
 MtAmazonDynamoDbByAccount.builder()
     .withAmazonDynamoDbClientBuilder(AmazonDynamoDBClientBuilder.standard())
-    .withAccountCredentialsMapper(
-        new MtAccountCredentialsMapper() {
-            @Override
-            public AWSCredentialsProvider getAwsCredentialsProvider(String tenantIdentifier) {
-                // return an AWSCredentialsProvider based on the tenant identifier
-            }
+    .withAccountCredentialsMapper(new MtAccountCredentialsMapper() {
+        @Override
+        public AWSCredentialsProvider getAwsCredentialsProvider(String tenantIdentifier) {
+            // return an AWSCredentialsProvider based on the tenant identifier
         }
-    )
+    })
     .withContext(contextProviderImpl)
     .build();
 ```
