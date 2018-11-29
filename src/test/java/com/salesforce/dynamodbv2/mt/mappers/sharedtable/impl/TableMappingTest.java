@@ -16,6 +16,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -40,7 +41,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
-
 
 /**
  * TODO: write Javadoc.
@@ -360,7 +360,7 @@ class TableMappingTest {
     private static void assertException(TestFunction test, String expectedMessagePrefix) {
         try {
             test.run();
-            throw new RuntimeException("expected exception '" + expectedMessagePrefix + "' not encountered");
+            fail("Expected exception '" + expectedMessagePrefix + "' not encountered");
         } catch (IllegalArgumentException | NullPointerException e) {
             assertTrue(e.getMessage().startsWith(expectedMessagePrefix),
                     "expectedPrefix=" + expectedMessagePrefix + ", actual=" + e.getMessage());

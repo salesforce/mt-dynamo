@@ -14,6 +14,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
@@ -92,6 +93,7 @@ class FieldMapperTest {
         try {
             buildFieldMapper(buildMtContext())
                     .apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
+            fail("Expected NullPointerException not thrown");
         } catch (NullPointerException e) {
             // expected
             assertEquals("null attribute type", e.getMessage());

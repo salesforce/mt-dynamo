@@ -16,6 +16,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -73,6 +74,7 @@ class DynamoSecondaryIndexTest {
                 "index3",
                 ImmutableList.of(new KeySchemaElement().withAttributeName("hk").withKeyType(HASH)),
                 GSI);
+            fail("Expected IllegalArgumentException not thrown");
         } catch (IllegalArgumentException ignore) {
             // expected
         }

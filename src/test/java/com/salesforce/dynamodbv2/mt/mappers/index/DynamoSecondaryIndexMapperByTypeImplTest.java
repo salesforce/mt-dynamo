@@ -11,6 +11,7 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -56,6 +57,7 @@ class DynamoSecondaryIndexMapperByTypeImplTest {
             GSI)));
         try {
             new DynamoSecondaryIndexMapperByTypeImpl().lookupPhysicalSecondaryIndex(vsi, physicalTable);
+            fail("Expected MappingException not thrown");
         } catch (MappingException ignore) {
             // expected
         }
