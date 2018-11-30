@@ -72,6 +72,10 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.TagResourceResult;
+import com.amazonaws.services.dynamodbv2.model.TransactGetItemsRequest;
+import com.amazonaws.services.dynamodbv2.model.TransactGetItemsResult;
+import com.amazonaws.services.dynamodbv2.model.TransactWriteItemsRequest;
+import com.amazonaws.services.dynamodbv2.model.TransactWriteItemsResult;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsRequest;
@@ -382,6 +386,16 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public TagResourceResult tagResource(TagResourceRequest tagResourceRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TransactGetItemsResult transactGetItems(TransactGetItemsRequest transactGetItemsRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public TransactWriteItemsResult transactWriteItems(TransactWriteItemsRequest transactWriteItemsRequest) {
         throw new UnsupportedOperationException();
     }
 
