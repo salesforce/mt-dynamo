@@ -14,7 +14,7 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryAndScanMapper.QueryRequestWrapper;
@@ -60,7 +60,7 @@ class ConditionMapperTest {
     private void executeKeyConditionsTest(KeyConditionTestInvocation testInvocation) {
         final KeyConditionTestInputs inputs = testInvocation.getInputs();
         final KeyConditionTestExpected expected = testInvocation.getExpected();
-        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
+        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
         mtContext.setContext(inputs.getOrg());
         DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());

@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl.BASE_CONTEXT;
+import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;

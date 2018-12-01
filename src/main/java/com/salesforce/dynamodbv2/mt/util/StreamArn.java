@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl.BASE_CONTEXT;
+import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.io.UnsupportedEncodingException;

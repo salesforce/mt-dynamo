@@ -25,7 +25,7 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
@@ -71,7 +71,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
     public static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
     private static final String HK_TABLE_NAME = "hkTable";

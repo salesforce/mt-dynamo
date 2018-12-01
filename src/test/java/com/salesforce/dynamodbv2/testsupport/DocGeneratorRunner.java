@@ -32,7 +32,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountCredentialsMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
@@ -103,7 +103,8 @@ class DocGeneratorRunner {
     private static final AmazonDynamoDBClientBuilder AMAZON_DYNAMO_DB_CLIENT_BUILDER = AmazonDynamoDBClientBuilder
             .standard()
             .withRegion(Regions.US_EAST_1);
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = new MtAmazonDynamoDbContextProviderImpl();
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AMAZON_DYNAMO_DB_CLIENT_BUILDER.build();
