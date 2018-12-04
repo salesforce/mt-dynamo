@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import org.awaitility.Duration;
@@ -61,10 +62,10 @@ public class AmazonDynamoDbAdminUtils {
                         + "existing: " + existingTableDesc + ", createTableRequest=" + createTableRequestDesc);
             }
         } catch (TableInUseException e) {
-            if (e.getStatus().toUpperCase().equals("CREATING")) {
+            if (TableStatus.CREATING.equals(e.getStatus())) {
                 awaitTableActive(createTableRequest.getTableName(),
-                                 pollIntervalSeconds,
-                        TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
+                    pollIntervalSeconds,
+                    TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
                 throw new ResourceInUseException("table=" + e.getTableName() + " is in " + e.getStatus() + " status");
             }
@@ -87,7 +88,7 @@ public class AmazonDynamoDbAdminUtils {
                 amazonDynamoDb.deleteTable(new DeleteTableRequest().withTableName(tableName));
             }
         } catch (TableInUseException e) {
-            if (!e.getStatus().toUpperCase().equals("DELETING")) {
+            if (!TableStatus.DELETING.equals(e.getStatus())) {
                 throw new ResourceInUseException(
                     "table=" + e.getTableName() + " being deleted has status=" + e.getStatus());
             }
@@ -116,14 +117,22 @@ public class AmazonDynamoDbAdminUtils {
         }
     }
 
-    private String getTableStatus(String tableName) throws TableInUseException {
+    private TableStatus getTableStatus(String tableName) throws TableInUseException {
         try {
-            String status = describeTable(tableName).getTableStatus();
-            log.info("table=" + tableName + " is " + status);
-            if (status.toLowerCase().equals("ing")) {
-                throw new TableInUseException(tableName, status);
+            final TableStatus tableStatus = TableStatus.fromValue(describeTable(tableName).getTableStatus());
+            log.info("table=" + tableName + " is " + tableStatus);
+            switch (tableStatus) {
+                case CREATING:
+                case UPDATING:
+                case DELETING:
+                    throw new TableInUseException(tableName, tableStatus);
+                case ACTIVE:
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported TableStatus " + tableStatus);
             }
-            return status;
+
+            return tableStatus;
         } catch (ResourceNotFoundException e) {
             log.info("table=" + tableName + " does not exist");
             throw e;
@@ -131,26 +140,27 @@ public class AmazonDynamoDbAdminUtils {
     }
 
     private static class TableInUseException extends Exception {
-        private final String tableName;
-        private final String status;
 
-        TableInUseException(String tableName, String status) {
+        private final String tableName;
+        private final TableStatus status;
+
+        TableInUseException(String tableName, TableStatus status) {
             this.tableName = tableName;
             this.status = status;
         }
 
-        public String getTableName() {
+        String getTableName() {
             return tableName;
         }
 
-        String getStatus() {
+        TableStatus getStatus() {
             return status;
         }
     }
 
     private boolean tableActive(String tableName) throws TableInUseException {
         try {
-            return getTableStatus(tableName).equals("ACTIVE");
+            return TableStatus.ACTIVE.equals(getTableStatus(tableName));
         } catch (ResourceNotFoundException e) {
             return false;
         }
