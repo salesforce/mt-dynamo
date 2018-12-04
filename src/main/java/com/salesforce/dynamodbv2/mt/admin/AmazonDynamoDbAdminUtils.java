@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import org.awaitility.Duration;
@@ -120,9 +121,18 @@ public class AmazonDynamoDbAdminUtils {
         try {
             String status = describeTable(tableName).getTableStatus();
             log.info("table=" + tableName + " is " + status);
-            if (status.toLowerCase().equals("ing")) {
-                throw new TableInUseException(tableName, status);
+            final TableStatus tableStatus = TableStatus.fromValue(status.toUpperCase());
+            switch (tableStatus) {
+                case CREATING:
+                case UPDATING:
+                case DELETING:
+                    throw new TableInUseException(tableName, status);
+                case ACTIVE:
+                    break;
+                default:
+                    throw new IllegalStateException("Unsupported TableStatus " + tableStatus);
             }
+
             return status;
         } catch (ResourceNotFoundException e) {
             log.info("table=" + tableName + " does not exist");
