@@ -16,11 +16,11 @@ import java.util.Map;
  *
  * @author msgroi
  */
-public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbContextProvider {
+public class MtAmazonDynamoDbContextProviderThreadLocalImpl implements MtAmazonDynamoDbContextProvider {
 
     private static final String CONTEXT_KEY = "multitenant-context";
     public static final String BASE_CONTEXT = "";
-    private final ThreadLocal<Object> threadLocal = new ThreadLocal<>();
+    private static final ThreadLocal<Map<String, String>> CONTEXT_MAP_THREAD_LOCAL = new ThreadLocal<>();
 
     @Override
     public void setContext(String tenantId) {
@@ -34,10 +34,10 @@ public class MtAmazonDynamoDbContextProviderImpl implements MtAmazonDynamoDbCont
     }
 
     private Map<String, String> getContextMap() {
-        Map<String, String> context = (Map<String, String>) threadLocal.get();
+        Map<String, String> context = CONTEXT_MAP_THREAD_LOCAL.get();
         if (context == null) {
             context = new HashMap<>();
-            threadLocal.set(context);
+            CONTEXT_MAP_THREAD_LOCAL.set(context);
         }
         return context;
     }

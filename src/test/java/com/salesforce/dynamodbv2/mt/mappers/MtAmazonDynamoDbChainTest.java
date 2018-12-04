@@ -49,7 +49,7 @@ import com.google.common.io.Resources;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderImpl;
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
@@ -87,7 +87,7 @@ class MtAmazonDynamoDbChainTest {
     @Test
     void test() throws Exception {
         // create context
-        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderImpl();
+        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
         // log message aggregator
         LogAggregator logAggregator = new LogAggregator();
