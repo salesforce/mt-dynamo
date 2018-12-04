@@ -207,7 +207,7 @@ class TableMapping {
         Map<String, List<FieldMapping>> virtualToPhysicalMappings) {
         Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
         virtualToPhysicalMappings.values().stream()
-            .flatMap((Function<List<FieldMapping>, Stream<FieldMapping>>) Collection::stream)
+            .flatMap(Collection::stream)
             .forEach(fieldMapping -> fieldMappings.put(fieldMapping.getTarget().getName(),
                 ImmutableList.of(new FieldMapping(fieldMapping.getTarget(),
                     fieldMapping.getSource(),
