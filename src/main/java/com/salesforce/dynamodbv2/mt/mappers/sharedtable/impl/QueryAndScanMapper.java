@@ -109,16 +109,20 @@ class QueryAndScanMapper {
              * the expression does not contain the table or index key that's being used in the
              * query, add begins_with clause
              */
-            String physicalHashKey = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping ->
-                fieldMapping.getSource().getName().equals(virtualHashKey)).findFirst()
-                .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey))
+            String physicalHashKey = fieldMappings.stream()
+                .filter(fieldMapping -> fieldMapping.getSource().getName().equals(virtualHashKey))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "field mapping not found hash-key field " + virtualHashKey))
                 .getTarget()
                 .getName();
-            FieldMapping fieldMapping = fieldMappings.stream().filter((Predicate<FieldMapping>) fieldMapping1 ->
-                fieldMapping1.getSource().getName().equals(virtualHashKey)).findFirst()
-                .orElseThrow((Supplier<IllegalArgumentException>) () ->
-                    new IllegalArgumentException("field mapping not found hash-key field " + virtualHashKey));
+
+            FieldMapping fieldMapping = fieldMappings.stream()
+                .filter(fieldMapping1 -> fieldMapping1.getSource().getName().equals(virtualHashKey))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "field mapping not found hash-key field " + virtualHashKey));
+
             addBeginsWith(request, physicalHashKey, fieldMapping);
         }
 

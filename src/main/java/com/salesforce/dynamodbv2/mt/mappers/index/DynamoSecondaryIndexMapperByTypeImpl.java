@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.mappers.index;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -29,8 +28,8 @@ public class DynamoSecondaryIndexMapperByTypeImpl implements DynamoSecondaryInde
         return (DynamoSecondaryIndex) PRIMARY_KEY_MAPPER.mapPrimaryKey(virtualSi.getPrimaryKey(),
             physicalTable.getSis().stream()
                 .filter(dynamoSecondaryIndex -> dynamoSecondaryIndex.getType() == virtualSi.getType())
-                .map((Function<DynamoSecondaryIndex, HasPrimaryKey>) dynamoSecondaryIndex -> dynamoSecondaryIndex)
-                .collect(Collectors.toList()));
+                .collect(Collectors.toList())
+        );
     }
 
 }
