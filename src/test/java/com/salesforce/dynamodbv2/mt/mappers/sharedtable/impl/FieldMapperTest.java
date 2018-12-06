@@ -33,8 +33,7 @@ import org.junit.jupiter.api.Test;
  */
 class FieldMapperTest {
 
-    //    private static final String DELIMITER = random(); // TODO flip this back on when escaping is implemented
-    private static final String DELIMITER = ".";
+    private static final char DELIMITER = '.';
 
     @Test
     void applyTableIndex() {

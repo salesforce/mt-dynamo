@@ -142,7 +142,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .filter(elem -> HASH.toString().equals(elem.getKeyType()))
                 .map(KeySchemaElement::getAttributeName)
                 .findFirst().orElseThrow(IllegalStateException::new);
-        FieldPrefixFunction fpf = new FieldPrefixFunction(".");
+        FieldPrefixFunction fpf = new FieldPrefixFunction('.');
         // TODO support non-string physical table hash key
         return key -> fpf.reverse(key.get(hashKeyName).getS());
     }

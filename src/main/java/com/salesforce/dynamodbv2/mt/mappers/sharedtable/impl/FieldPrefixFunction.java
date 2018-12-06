@@ -24,9 +24,8 @@ class FieldPrefixFunction {
 
     private final CompositeStrings compositeStrings;
 
-    FieldPrefixFunction(String delimiter) {
-        Preconditions.checkArgument(delimiter.length() == 1, "only single character delimiters are supported");
-        compositeStrings = new CompositeStrings(delimiter.charAt(0), '\\');
+    FieldPrefixFunction(char delimiter) {
+        compositeStrings = new CompositeStrings(delimiter, '\\');
     }
 
     FieldValue apply(MtAmazonDynamoDbContextProvider mtContext, String tableIndex, String value) {

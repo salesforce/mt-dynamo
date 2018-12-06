@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Test;
  */
 class TableMappingTest {
 
-    private static final String DELIMITER = ".";
+    private static final char DELIMITER = '.';
     private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
             .builder()
             .withTableName("virtualTableName")
@@ -317,7 +317,7 @@ class TableMappingTest {
                         new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                         new DynamoSecondaryIndexMapperByTypeImpl(),
                         null,
-                        null
+                        '.'
                 ),
                 "two virtual LSIs");
     }

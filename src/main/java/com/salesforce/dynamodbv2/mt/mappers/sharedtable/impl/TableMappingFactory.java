@@ -41,7 +41,7 @@ public class TableMappingFactory {
     private final CreateTableRequestFactory createTableRequestFactory;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private final String delimiter;
+    private final char delimiter;
     private final AmazonDynamoDB amazonDynamoDb;
     private final int pollIntervalSeconds;
 
@@ -60,7 +60,7 @@ public class TableMappingFactory {
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,
                                DynamoSecondaryIndexMapper secondaryIndexMapper,
-                               String delimiter,
+                               char delimiter,
                                AmazonDynamoDB amazonDynamoDb,
                                boolean precreateTables,
                                int pollIntervalSeconds) {
