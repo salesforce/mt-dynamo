@@ -7,7 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
@@ -24,9 +23,8 @@ class FieldPrefixFunction {
 
     private final CompositeStrings compositeStrings;
 
-    FieldPrefixFunction(String delimiter) {
-        Preconditions.checkArgument(delimiter.length() == 1, "only single character delimiters are supported");
-        compositeStrings = new CompositeStrings(delimiter.charAt(0), '\\');
+    FieldPrefixFunction(char delimiter) {
+        compositeStrings = new CompositeStrings(delimiter, '\\');
     }
 
     FieldValue apply(MtAmazonDynamoDbContextProvider mtContext, String tableIndex, String value) {

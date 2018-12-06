@@ -62,7 +62,7 @@ class QueryAndScanMapperTest {
             public void withContext(String org, Runnable runnable) {
             }
         },
-        "."
+        '.'
     );
 
     private QueryAndScanMapper getMockQueryMapper() {

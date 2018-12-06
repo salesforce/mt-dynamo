@@ -92,7 +92,7 @@ public class SharedTableCustomDynamicBuilder {
     private String name;
     private AmazonDynamoDB amazonDynamoDb;
     private MtAmazonDynamoDbContextProvider mtContext;
-    private String delimiter;
+    private Character delimiter;
     private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
@@ -151,7 +151,7 @@ public class SharedTableCustomDynamicBuilder {
         return this;
     }
 
-    public SharedTableCustomDynamicBuilder withDelimiter(String delimiter) {
+    public SharedTableCustomDynamicBuilder withDelimiter(char delimiter) {
         this.delimiter = delimiter;
         return this;
     }
@@ -216,7 +216,7 @@ public class SharedTableCustomDynamicBuilder {
             secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
         }
         if (delimiter == null) {
-            delimiter = ".";
+            delimiter = '.';
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;

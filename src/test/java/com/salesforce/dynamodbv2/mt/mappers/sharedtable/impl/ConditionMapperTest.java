@@ -66,7 +66,7 @@ class ConditionMapperTest {
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
         ConditionMapper sut = new ConditionMapper(tableMapping,
-                new FieldMapper(mtContext, inputs.getVirtualTableName(), new FieldPrefixFunction(".")));
+                new FieldMapper(mtContext, inputs.getVirtualTableName(), new FieldPrefixFunction('.')));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.applyKeyConditionToField(requestWrapper,
                 inputs.getFieldMapping(),

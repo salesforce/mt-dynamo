@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
@@ -16,7 +15,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction
 import java.util.Arrays;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -27,7 +25,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class FieldPrefixFunctionTest {
 
-    private static final FieldPrefixFunction SUT = new FieldPrefixFunction(".");
+    private static final FieldPrefixFunction SUT = new FieldPrefixFunction('.');
 
     static Stream<Object[]> data() {
         return Arrays.stream(new Object[][] {
@@ -56,16 +54,6 @@ class FieldPrefixFunctionTest {
         assertEquals(expected, applied);
 
         assertEquals(expected, SUT.reverse(applied.getQualifiedValue()));
-    }
-
-    @Test
-    void multiCharacterSeparator() {
-        try {
-            new FieldPrefixFunction("..");
-            fail("expected IllegalArgumentException not encountered");
-        } catch (IllegalArgumentException e) {
-            assertEquals("only single character delimiters are supported", e.getMessage());
-        }
     }
 
 }
