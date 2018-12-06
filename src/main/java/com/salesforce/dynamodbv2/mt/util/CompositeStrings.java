@@ -23,14 +23,14 @@ public class CompositeStrings {
     }
 
     /**
-     * Builds a composite key sequenceNumber from the given sequence of key values using the
-     * configured separator and escape characters.
+     * Builds a composite key from the given sequence of key values using the configured separator and escape
+     * characters.
      *
-     * @param values Values to join into a composite key sequenceNumber
+     * @param values Values to join into a composite key
      * @return Joined composite key containing all individual keys
      */
     public String join(Iterable<String> values) {
-        // determine upper bound for composite key size
+        // determine upper bound for composite-key size
         int length = 0;
         for (String value : values) {
             length += 1 + value.length() * 2; // one separate per key plus one escape per char
@@ -55,10 +55,9 @@ public class CompositeStrings {
     }
 
     /**
-     * Splits the given composite key into individual keys using the configured
-     * separator and escape characters.
+     * Splits the given composite key into individual keys using the configured separator and escape characters.
      *
-     * @param composite Composite key to split into individual keys.
+     * @param composite Composite key to split into individual keys
      * @return Sequence of keys contained in the given composite key
      */
     public Iterator<String> split(String composite) {
