@@ -30,7 +30,7 @@ class FieldPrefixFunctionTest {
     static Stream<Object[]> data() {
         return Arrays.stream(new Object[][] {
             { "ctx", "table", "value", "ctx.table.value" },
-            { "ctx", "com.salesforce.zero.someObject", "value", "ctx.com\\.salesforce\\.zero\\.someObject.value" }
+            { "ctx2", "com.salesforce.zero.someObject", "value2", "ctx2.com\\.salesforce\\.zero\\.someObject.value2" }
         });
     }
 
