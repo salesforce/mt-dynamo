@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.26 (December 6, 2018)
 
-* Fixed bug in `SharedTable` where a `.` in a table name would cause hash keys to be misread
+* Fixed bug in `SharedTable` where a `'.'` in a table name would cause hash keys to be misread
 
 ## 0.9.25 (November 28, 2018)
 
