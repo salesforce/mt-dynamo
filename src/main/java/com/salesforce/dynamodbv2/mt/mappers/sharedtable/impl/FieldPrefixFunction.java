@@ -7,8 +7,12 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.google.common.base.Splitter;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.util.CompositeStrings;
+
 import java.util.List;
 
 /**
@@ -18,32 +22,26 @@ import java.util.List;
  */
 class FieldPrefixFunction {
 
-    private final String delimiter;
+    private final CompositeStrings compositeStrings;
 
     FieldPrefixFunction(String delimiter) {
-        this.delimiter = delimiter;
+        Preconditions.checkArgument(delimiter.length() == 1, "only single character delimiters are supported");
+        compositeStrings = new CompositeStrings(delimiter.charAt(0), '\\');
     }
 
     FieldValue apply(MtAmazonDynamoDbContextProvider mtContext, String tableIndex, String value) {
         return new FieldValue(mtContext.getContext(),
             tableIndex,
-            mtContext.getContext() + delimiter + tableIndex + delimiter + value,
+            compositeStrings.join(ImmutableList.of(mtContext.getContext(), tableIndex, value)),
             value);
     }
 
     FieldValue reverse(String qualifiedValue) {
-        final int firstDelimiterOccurrence = qualifiedValue.indexOf(delimiter);
-        final int prefixSeparatorIndex = qualifiedValue.indexOf(delimiter, firstDelimiterOccurrence + 1);
-        if (firstDelimiterOccurrence == -1 || prefixSeparatorIndex == -1) {
-            throw new IllegalArgumentException("Input parameter \"" + qualifiedValue
-                + "\" should have at least two occurrences of " + delimiter);
-        }
-        List<String> prefixList = Splitter.on(delimiter).splitToList(qualifiedValue.substring(0, prefixSeparatorIndex));
+        List<String> prefixList = Lists.newArrayList(compositeStrings.split(qualifiedValue));
         return new FieldValue(prefixList.get(0),
             prefixList.get(1),
             qualifiedValue,
-            qualifiedValue.substring(prefixSeparatorIndex + 1));
-
+            prefixList.get(2));
     }
 
     static class FieldValue {
@@ -91,6 +89,17 @@ class FieldPrefixFunction {
                     && qualifiedValue.equals(that.qualifiedValue)
                     && unqualifiedValue.equals(that.unqualifiedValue);
         }
+
+        @Override
+        public String toString() {
+            return "FieldValue{"
+                    + "mtContext='" + mtContext + '\''
+                    + ", tableIndex='" + tableIndex + '\''
+                    + ", qualifiedValue='" + qualifiedValue + '\''
+                    + ", unqualifiedValue='" + unqualifiedValue + '\''
+                    + '}';
+        }
+
     }
 
 }
