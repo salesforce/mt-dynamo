@@ -58,9 +58,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
@@ -910,7 +910,7 @@ class CachingAmazonDynamoDbStreamsTest {
      * problem is that caching TRIM_HORIZON makes this situation more likely.
      */
     @Test
-    @Ignore
+    @Disabled
     void testTrimHorizonMoves() {
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
 

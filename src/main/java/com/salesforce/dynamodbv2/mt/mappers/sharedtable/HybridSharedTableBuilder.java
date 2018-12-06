@@ -59,7 +59,7 @@ public class HybridSharedTableBuilder {
                 iteratingCreateTableRequestFactory,
                 mtContext,
                 new DynamoSecondaryIndexMapperByTypeImpl(),
-                ".",
+                '.',
                 amazonDynamoDb,
                 true,
                 pollIntervalSeconds),

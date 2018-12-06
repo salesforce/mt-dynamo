@@ -34,9 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Holds the state of mapping of a virtual table to a physical table.  It provides methods for retrieving the virtual
@@ -61,7 +59,7 @@ class TableMapping {
                  CreateTableRequestFactory createTableRequestFactory,
                  DynamoSecondaryIndexMapper secondaryIndexMapper,
                  MtAmazonDynamoDbContextProvider mtContext,
-                 String delimiter) {
+                 char delimiter) {
         physicalTable = lookupPhysicalTable(virtualTable, createTableRequestFactory);
         validatePhysicalTable(physicalTable);
         this.secondaryIndexMapper = secondaryIndexMapper;

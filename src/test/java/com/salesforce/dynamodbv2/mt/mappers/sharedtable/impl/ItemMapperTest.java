@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 class ItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
+    private static final char DELIMITER = '.';
     private static final ItemMapper SUT = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
             new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder.builder()
@@ -34,7 +35,7 @@ class ItemMapperTest {
             .getCreateTableRequest()),
         new DynamoSecondaryIndexMapperByTypeImpl(),
         null,
-        null
+        DELIMITER
     ), new MockFieldMapper());
 
     @Test

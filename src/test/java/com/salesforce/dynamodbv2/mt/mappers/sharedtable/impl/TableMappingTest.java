@@ -49,6 +49,7 @@ import org.junit.jupiter.api.Test;
  */
 class TableMappingTest {
 
+    private static final char DELIMITER = '.';
     private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
             .builder()
             .withTableName("virtualTableName")
@@ -71,7 +72,7 @@ class TableMappingTest {
             new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
-            null
+            DELIMITER
     );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
             "virtualhk", ImmutableList.of(
@@ -156,7 +157,7 @@ class TableMappingTest {
                 .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
-            null
+            DELIMITER
         );
         Map<String, List<FieldMapping>> fieldMappings = sut.getAllVirtualToPhysicalFieldMappings();
         Map<String, Integer> expectedMappingCounts = ImmutableMap.of("hk", 2,
@@ -263,7 +264,7 @@ class TableMappingTest {
                 new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                 spyIndexMapper,
                 null,
-                null
+                DELIMITER
         );
         when(spyIndexMapper.lookupPhysicalSecondaryIndex(virtualTable.getSis().get(0), physicalTable))
                 .thenThrow(new IllegalArgumentException("index mapping exception"));
@@ -316,7 +317,7 @@ class TableMappingTest {
                         new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                         new DynamoSecondaryIndexMapperByTypeImpl(),
                         null,
-                        null
+                        '.'
                 ),
                 "two virtual LSIs");
     }
