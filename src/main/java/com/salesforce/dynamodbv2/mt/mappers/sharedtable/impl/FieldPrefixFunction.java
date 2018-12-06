@@ -7,7 +7,6 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
