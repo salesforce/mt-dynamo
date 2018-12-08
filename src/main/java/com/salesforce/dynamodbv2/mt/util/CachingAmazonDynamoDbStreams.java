@@ -21,9 +21,11 @@ import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.TreeMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -766,7 +769,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
             // If we have a cache miss, get DynamoDB iterator (load if needed)
             final String dynamoDbIterator = iterator.getDynamoDbIterator()
-                .orElseGet(() -> iteratorCache.getUnchecked(iterator));
+                .orElseGet(() -> {
+                    try {
+                        return iteratorCache.getUnchecked(iterator);
+                    } catch (UncheckedExecutionException e) {
+                        Throwables.throwIfUnchecked(e.getCause());
+                        throw e;
+                    }
+                });
 
             // next load records from stream
             final GetRecordsResult loadedRecordsResult;
