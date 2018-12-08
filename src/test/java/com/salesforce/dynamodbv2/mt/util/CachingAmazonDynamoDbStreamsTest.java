@@ -40,6 +40,7 @@ import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
@@ -994,5 +995,24 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertNotEquals(iterator, nextIterator);
         assertTrue(nextIterator.contains(nextDynamoDbIterator));
+    }
+
+    /**
+     * Verifies that {@link ResourceNotFoundException} is thrown when attempting to retrieve non-existing shard.
+     */
+    @Test
+    void testNonExistingShard() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        when(streams.getShardIterator(eq(request))).thenThrow(ResourceNotFoundException.class);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        // expected to return lazy iterator
+        String iterator = cachingStreams.getShardIterator(request).getShardIterator();
+
+        assertThrows(ResourceNotFoundException.class, () -> {
+            cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
+        });
     }
 }
