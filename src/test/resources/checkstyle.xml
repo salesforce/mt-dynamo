@@ -22,6 +22,7 @@ Google checkstyle file pulled from https://github.com/checkstyle/checkstyle/blob
 Change log:
 - LineLength: 100 -> 120
 - Indentation.basicOffset|caseIndent|arrayInitIndent: 2 -> 4
+- add UnusedImports
 
 -->
 
@@ -208,6 +209,7 @@ Change log:
             <property name="separateLineBetweenGroups" value="true"/>
             <property name="customImportOrderRules" value="STATIC###THIRD_PARTY_PACKAGE"/>
         </module>
+        <module name="UnusedImports"/>
         <module name="MethodParamPad"/>
         <module name="NoWhitespaceBefore">
             <property name="tokens"
