@@ -998,10 +998,10 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that {@link ResourceNotFoundException} is thrown when attempting to retrieve non-existing shard.
+     * Verifies that {@link ResourceNotFoundException} is thrown when attempting to retrieve nonexistent shard.
      */
     @Test
-    void testNonExistingShard() {
+    void testNonexistentShard() {
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
         when(streams.getShardIterator(eq(request))).thenThrow(ResourceNotFoundException.class);
@@ -1011,8 +1011,7 @@ class CachingAmazonDynamoDbStreamsTest {
         // expected to return lazy iterator
         String iterator = cachingStreams.getShardIterator(request).getShardIterator();
 
-        assertThrows(ResourceNotFoundException.class, () -> {
-            cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
-        });
+        assertThrows(ResourceNotFoundException.class,
+            () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
     }
 }

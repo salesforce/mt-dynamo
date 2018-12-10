@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.27 (December 10, 2018)
 
-* Fixed bug in `CachingAmazonDynamoDbStreams` where `getRecords` for non-existing shard was throwing an `UncheckedExecutionException` as opposed to a `ResourceNotFoundException`.
+* Fixed bug in `CachingAmazonDynamoDbStreams` where `getRecords` for nonexistent shard was throwing an `UncheckedExecutionException` as opposed to a `ResourceNotFoundException`
 
 ## 0.9.26 (December 6, 2018)
 
