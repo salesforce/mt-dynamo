@@ -902,7 +902,7 @@ class CachingAmazonDynamoDbStreamsTest {
      * <li>Client 1 stops retrieving records.</li>
      * <li>Stream moves trim horizon to 2001 (i.e., deletes records up to 2000)</li>
      * <li>Client 2 queries for records with TRIM_HORIZON: we service records 1-1000 from cache.</li>
-     * <li>Client 2 immediately queries using next iterator, i.e. AFTER_SEQUENCE_NUMBER(1000): we have no records
+     * <li>Client 2 immediately queries using next iterator, i.e., AFTER_SEQUENCE_NUMBER(1000): we have no records
      * cached, so we query underlying stream, which throws TrimmedDataAccessException.</li>
      * </ol>
      * </p>

@@ -68,7 +68,8 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
     private final TestSetup testSetup;
 
     /**
-     * Used when used with an arguments source annotation directly, e.g. @ArgumentsSource(DefaultArgumentProvider.class)
+     * Used when annotating a test method with an arguments-source annotation directly, e.g.,
+     * &#64;ArgumentsSource(DefaultArgumentProvider.class)
      */
     public DefaultArgumentProvider() {
         this(new ArgumentBuilder(), new DefaultTestSetup());
