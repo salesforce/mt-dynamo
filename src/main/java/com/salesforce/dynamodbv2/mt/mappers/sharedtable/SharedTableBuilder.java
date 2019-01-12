@@ -15,6 +15,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
@@ -200,9 +201,20 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         ).stream().map(createTableRequestBuilder -> {
             addSis(createTableRequestBuilder, provisionedThroughput);
             addStreamSpecification(createTableRequestBuilder, streamsEnabled);
-            return createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput,
-                provisionedThroughput).build();
+            setBillingMode(createTableRequestBuilder, provisionedThroughput);
+            return createTableRequestBuilder.build();
         }).collect(Collectors.toList());
+    }
+
+    // TODO - write Javadoc
+    private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder,
+                                       long provisionedThroughput) {
+        createTableRequestBuilder.withBillingMode(BillingMode.PROVISIONED);
+        if (provisionedThroughput == 0) {
+            createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
+        } else {
+            createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput, provisionedThroughput);
+        }
     }
 
     private static void addSis(CreateTableRequestBuilder createTableRequestBuilder, long defaultProvisionedThroughput) {

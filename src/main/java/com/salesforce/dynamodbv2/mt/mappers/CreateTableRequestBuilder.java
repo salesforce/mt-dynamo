@@ -12,6 +12,7 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -137,6 +138,17 @@ public class CreateTableRequestBuilder {
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
         this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits,
             writeCapacityUnits));
+        return this;
+    }
+
+    /**
+     * TODO: write Javadoc.
+     *
+     * @param billingMode the read-capacity units
+     * @return this {@code CreateTableRequestBuilder} object
+     */
+    public CreateTableRequestBuilder withBillingMode(BillingMode billingMode) {
+        this.createTableRequest.withBillingMode(billingMode);
         return this;
     }
 
