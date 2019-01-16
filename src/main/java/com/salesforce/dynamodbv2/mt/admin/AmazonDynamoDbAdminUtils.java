@@ -48,6 +48,8 @@ public class AmazonDynamoDbAdminUtils {
      *     created
      */
     public void createTableIfNotExists(CreateTableRequest createTableRequest, int pollIntervalSeconds) {
+        //System.out.println(createTableRequest.toString());
+
         try {
             if (!tableExists(createTableRequest.getTableName())) {
                 String tableName = createTableRequest.getTableName();
@@ -125,6 +127,7 @@ public class AmazonDynamoDbAdminUtils {
                 case CREATING:
                 case UPDATING:
                 case DELETING:
+                    System.out.println("TABLE status is DELETING");
                     throw new TableInUseException(tableName, tableStatus);
                 case ACTIVE:
                     break;

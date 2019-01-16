@@ -156,6 +156,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
                 this.streamsEnabled);
+        } else if (this.defaultProvisionedThroughput == 0L) {
+                this.createTableRequests = createTableRequests.stream()
+                        .map(createTableRequest ->
+                                createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
+                        .collect(Collectors.toList());
         }
         super.setDefaults();
     }
@@ -199,9 +204,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             mtSharedTableStaticSnNoLsi,
             mtSharedTableStaticSbNoLsi
         ).stream().map(createTableRequestBuilder -> {
+            setBillingMode(createTableRequestBuilder, provisionedThroughput);
             addSis(createTableRequestBuilder, provisionedThroughput);
             addStreamSpecification(createTableRequestBuilder, streamsEnabled);
-            setBillingMode(createTableRequestBuilder, provisionedThroughput);
             return createTableRequestBuilder.build();
         }).collect(Collectors.toList());
     }
