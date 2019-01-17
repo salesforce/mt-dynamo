@@ -145,8 +145,7 @@ public class CreateTableRequestBuilder {
     }
 
     /**
-     * TODO: write Javadoc.
-     *
+     * Sets the billing mode for the CreateTableRequest instance.
      * @param billingMode the read-capacity units
      * @return this {@code CreateTableRequestBuilder} object
      */
