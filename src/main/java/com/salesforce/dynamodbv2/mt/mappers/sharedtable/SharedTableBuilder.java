@@ -211,10 +211,14 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         }).collect(Collectors.toList());
     }
 
-    // TODO - write Javadoc
+    /**
+     * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
+     * request builder.
+     * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
+     * @param provisionedThroughput the throughput to assign to the request builder. If 0, billing mode is set to PPR.
+     */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder,
                                        long provisionedThroughput) {
-        createTableRequestBuilder.withBillingMode(BillingMode.PROVISIONED);
         if (provisionedThroughput == 0) {
             createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else {

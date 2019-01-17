@@ -20,8 +20,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class SharedTableBuilderTest {
 
     /**
-     * Some of these tests run against actual DynamoDB (remote), due to limitations in the LocalDynamoDBClient that does not allow
-     * BillingMode PAY_PER_REQUEST to be enabled without specifying throughput (which differs from what the DynamoDB API allows).
+     * Some of these tests run against a remote instance of DynamoDB, due to limitations in the LocalDynamoDBClient
+     * which does not allow BillingMode PAY_PER_REQUEST to be enabled without specifying throughput
+     * (which differs from what the DynamoDB API allows).
      */
 
     static final Regions REGION = Regions.US_EAST_1;
@@ -36,7 +37,6 @@ class SharedTableBuilderTest {
 
     String TABLE_PREFIX = "oktodelete-testBillingMode.";
     String TABLE_NAME;
-    private MtAmazonDynamoDbContextProvider mtContext;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
@@ -46,7 +46,6 @@ class SharedTableBuilderTest {
     }
 
     @Test
-    @Disabled
     void testBillingModePayPerRequestWithCustomTableRequest(){
 
         CreateTableRequest request = new CreateTableRequest()
@@ -119,8 +118,6 @@ class SharedTableBuilderTest {
                 .withAmazonDynamoDb(localDynamoDB)
                 .withContext(MT_CONTEXT)
                 .build();
-
-        System.out.println(localDynamoDB.describeTable(TABLE_PREFIX+TABLE_NAME).getTable());
 
         assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
                 .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
