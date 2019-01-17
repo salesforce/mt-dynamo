@@ -9,9 +9,9 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
-import java.sql.Timestamp;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
@@ -20,8 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class SharedTableBuilderTest {
 
     /**
-     * Some of these tests run against actual DynamoDB (remote), due to limitations in the LocalDynamoDBClient that don't allow
-     * BillingMode PAY_PER_REQUEST to be enabled without specifying throughput (which is what the API allows).
+     * Some of these tests run against actual DynamoDB (remote), due to limitations in the LocalDynamoDBClient that does not allow
+     * BillingMode PAY_PER_REQUEST to be enabled without specifying throughput (which differs from what the DynamoDB API allows).
      */
 
     static final Regions REGION = Regions.US_EAST_1;
@@ -35,15 +35,22 @@ class SharedTableBuilderTest {
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
     String TABLE_PREFIX = "oktodelete-testBillingMode.";
+    String TABLE_NAME;
     private MtAmazonDynamoDbContextProvider mtContext;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
+    @BeforeEach
+    void beforeEach(){
+        TABLE_NAME = new String(String.valueOf(System.currentTimeMillis()));
+    }
+
     @Test
+    @Disabled
     void testBillingModePayPerRequestWithCustomTableRequest(){
 
         CreateTableRequest request = new CreateTableRequest()
-                .withTableName(new String(String.valueOf(System.currentTimeMillis())))
+                .withTableName(TABLE_NAME)
                 .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
                 .withAttributeDefinitions(
                         new AttributeDefinition(ID_ATTR_NAME, S),
@@ -64,11 +71,14 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + "_sample")
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
                 .getTable().getBillingModeSummary().getBillingMode());
+
+        remoteDynamoDB.deleteTable(TABLE_PREFIX + TABLE_NAME);
     }
 
     @Test
+    @Disabled
     void testBillingModePayPerRequestWithDefaults(){
 
         SharedTableBuilder.builder()
@@ -82,7 +92,40 @@ class SharedTableBuilderTest {
 
         assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
                 .getTable().getBillingModeSummary().getBillingMode());
+    }
 
+    @Test
+    void testBillingModeProvisionedWithCustomTableRequest(){
+
+        CreateTableRequest request = new CreateTableRequest()
+                .withTableName(TABLE_NAME)
+                .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
+                .withAttributeDefinitions(
+                        new AttributeDefinition(ID_ATTR_NAME, S),
+                        new AttributeDefinition(INDEX_ID_ATTR_NAME, S))
+                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
+                        .withIndexName("index")
+                        .withKeySchema(new KeySchemaElement(INDEX_ID_ATTR_NAME, HASH))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
+                ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
+
+        SharedTableBuilder.builder()
+                .withDefaultProvisionedThroughput(1)
+                .withCreateTableRequests(request)
+                .withStreamsEnabled(false)
+                .withPrecreateTables(true)
+                .withTablePrefix(TABLE_PREFIX)
+                .withAmazonDynamoDb(localDynamoDB)
+                .withContext(MT_CONTEXT)
+                .build();
+
+        System.out.println(localDynamoDB.describeTable(TABLE_PREFIX+TABLE_NAME).getTable());
+
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
+                .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
+                .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 
     @Test
@@ -97,7 +140,7 @@ class SharedTableBuilderTest {
 
                 assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
                         .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-                assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_n")
+                assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
                         .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 }
