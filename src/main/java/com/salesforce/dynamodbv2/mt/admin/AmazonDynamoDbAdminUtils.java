@@ -53,7 +53,8 @@ public class AmazonDynamoDbAdminUtils {
             if (!tableExists(createTableRequest.getTableName(), TableStatus.ACTIVE)) {
                 String tableName = createTableRequest.getTableName();
                 amazonDynamoDb.createTable(createTableRequest);
-                awaitTableActive(tableName, TableStatus.CREATING, pollIntervalSeconds, TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
+                awaitTableActive(tableName, TableStatus.CREATING, pollIntervalSeconds,
+                        TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
                     createTableRequest.getTableName()));
@@ -101,7 +102,8 @@ public class AmazonDynamoDbAdminUtils {
             .until(() -> !tableExists(tableName, TableStatus.DELETING));
     }
 
-    private void awaitTableActive(String tableName, TableStatus expectedTableStatus, int pollIntervalSeconds, int timeoutSeconds) {
+    private void awaitTableActive(String tableName, TableStatus expectedTableStatus, int pollIntervalSeconds,
+                                  int timeoutSeconds) {
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
             .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
@@ -129,7 +131,7 @@ public class AmazonDynamoDbAdminUtils {
                 case CREATING:
                 case UPDATING:
                 case DELETING:
-                    if (!currentTableStatus.equals(expectedTableStatus)){
+                    if (!currentTableStatus.equals(expectedTableStatus)) {
                         throw new TableInUseException(tableName, currentTableStatus);
                     }
                     break;

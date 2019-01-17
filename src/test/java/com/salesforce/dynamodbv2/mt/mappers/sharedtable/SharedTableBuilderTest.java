@@ -1,10 +1,21 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.Projection;
+import com.amazonaws.services.dynamodbv2.model.ProjectionType;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
@@ -12,10 +23,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static org.junit.jupiter.api.Assertions.*;
 
 class SharedTableBuilderTest {
 
@@ -35,21 +42,21 @@ class SharedTableBuilderTest {
 
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-    String TABLE_PREFIX = "oktodelete-testBillingMode.";
-    String TABLE_NAME;
+    private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
+    String tableName;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
     @BeforeEach
-    void beforeEach(){
-        TABLE_NAME = new String(String.valueOf(System.currentTimeMillis()));
+    void beforeEach() {
+        tableName = new String(String.valueOf(System.currentTimeMillis()));
     }
 
     @Test
-    void testBillingModePayPerRequestWithCustomTableRequest(){
+    void testBillingModePayPerRequestWithCustomTableRequest() {
 
         CreateTableRequest request = new CreateTableRequest()
-                .withTableName(TABLE_NAME)
+                .withTableName(tableName)
                 .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
                 .withAttributeDefinitions(
                         new AttributeDefinition(ID_ATTR_NAME, S),
@@ -70,15 +77,15 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + tableName)
                 .getTable().getBillingModeSummary().getBillingMode());
 
-        remoteDynamoDB.deleteTable(TABLE_PREFIX + TABLE_NAME);
+        remoteDynamoDB.deleteTable(TABLE_PREFIX + tableName);
     }
 
     @Test
     @Disabled
-    void testBillingModePayPerRequestWithDefaults(){
+    void testBillingModePayPerRequestWithDefaults() {
 
         SharedTableBuilder.builder()
                 .withDefaultProvisionedThroughput(0)
@@ -89,15 +96,15 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
-                .getTable().getBillingModeSummary().getBillingMode());
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
+                TABLE_PREFIX + "mt_sharedtablestatic_s_s").getTable().getBillingModeSummary().getBillingMode());
     }
 
     @Test
-    void testBillingModeProvisionedWithCustomTableRequest(){
+    void testBillingModeProvisionedWithCustomTableRequest() {
 
         CreateTableRequest request = new CreateTableRequest()
-                .withTableName(TABLE_NAME)
+                .withTableName(tableName)
                 .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
                 .withAttributeDefinitions(
                         new AttributeDefinition(ID_ATTR_NAME, S),
@@ -119,9 +126,9 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + tableName)
                 .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + TABLE_NAME)
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + tableName)
                 .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 
@@ -135,9 +142,9 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-                assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
-                        .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-                assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
-                        .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
+                .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
+        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
+                .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 }

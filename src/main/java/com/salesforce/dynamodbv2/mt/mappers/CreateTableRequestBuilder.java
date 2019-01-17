@@ -46,8 +46,8 @@ public class CreateTableRequestBuilder {
     }
 
     private void setDefaults() {
-        if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest.getBillingMode() == null ||
-                createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED))){
+        if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest.getBillingMode() == null
+                || createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED))) {
             createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L)
                 .withWriteCapacityUnits(1L));
         }
@@ -115,7 +115,7 @@ public class CreateTableRequestBuilder {
             GlobalSecondaryIndex gsi = new GlobalSecondaryIndex().withIndexName(indexName)
                     .withKeySchema(buildKeySchema(secondaryIndexKey))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
-            if (provisionedThroughput > 0){
+            if (provisionedThroughput > 0) {
                 gsi.withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput));
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(gsi);

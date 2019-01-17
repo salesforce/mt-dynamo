@@ -157,10 +157,10 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
                 this.streamsEnabled);
         } else if (this.defaultProvisionedThroughput == 0L) {
-                this.createTableRequests = createTableRequests.stream()
-                        .map(createTableRequest ->
-                                createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
-                        .collect(Collectors.toList());
+            this.createTableRequests = createTableRequests.stream()
+                    .map(createTableRequest ->
+                            createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
+                    .collect(Collectors.toList());
         }
         super.setDefaults();
     }
