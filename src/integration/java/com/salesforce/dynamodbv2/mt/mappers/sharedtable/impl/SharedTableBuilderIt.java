@@ -8,19 +8,19 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.BillingMode;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.Projection;
-import com.amazonaws.services.dynamodbv2.model.ProjectionType;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 class SharedTableBuilderIt {
 
@@ -34,25 +34,30 @@ class SharedTableBuilderIt {
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
 
-    AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
+    private static AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
         .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(REGION).build();
 
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
-    String tableName;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
-    @BeforeEach
-    void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(SharedTableBuilderIt.class);
+
+    private static List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
+            "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
+            "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
+            "mt_sharedtablestatic_s_b_nolsi")).stream()
+            .map(testTable -> TABLE_PREFIX + testTable).collect(Collectors.toList());
 
     @Test
-    void testBillingModePayPerRequestWithCustomTableRequest() {
+    void testBillingModePayPerRequestIsSetForCustomCreateTableRequests() {
+        String table_name = new String(String.valueOf(System.currentTimeMillis()));
+        String full_table_name = TABLE_PREFIX + table_name;
+        testTables.add(full_table_name);
 
         CreateTableRequest request = new CreateTableRequest()
-                .withTableName(tableName)
+                .withTableName(table_name)
                 .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
                 .withAttributeDefinitions(
                         new AttributeDefinition(ID_ATTR_NAME, S),
@@ -73,15 +78,12 @@ class SharedTableBuilderIt {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(TABLE_PREFIX + tableName)
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(full_table_name)
                 .getTable().getBillingModeSummary().getBillingMode());
-
-        remoteDynamoDB.deleteTable(TABLE_PREFIX + tableName);
     }
 
     @Test
-    @Disabled
-    void testBillingModePayPerRequestWithDefaults() {
+    void testBillingModePayPerRequestIsSetForDefaultCreateTableRequests() {
 
         SharedTableBuilder.builder()
                 .withDefaultProvisionedThroughput(0)
@@ -92,7 +94,23 @@ class SharedTableBuilderIt {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
-                TABLE_PREFIX + "mt_sharedtablestatic_s_s").getTable().getBillingModeSummary().getBillingMode());
+        for (String table: testTables){
+            assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
+                    table).getTable().getBillingModeSummary().getBillingMode());
+        }
+    }
+
+    @AfterAll
+    static void afterAll() throws InterruptedException {
+        Thread.sleep(5000);
+        for (String table: testTables){
+            try {
+                remoteDynamoDB.deleteTable(table);
+            } catch (ResourceInUseException e) {
+                LOG.info("table in use: " + table);
+            } catch (ResourceNotFoundException e) {
+                LOG.error("table not found: " + table);
+            }
+        }
     }
 }

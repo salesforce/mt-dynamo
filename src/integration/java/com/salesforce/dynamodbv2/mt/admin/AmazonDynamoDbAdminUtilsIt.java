@@ -10,20 +10,15 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.Projection;
-import com.amazonaws.services.dynamodbv2.model.ProjectionType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
-import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
 
 class AmazonDynamoDbAdminUtilsIt {
 
@@ -31,26 +26,21 @@ class AmazonDynamoDbAdminUtilsIt {
     (local create times are too short) */
 
     static final Regions REGION = Regions.US_EAST_1;
-    AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
+    private static AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(REGION).build();
-
-    AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
-
-    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDB);
+    private static AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
     String tableName;
     String fullTableName;
+    private static ArrayList<String> testTables = new ArrayList<>();
+    private static final Logger LOG = LoggerFactory.getLogger(AmazonDynamoDbAdminUtilsIt.class);
 
     @BeforeEach
     void beforeEach() {
         tableName = new String(String.valueOf(System.currentTimeMillis()));
         fullTableName = TABLE_PREFIX + tableName;
-    }
-
-    @Test
-    void createTableIfNotExists() {
+        testTables.add(fullTableName);
     }
 
     private CreateTableRequest getTestCreateTableRequest(String tableName) {
@@ -75,19 +65,14 @@ class AmazonDynamoDbAdminUtilsIt {
 
     @Test
     void createTableIfNotExistsButTableInUseForCreating() {
-
         remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
         remoteUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
-
-        // cleanup
-        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
     }
 
     /* This tests against hosted DynamoDB to ensure tables encounter TableInUse exception
     (local create times are too short) */
     @Test
     void createTableIfNotExistsButTableInUseForOtherStatus() throws InterruptedException {
-
         remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
         TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
 
@@ -114,9 +99,26 @@ class AmazonDynamoDbAdminUtilsIt {
             e = ex;
         }
         assertTrue(e instanceof ResourceInUseException);
-
-        // cleanup
         TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
-        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
+    }
+
+    @AfterAll
+    static void afterAll() throws InterruptedException {
+        Thread.sleep(5000);
+        for (String table: testTables){
+            try {
+                remoteUtils.deleteTableIfExists(table, 10, 600);
+            } catch (ResourceInUseException e) {
+                if (remoteDynamoDB.describeTable(table) != null
+                        && remoteDynamoDB.describeTable(table).getTable() != null
+                        && remoteDynamoDB.describeTable(table).getTable().getTableStatus() != null
+                        && remoteDynamoDB.describeTable(table).getTable().getTableStatus().equals(
+                        TableStatus.DELETING)){
+                    LOG.info("table delete already in progress for table: " + table);
+                }
+            } catch (ResourceNotFoundException e) {
+                LOG.error("table not found: " + table);
+            }
+        }
     }
 }

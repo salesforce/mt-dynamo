@@ -39,7 +39,7 @@ class SharedTableBuilderTest {
     }
 
     @Test
-    void testBillingModeProvisionedWithCustomTableRequest() {
+    void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
 
         CreateTableRequest request = new CreateTableRequest()
                 .withTableName(tableName)
@@ -71,7 +71,7 @@ class SharedTableBuilderTest {
     }
 
     @Test
-    void testBillingModeProvisioned() {
+    void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequests() {
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
                 .withDefaultProvisionedThroughput(1)
                 .withAmazonDynamoDb(localDynamoDB)
