@@ -4,11 +4,12 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
@@ -18,16 +19,23 @@ import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.TableStatus;
+import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class AmazonDynamoDbAdminUtilsTest {
+class AmazonDynamoDbAdminUtilsIt {
+
+    /* This tests against hosted DynamoDB to ensure tables encounter TableInUse exception
+    (local create times are too short) */
 
     static final Regions REGION = Regions.US_EAST_1;
+    AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
+            .withCredentials(new EnvironmentVariableCredentialsProvider())
+            .withRegion(REGION).build();
+
+    AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
 
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDB);
@@ -66,78 +74,49 @@ class AmazonDynamoDbAdminUtilsTest {
     }
 
     @Test
-    void createTableIfNotExistsIfTableDoesNotExist() throws InterruptedException {
-        localUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+    void createTableIfNotExistsButTableInUseForCreating() {
 
-        assert ((TableStatus.ACTIVE.toString()).equals(
-                localDynamoDB.describeTable(fullTableName).getTable().getTableStatus()));
+        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
+        remoteUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
+
+        // cleanup
+        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
     }
 
+    /* This tests against hosted DynamoDB to ensure tables encounter TableInUse exception
+    (local create times are too short) */
     @Test
-    void createTableIfNotExistsIfTableExistsWithDifferentDescription() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+    void createTableIfNotExistsButTableInUseForOtherStatus() throws InterruptedException {
+
+        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
+        TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
 
         Throwable e = null;
         try {
-            localUtils.createTableIfNotExists(new CreateTableRequest()
-                    .withTableName(fullTableName)
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
-                            new AttributeDefinition(RANGE_KEY_FIELD, S))
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                            new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
-                    .withProvisionedThroughput(new ProvisionedThroughput(
-                            1L, 1L)), 10);
-
+            remoteDynamoDB.deleteTable(fullTableName);
+            remoteUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
         } catch (Throwable ex) {
             e = ex;
         }
-
-        assert (e instanceof IllegalArgumentException);
+        assert (e instanceof ResourceInUseException);
     }
 
     @Test
-    void createTableIfNotExistsIfTableExistsWithSameDescription() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+    void deleteTableIfExistsButTableInUse() throws InterruptedException {
+        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
 
+        // intentionally wait for table to be created
         Throwable e = null;
         try {
-            localUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName),10);
-
+            Thread.sleep(1000);
+            remoteUtils.deleteTableIfExists(fullTableName, 10, 15);
         } catch (Throwable ex) {
             e = ex;
         }
-        assertNull(e);
-    }
+        assertTrue(e instanceof ResourceInUseException);
 
-    @Test
-    void deleteTableIfExistsIfTableDoesNotExist() {
-        String badTableName = "fake_table";
-        localUtils.deleteTableIfExists(badTableName, 10, 10);
-
-        Throwable e = null;
-        try {
-            localDynamoDB.describeTable("fake_table");
-        } catch (Throwable ex) {
-            e = ex;
-        }
-        assertTrue(e instanceof ResourceNotFoundException);
-    }
-
-    @Test
-    void deleteTableIfExistsIfTableDoesExist() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        localUtils.deleteTableIfExists(fullTableName, 10, 15);
-
-        Throwable e = null;
-        try {
-            localDynamoDB.describeTable(fullTableName);
-        } catch (Throwable ex) {
-            e = ex;
-        }
-        assertTrue(e instanceof ResourceNotFoundException);
+        // cleanup
+        TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
+        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
     }
 }
