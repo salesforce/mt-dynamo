@@ -27,8 +27,6 @@ import org.junit.jupiter.api.Test;
 
 class AmazonDynamoDbAdminUtilsTest {
 
-    static final Regions REGION = Regions.US_EAST_1;
-
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDB);
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";

@@ -72,7 +72,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequests() {
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
+        SharedTableBuilder.builder()
                 .withDefaultProvisionedThroughput(1)
                 .withAmazonDynamoDb(localDynamoDB)
                 .withTablePrefix(TABLE_PREFIX)
