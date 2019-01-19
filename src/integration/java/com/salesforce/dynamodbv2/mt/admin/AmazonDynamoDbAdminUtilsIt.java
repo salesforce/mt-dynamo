@@ -10,15 +10,25 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.Projection;
+import com.amazonaws.services.dynamodbv2.model.ProjectionType;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
+import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import java.util.ArrayList;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
 
 class AmazonDynamoDbAdminUtilsIt {
 
@@ -105,7 +115,7 @@ class AmazonDynamoDbAdminUtilsIt {
     @AfterAll
     static void afterAll() throws InterruptedException {
         Thread.sleep(5000);
-        for (String table: testTables){
+        for (String table: testTables) {
             try {
                 remoteUtils.deleteTableIfExists(table, 10, 600);
             } catch (ResourceInUseException e) {
@@ -113,7 +123,7 @@ class AmazonDynamoDbAdminUtilsIt {
                         && remoteDynamoDB.describeTable(table).getTable() != null
                         && remoteDynamoDB.describeTable(table).getTable().getTableStatus() != null
                         && remoteDynamoDB.describeTable(table).getTable().getTableStatus().equals(
-                        TableStatus.DELETING)){
+                        TableStatus.DELETING)) {
                     LOG.info("table delete already in progress for table: " + table);
                 }
             } catch (ResourceNotFoundException e) {

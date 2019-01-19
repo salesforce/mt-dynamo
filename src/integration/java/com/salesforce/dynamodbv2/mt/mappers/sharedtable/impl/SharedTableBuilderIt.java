@@ -8,19 +8,26 @@ import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.Projection;
+import com.amazonaws.services.dynamodbv2.model.ProjectionType;
+import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class SharedTableBuilderIt {
 
@@ -52,12 +59,12 @@ class SharedTableBuilderIt {
 
     @Test
     void testBillingModePayPerRequestIsSetForCustomCreateTableRequests() {
-        String table_name = new String(String.valueOf(System.currentTimeMillis()));
-        String full_table_name = TABLE_PREFIX + table_name;
-        testTables.add(full_table_name);
+        String tableName = new String(String.valueOf(System.currentTimeMillis()));
+        String fullTableName = TABLE_PREFIX + tableName;
+        testTables.add(fullTableName);
 
         CreateTableRequest request = new CreateTableRequest()
-                .withTableName(table_name)
+                .withTableName(tableName)
                 .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
                 .withAttributeDefinitions(
                         new AttributeDefinition(ID_ATTR_NAME, S),
@@ -78,7 +85,7 @@ class SharedTableBuilderIt {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(full_table_name)
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(fullTableName)
                 .getTable().getBillingModeSummary().getBillingMode());
     }
 
@@ -94,7 +101,7 @@ class SharedTableBuilderIt {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        for (String table: testTables){
+        for (String table: testTables) {
             assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
                     table).getTable().getBillingModeSummary().getBillingMode());
         }
@@ -103,7 +110,7 @@ class SharedTableBuilderIt {
     @AfterAll
     static void afterAll() throws InterruptedException {
         Thread.sleep(5000);
-        for (String table: testTables){
+        for (String table: testTables) {
             try {
                 remoteDynamoDB.deleteTable(table);
             } catch (ResourceInUseException e) {
