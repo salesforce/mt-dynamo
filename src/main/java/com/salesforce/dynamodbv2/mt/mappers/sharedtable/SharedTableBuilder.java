@@ -212,7 +212,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     }
 
     /**
-     * 
      * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
      * request builder.
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
