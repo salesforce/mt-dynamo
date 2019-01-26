@@ -19,7 +19,6 @@ import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
@@ -31,6 +30,7 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -61,6 +61,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
+    private long provisionedThroughput;
     private final MtCache<TableDescription> cache;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
@@ -70,7 +71,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
-                                           int pollIntervalSeconds) {
+                                           int pollIntervalSeconds,
+                                           long provisionedThroughput) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.mtContext = mtContext;
         adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
@@ -79,6 +81,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
+        this.provisionedThroughput = provisionedThroughput;
         cache = new MtCache<>(mtContext);
     }
 
@@ -157,46 +160,48 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
+        CreateTableRequest createTableRequest = new CreateTableRequest();
+        CreateTableRequestBuilder.setBillingMode(createTableRequest, this.provisionedThroughput);
+
         adminUtils.createTableIfNotExists(
-            new CreateTableRequest().withTableName(tableDescriptionTableName)
+                createTableRequest.withTableName(tableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
                 .withAttributeDefinitions(new AttributeDefinition()
                     .withAttributeName(tableDescriptionTableHashKeyField)
-                    .withAttributeType(ScalarAttributeType.S))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
+                    .withAttributeType(ScalarAttributeType.S)),
             pollIntervalSeconds);
     }
 
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
         TableDescription tableDescription = new TableDescription()
-            .withTableName(createTableRequest.getTableName())
-            .withKeySchema(createTableRequest.getKeySchema())
-            .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-            .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
-                .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()))
-            .withStreamSpecification(createTableRequest.getStreamSpecification());
+                .withTableName(createTableRequest.getTableName())
+                .withKeySchema(createTableRequest.getKeySchema())
+                .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
+                .withProvisionedThroughput(new ProvisionedThroughputDescription()
+                        .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
+                        .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()))
+                .withStreamSpecification(createTableRequest.getStreamSpecification());
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
-                new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
-                    .withKeySchema(lsi.getKeySchema())
-                    .withProjection(lsi.getProjection())).collect(Collectors.toList()));
+                    new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
+                            .withKeySchema(lsi.getKeySchema())
+                            .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
             tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
                 gsi -> new GlobalSecondaryIndexDescription().withIndexName(gsi.getIndexName())
-                    .withKeySchema(gsi.getKeySchema())
-                    .withProjection(gsi.getProjection())
-                    .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                        .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
-                        .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits())))
+                        .withKeySchema(gsi.getKeySchema())
+                        .withProjection(gsi.getProjection())
+                        .withProvisionedThroughput(new ProvisionedThroughputDescription()
+                                .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
+                                .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits())))
                 .collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
-            tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
-            tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
+                tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
+                tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
     private String tableDataToJson(TableDescription tableDescription) {
@@ -223,6 +228,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private String tableDescriptionTableDataField;
         private String delimiter;
         private Integer pollIntervalSeconds;
+        private Long provisionedThroughput = 1L;
         private Optional<String> tablePrefix = Optional.empty();
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
@@ -237,6 +243,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
             this.tableDescriptionTableName = tableDescriptionTableName;
+            return this;
+        }
+
+        public MtDynamoDbTableDescriptionRepoBuilder withProvisionedThroughput(Long provisionedThroughput) {
+            this.provisionedThroughput = provisionedThroughput;
             return this;
         }
 
@@ -284,7 +295,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 tableDescriptionTableHashKeyField,
                 tableDescriptionTableDataField,
                 delimiter,
-                pollIntervalSeconds);
+                pollIntervalSeconds,
+                provisionedThroughput);
         }
 
         private void validate() {

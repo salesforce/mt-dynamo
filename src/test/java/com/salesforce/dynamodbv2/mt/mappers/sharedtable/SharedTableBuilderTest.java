@@ -15,8 +15,13 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 
 class SharedTableBuilderTest {
 
@@ -25,7 +30,7 @@ class SharedTableBuilderTest {
 
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-    private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
+    private static final String tablePrefix = "oktodelete-testBillingMode.";
     String tableName;
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
@@ -34,6 +39,12 @@ class SharedTableBuilderTest {
     void beforeEach() {
         tableName = new String(String.valueOf(System.currentTimeMillis()));
     }
+
+    private static List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
+            "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
+            "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
+            "mt_sharedtablestatic_s_b_nolsi")).stream()
+            .map(testTable -> tablePrefix + testTable).collect(Collectors.toList());
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
@@ -56,14 +67,14 @@ class SharedTableBuilderTest {
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
-                .withTablePrefix(TABLE_PREFIX)
+                .withTablePrefix(tablePrefix)
                 .withAmazonDynamoDb(localDynamoDB)
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + tableName)
+        assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
                 .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + tableName)
+        assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
                 .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 
@@ -72,14 +83,16 @@ class SharedTableBuilderTest {
         SharedTableBuilder.builder()
                 .withDefaultProvisionedThroughput(1)
                 .withAmazonDynamoDb(localDynamoDB)
-                .withTablePrefix(TABLE_PREFIX)
+                .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
-                .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-        assertEquals(1, localDynamoDB.describeTable(TABLE_PREFIX + "mt_sharedtablestatic_s_s")
-                .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+        for (String table: testTables) {
+            assertEquals(1, localDynamoDB.describeTable(table)
+                    .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
+            assertEquals(1, localDynamoDB.describeTable(table)
+                    .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+        }
     }
 }
