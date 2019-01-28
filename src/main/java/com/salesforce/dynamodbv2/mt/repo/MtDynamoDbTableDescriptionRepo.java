@@ -12,6 +12,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
@@ -178,25 +179,41 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withTableName(createTableRequest.getTableName())
                 .withKeySchema(createTableRequest.getKeySchema())
                 .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-                .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                        .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
-                        .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()))
                 .withStreamSpecification(createTableRequest.getStreamSpecification());
+
+        if (createTableRequest.getProvisionedThroughput() != null) {
+            tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                    .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
+                    .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()));
+        } else if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest
+            .getBillingMode() == null || !createTableRequest.getBillingMode()
+            .equals(BillingMode.PAY_PER_REQUEST))) {
+            tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                    .withReadCapacityUnits(1L)
+                    .withWriteCapacityUnits(1L));
+        }
+
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
-                    new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
-                            .withKeySchema(lsi.getKeySchema())
-                            .withProjection(lsi.getProjection())).collect(Collectors.toList()));
+                new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
+                        .withKeySchema(lsi.getKeySchema())
+                        .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
             tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
-                gsi -> new GlobalSecondaryIndexDescription().withIndexName(gsi.getIndexName())
+                gsi -> {
+                    GlobalSecondaryIndexDescription gsiDescription = new GlobalSecondaryIndexDescription()
+                        .withIndexName(gsi.getIndexName())
                         .withKeySchema(gsi.getKeySchema())
-                        .withProjection(gsi.getProjection())
-                        .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                                .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
-                                .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits())))
-                .collect(Collectors.toList()));
+                        .withProjection(gsi.getProjection());
+
+                    if (gsi.getProvisionedThroughput() != null) {
+                        gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                            .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
+                            .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits()));
+                    }
+                    return gsiDescription;
+                }).collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
