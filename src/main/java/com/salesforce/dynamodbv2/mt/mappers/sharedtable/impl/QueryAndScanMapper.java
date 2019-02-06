@@ -8,7 +8,10 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LE;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -50,6 +53,9 @@ class QueryAndScanMapper {
         = new ImmutableMap.Builder<ComparisonOperator, BiFunction<String, String, String>>()
         .put(EQ, (field, value) -> field + " = " + value)
         .put(GT, (field, value) -> field + " > " + value)
+        .put(GE, (field, value) -> field + " >= " + value)
+        .put(LT, (field, value) -> field + " < " + value)
+        .put(LE, (field, value) -> field + " <= " + value)
         .build();
     private static final Set<ComparisonOperator> SUPPORTED_COMPARISON_OPERATORS = FIELD_AND_VALUE_TO_EXPRESSION_STRINGS
         .keySet();

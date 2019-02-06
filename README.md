@@ -109,7 +109,7 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 
  * All implementations support the following methods `createTable`, `describeTable`, `deleteTable`, `getItem`, `batchGetItem`, `putItem`, `scan`, and `query`.
  * The following methods are NOT supported: `updateTable`, `batchWriteItem`, `createBackup`, `deleteBackup`, `listBackups`, `restoreTableFromBackup`, `createGlobalTable`, `updateGlobalTable`, `describeGlobalTable`, `listGlobalTables`, `describeContinuousBackups`, `describeLimits`, `describeTimeToLive`, `updateTimeToLive`, `listTagsOfResource`, `tagResource`, `untagResource`, `getCachedResponseMetadata`, `waiters`.
- * `ScanRequest` and `QueryRequest` calls currently only support EQ and GT conditions (GT via KeyConditions only).
+ * `ScanRequest` and `QueryRequest` calls currently only support EQ, GT, GE, LT, and LE conditions (GT, GE, LT, and LE via KeyConditions only).
  * All `SharedTable*` implementations...
    * Table Primary Keys: Currently, this implementation supports tables with a primary key containing only a `HASH` field of type `STRING`, or a table containing a `HASH` field and a `RANGE` field both of type `STRING`
    * `GSI`s / `LSI`s:  Currently, this implementation supports a single `GSI` with a key schema containing `HASH` key of type `STRING` or a single `LSI` with a key schema containing a `RANGE` key of type `STRING`.  When a query request contains a reference to an index, the `GSI` matching the types of the key schema of the referenced index will be used.  If none is found, then it will look for a matching LSI.

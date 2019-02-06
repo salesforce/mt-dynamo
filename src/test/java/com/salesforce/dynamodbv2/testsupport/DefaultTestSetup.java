@@ -119,7 +119,7 @@ public class DefaultTestSetup implements TestSetup {
                     amazonDynamoDb.putItem(
                         new PutItemRequest().withTableName(table)
                             .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_FIELD_VALUE + table + org)
+                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
                                 .rangeKey(N, RANGE_KEY_LOW_N_VALUE)
                                 .build()));
                     amazonDynamoDb.putItem(

@@ -81,7 +81,7 @@ import org.slf4j.LoggerFactory;
  * supported since they are considered 'legacy parameters' according DynamoDB docs.  Standard update expressions are
  * supported.
  *
- * <p>*** Only EQ and GT conditions are supported; GT via KeyConditions only
+ * <p>*** Only EQ, GT, GE, LT, and LE conditions are supported; GT, GE, LT, and LE via KeyConditions only
  *
  * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
  * results.
