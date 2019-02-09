@@ -28,11 +28,11 @@ class ItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
     private static final char DELIMITER = '.';
-    private static final ItemMapper SUT = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
+    private static final HashKeyPrefixItemMapper SUT = new HashKeyPrefixItemMapper(new HashKeyPrefixTableMapping(
+        new DynamoTableDescriptionImpl(CreateTableRequestBuilder.builder()
+            .withTableKeySchema("physicalhk", S).build()),
+        new DynamoTableDescriptionImpl(
         CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder.builder()
-            .withTableKeySchema("physicalhk", S).build())
-            .getCreateTableRequest()),
         new DynamoSecondaryIndexMapperByTypeImpl(),
         null,
         DELIMITER

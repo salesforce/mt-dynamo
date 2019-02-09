@@ -68,8 +68,7 @@ class TableMappingTest {
                     new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                     1L)
             .build());
-    private final TableMapping sut = new TableMapping(virtualTable,
-            new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
+    private final HashKeyPrefixTableMapping sut = new HashKeyPrefixTableMapping(physicalTable, virtualTable,
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
             DELIMITER
@@ -129,7 +128,21 @@ class TableMappingTest {
 
     @Test
     void getAllVirtualToPhysicalFieldMappingsDeduped() {
-        TableMapping sut = new TableMapping(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
+        HashKeyPrefixTableMapping sut = new HashKeyPrefixTableMapping(
+            new DynamoTableDescriptionImpl(CreateTableRequestBuilder
+                .builder()
+                .withTableName("physicalTableName")
+                .withTableKeySchema("physicalhk", S, "physicalrk", S)
+                .addSi("physicalgsi",
+                    GSI,
+                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", S),
+                    1L)
+                .addSi("virtuallsi",
+                    LSI,
+                    new PrimaryKey("physicalhk", S, "physicallsirk", S),
+                    1L)
+                .build()),
+            new DynamoTableDescriptionImpl(CreateTableRequestBuilder
             .builder()
             .withTableName("virtualTableName")
             .withTableKeySchema("hk", S, "rk", S)
@@ -142,19 +155,6 @@ class TableMappingTest {
                 new PrimaryKey("hk", S, "virtualindex", S),
                 1L)
             .build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
-                .builder()
-                .withTableName("physicalTableName")
-                .withTableKeySchema("physicalhk", S, "physicalrk", S)
-                .addSi("physicalgsi",
-                    GSI,
-                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", S),
-                    1L)
-                .addSi("virtuallsi",
-                    LSI,
-                    new PrimaryKey("physicalhk", S, "physicallsirk", S),
-                    1L)
-                .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null,
             DELIMITER
@@ -260,8 +260,7 @@ class TableMappingTest {
     @Test
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
         DynamoSecondaryIndexMapper spyIndexMapper = spy(DynamoSecondaryIndexMapperByTypeImpl.class);
-        TableMapping tableMapping = new TableMapping(virtualTable,
-                new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
+        HashKeyPrefixTableMapping tableMapping = new HashKeyPrefixTableMapping(physicalTable, virtualTable,
                 spyIndexMapper,
                 null,
                 DELIMITER
@@ -312,9 +311,9 @@ class TableMappingTest {
                                 new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                                 1L)
                         .build());
-        assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
+        assertException((TestFunction<IllegalArgumentException>) () -> new HashKeyPrefixTableMapping(
+                        physicalTable,
                         virtualTable,
-                        new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                         new DynamoSecondaryIndexMapperByTypeImpl(),
                         null,
                         '.'

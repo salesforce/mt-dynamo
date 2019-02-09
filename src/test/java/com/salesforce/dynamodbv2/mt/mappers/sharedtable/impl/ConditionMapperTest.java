@@ -36,8 +36,8 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class ConditionMapperTest {
 
-    private static TableMapping tableMapping = mock(TableMapping.class);
-    private static ConditionMapper SUT = null;
+    private static HashKeyPrefixTableMapping tableMapping = mock(HashKeyPrefixTableMapping.class);
+    private static HashKeyPrefixConditionMapper SUT = null;
 
     @BeforeAll
     static void beforeAll() {
@@ -48,7 +48,7 @@ class ConditionMapperTest {
             null,
             TABLE,
             true)));
-        SUT = new ConditionMapper(tableMapping, null);
+        SUT = new HashKeyPrefixConditionMapper(tableMapping, null);
     }
 
     @ParameterizedTest(name = "{index}")
@@ -65,7 +65,7 @@ class ConditionMapperTest {
         DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
-        ConditionMapper sut = new ConditionMapper(tableMapping,
+        HashKeyPrefixConditionMapper sut = new HashKeyPrefixConditionMapper(tableMapping,
                 new FieldMapper(mtContext, inputs.getVirtualTableName(), new FieldPrefixFunction('.')));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.applyKeyConditionToField(requestWrapper,
@@ -479,51 +479,51 @@ class ConditionMapperTest {
 
     @Test
     void getNextFieldPlaceholder() {
-        assertEquals("#field0", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field0", HashKeyPrefixConditionMapper.getNextFieldPlaceholder(
                 new HashMap<>(), new AtomicInteger(0)));
-        assertEquals("#field1", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field1", HashKeyPrefixConditionMapper.getNextFieldPlaceholder(
                 new HashMap<>(), new AtomicInteger(1)));
-        assertEquals("#field2", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field2", HashKeyPrefixConditionMapper.getNextFieldPlaceholder(
                 ImmutableMap.of("#field0", "somename0", "#field1", "somename1"),
                 new AtomicInteger(0)));
     }
 
     @Test
     void findVirtualValuePlaceholderInEitherExpression() {
-        assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue",
             "#hk = :currentValue", "#hk").get());
-        assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentHkValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
                 "#hk").get());
-        assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentRkValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
                 "#rk").get());
-        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+        assertFalse(HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentValue", "#invalid").isPresent());
-        assertEquals(":ue1", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":ue1", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2",
             null, "#ue1").get());
-        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+        assertFalse(HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             null, null, "#invalid").isPresent());
     }
 
     @Test
     void findVirtualValuePlaceholder() {
-        assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.empty(), HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue", "#hk"));
-        assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentValue", "#hk").get());
-        assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentHkValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").get());
-        assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentRkValue", HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").get());
-        assertEquals(Optional.of(":ue1"), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.of(":ue1"), HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
-        assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.empty(), HashKeyPrefixConditionMapper.findVirtualValuePlaceholder(
             null, null));
     }
 

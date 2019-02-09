@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.base.Supplier;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -76,6 +77,11 @@ public class TableMappingFactory {
         }
     }
 
+    protected TableMapping createTableMapping(DynamoTableDescription physicalTable, DynamoTableDescription virtualTable,
+        DynamoSecondaryIndexMapper secondaryIndexMapper, MtAmazonDynamoDbContextProvider mtContext, char delimiter) {
+        return new HashKeyPrefixTableMapping(physicalTable, virtualTable, secondaryIndexMapper, mtContext, delimiter);
+    }
+
     CreateTableRequestFactory getCreateTableRequestFactory() {
         return createTableRequestFactory;
     }
@@ -90,14 +96,28 @@ public class TableMappingFactory {
      * table is created, like the streamArn.
      */
     TableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
-        TableMapping tableMapping = new TableMapping(virtualTableDescription,
-            createTableRequestFactory,
+        DynamoTableDescription physicalTableDescription = createTableIfNotExists(
+            lookupPhysicalTable(virtualTableDescription).getCreateTableRequest());
+        TableMapping tableMapping = createTableMapping(
+            physicalTableDescription,
+            virtualTableDescription,
             secondaryIndexMapper,
             mtContext,
             delimiter);
-        tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
         LOG.info("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
+    }
+
+    /*
+     * Calls the provided CreateTableRequestFactory passing in the virtual table description and returns the
+     * corresponding physical table.  Throws a ResourceNotFoundException if the implementation returns null.
+     */
+    private DynamoTableDescription lookupPhysicalTable(DynamoTableDescription virtualTable) {
+        return new DynamoTableDescriptionImpl(
+            createTableRequestFactory.getCreateTableRequest(virtualTable)
+                .orElseThrow((Supplier<ResourceNotFoundException>) () ->
+                    new ResourceNotFoundException(
+                        "table " + virtualTable.getTableName() + " is not a supported table")));
     }
 
     private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {

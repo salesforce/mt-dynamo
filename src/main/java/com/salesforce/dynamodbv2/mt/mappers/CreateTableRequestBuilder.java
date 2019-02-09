@@ -58,6 +58,11 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
+    public CreateTableRequestBuilder withBillingMode(BillingMode billingMode) {
+        this.createTableRequest.withBillingMode(billingMode);
+        return this;
+    }
+
     public String getTableName() {
         return createTableRequest.getTableName();
     }
@@ -112,11 +117,12 @@ public class CreateTableRequestBuilder {
             if (this.createTableRequest.getGlobalSecondaryIndexes() == null) {
                 this.createTableRequest.setGlobalSecondaryIndexes(new ArrayList<>());
             }
-            GlobalSecondaryIndex gsi = new GlobalSecondaryIndex().withIndexName(indexName)
-                    .withKeySchema(buildKeySchema(secondaryIndexKey))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
+            GlobalSecondaryIndex gsi = new GlobalSecondaryIndex()
+                .withIndexName(indexName)
+                .withKeySchema(buildKeySchema(secondaryIndexKey))
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
             if (this.createTableRequest.getBillingMode() == null
-                    || this.createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.toString())) {
+                || this.createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.toString())) {
                 gsi.withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput));
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(gsi);

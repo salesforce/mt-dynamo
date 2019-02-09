@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,7 +60,12 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         gsiMap = createTableRequest.getGlobalSecondaryIndexes() == null ? new HashMap<>() :
             createTableRequest.getGlobalSecondaryIndexes().stream().map(gsi ->
                 new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
-                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
+                .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity(),
+                    (u, v) -> {
+                        throw new IllegalStateException(String.format("Duplicate key %s", u));
+                    },
+                    LinkedHashMap::new
+                ));
         lsiMap = createTableRequest.getLocalSecondaryIndexes() == null ? new HashMap<>() :
             createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
                 new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))

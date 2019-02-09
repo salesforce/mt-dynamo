@@ -61,9 +61,9 @@ class QueryAndScanMapper {
         .keySet();
 
     private final FieldMapper fieldMapper;
-    private final TableMapping tableMapping;
+    private final HashKeyPrefixTableMapping tableMapping;
 
-    QueryAndScanMapper(TableMapping tableMapping, FieldMapper fieldMapper) {
+    QueryAndScanMapper(HashKeyPrefixTableMapping tableMapping, FieldMapper fieldMapper) {
         this.fieldMapper = fieldMapper;
         this.tableMapping = tableMapping;
     }

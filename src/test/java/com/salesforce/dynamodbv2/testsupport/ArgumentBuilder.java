@@ -32,6 +32,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SaltedSharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
@@ -309,6 +310,12 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withContext(MT_CONTEXT)
             .withTruncateOnDeleteTable(true).build();
 
+        AmazonDynamoDB saltedSharedTable = SaltedSharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(amazonDynamoDb)
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true).build();
+
         return ImmutableList.of(
             /*
              * Testing byAccount by itself and with byTable succeeds, but sqlite failures occur when it runs
@@ -318,7 +325,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             byTable,
             sharedTableCustomDynamic,
             sharedTableCustomStaticBuilder,
-            sharedTable
+            sharedTable,
+            saltedSharedTable
         );
     }
 

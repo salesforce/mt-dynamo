@@ -15,7 +15,10 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashKeyPrefixTableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
@@ -89,18 +92,18 @@ import java.util.Optional;
 public class SharedTableCustomDynamicBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
-    private String name;
-    private AmazonDynamoDB amazonDynamoDb;
-    private MtAmazonDynamoDbContextProvider mtContext;
-    private Character delimiter;
-    private MtTableDescriptionRepo mtTableDescriptionRepo;
-    private TableMappingFactory tableMappingFactory;
+    protected String name;
+    protected AmazonDynamoDB amazonDynamoDb;
+    protected MtAmazonDynamoDbContextProvider mtContext;
+    protected Character delimiter;
+    protected MtTableDescriptionRepo mtTableDescriptionRepo;
+    protected TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private Boolean deleteTableAsync;
-    private Boolean truncateOnDeleteTable;
-    private Boolean precreateTables;
-    private Integer pollIntervalSeconds;
+    protected Boolean deleteTableAsync;
+    protected Boolean truncateOnDeleteTable;
+    protected Boolean precreateTables;
+    protected Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
     /**

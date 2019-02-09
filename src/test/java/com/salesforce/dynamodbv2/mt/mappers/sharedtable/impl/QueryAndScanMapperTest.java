@@ -49,8 +49,9 @@ class QueryAndScanMapperTest {
             CreateTableRequestBuilder.builder()
                     .withTableKeySchema("physicalhk", S)
                     .addSi("physicalgsi", GSI, new PrimaryKey("physicalgsihk", S), 1L).build());
-    private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
-            new SingletonCreateTableRequestFactory(PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest()),
+    private static final HashKeyPrefixTableMapping TABLE_MAPPING = new HashKeyPrefixTableMapping(
+        PHYSICAL_TABLE_DESCRIPTION,
+        VIRTUAL_TABLE_DESCRIPTION,
         new DynamoSecondaryIndexMapperByTypeImpl(),
         new MtAmazonDynamoDbContextProvider() {
             @Override
