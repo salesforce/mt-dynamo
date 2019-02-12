@@ -1,8 +1,8 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.amazonaws.services.dynamodbv2.local.shared.access.LocalDBUtils;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Objects;
@@ -12,7 +12,6 @@ import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -20,7 +19,7 @@ import java.util.Map;
 
 public class SaltedHashKeyTableMapping implements TableMapping {
 
-    private static final byte ZERO_BYTE = (byte) 0x80;
+    private static final int MAX_KEY_LENGTH = 1024;
 
     private final int numSaltBuckets;
     private final char delimiter;
@@ -128,28 +127,27 @@ public class SaltedHashKeyTableMapping implements TableMapping {
                 });
             }
 
-            // TODO BB optimize
             private ByteBuffer toBytes(ScalarAttributeType hkt, AttributeValue hk, ScalarAttributeType rkt,
                 AttributeValue rk) {
-                ByteBuffer hkb = toBytes(hkt, hk);
-                ByteBuffer rkb = toBytes(rkt, rk);
-                ByteBuffer key = ByteBuffer.allocate(hkb.capacity() + rkb.capacity() + 1);
-                // TODO BB escape
-                return key.put(hkb).put(ZERO_BYTE).put(rkb).flip();
+                byte[] hkb = toByteArray(hkt, hk);
+                byte[] rkb = toByteArray(rkt, rk);
+                Preconditions.checkArgument(hkb.length + rkb.length <= MAX_KEY_LENGTH - 2);
+                ByteBuffer key = ByteBuffer.allocate(2 + hkb.length + rkb.length);
+                return key.putShort((short) hkb.length).put(hkb).put(rkb).flip();
             }
 
             private ByteBuffer toBytes(ScalarAttributeType type, AttributeValue value) {
+                return ByteBuffer.wrap(toByteArray(type, value));
+            }
+
+            private byte[] toByteArray(ScalarAttributeType type, AttributeValue value) {
                 switch (type) {
                     case S:
-                        return ByteBuffer.wrap(value.getS().getBytes(UTF_8));
+                        return value.getS().getBytes(UTF_8);
                     case N:
-                        // TODO BB make comparable
-                        BigDecimal bd = new BigDecimal(value.getN());
-                        byte[] unscaled = bd.unscaledValue().toByteArray();
-                        int scale = bd.scale();
-                        return ByteBuffer.allocate(unscaled.length + 4).putInt(scale).put(unscaled).flip();
+                        return LocalDBUtils.encodeBigDecimal(new BigDecimal(value.getN()));
                     case B:
-                        return value.getB().duplicate();
+                        return value.getB().array();
                 }
                 throw new RuntimeException("Unhandled case");
             }
@@ -192,18 +190,9 @@ public class SaltedHashKeyTableMapping implements TableMapping {
             }
 
             private AttributeValue[] fromBytes(ScalarAttributeType hkt, ScalarAttributeType rkt, ByteBuffer buf) {
-                // TODO BB figure out more performant way
-                int idx = -1;
-                for (int i = 0; i < buf.limit(); i++) {
-                    if (buf.get(i) == ZERO_BYTE) {
-                        idx = i;
-                        break;
-                    }
-                }
-                checkArgument(idx > 0);
-                AttributeValue hkv = fromBytes(hkt, buf, idx);
-                buf.position(idx + 1);
-                AttributeValue rkv = fromBytes(rkt, buf, buf.limit());
+                short s = buf.getShort();
+                AttributeValue hkv = fromBytes(hkt, buf, s);
+                AttributeValue rkv = fromBytes(rkt, buf, buf.remaining());
                 return new AttributeValue[]{hkv, rkv};
             }
 
@@ -211,23 +200,23 @@ public class SaltedHashKeyTableMapping implements TableMapping {
                 return fromBytes(type, buf, buf.limit());
             }
 
-            private AttributeValue fromBytes(ScalarAttributeType type, ByteBuffer buf, int limit) {
+            private AttributeValue fromBytes(ScalarAttributeType type, ByteBuffer buf, int size) {
                 switch (type) {
                     case S: {
-                        byte[] bytes = new byte[limit - buf.position()];
+                        byte[] bytes = new byte[size];
                         buf.get(bytes);
                         return new AttributeValue(new String(bytes, UTF_8));
                     }
                     case N: {
-                        int scale = buf.getInt();
-                        byte[] bytes = new byte[limit - buf.position()];
+                        byte[] bytes = new byte[size];
                         buf.get(bytes);
-                        BigInteger unscaled = new BigInteger(bytes);
-                        BigDecimal bd = new BigDecimal(unscaled, scale);
-                        return new AttributeValue().withN(bd.toString());
+                        return new AttributeValue().withN(LocalDBUtils.decodeBigDecimal(bytes).toString());
                     }
                     case B: {
-                        return new AttributeValue().withB(buf.duplicate().position(buf.position()).limit(limit));
+                        int limit = buf.position() + size;
+                        ByteBuffer dup = buf.duplicate().position(buf.position()).limit(limit);
+                        buf.position(limit);
+                        return new AttributeValue().withB(dup);
                     }
                 }
                 throw new RuntimeException("Unhandled case");
