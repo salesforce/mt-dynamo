@@ -2,6 +2,17 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import com.amazon.dynamodb.grammar.DynamoDbExpressionParser;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarBaseVisitor;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.AndContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.ConditionContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.FunctionCallContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.FunctionConditionContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.FunctionContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.IdContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.PathContext;
+import com.amazon.dynamodb.grammar.DynamoDbGrammarParser.PathOperandContext;
+import com.amazonaws.services.dynamodbv2.datamodel.Operator;
 import com.amazonaws.services.dynamodbv2.local.shared.access.LocalDBUtils;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
@@ -15,7 +26,12 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 
 public class SaltedHashKeyTableMapping implements TableMapping {
 
@@ -235,7 +251,79 @@ public class SaltedHashKeyTableMapping implements TableMapping {
         return new ConditionMapper() {
             @Override
             public void apply(RequestWrapper request) {
+                if (request.getPrimaryExpression() == null) {
+                    return;
+                }
 
+                ParseTree tree = DynamoDbExpressionParser
+                    .parseCondition(request.getPrimaryExpression(), new BaseErrorListener());
+
+                if (virtualTable.getPrimaryKey().getRangeKey().isPresent()) {
+                    tree.accept(new DynamoDbGrammarBaseVisitor() {
+                        @Override
+                        public Object visitAnd(AndContext ctx) {
+                            List<ConditionContext> conditions = ctx.condition();
+                            FunctionCallContext first = (FunctionCallContext) ((FunctionConditionContext) conditions
+                                .get(0)).function();
+
+                            boolean isHashKeyNotExists = false;
+                            boolean isRangeKeyNotExists = false;
+
+                            if (Operator.attribute_not_exists.name().equals(first.ID().getSymbol().getText())) {
+                                String text = ((PathOperandContext) first.operand().get(0)).path().id()
+                                    .ATTRIBUTE_NAME_SUB().getText();
+                                String keyField = request.getExpressionAttributeNames().get(text);
+                                if (virtualTable.getPrimaryKey().getHashKey().equals(keyField)) {
+                                    isHashKeyNotExists = true;
+                                    request.getExpressionAttributeNames().remove(text);
+                                } else if (virtualTable.getPrimaryKey().getRangeKey().map(keyField::equals)
+                                    .orElse(false)) {
+                                    isRangeKeyNotExists = true;
+                                    request.getExpressionAttributeNames().remove(text);
+                                } else {
+                                    throw new RuntimeException("AAAHHH");
+                                }
+                            }
+
+                            FunctionCallContext second = (FunctionCallContext) ((FunctionConditionContext) conditions
+                                .get(1)).function();
+                            if (Operator.attribute_not_exists.name().equals(second.ID().getSymbol().getText())) {
+                                String text = ((PathOperandContext) second.operand().get(0)).path().id()
+                                    .ATTRIBUTE_NAME_SUB().getText();
+                                String keyField = request.getExpressionAttributeNames().get(text);
+                                if (virtualTable.getPrimaryKey().getHashKey().equals(keyField)) {
+                                    isHashKeyNotExists = true;
+                                    request.getExpressionAttributeNames().remove(text);
+                                } else if (virtualTable.getPrimaryKey().getRangeKey().map(keyField::equals)
+                                    .orElse(false)) {
+                                    isRangeKeyNotExists = true;
+                                    request.getExpressionAttributeNames().remove(text);
+                                } else {
+                                    throw new RuntimeException("AAAHHH");
+                                }
+                            }
+
+                            if (isHashKeyNotExists && isRangeKeyNotExists) {
+                                request.setPrimaryExpression("attribute_not_exists(#hk) and attribute_not_exists(#rk)");
+                                request.getExpressionAttributeNames()
+                                    .put("#hk", physicalTable.getPrimaryKey().getHashKey());
+                                request.getExpressionAttributeNames()
+                                    .put("#rk", physicalTable.getPrimaryKey().getRangeKey().get());
+                            }
+
+                            return null;
+                        }
+
+                        @Override
+                        public Object visitTerminal(TerminalNode node) {
+                            if (node.getSymbol().getType() == Token.EOF) {
+                                return null;
+                            }
+                            throw new UnsupportedOperationException(
+                                "Grammar node " + node.getSymbol() + " not supported");
+                        }
+                    });
+                }
             }
         };
     }
