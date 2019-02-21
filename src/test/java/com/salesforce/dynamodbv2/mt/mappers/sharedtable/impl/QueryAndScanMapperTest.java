@@ -87,8 +87,8 @@ class QueryAndScanMapperTest {
     }
 
     /*
-     * not testing with GT parameter since test would fail, since queryContainsHashKeyCondition will return false (it
-     * currently looks for a " = " substring)
+     * not testing with GT, GE, LT, or LE parameters since test would fail, since queryContainsHashKeyCondition will
+     * return false (it currently looks for a " = " substring)
      */
     @ParameterizedTest
     @EnumSource(value = ComparisonOperator.class, names = { "EQ" })
@@ -145,7 +145,7 @@ class QueryAndScanMapperTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT" })
+    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT", "GE", "LT", "LE" })
     void queryWithKeyConditionExpressionAndKeyConditions(ComparisonOperator comparisonOperator) {
         try {
             getMockQueryMapper()
@@ -212,7 +212,7 @@ class QueryAndScanMapperTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT" })
+    @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT", "GE", "LT", "LE" })
     void scanWithFilterExpressionAndScanFilter(ComparisonOperator comparisonOperator) {
         try {
             getMockQueryMapper()

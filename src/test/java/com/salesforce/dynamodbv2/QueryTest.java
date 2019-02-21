@@ -1,7 +1,10 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LE;
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
@@ -27,6 +30,7 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.google.common.collect.ImmutableMap;
@@ -93,6 +97,7 @@ class QueryTest {
         });
     }
 
+
     // test legacy calls (see {@code QueryMapper} for more on "legacy".
     /**
      * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk > rkLow, so there
@@ -101,7 +106,8 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsGtLow(TestArgument testArgument) {
-        queryWithKeyConditionsGtInner(testArgument,
+        queryWithKeyConditionsComparisonOperatorInner(GT,
+            testArgument,
             RANGE_KEY_LOW_N_VALUE,
             ImmutableSet.of(RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
     }
@@ -113,7 +119,8 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsGtMiddle(TestArgument testArgument) {
-        queryWithKeyConditionsGtInner(testArgument,
+        queryWithKeyConditionsComparisonOperatorInner(GT,
+            testArgument,
             RANGE_KEY_MIDDLE_N_VALUE,
             ImmutableSet.of(RANGE_KEY_HIGH_N_VALUE));
     }
@@ -125,15 +132,135 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsGtHigh(TestArgument testArgument) {
-        queryWithKeyConditionsGtInner(testArgument,
+        queryWithKeyConditionsComparisonOperatorInner(GT,
+            testArgument,
             RANGE_KEY_HIGH_N_VALUE,
             ImmutableSet.of());
     }
 
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkLow, so
+     * there should be 3 results: (hk, rkLow), (hk, rkMiddle), and (hk, rkHigh).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsGeLow(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(GE,
+            testArgument,
+            RANGE_KEY_LOW_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkMiddle, so
+     * there should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsGeMiddle(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(GE,
+            testArgument,
+            RANGE_KEY_MIDDLE_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkHigh, so
+     * there should be 1 result: (hk, rkHigh).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsGeHigh(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(GE,
+            testArgument,
+            RANGE_KEY_HIGH_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_HIGH_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkLow, so there
+     * should be 0 results.
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLtLow(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LT,
+            testArgument,
+            RANGE_KEY_LOW_N_VALUE,
+            ImmutableSet.of());
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkMiddle, so
+     * there should be 1 result: (hk, rkLow).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLtMiddle(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LT,
+            testArgument,
+            RANGE_KEY_MIDDLE_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkHigh, so
+     * there should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLtHigh(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LT,
+            testArgument,
+            RANGE_KEY_HIGH_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkLow, so
+     * there should be 1 result: (hk, rkLow).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLeLow(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LE,
+            testArgument,
+            RANGE_KEY_LOW_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkMiddle, so
+     * there should be 2 results: (hk, rkLow) and (hk, rkMiddle).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLeMiddle(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LE,
+            testArgument,
+            RANGE_KEY_MIDDLE_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE));
+    }
+
+    /**
+     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkHigh, so
+     * there should be 3 results: (hk, rkLow), (hk, rkMiddle), and (hk, rkHigh).
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithKeyConditionsLeHigh(TestArgument testArgument) {
+        queryWithKeyConditionsComparisonOperatorInner(LE,
+            testArgument,
+            RANGE_KEY_HIGH_N_VALUE,
+            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+    }
+
+
     // see any caller
-    private void queryWithKeyConditionsGtInner(TestArgument testArgument,
-        String gtRValue,
-        Set<String> expectedRangeKeyValues) {
+    private void queryWithKeyConditionsComparisonOperatorInner(ComparisonOperator op,
+                                                               TestArgument testArgument,
+                                                               String valueForComparisonOperator,
+                                                               Set<String> expectedRangeKeyValues) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
                 .query(new QueryRequest().withTableName(TABLE4)
@@ -142,8 +269,8 @@ class QueryTest {
                         new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttributeValue(
                             testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)),
                         RANGE_KEY_FIELD,
-                        new Condition().withComparisonOperator(GT).withAttributeValueList(createAttributeValue(
-                            N, gtRValue))))
+                        new Condition().withComparisonOperator(op).withAttributeValueList(createAttributeValue(
+                            N, valueForComparisonOperator))))
                 ).getItems();
             final Set<Map<String, AttributeValue>> expectedItemsSet = expectedRangeKeyValues.stream()
                 .map(rangeKey -> ItemBuilder

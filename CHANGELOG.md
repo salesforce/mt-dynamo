@@ -5,6 +5,10 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
+## 0.9.28 (February 6, 2019)
+
+* `SharedTable` support extended for GE, LT, and LE (in addition to EQ and GT) queries on tables with numeric range-key fields (via `KeyConditions` only)
+
 ## 0.9.27 (December 10, 2018)
 
 * Fixed bug in `CachingAmazonDynamoDbStreams` where `getRecords` for nonexistent shard was throwing an `UncheckedExecutionException` as opposed to a `ResourceNotFoundException`
