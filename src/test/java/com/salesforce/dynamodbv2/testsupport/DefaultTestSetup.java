@@ -10,9 +10,8 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_V
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_HIGH_N_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_LOW_N_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_MIDDLE_N_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MAX;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MIN;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
@@ -39,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Performs default table creation and population logic.  To override table creation of data population logic,
@@ -116,24 +116,12 @@ public class DefaultTestSetup implements TestSetup {
                                 .build()));
                     break;
                 case N:
-                    amazonDynamoDb.putItem(
-                        new PutItemRequest().withTableName(table)
+                    IntStream.rangeClosed(RANGE_KEY_N_MIN, RANGE_KEY_N_MAX).forEach(i -> amazonDynamoDb
+                        .putItem(new PutItemRequest().withTableName(table)
                             .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
                                 .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                                .rangeKey(N, RANGE_KEY_LOW_N_VALUE)
-                                .build()));
-                    amazonDynamoDb.putItem(
-                        new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                                .rangeKey(N, RANGE_KEY_MIDDLE_N_VALUE)
-                                .build()));
-                    amazonDynamoDb.putItem(
-                        new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                                .rangeKey(N, RANGE_KEY_HIGH_N_VALUE)
-                                .build()));
+                                .rangeKey(N, String.valueOf(i))
+                                .build())));
                     break;
                 default:
                     throw new IllegalArgumentException("unsupported type " + rangeKeyAttributeTypeOpt.get()
