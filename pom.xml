@@ -21,7 +21,7 @@
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
         <junit.version>5.4.0</junit.version>
-        <aws.sdk.version>1.11.502</aws.sdk.version>
+        <aws.sdk.version>1.11.503</aws.sdk.version>
         <hamcrest.version>2.1</hamcrest.version>
     </properties>
 
