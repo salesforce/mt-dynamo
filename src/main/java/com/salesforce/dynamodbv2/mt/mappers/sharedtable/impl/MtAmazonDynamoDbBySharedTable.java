@@ -313,27 +313,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public QueryResult query(QueryRequest queryRequest) {
-        TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
+        final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
 
         // map table name
         final QueryRequest clonedQueryRequest = queryRequest.clone();
         clonedQueryRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map query request
-        //clonedQueryRequest.setExpressionAttributeNames(Optional.ofNullable(clonedQueryRequest.getFilterExpression())
-        //    .map(s -> new HashMap<>(clonedQueryRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
-        //clonedQueryRequest.setExpressionAttributeValues(Optional.ofNullable(clonedQueryRequest.getFilterExpression())
-        //    .map(s -> new HashMap<>(clonedQueryRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
         tableMapping.getQueryAndScanMapper().apply(clonedQueryRequest);
 
-        // keep moving forward pages until we find at least one record for current tenant or reach end
-        QueryResult queryResult;
-        while ((queryResult = getAmazonDynamoDb().query(clonedQueryRequest)).getItems().isEmpty()
-            && queryResult.getLastEvaluatedKey() != null) {
-            clonedQueryRequest.setExclusiveStartKey(queryResult.getLastEvaluatedKey());
-        }
-
         // map result
+        final QueryResult queryResult = getAmazonDynamoDb().query(clonedQueryRequest);
         queryResult.setItems(queryResult.getItems().stream().map(tableMapping.getItemMapper()::reverse)
             .collect(toList()));
         if (queryResult.getLastEvaluatedKey() != null) {
