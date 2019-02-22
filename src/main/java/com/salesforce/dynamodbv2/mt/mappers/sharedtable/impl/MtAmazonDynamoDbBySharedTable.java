@@ -313,18 +313,22 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public QueryResult query(QueryRequest queryRequest) {
+        final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
+
         // map table name
-        queryRequest = queryRequest.clone();
-        TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
-        queryRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
+        final QueryRequest clonedQueryRequest = queryRequest.clone();
+        clonedQueryRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map query request
-        tableMapping.getQueryAndScanMapper().apply(queryRequest);
+        tableMapping.getQueryAndScanMapper().apply(clonedQueryRequest);
 
         // map result
-        QueryResult queryResult = getAmazonDynamoDb().query(queryRequest);
-        queryResult.setItems(
-            queryResult.getItems().stream().map(item -> tableMapping.getItemMapper().reverse(item)).collect(toList()));
+        final QueryResult queryResult = getAmazonDynamoDb().query(clonedQueryRequest);
+        queryResult.setItems(queryResult.getItems().stream().map(tableMapping.getItemMapper()::reverse)
+            .collect(toList()));
+        if (queryResult.getLastEvaluatedKey() != null) {
+            queryResult.setLastEvaluatedKey(tableMapping.getItemMapper().reverse(queryResult.getLastEvaluatedKey()));
+        }
 
         return queryResult;
     }
@@ -346,14 +350,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         ScanRequest clonedScanRequest = scanRequest.clone();
         clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
-        // map query request
+        // map scan request
         clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
             .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
         clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
             .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
         tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
 
-        // scan until we find at least one record for current tenant or reach end
+        // keep moving forward pages until we find at least one record for current tenant or reach end
         ScanResult scanResult;
         while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
             && scanResult.getLastEvaluatedKey() != null) {
