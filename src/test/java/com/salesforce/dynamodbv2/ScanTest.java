@@ -153,7 +153,7 @@ class ScanTest {
             List<Map<String, AttributeValue>> items = scanResult.getItems();
 
             if (items.isEmpty()) {
-                assertTrue(expectedItems.isEmpty());
+                assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
                 assertNull(exclusiveStartKey);
             } else {
                 assertTrue(items.stream()
@@ -163,12 +163,12 @@ class ScanTest {
                     .allMatch(expectedItems::remove));
             }
         } while (exclusiveStartKey != null);
-        assertTrue(expectedItems.isEmpty());
+        assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
     }
 
     private static class ScanTestSetup extends DefaultTestSetup {
         List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
-        Map<String,Set<Integer>> orgItemKeys = new HashMap<>();
+        Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
