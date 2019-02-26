@@ -184,18 +184,21 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
                 .withStreamSpecification(createTableRequest.getStreamSpecification());
 
-        if (createTableRequest.getProvisionedThroughput() != null
-                && createTableRequest.getBillingMode() != null
-                && !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString())) {
+        // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
+        if (createTableRequest.getBillingMode() == null
+                || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString())) {
+
+            long readCapacityUnits = 1L;
+            long writeCapacityUnits = 1L;
+
+            if (createTableRequest.getProvisionedThroughput() != null) {
+                readCapacityUnits = createTableRequest.getProvisionedThroughput().getReadCapacityUnits();
+                writeCapacityUnits = createTableRequest.getProvisionedThroughput().getWriteCapacityUnits();
+            }
+
             tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                    .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
-                    .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()));
-        } else if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest
-            .getBillingMode() == null || !createTableRequest.getBillingMode()
-            .equals(BillingMode.PAY_PER_REQUEST.toString()))) {
-            tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                    .withReadCapacityUnits(1L)
-                    .withWriteCapacityUnits(1L));
+                    .withReadCapacityUnits(readCapacityUnits)
+                    .withWriteCapacityUnits(writeCapacityUnits));
         }
 
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
@@ -216,6 +219,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
                             .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
                             .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits()));
+                    } else {
+                        gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                                .withReadCapacityUnits(1L)
+                                .withWriteCapacityUnits(1L));
                     }
                     return gsiDescription;
                 }).collect(Collectors.toList()));
