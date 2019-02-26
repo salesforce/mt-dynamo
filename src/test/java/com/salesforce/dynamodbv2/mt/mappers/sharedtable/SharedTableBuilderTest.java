@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -93,6 +94,9 @@ class SharedTableBuilderTest {
                     .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
             assertEquals(1, localDynamoDB.describeTable(table)
                     .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+
+            assert(BillingMode.PROVISIONED.toString().equals(localDynamoDB.describeTable(
+                    table).getTable().getBillingModeSummary().getBillingMode()));
         }
     }
 }

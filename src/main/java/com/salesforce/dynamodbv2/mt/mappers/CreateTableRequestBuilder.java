@@ -115,8 +115,11 @@ public class CreateTableRequestBuilder {
             GlobalSecondaryIndex gsi = new GlobalSecondaryIndex().withIndexName(indexName)
                     .withKeySchema(buildKeySchema(secondaryIndexKey))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
-            if (provisionedThroughput > 0) {
+            if (this.createTableRequest.getBillingMode() == null
+                    || this.createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.toString())) {
                 gsi.withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput));
+            } else {
+                System.out.println("======= PPR is set");
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(gsi);
         } else {
@@ -185,10 +188,12 @@ public class CreateTableRequestBuilder {
      * @param createTableRequest the table request {@code CreateTableRequest} instance
      * @param provisionedThroughput the desired provisionedThroughput
      */
-    public static void setBillingMode(CreateTableRequest createTableRequest, Long provisionedThroughput) {
-        if (provisionedThroughput == 0) {
+    public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode,
+                                      Long provisionedThroughput) {
+
+        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        } else if (provisionedThroughput == null) {
+        } else if (provisionedThroughput == null){
             createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                     1L, 1L));
         } else {

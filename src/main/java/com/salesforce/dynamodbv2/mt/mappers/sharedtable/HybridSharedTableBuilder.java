@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -29,6 +30,7 @@ public class HybridSharedTableBuilder {
     private AmazonDynamoDB amazonDynamoDb;
     private boolean streamsEnabled = false;
     private long provisionedThroughput = 1L;
+    private BillingMode billingMode = BillingMode.PAY_PER_REQUEST;
     private Optional<String> tablePrefix = Optional.empty();
     private int pollIntervalSeconds = 0;
     private CreateTableRequestFactory primaryCreateTableRequestFactory;
@@ -48,7 +50,8 @@ public class HybridSharedTableBuilder {
             new CreateTableRequestFactoryEnsemble(ImmutableList.of(
                 primaryCreateTableRequestFactory,
                 new SharedTableCreateTableRequestFactory(
-                    SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, streamsEnabled),
+                    SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, billingMode,
+                            streamsEnabled),
                     tablePrefix)
             ));
 

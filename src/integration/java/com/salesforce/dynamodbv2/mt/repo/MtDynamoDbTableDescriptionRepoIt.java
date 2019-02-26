@@ -45,11 +45,14 @@ class MtDynamoDbTableDescriptionRepoIt {
         MtAmazonDynamoDbContextProvider ctx = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
         MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b =
                 MtDynamoDbTableDescriptionRepo.builder()
+                        .withBillingMode(BillingMode.PAY_PER_REQUEST)
                         .withAmazonDynamoDb(remoteDynamoDB)
                         .withContext(ctx)
                         .withTablePrefix(TABLE_PREFIX)
-                        .withTableDescriptionTableName(tableName)
-                        .withProvisionedThroughput(0L);
+                        .withTableDescriptionTableName(tableName);
+                       // .withProvisionedThroughput(0L);
+
+        // TODO add tests with each variety
 
         MtDynamoDbTableDescriptionRepo repo = b.build();
         ctx.withContext("1", () ->

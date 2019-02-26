@@ -55,6 +55,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private static final Gson GSON = new Gson();
     private final AmazonDynamoDB amazonDynamoDb;
+    private BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
     private final String tableDescriptionTableName;
@@ -66,6 +67,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final MtCache<TableDescription> cache;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
+                                           BillingMode billingMode,
                                            MtAmazonDynamoDbContextProvider mtContext,
                                            String tableDescriptionTableName,
                                            Optional<String> tablePrefix,
@@ -75,6 +77,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            int pollIntervalSeconds,
                                            long provisionedThroughput) {
         this.amazonDynamoDb = amazonDynamoDb;
+        this.billingMode = billingMode;
         this.mtContext = mtContext;
         adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
@@ -162,7 +165,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
-        CreateTableRequestBuilder.setBillingMode(createTableRequest, this.provisionedThroughput);
+        CreateTableRequestBuilder.setBillingMode(createTableRequest, this.billingMode, this.provisionedThroughput);
 
         adminUtils.createTableIfNotExists(
                 createTableRequest.withTableName(tableDescriptionTableName)
@@ -181,13 +184,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
                 .withStreamSpecification(createTableRequest.getStreamSpecification());
 
-        if (createTableRequest.getProvisionedThroughput() != null) {
+        if (createTableRequest.getProvisionedThroughput() != null
+                && createTableRequest.getBillingMode() != null
+                && !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString())) {
             tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
                     .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
                     .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()));
         } else if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest
             .getBillingMode() == null || !createTableRequest.getBillingMode()
-            .equals(BillingMode.PAY_PER_REQUEST))) {
+            .equals(BillingMode.PAY_PER_REQUEST.toString()))) {
             tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
                     .withReadCapacityUnits(1L)
                     .withWriteCapacityUnits(1L));
@@ -246,6 +251,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private String delimiter;
         private Integer pollIntervalSeconds;
         private Long provisionedThroughput = 1L;
+        private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
@@ -260,6 +266,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
             this.tableDescriptionTableName = tableDescriptionTableName;
+            return this;
+        }
+
+        public MtDynamoDbTableDescriptionRepoBuilder withBillingMode(BillingMode billingMode) {
+            this.billingMode = billingMode;
             return this;
         }
 
@@ -306,6 +317,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             validate();
             return new MtDynamoDbTableDescriptionRepo(
                 amazonDynamoDb,
+                billingMode,
                 mtContext,
                 tableDescriptionTableName,
                 tablePrefix,

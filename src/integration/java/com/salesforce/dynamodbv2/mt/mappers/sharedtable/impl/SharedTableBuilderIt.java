@@ -76,7 +76,8 @@ class SharedTableBuilderIt {
                 );
 
         SharedTableBuilder.builder()
-                .withDefaultProvisionedThroughput(0)
+              //  .withDefaultProvisionedThroughput(0)
+                .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
@@ -93,7 +94,8 @@ class SharedTableBuilderIt {
     void testBillingModePayPerRequestIsSetForDefaultCreateTableRequests() {
 
         SharedTableBuilder.builder()
-                .withDefaultProvisionedThroughput(0)
+                .withBillingMode(BillingMode.PAY_PER_REQUEST)
+//                .withDefaultProvisionedThroughput(0)
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
                 .withTablePrefix(TABLE_PREFIX)

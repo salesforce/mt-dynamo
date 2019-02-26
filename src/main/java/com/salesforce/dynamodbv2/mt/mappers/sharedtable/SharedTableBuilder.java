@@ -104,6 +104,8 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
+
+    private BillingMode billingMode;
     private Boolean streamsEnabled;
 
     public static SharedTableBuilder builder() {
@@ -134,6 +136,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         return this;
     }
 
+    public SharedTableBuilder withBillingMode(BillingMode billingMode) {
+        this.billingMode = billingMode;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      */
@@ -150,17 +157,22 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
         }
+        if (this.billingMode == null) {
+            this.billingMode = BillingMode.PROVISIONED;
+            System.out.println("Set billing mode..");
+        }
         if (streamsEnabled == null) {
             streamsEnabled = true;
         }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                this.streamsEnabled);
-        } else if (this.defaultProvisionedThroughput == 0L) {
+                    this.billingMode, this.streamsEnabled);
+        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
             this.createTableRequests = createTableRequests.stream()
                     .map(createTableRequest ->
                             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
                     .collect(Collectors.toList());
+            // TODO - confirm this is still needed
         }
         super.setDefaults();
     }
@@ -171,7 +183,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     /**
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
-    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
+    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput, BillingMode billingMode,
         boolean streamsEnabled) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
@@ -204,7 +216,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             mtSharedTableStaticSnNoLsi,
             mtSharedTableStaticSbNoLsi
         ).stream().map(createTableRequestBuilder -> {
-            setBillingMode(createTableRequestBuilder, provisionedThroughput);
+            setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
             addSis(createTableRequestBuilder, provisionedThroughput);
             addStreamSpecification(createTableRequestBuilder, streamsEnabled);
             return createTableRequestBuilder.build();
@@ -217,11 +229,13 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
      * @param provisionedThroughput the throughput to assign to the request builder. If 0, billing mode is set to PPR.
      */
-    private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder,
+    private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {
-        if (provisionedThroughput == 0) {
+        if (billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
             createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
+            // TODO test for this
         } else {
+            createTableRequestBuilder.withBillingMode(billingMode);
             createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput, provisionedThroughput);
         }
     }
