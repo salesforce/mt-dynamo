@@ -95,7 +95,7 @@ class SharedTableBuilderTest {
             assertEquals(1, localDynamoDB.describeTable(table)
                     .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
 
-            assert(BillingMode.PROVISIONED.toString().equals(localDynamoDB.describeTable(
+            assert (BillingMode.PROVISIONED.toString().equals(localDynamoDB.describeTable(
                     table).getTable().getBillingModeSummary().getBillingMode()));
         }
     }

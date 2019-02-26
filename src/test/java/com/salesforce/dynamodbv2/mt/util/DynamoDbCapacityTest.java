@@ -1,8 +1,9 @@
 package com.salesforce.dynamodbv2.mt.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 class DynamoDbCapacityTest {
 
