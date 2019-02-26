@@ -50,7 +50,6 @@ class MtDynamoDbTableDescriptionRepoIt {
                         .withContext(ctx)
                         .withTablePrefix(TABLE_PREFIX)
                         .withTableDescriptionTableName(tableName);
-                       // .withProvisionedThroughput(0L);
 
         // TODO add tests with each variety
 

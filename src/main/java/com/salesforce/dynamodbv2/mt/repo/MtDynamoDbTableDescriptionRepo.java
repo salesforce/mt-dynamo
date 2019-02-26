@@ -10,21 +10,7 @@ package com.salesforce.dynamodbv2.mt.repo;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.BillingMode;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
-import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
@@ -32,6 +18,7 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -185,16 +172,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withStreamSpecification(createTableRequest.getStreamSpecification());
 
         // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
-        if (createTableRequest.getBillingMode() == null
-                || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString())) {
+        DynamoDbCapacity capacityUtil = new DynamoDbCapacity();
+        final boolean setProvisionedThroughput = (createTableRequest.getBillingMode() == null
+                || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
 
-            long readCapacityUnits = 1L;
-            long writeCapacityUnits = 1L;
-
-            if (createTableRequest.getProvisionedThroughput() != null) {
-                readCapacityUnits = createTableRequest.getProvisionedThroughput().getReadCapacityUnits();
-                writeCapacityUnits = createTableRequest.getProvisionedThroughput().getWriteCapacityUnits();
-            }
+        if (setProvisionedThroughput) {
+            long readCapacityUnits = capacityUtil.getCapacity(
+                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+            long writeCapacityUnits = capacityUtil.getCapacity(
+                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
 
             tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
                     .withReadCapacityUnits(readCapacityUnits)
@@ -207,6 +193,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withKeySchema(lsi.getKeySchema())
                         .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
+
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
             tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
                 gsi -> {
@@ -215,14 +202,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withKeySchema(gsi.getKeySchema())
                         .withProjection(gsi.getProjection());
 
-                    if (gsi.getProvisionedThroughput() != null) {
+                    if (setProvisionedThroughput) {
+                        long readCapacityUnits = capacityUtil.getCapacity(
+                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+                        long writeCapacityUnits = capacityUtil.getCapacity(
+                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
+
                         gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                            .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
-                            .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits()));
-                    } else {
-                        gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                                .withReadCapacityUnits(1L)
-                                .withWriteCapacityUnits(1L));
+                                .withReadCapacityUnits(readCapacityUnits)
+                                .withWriteCapacityUnits(writeCapacityUnits));
                     }
                     return gsiDescription;
                 }).collect(Collectors.toList()));

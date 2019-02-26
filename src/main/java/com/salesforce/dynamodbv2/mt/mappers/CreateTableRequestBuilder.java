@@ -191,9 +191,9 @@ public class CreateTableRequestBuilder {
     public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode,
                                       Long provisionedThroughput) {
 
-        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
+        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        } else if (provisionedThroughput == null){
+        } else if (provisionedThroughput == null) {
             createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                     1L, 1L));
         } else {
@@ -201,5 +201,4 @@ public class CreateTableRequestBuilder {
                     provisionedThroughput, provisionedThroughput));
         }
     }
-
 }
