@@ -232,7 +232,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
                                        long provisionedThroughput) {
         if (billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
             createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
-            // TODO test for this
         } else {
             createTableRequestBuilder.withBillingMode(billingMode);
             createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput, provisionedThroughput);

@@ -76,7 +76,6 @@ class SharedTableBuilderIt {
                 );
 
         SharedTableBuilder.builder()
-              //  .withDefaultProvisionedThroughput(0)
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -95,7 +94,6 @@ class SharedTableBuilderIt {
 
         SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
-//                .withDefaultProvisionedThroughput(0)
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
                 .withTablePrefix(TABLE_PREFIX)

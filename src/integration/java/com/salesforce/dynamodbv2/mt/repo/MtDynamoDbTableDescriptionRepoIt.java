@@ -1,7 +1,6 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
@@ -15,7 +14,6 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import java.util.ArrayList;
 import java.util.Optional;
 
 import org.junit.jupiter.api.AfterEach;
@@ -76,7 +74,8 @@ class MtDynamoDbTableDescriptionRepoIt {
 
     // PPR should take precedence over set ProvisionedThroughput
     @Test
-    void testMtDynamoDbTableDescriptionPayPerRequestIsSetIfProvisionedThroughputIsAlsoSet() throws InterruptedException {
+    void testMtDynamoDbTableDescriptionPayPerRequestIsSetIfProvisionedThroughputIsAlsoSet()
+            throws InterruptedException {
         MtAmazonDynamoDbContextProvider ctx = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
         MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b =
                 MtDynamoDbTableDescriptionRepo.builder()
@@ -94,6 +93,6 @@ class MtDynamoDbTableDescriptionRepoIt {
 
     @AfterEach
     void afterEach() {
-       remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
+        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
     }
 }

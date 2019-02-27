@@ -74,9 +74,9 @@ class SharedTableBuilderTest {
                 .build();
 
         assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
-                .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
+                    .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
         assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
-                .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+                    .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
     }
 
     @Test
