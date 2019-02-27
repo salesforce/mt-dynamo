@@ -186,6 +186,7 @@ public class CreateTableRequestBuilder {
     /**
      * Updates the createTableRequest with Billing Mode details (PPR or provisionedThroughput).
      * @param createTableRequest the table request {@code CreateTableRequest} instance
+     * @param billingMode the desired billing mode
      * @param provisionedThroughput the desired provisionedThroughput
      */
     public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode,

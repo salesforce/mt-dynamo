@@ -166,12 +166,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
                     this.billingMode, this.streamsEnabled);
-        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
+        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             this.createTableRequests = createTableRequests.stream()
                     .map(createTableRequest ->
                             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
                     .collect(Collectors.toList());
-            // TODO - confirm this is still needed
         }
         super.setDefaults();
     }
@@ -230,7 +229,8 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {
-        if (billingMode.equals(BillingMode.PAY_PER_REQUEST.toString())) {
+
+        if (billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else {
             createTableRequestBuilder.withBillingMode(billingMode);
