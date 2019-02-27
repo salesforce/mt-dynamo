@@ -89,7 +89,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
     }
 
     /**
-     * Verifies that setting the throughput to non-zero value, does not set BillingMode to PPR.
+     * Verifies that setting the throughput to non-zero value sets provisioned throughput.
      */
     @Test
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenSet() throws InterruptedException {
@@ -113,7 +113,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
     }
 
     /**
-     * Verifies not setting throughput, does not set BillingMode to PPR, but instead uses default value.
+     * Verifies not setting throughput, sets provisioned throughput to defaults.
      */
     @Test
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault()  throws InterruptedException {

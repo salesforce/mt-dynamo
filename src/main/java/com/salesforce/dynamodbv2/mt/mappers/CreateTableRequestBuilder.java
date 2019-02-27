@@ -118,8 +118,6 @@ public class CreateTableRequestBuilder {
             if (this.createTableRequest.getBillingMode() == null
                     || this.createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.toString())) {
                 gsi.withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput));
-            } else {
-                System.out.println("======= PPR is set");
             }
             this.createTableRequest.getGlobalSecondaryIndexes().add(gsi);
         } else {
@@ -153,7 +151,9 @@ public class CreateTableRequestBuilder {
      * @return this {@code CreateTableRequestBuilder} object
      */
     public CreateTableRequestBuilder withBillingMode(BillingMode billingMode) {
-        this.createTableRequest.withBillingMode(billingMode);
+        if (billingMode != null) {
+            this.createTableRequest.withBillingMode(billingMode);
+        }
         return this;
     }
 
@@ -196,9 +196,15 @@ public class CreateTableRequestBuilder {
         } else if (provisionedThroughput == null) {
             createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                     1L, 1L));
+            createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         } else {
             createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                     provisionedThroughput, provisionedThroughput));
+            createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         }
+    }
+
+    public CreateTableRequest getCreateTableRequest() {
+        return createTableRequest;
     }
 }

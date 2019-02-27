@@ -159,7 +159,6 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         }
         if (this.billingMode == null) {
             this.billingMode = BillingMode.PROVISIONED;
-            System.out.println("Set billing mode..");
         }
         if (streamsEnabled == null) {
             streamsEnabled = true;

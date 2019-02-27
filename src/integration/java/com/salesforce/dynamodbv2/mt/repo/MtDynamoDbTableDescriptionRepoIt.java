@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
 import com.amazonaws.regions.Regions;
@@ -16,6 +17,8 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import java.util.ArrayList;
 import java.util.Optional;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -31,13 +34,28 @@ class MtDynamoDbTableDescriptionRepoIt {
     private static final Optional<String> TABLE_PREFIX = Optional.of("oktodelete-testBillingMode.");
     String tableName;
     String fullTableName;
-    private static ArrayList<String> testTables = new ArrayList<>();
+
+    void createTableInMtDynamoDbTableDescriptionRepo(
+            MtAmazonDynamoDbContextProvider ctx,
+            MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b) {
+
+        MtDynamoDbTableDescriptionRepo repo = b.build();
+        ctx.withContext("1", () ->
+                repo.createTable(new CreateTableRequest()
+                        .withTableName(tableName)
+                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+        );
+    }
+
+    void assertPayPerRequestIsSet() {
+        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
+                fullTableName).getTable().getBillingModeSummary().getBillingMode());
+    }
 
     @BeforeEach
     void beforeEach() {
         tableName = new String(String.valueOf(System.currentTimeMillis()));
         fullTableName = TABLE_PREFIX.get() + tableName;
-        testTables.add(fullTableName);
     }
 
     @Test
@@ -51,22 +69,31 @@ class MtDynamoDbTableDescriptionRepoIt {
                         .withTablePrefix(TABLE_PREFIX)
                         .withTableDescriptionTableName(tableName);
 
-        // TODO add tests with each variety
-
-        MtDynamoDbTableDescriptionRepo repo = b.build();
-        ctx.withContext("1", () ->
-                repo.createTable(new CreateTableRequest()
-                        .withTableName(tableName)
-                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
-        );
-
+        createTableInMtDynamoDbTableDescriptionRepo(ctx, b);
         TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
+        assertPayPerRequestIsSet();
+    }
 
-        for (String table: testTables) {
-            assertEquals(BillingMode.PAY_PER_REQUEST.toString(), remoteDynamoDB.describeTable(
-                    table).getTable().getBillingModeSummary().getBillingMode());
-        }
+    // PPR should take precedence over set ProvisionedThroughput
+    @Test
+    void testMtDynamoDbTableDescriptionPayPerRequestIsSetIfProvisionedThroughputIsAlsoSet() throws InterruptedException {
+        MtAmazonDynamoDbContextProvider ctx = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+        MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b =
+                MtDynamoDbTableDescriptionRepo.builder()
+                        .withBillingMode(BillingMode.PAY_PER_REQUEST)
+                        .withProvisionedThroughput(5L)
+                        .withAmazonDynamoDb(remoteDynamoDB)
+                        .withContext(ctx)
+                        .withTablePrefix(TABLE_PREFIX)
+                        .withTableDescriptionTableName(tableName);
 
-        remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
+        createTableInMtDynamoDbTableDescriptionRepo(ctx, b);
+        TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
+        assertPayPerRequestIsSet();
+    }
+
+    @AfterEach
+    void afterEach() {
+       remoteUtils.deleteTableIfExists(fullTableName, 10, 600);
     }
 }
