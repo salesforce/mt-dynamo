@@ -31,7 +31,6 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 
 import java.util.HashMap;

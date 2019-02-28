@@ -2,10 +2,16 @@ package com.salesforce.dynamodbv2.mt.util;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.amazonaws.services.dynamodbv2.model.*;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -15,10 +21,8 @@ class DynamoDbCapacityTest {
 
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
-
-    private CreateTableRequest request, requestWithProvisionedThroughput;
-    private static final String HASH_KEY_FIELD = "hk";
-    private static final String RANGE_KEY_FIELD = "rk";
+    private CreateTableRequest request;
+    private CreateTableRequest requestWithProvisionedThroughput;
 
     void assertProvisionedThroughputResults(CreateTableRequest request, Long expectedProvisionedThroughput) {
         assertNotEquals(BillingMode.PAY_PER_REQUEST.toString(), request.getBillingMode());
@@ -106,7 +110,7 @@ class DynamoDbCapacityTest {
     }
 
     @Test
-    void testRequestWithProvisionedThroughputDoesNotHavePPRSet() {
+    void testRequestWithProvisionedThroughputDoesNotHavePayPerRequestSet() {
         capacityTest.setBillingMode(requestWithProvisionedThroughput, null, 1L);
         assertProvisionedThroughputResults(requestWithProvisionedThroughput, 1L);
     }
