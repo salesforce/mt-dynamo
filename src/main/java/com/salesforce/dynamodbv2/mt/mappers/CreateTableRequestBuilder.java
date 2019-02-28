@@ -183,28 +183,6 @@ public class CreateTableRequestBuilder {
         return keySchemaElements;
     }
 
-    /**
-     * Updates the createTableRequest with Billing Mode details (PPR or provisionedThroughput).
-     * @param createTableRequest the table request {@code CreateTableRequest} instance
-     * @param billingMode the desired billing mode
-     * @param provisionedThroughput the desired provisionedThroughput
-     */
-    public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode,
-                                      Long provisionedThroughput) {
-
-        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
-            createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        } else if (provisionedThroughput == null) {
-            createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
-                    1L, 1L));
-            createTableRequest.withBillingMode(BillingMode.PROVISIONED);
-        } else {
-            createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
-                    provisionedThroughput, provisionedThroughput));
-            createTableRequest.withBillingMode(BillingMode.PROVISIONED);
-        }
-    }
-
     public CreateTableRequest getCreateTableRequest() {
         return createTableRequest;
     }

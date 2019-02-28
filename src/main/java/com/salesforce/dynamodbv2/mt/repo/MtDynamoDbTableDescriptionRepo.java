@@ -166,7 +166,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
-        CreateTableRequestBuilder.setBillingMode(createTableRequest, this.billingMode, this.provisionedThroughput);
+        DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode, this.provisionedThroughput);
 
         adminUtils.createTableIfNotExists(
                 createTableRequest.withTableName(tableDescriptionTableName)
