@@ -66,9 +66,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private BillingMode billingMode;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
-                                    String delimiter, Optional<String> tablePrefix) {
+                                    BillingMode billingMode, String delimiter, Optional<String> tablePrefix) {
         super(mtContext, amazonDynamoDb);
-        //this.billingMode = billingMode;
+        this.billingMode = billingMode;
         // TODO add billingMode support
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
@@ -262,7 +262,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             setDefaults();
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
-            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, delimiter, tablePrefix);
+            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, billingMode, delimiter, tablePrefix);
         }
 
         private void setDefaults() {

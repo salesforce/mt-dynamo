@@ -70,6 +70,8 @@ public class DynamoDbCapacity {
                 createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                         provisionedThroughput, provisionedThroughput));
             }
+            // TODO it's possible we want to update GSI as well if the request contains
+            // throughput with GSI
 
             createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         }
