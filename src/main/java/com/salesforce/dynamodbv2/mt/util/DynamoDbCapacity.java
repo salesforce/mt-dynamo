@@ -45,13 +45,11 @@ public class DynamoDbCapacity {
      * Updates the createTableRequest with Billing Mode details (PAY_PER_REQUEST or PROVISIONED).
      * @param createTableRequest the table request {@code CreateTableRequest} instance
      * @param billingMode the desired billing mode
-     * @param provisionedThroughput the desired provisionedThroughput
      *      precedence order: If createTableRequest.PAY_PER_REQUEST or createTableRequest.PROVISIONED, billing mode
      *      won't change.  Next if ProvisionedThroughput is already set on the createTableRequest.  Finally billingMode
      *      input parameter is used to determine billing mode. Null billingMode defaults to PROVISIONED.
      * */
-    public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode,
-                                      Long provisionedThroughput) {
+    public static void setBillingMode(CreateTableRequest createTableRequest, BillingMode billingMode) {
 
         String billingModeFromRequest = createTableRequest.getBillingMode();
 
@@ -63,12 +61,9 @@ public class DynamoDbCapacity {
         } else if ((billingModeFromRequest == null || billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
                 && createTableRequest.getProvisionedThroughput() == null) {
 
-            if (provisionedThroughput == null) {
+            if (createTableRequest.getProvisionedThroughput() == null) {
                 createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                         1L, 1L));
-            } else {
-                createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
-                        provisionedThroughput, provisionedThroughput));
             }
             // TODO it's possible we want to update GSI as well if the request contains
             // throughput with GSI

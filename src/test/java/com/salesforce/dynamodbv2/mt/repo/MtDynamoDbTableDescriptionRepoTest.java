@@ -85,23 +85,6 @@ public class MtDynamoDbTableDescriptionRepoTest {
     }
 
     /**
-     * Verifies that setting the throughput to non-zero value sets provisioned throughput.
-     */
-    @Test
-    void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenSet() throws InterruptedException {
-        mtDynamoDbTableDescriptionRepoBuilder.withProvisionedThroughput(5L);
-        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        MT_CONTEXT.withContext("1", () ->
-                repo.createTable(new CreateTableRequest()
-                        .withTableName(tableName)
-                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
-        );
-
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 5L);
-    }
-
-    /**
      * Verifies not setting throughput, sets provisioned throughput to defaults.
      */
     @Test
@@ -119,23 +102,6 @@ public class MtDynamoDbTableDescriptionRepoTest {
 
     @Test
     void testMtDynamoDbTableDescriptionPayPerRequestIsSet() throws InterruptedException {
-        mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        MT_CONTEXT.withContext("1", () ->
-                repo.createTable(new CreateTableRequest()
-                        .withTableName(tableName)
-                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
-        );
-
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
-    }
-
-    // PAY_PER_REQUEST should take precedence over set ProvisionedThroughput
-    @Test
-    void testMtDynamoDbTableDescriptionPayPerRequestIsSetIfProvisionedThroughputIsAlsoSet()
-            throws InterruptedException {
-        mtDynamoDbTableDescriptionRepoBuilder.withProvisionedThroughput(5L);
         mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->

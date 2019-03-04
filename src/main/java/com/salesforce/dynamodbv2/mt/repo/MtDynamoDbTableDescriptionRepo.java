@@ -63,7 +63,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
-    private long provisionedThroughput;
     private final MtCache<TableDescription> cache;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
@@ -74,8 +73,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
-                                           int pollIntervalSeconds,
-                                           long provisionedThroughput) {
+                                           int pollIntervalSeconds) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.billingMode = billingMode;
         this.mtContext = mtContext;
@@ -85,7 +83,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
-        this.provisionedThroughput = provisionedThroughput;
         cache = new MtCache<>(mtContext);
     }
 
@@ -165,7 +162,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
-        DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode, this.provisionedThroughput);
+        DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
 
         adminUtils.createTableIfNotExists(
                 createTableRequest.withTableName(tableDescriptionTableName)
@@ -258,7 +255,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private String tableDescriptionTableDataField;
         private String delimiter;
         private Integer pollIntervalSeconds;
-        private Long provisionedThroughput = 1L;
         private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
 
@@ -279,11 +275,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         public MtDynamoDbTableDescriptionRepoBuilder withBillingMode(BillingMode billingMode) {
             this.billingMode = billingMode;
-            return this;
-        }
-
-        public MtDynamoDbTableDescriptionRepoBuilder withProvisionedThroughput(Long provisionedThroughput) {
-            this.provisionedThroughput = provisionedThroughput;
             return this;
         }
 
@@ -332,8 +323,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 tableDescriptionTableHashKeyField,
                 tableDescriptionTableDataField,
                 delimiter,
-                pollIntervalSeconds,
-                provisionedThroughput);
+                pollIntervalSeconds);
         }
 
         private void validate() {

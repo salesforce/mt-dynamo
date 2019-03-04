@@ -63,7 +63,7 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyPayPerRequestForInputBillingModeNull() {
         request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, null, null);
+        capacityTest.setBillingMode(request, null);
         assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
         assertNull(request.getProvisionedThroughput());
     }
@@ -71,7 +71,7 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyPayPerRequestForInputBillingModePayPerRequest() {
         request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, null);
+        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST);
         assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
         assertNull(request.getProvisionedThroughput());
     }
@@ -79,31 +79,7 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyPayPerRequestForInputBillingModeProvisioned() {
         request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, null);
-        assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        assertNull(request.getProvisionedThroughput());
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyPayPerRequestForInputBillingModeNullAndInputPThroughputNotNull() {
-        request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, null, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        assertNull(request.getProvisionedThroughput());
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyPayPerRequestForInputBillingModePayPerRequestAndInputPThroughputNotNull() {
-        request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        assertNull(request.getProvisionedThroughput());
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyPayPerRequestForBillingModeProvisionedInputProvisionedThroughputNotNull() {
-        request.withBillingMode(BillingMode.PAY_PER_REQUEST);
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, 5L);
+        capacityTest.setBillingMode(request, BillingMode.PROVISIONED);
         assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
         assertNull(request.getProvisionedThroughput());
     }
@@ -113,7 +89,7 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyProvisionedForInputBillingModeNull() {
         request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, null, null);
+        capacityTest.setBillingMode(request, null);
         assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
         assertProvisionedThroughputResults(request, 1L);
     }
@@ -121,7 +97,7 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyProvisionedForInputBillingModePayPerRequest() {
         request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, null);
+        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST);
         assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
         assertProvisionedThroughputResults(request, 1L);
     }
@@ -129,75 +105,30 @@ class DynamoDbCapacityTest {
     @Test
     void testNoChangeWithBillingModeAlreadyProvisionedForInputBillingModeProvisioned() {
         request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, null);
+        capacityTest.setBillingMode(request, BillingMode.PROVISIONED);
         assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
         assertProvisionedThroughputResults(request, 1L);
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyProvisionedForInputBillingModeNullAndInputProvisionedThroughputNotNull() {
-        request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, null, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyProvisionedForInputBillingModePayPerRequestAndInputPThroughputNotNull() {
-        request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testNoChangeWithBillingModeAlreadyProvisionedForBillingModeProvisionedInputProvisionedThroughputNotNull() {
-        request.withBillingMode(BillingMode.PROVISIONED);
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
-        assertProvisionedThroughputResults(request, 5L);
     }
 
     // Tests if createTableRequest.ProvisionedThroughput is already set then ProvisionedThroughtput doesn't change
     @Test
     void testNoChangeWithProvisionedThroughputAlreadySetForInputBillingModeNull() {
         request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, null, null);
+        capacityTest.setBillingMode(request, null);
         assertProvisionedThroughputResults(request, 5L);
     }
 
     @Test
     void testNoChangeWithProvisionedThroughputAlreadySetForInputBillingModePayPerRequest() {
         request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, null);
+        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST);
         assertProvisionedThroughputResults(request, 5L);
     }
 
     @Test
     void testNoChangeWithProvisionedThroughputAlreadySetForInputBillingModeProvisioned() {
         request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, null);
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testNoChangeWithProvisionedThroughputAlreadySetForInputBillingModeNullAndInputProvisionedThroughputNotNull() {
-        request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, null, 10L);
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testNoChangeWithProvisionedThroughputAlreadySetForInputBillingModePayPerRequestAndInputPThroughputNotNull() {
-        request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, 10L);
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testNoChangeWithProvisionedThroughputAlreadySetForBillingModeProvisionedInputProvisionedThroughputNotNull() {
-        request.withProvisionedThroughput(new ProvisionedThroughput(5L, 5L));
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, 10L);
+        capacityTest.setBillingMode(request, BillingMode.PROVISIONED);
         assertProvisionedThroughputResults(request, 5L);
     }
 
@@ -205,44 +136,23 @@ class DynamoDbCapacityTest {
     // are used to determine the proper billing mode/provisioned throughput
     @Test
     void testBillingModePayPerRequestForInputBillingModePayPerRequestAndProvisionedThroughputNull() {
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, null);
+        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST);
         assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
         assertNull(request.getProvisionedThroughput());
     }
 
     @Test
     void testBillingModeProvisionedForInputBillingModeNullAndProvisionedThroughputNull() {
-        capacityTest.setBillingMode(request, null, null);
+        capacityTest.setBillingMode(request, null);
         assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
         assertProvisionedThroughputResults(request, 1L);
     }
 
     @Test
     void testBillingModeProvisionedForInputBillingModeProvisionedAndProvisionedThroughputNull() {
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, null);
+        capacityTest.setBillingMode(request, BillingMode.PROVISIONED);
         assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
         assertProvisionedThroughputResults(request, 1L);
-    }
-
-    @Test
-    void testBillingModePayPerRequestForInputBillingModeNullAndProvisionedThroughputNotNull() {
-        capacityTest.setBillingMode(request, BillingMode.PAY_PER_REQUEST, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        assertNull(request.getProvisionedThroughput());
-    }
-
-    @Test
-    void testBillingModeProvisionedForInputBillingModeNullAndProvisionedThroughputNotNull() {
-        capacityTest.setBillingMode(request, null, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
-        assertProvisionedThroughputResults(request, 5L);
-    }
-
-    @Test
-    void testBillingModeProvisionedForInputBillingModeProvisionedAndProvisionedThroughputNotNull() {
-        capacityTest.setBillingMode(request, BillingMode.PROVISIONED, 5L);
-        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
-        assertProvisionedThroughputResults(request, 5L);
     }
 }
 

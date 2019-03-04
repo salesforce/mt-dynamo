@@ -115,7 +115,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        DynamoDbCapacity.setBillingMode(createTableRequest, billingMode, null);
+        DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
         CreateTableRequest request = createTableRequest.clone()
             .withTableName(buildPrefixedTableName(createTableRequest.getTableName()));
         CreateTableResult result = getAmazonDynamoDb().createTable(request);
