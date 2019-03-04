@@ -230,7 +230,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {
 
-        if (billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
+        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else {
             createTableRequestBuilder.withBillingMode(billingMode);

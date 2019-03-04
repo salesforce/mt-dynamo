@@ -30,7 +30,7 @@ public class HybridSharedTableBuilder {
     private AmazonDynamoDB amazonDynamoDb;
     private boolean streamsEnabled = false;
     private long provisionedThroughput = 1L;
-    private BillingMode billingMode = BillingMode.PAY_PER_REQUEST;
+    private BillingMode billingMode;
     private Optional<String> tablePrefix = Optional.empty();
     private int pollIntervalSeconds = 0;
     private CreateTableRequestFactory primaryCreateTableRequestFactory;
@@ -68,6 +68,7 @@ public class HybridSharedTableBuilder {
                 pollIntervalSeconds),
             MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
+                .withBillingMode(billingMode)
                 .withContext(mtContext)
                 .withTableDescriptionTableName("_tablemetadata")
                 .withPollIntervalSeconds(pollIntervalSeconds)
@@ -78,6 +79,16 @@ public class HybridSharedTableBuilder {
 
     public HybridSharedTableBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
         this.amazonDynamoDb = amazonDynamoDb;
+        return this;
+    }
+
+    /**
+     * Sets BillingMode for HybridSharedTableBuilder.
+     * @param billingMode the desired billing mode to be set
+     * @return {@code HybridSharedTableBuilder}
+     */
+    public HybridSharedTableBuilder withBillingMode(BillingMode billingMode) {
+        this.billingMode = billingMode;
         return this;
     }
 
