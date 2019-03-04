@@ -57,7 +57,7 @@ public class DynamoDbCapacity {
         if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)
             && (billingModeFromRequest == null || !billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
             && createTableRequest.getProvisionedThroughput() == null) {
-            createTableRequest.withBillingMode(billingMode);
+            createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else if ((billingModeFromRequest == null || billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
                 && createTableRequest.getProvisionedThroughput() == null) {
 
@@ -65,8 +65,6 @@ public class DynamoDbCapacity {
                 createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
                         1L, 1L));
             }
-            // TODO it's possible we want to update GSI as well if the request contains
-            // throughput with GSI
 
             createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         }
