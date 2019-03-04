@@ -24,13 +24,14 @@ public class MtAmazonDynamoDbByTableTest {
     String tableName;
     String fullTableName;
 
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+    public static final MtAmazonDynamoDbContextProvider ctx =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String tablePrefix = "oktodelete-testBillingMode";
 
     @BeforeEach
     void beforeEach() {
+        ctx.setContext("");
         tableName = DynamoDbTestUtils.getTimestampTableName();
         fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix,  tableName, ".");
 
@@ -43,7 +44,7 @@ public class MtAmazonDynamoDbByTableTest {
         mtDynamoDbByTableBuilder = MtAmazonDynamoDbByTable.builder()
                 .withTablePrefix(tablePrefix)
                 .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
-                .withContext(MT_CONTEXT);
+                .withContext(ctx);
     }
 
     @Test
