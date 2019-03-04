@@ -1,9 +1,9 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
@@ -14,37 +14,33 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class MtDynamoDbTableDescriptionRepoTest {
 
-    private final Optional<String> tablePrefix = Optional.of("oktodelete-testBillingMode.");
-    private String tableName;
-    private String fullTableName;
-    private AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    private MtAmazonDynamoDbContextProvider ctx = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    String tableName;
+    String fullTableName;
+
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+    private static final Optional<String> tablePrefix = Optional.of("oktodelete-testBillingMode.");
+    MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
 
     @BeforeEach
     void beforeEach() {
         tableName = new String(String.valueOf(System.currentTimeMillis()));
-        fullTableName = tablePrefix.get() + tableName;
-    }
+        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.get(), tableName,"");
 
-    /**
-     * Verifies provisioned throughput is set.
-     */
-    public void assertProvisionedThroughputIsSet(Long expectedThroughput) throws InterruptedException {
-        TableUtils.waitUntilActive(dynamoDb, fullTableName);
-
-        assertNotNull(dynamoDb.describeTable(fullTableName).getTable());
-        assertNotNull(dynamoDb.describeTable(fullTableName).getTable().getProvisionedThroughput());
-
-        assert (dynamoDb.describeTable(fullTableName).getTable().getProvisionedThroughput()
-                .getReadCapacityUnits().equals(expectedThroughput));
-        assert (dynamoDb.describeTable(fullTableName).getTable().getProvisionedThroughput()
-                .getWriteCapacityUnits().equals(expectedThroughput));
+        mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()
+                        .withAmazonDynamoDb(localDynamoDB)
+                        .withContext(MT_CONTEXT)
+                        .withTablePrefix(tablePrefix)
+                        .withTableDescriptionTableName(tableName);
     }
 
     /**
@@ -93,23 +89,16 @@ public class MtDynamoDbTableDescriptionRepoTest {
      */
     @Test
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenSet() throws InterruptedException {
-
-        MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b =
-                MtDynamoDbTableDescriptionRepo.builder()
-                        .withAmazonDynamoDb(dynamoDb)
-                        .withContext(ctx)
-                        .withTablePrefix(tablePrefix)
-                        .withTableDescriptionTableName(tableName)
-                        .withProvisionedThroughput(5L);
-
-        MtDynamoDbTableDescriptionRepo repo = b.build();
-        ctx.withContext("1", () ->
+        mtDynamoDbTableDescriptionRepoBuilder.withProvisionedThroughput(5L);
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        MT_CONTEXT.withContext("1", () ->
                 repo.createTable(new CreateTableRequest()
                         .withTableName(tableName)
                         .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
-        assertProvisionedThroughputIsSet(5L);
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 5L);
     }
 
     /**
@@ -117,21 +106,45 @@ public class MtDynamoDbTableDescriptionRepoTest {
      */
     @Test
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault()  throws InterruptedException {
-
-        MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder b =
-                MtDynamoDbTableDescriptionRepo.builder()
-                        .withAmazonDynamoDb(dynamoDb)
-                        .withContext(ctx)
-                        .withTablePrefix(tablePrefix)
-                        .withTableDescriptionTableName(tableName);
-
-        MtDynamoDbTableDescriptionRepo repo = b.build();
-        ctx.withContext("1", () ->
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        MT_CONTEXT.withContext("1", () ->
                 repo.createTable(new CreateTableRequest()
                         .withTableName(tableName)
                         .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
-        assertProvisionedThroughputIsSet(1L);
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
+    }
+
+    @Test
+    void testMtDynamoDbTableDescriptionPayPerRequestIsSet() throws InterruptedException {
+        mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        MT_CONTEXT.withContext("1", () ->
+                repo.createTable(new CreateTableRequest()
+                        .withTableName(tableName)
+                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+        );
+
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
+    }
+
+    // PAY_PER_REQUEST should take precedence over set ProvisionedThroughput
+    @Test
+    void testMtDynamoDbTableDescriptionPayPerRequestIsSetIfProvisionedThroughputIsAlsoSet()
+            throws InterruptedException {
+        mtDynamoDbTableDescriptionRepoBuilder.withProvisionedThroughput(5L);
+        mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        MT_CONTEXT.withContext("1", () ->
+                repo.createTable(new CreateTableRequest()
+                        .withTableName(tableName)
+                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+        );
+
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
     }
 }

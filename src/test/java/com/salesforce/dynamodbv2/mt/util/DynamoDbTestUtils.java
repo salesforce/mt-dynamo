@@ -7,6 +7,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 
+import java.util.List;
+
 /**
  * Utility functions for tests that do DynamoDB table creation/deletion.
  */
@@ -43,8 +45,21 @@ public class DynamoDbTestUtils {
         assert (tableDescription.getProvisionedThroughput().getWriteCapacityUnits().equals(expectedThroughput));
     }
 
-    public static String getTableNameWithPrefix(String tablePrefix, String tableName) {
-        return tablePrefix + "." + tableName;
+    /**
+     * For a list of tables, check that the table(s) have the expected properties set for BillingMode.PROVISIONED.
+     * @param testTables list of tables to verify
+     * @param dynamoDbInstance the AmazonDynamoDB instance
+     * @param expectedThroughput the expected ProvisionedThroughput value
+     */
+    public static void assertProvisionedIsSetForSetOfTables(List<String> testTables, AmazonDynamoDB dynamoDbInstance,
+                                                      Long expectedThroughput) {
+        for (String table: testTables) {
+            assertProvisionedIsSet(table, dynamoDbInstance, expectedThroughput);
+        }
+    }
+
+    public static String getTableNameWithPrefix(String tablePrefix, String tableName, String delimeter) {
+        return tablePrefix + delimeter + tableName;
     }
 
     public static String getTimestampTableName() {

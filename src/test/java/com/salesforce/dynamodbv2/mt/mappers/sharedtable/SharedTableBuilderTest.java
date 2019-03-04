@@ -2,7 +2,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -16,6 +15,8 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,18 +26,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-
 class SharedTableBuilderTest {
 
-    private static final String ID_ATTR_NAME = "id";
-    private static final String INDEX_ID_ATTR_NAME = "indexId";
-
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-
-    private static final String tablePrefix = "oktodelete-testBillingMode.";
+    CreateTableRequest request;
+    MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
     String tableName;
+
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+    private static final String ID_ATTR_NAME = "id";
+    private static final String INDEX_ID_ATTR_NAME = "indexId";
+    private static final String tablePrefix = "oktodelete-testBillingMode.";
 
     @BeforeEach
     void beforeEach() {
@@ -48,18 +49,6 @@ class SharedTableBuilderTest {
             "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
             "mt_sharedtablestatic_s_b_nolsi")).stream()
             .map(testTable -> tablePrefix + testTable).collect(Collectors.toList());
-
-    private void verifyBillingModeIsProvisioned() {
-        for (String table: testTables) {
-            assertEquals(1, localDynamoDB.describeTable(table)
-                    .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-            assertEquals(1, localDynamoDB.describeTable(table)
-                    .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
-
-            assert (BillingMode.PROVISIONED.toString().equals(localDynamoDB.describeTable(
-                    table).getTable().getBillingModeSummary().getBillingMode()));
-        }
-    }
 
     @AfterEach
     void tearDown() {
@@ -94,10 +83,8 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
-                    .getTable().getProvisionedThroughput().getWriteCapacityUnits().intValue());
-        assertEquals(1, localDynamoDB.describeTable(tablePrefix + tableName)
-                    .getTable().getProvisionedThroughput().getReadCapacityUnits().intValue());
+        DynamoDbTestUtils.assertProvisionedIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
+                ""), localDynamoDB, 1L);
     }
 
     @Test
@@ -110,7 +97,7 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        verifyBillingModeIsProvisioned();
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(testTables, localDynamoDB, 1L);
     }
 
     @Test
@@ -122,7 +109,7 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        verifyBillingModeIsProvisioned();
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(testTables, localDynamoDB, 1L);
     }
 
     @Test
@@ -149,8 +136,8 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        assert (BillingMode.PAY_PER_REQUEST.toString().equals(localDynamoDB.describeTable(
-                tablePrefix + tableName).getTable().getBillingModeSummary().getBillingMode()));
+        DynamoDbTestUtils.assertPayPerRequestIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
+                ""), localDynamoDB);
     }
 
     @Test
@@ -164,8 +151,7 @@ class SharedTableBuilderTest {
                 .build();
 
         for (String table: testTables) {
-            assert (BillingMode.PAY_PER_REQUEST.toString().equals(localDynamoDB.describeTable(
-                    table).getTable().getBillingModeSummary().getBillingMode()));
+            DynamoDbTestUtils.assertPayPerRequestIsSet(table, localDynamoDB);
         }
     }
 }

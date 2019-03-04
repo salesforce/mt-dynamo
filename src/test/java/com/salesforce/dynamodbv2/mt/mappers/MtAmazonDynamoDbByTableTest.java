@@ -32,7 +32,7 @@ public class MtAmazonDynamoDbByTableTest {
     @BeforeEach
     void beforeEach() {
         tableName = DynamoDbTestUtils.getTimestampTableName();
-        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName);
+        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix,  tableName, ".");
 
         request = new CreateTableRequest()
                 .withTableName(tableName)
@@ -65,7 +65,6 @@ public class MtAmazonDynamoDbByTableTest {
         TableUtils.waitUntilActive(localDynamoDB, fullTableName);
         DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
     }
-
 
     @Test
     void testMtAmazonDynamoDbByTablePayPerRequestIsSetWhenBillingModePassedIn() throws InterruptedException {
