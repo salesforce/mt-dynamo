@@ -2,47 +2,37 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.document.Table;
-import com.amazonaws.services.dynamodbv2.model.*;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class MtAmazonDynamoDbByTableTest {
 
-
-    private static final String ID_ATTR_NAME = "id";
-    //private static final String INDEX_ID_ATTR_NAME = "indexId";
-
     AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-
-    private static final String tablePrefix = "oktodelete-testBillingMode";
-    String tableName;
-    String fullTableName;
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
-            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-
     CreateTableRequest request;
     MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
+    String tableName;
+    String fullTableName;
 
-    void assertPayPerRequestIsSet() {
-        assertEquals(BillingMode.PAY_PER_REQUEST.toString(), localDynamoDB.describeTable(
-                tableName).getTable().getBillingModeSummary().getBillingMode());
-        assertNull(request.getProvisionedThroughput());
-    }
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+    private static final String ID_ATTR_NAME = "id";
+    private static final String tablePrefix = "oktodelete-testBillingMode";
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
-        fullTableName = tablePrefix + tableName;
+        tableName = DynamoDbTestUtils.getTimestampTableName();
+        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName);
 
         request = new CreateTableRequest()
                 .withTableName(tableName)
@@ -57,41 +47,43 @@ public class MtAmazonDynamoDbByTableTest {
     }
 
     @Test
-    void testMtAmazonDynamoDbByTableProvisionedIsSetWhenBillingModeAlreadySet() throws InterruptedException {
-
-        request.withBillingMode(BillingMode.PROVISIONED);
-        request.withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
-
+    void testMtAmazonDynamoDbByTableProvisionedIsSetWhenBillingModePassedIn() throws InterruptedException {
+        mtDynamoDbByTableBuilder.withBillingMode(BillingMode.PROVISIONED);
         MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
 
         mtDynamoDbByTable.createTable(request);
         TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-
-        assertEquals(BillingMode.PROVISIONED.toString(), localDynamoDB.describeTable(
-                fullTableName).getTable().getBillingModeSummary().getBillingMode());
-//        assertNotNull(request.getProvisionedThroughput());
-//        assert (request.getProvisionedThroughput().getReadCapacityUnits().equals(1L));
-//        assert (request.getProvisionedThroughput().getWriteCapacityUnits().equals(1L));
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
     }
 
     @Test
-    void test2() {
+    void testMtAmazonDynamoDbByTableProvisionedIsSetWhenBillingModeAlreadySetOnRequest() throws InterruptedException {
+        MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
+        request.withBillingMode(BillingMode.PROVISIONED);
+
+        mtDynamoDbByTable.createTable(request);
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
+    }
+
+
+    @Test
+    void testMtAmazonDynamoDbByTablePayPerRequestIsSetWhenBillingModePassedIn() throws InterruptedException {
         mtDynamoDbByTableBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
 
-
         mtDynamoDbByTable.createTable(request);
-        assertPayPerRequestIsSet();
-
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
     }
 
     @Test
-    void test3() {
+    void testMtAmazonDynamoDbByTablePayPerRequestIsSetWhenBillingModeAlreadySetOnRequest() throws InterruptedException {
         MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
-
         request.withBillingMode(BillingMode.PAY_PER_REQUEST);
 
         mtDynamoDbByTable.createTable(request);
-        assertPayPerRequestIsSet();
+        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
     }
 }
