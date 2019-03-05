@@ -94,7 +94,7 @@ class SharedTableBuilderTest {
     }
 
     @Test
-    void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
+    void testBillingModePayPerRequestIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
         SharedTableBuilder.builder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -102,7 +102,9 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
+        for (String table: getPrefixedTables()) {
+            DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
+        }
     }
 
     @Test
