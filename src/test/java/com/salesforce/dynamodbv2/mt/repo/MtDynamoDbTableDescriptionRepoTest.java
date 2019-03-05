@@ -84,8 +84,11 @@ public class MtDynamoDbTableDescriptionRepoTest {
         }
     }
 
+    /**
+     * Verifies not setting throughput, sets provisioned throughput to defaults.
+     */
     @Test
-    void testMtDynamoDbTableDescriptionPayPerRequestIsSetNoBillingModeIsProvided()  throws InterruptedException {
+    void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault()  throws InterruptedException {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
                 repo.createTable(new CreateTableRequest()
@@ -94,7 +97,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
         );
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
     }
 
     @Test

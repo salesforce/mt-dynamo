@@ -142,10 +142,10 @@ class DynamoDbCapacityTest {
     }
 
     @Test
-    void testBillingModePayPerRequestForInputBillingModeNullAndProvisionedThroughputNull() {
+    void testBillingModeProvisionedForInputBillingModeNullAndProvisionedThroughputNull() {
         capacityTest.setBillingMode(request, null);
-        assert (request.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        assertNull(request.getProvisionedThroughput());
+        assert (request.getBillingMode().equals(BillingMode.PROVISIONED.toString()));
+        assertProvisionedThroughputResults(request, 1L);
     }
 
     @Test

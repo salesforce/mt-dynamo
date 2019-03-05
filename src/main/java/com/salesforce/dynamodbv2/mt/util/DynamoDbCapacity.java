@@ -54,10 +54,9 @@ public class DynamoDbCapacity {
         String billingModeFromRequest = createTableRequest.getBillingMode();
 
         // Only set Pay Per Request if ProvisionedThroughput is not already set on this request.
-        if ((billingModeFromRequest == null || !billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
-            && createTableRequest.getProvisionedThroughput() == null
-            && ((billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST))
-                || (billingMode == null && billingModeFromRequest == null))) {
+        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)
+            && (billingModeFromRequest == null || !billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
+            && createTableRequest.getProvisionedThroughput() == null) {
             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else if ((billingModeFromRequest == null || billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
                 && createTableRequest.getProvisionedThroughput() == null) {

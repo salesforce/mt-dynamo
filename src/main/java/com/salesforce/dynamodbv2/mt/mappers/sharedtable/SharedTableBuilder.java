@@ -158,7 +158,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             this.defaultProvisionedThroughput = 1L;
         }
         if (this.billingMode == null) {
-            this.billingMode = BillingMode.PAY_PER_REQUEST;
+            this.billingMode = BillingMode.PROVISIONED;
         }
         if (streamsEnabled == null) {
             streamsEnabled = true;
