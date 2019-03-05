@@ -52,9 +52,12 @@ class SharedTableBuilderTest {
 
     @AfterEach
     void tearDown() {
+        System.out.println(localDynamoDB.listTables());
         for (String tableName: localDynamoDB.listTables().getTableNames()) {
             localDynamoDB.deleteTable(tableName);
         }
+        System.out.println("listTables() = " + localDynamoDB.listTables());
+        assert (localDynamoDB.listTables().getTableNames().isEmpty());
     }
 
     @Test
