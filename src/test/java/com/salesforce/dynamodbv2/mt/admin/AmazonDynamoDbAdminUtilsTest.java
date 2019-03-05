@@ -26,8 +26,8 @@ import org.junit.jupiter.api.Test;
 
 class AmazonDynamoDbAdminUtilsTest {
 
-    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDB);
+    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDb);
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
     String tableName;
     String fullTableName;
@@ -65,16 +65,16 @@ class AmazonDynamoDbAdminUtilsTest {
     @Test
     void createTableIfNotExistsIfTableDoesNotExist() throws InterruptedException {
         localUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
 
         assert ((TableStatus.ACTIVE.toString()).equals(
-                localDynamoDB.describeTable(fullTableName).getTable().getTableStatus()));
+                localDynamoDb.describeTable(fullTableName).getTable().getTableStatus()));
     }
 
     @Test
     void createTableIfNotExistsIfTableExistsWithDifferentDescription() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        localDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
 
         Throwable e = null;
         try {
@@ -96,8 +96,8 @@ class AmazonDynamoDbAdminUtilsTest {
 
     @Test
     void createTableIfNotExistsIfTableExistsWithSameDescription() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        localDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
 
         Throwable e = null;
         try {
@@ -116,7 +116,7 @@ class AmazonDynamoDbAdminUtilsTest {
 
         Throwable e = null;
         try {
-            localDynamoDB.describeTable("fake_table");
+            localDynamoDb.describeTable("fake_table");
         } catch (Throwable ex) {
             e = ex;
         }
@@ -125,13 +125,13 @@ class AmazonDynamoDbAdminUtilsTest {
 
     @Test
     void deleteTableIfExistsIfTableDoesExist() throws InterruptedException {
-        localDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
+        localDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
         localUtils.deleteTableIfExists(fullTableName, 10, 15);
 
         Throwable e = null;
         try {
-            localDynamoDB.describeTable(fullTableName);
+            localDynamoDb.describeTable(fullTableName);
         } catch (Throwable ex) {
             e = ex;
         }

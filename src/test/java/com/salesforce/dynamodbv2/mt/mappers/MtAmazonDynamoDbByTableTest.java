@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 
 public class MtAmazonDynamoDbByTableTest {
 
-    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     CreateTableRequest request;
     MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
     String tableName;
@@ -53,8 +53,8 @@ public class MtAmazonDynamoDbByTableTest {
         MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
 
         mtDynamoDbByTable.createTable(request);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
     }
 
     @Test
@@ -63,8 +63,8 @@ public class MtAmazonDynamoDbByTableTest {
         request.withBillingMode(BillingMode.PROVISIONED);
 
         mtDynamoDbByTable.createTable(request);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
     }
 
     @Test
@@ -73,8 +73,8 @@ public class MtAmazonDynamoDbByTableTest {
         MtAmazonDynamoDbByTable mtDynamoDbByTable = mtDynamoDbByTableBuilder.build();
 
         mtDynamoDbByTable.createTable(request);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
     }
 
     @Test
@@ -83,7 +83,7 @@ public class MtAmazonDynamoDbByTableTest {
         request.withBillingMode(BillingMode.PAY_PER_REQUEST);
 
         mtDynamoDbByTable.createTable(request);
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
     }
 }

@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 
 public class MtDynamoDbTableDescriptionRepoTest {
 
-    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     String tableName;
     String fullTableName;
 
@@ -37,7 +37,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
         fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.get(), tableName,"");
 
         mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()
-                        .withAmazonDynamoDb(localDynamoDB)
+                        .withAmazonDynamoDb(localDynamoDb)
                         .withContext(MT_CONTEXT)
                         .withTablePrefix(tablePrefix)
                         .withTableDescriptionTableName(tableName);
@@ -96,8 +96,8 @@ public class MtDynamoDbTableDescriptionRepoTest {
                         .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDB, 1L);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
     }
 
     @Test
@@ -110,7 +110,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
                         .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
-        TableUtils.waitUntilActive(localDynamoDB, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDB);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
     }
 }
