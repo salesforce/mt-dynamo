@@ -1,64 +1,46 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.BillingMode;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.Projection;
-import com.amazonaws.services.dynamodbv2.model.ProjectionType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.*;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+
 class SharedTableBuilderTest {
 
-    AmazonDynamoDB localDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    CreateTableRequest request;
-    MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
-    String tableName;
-
+    private static AmazonDynamoDB LOCAL_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
-    private static final String tablePrefix = "oktodelete-testBillingMode.";
+    private static final String TABLE_PREFIX_PREFIX = "oktodelete-testBillingMode.";
+    private static String tablePrefix;
+    private static AtomicInteger counter = new AtomicInteger();
+    private static String tableName;
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
+        tableName = String.valueOf(System.currentTimeMillis());
+        tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
     private static List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
             "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
             "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
             "mt_sharedtablestatic_s_b_nolsi")).stream()
-            .map(testTable -> tablePrefix + testTable).collect(Collectors.toList());
-
-    @AfterEach
-    void tearDown() {
-        System.out.println(localDynamoDB.listTables());
-        for (String tableName: localDynamoDB.listTables().getTableNames()) {
-            localDynamoDB.deleteTable(tableName);
-        }
-        System.out.println("listTables() = " + localDynamoDB.listTables());
-        assert (localDynamoDB.listTables().getTableNames().isEmpty());
-    }
+            .collect(Collectors.toList());
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
@@ -82,37 +64,37 @@ class SharedTableBuilderTest {
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
                 .withTablePrefix(tablePrefix)
-                .withAmazonDynamoDb(localDynamoDB)
+                .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withContext(MT_CONTEXT)
                 .build();
 
         DynamoDbTestUtils.assertProvisionedIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
-                ""), localDynamoDB, 1L);
+                ""), LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithProvisionedInputBillingMode() {
         SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
-                .withAmazonDynamoDb(localDynamoDB)
+                .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(testTables, localDynamoDB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
         SharedTableBuilder.builder()
-                .withAmazonDynamoDb(localDynamoDB)
+                .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(testTables, localDynamoDB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
@@ -135,26 +117,32 @@ class SharedTableBuilderTest {
                 .withStreamsEnabled(false)
                 .withPrecreateTables(true)
                 .withTablePrefix(tablePrefix)
-                .withAmazonDynamoDb(localDynamoDB)
+                .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withContext(MT_CONTEXT)
                 .build();
 
         DynamoDbTestUtils.assertPayPerRequestIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
-                ""), localDynamoDB);
+                ""), LOCAL_DYNAMO_DB);
     }
 
     @Test
     void testBillingModeIsPayPerRequestForDefaultCreateTableRequestsWithPayPerRequestInputBillingMode() {
         SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
-                .withAmazonDynamoDb(localDynamoDB)
+                .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
-        for (String table: testTables) {
-            DynamoDbTestUtils.assertPayPerRequestIsSet(table, localDynamoDB);
+        for (String table: getPrefixedTables()) {
+            DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
         }
     }
+
+    private List<String> getPrefixedTables() {
+        return testTables.stream().map(testTable -> tablePrefix + testTable)
+                .collect(Collectors.toList());
+    }
+
 }
