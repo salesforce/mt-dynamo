@@ -6,6 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder.SharedTableCreateTableRequestFactory;
@@ -24,7 +25,7 @@ import java.util.stream.Stream;
  *
  * @author msgroi
  */
-public class HybridSharedTableBuilder {
+public class HybridSharedTableBuilder implements TableBuilder {
 
     private MtAmazonDynamoDbContextProvider mtContext;
     private AmazonDynamoDB amazonDynamoDb;

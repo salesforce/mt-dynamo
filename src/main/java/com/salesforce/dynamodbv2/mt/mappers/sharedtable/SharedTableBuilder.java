@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
@@ -99,7 +100,7 @@ import java.util.stream.Collectors;
  *   as 3.  However, the mapping layer would also need to be responsible for maintaining consistency with respect to
  *   sorting so it was not implemented.
  */
-public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
+public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implements TableBuilder {
 
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need

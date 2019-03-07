@@ -219,7 +219,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return new MtAmazonDynamoDbBuilder();
     }
 
-    public static class MtAmazonDynamoDbBuilder {
+    public static class MtAmazonDynamoDbBuilder implements TableBuilder {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
