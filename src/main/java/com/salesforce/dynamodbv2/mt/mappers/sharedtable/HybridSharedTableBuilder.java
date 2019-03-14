@@ -1,10 +1,12 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder.SharedTableCreateTableRequestFactory;
@@ -23,12 +25,13 @@ import java.util.stream.Stream;
  *
  * @author msgroi
  */
-public class HybridSharedTableBuilder {
+public class HybridSharedTableBuilder implements TableBuilder {
 
     private MtAmazonDynamoDbContextProvider mtContext;
     private AmazonDynamoDB amazonDynamoDb;
     private boolean streamsEnabled = false;
     private long provisionedThroughput = 1L;
+    private BillingMode billingMode;
     private Optional<String> tablePrefix = Optional.empty();
     private int pollIntervalSeconds = 0;
     private CreateTableRequestFactory primaryCreateTableRequestFactory;
@@ -48,7 +51,8 @@ public class HybridSharedTableBuilder {
             new CreateTableRequestFactoryEnsemble(ImmutableList.of(
                 primaryCreateTableRequestFactory,
                 new SharedTableCreateTableRequestFactory(
-                    SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, streamsEnabled),
+                    SharedTableBuilder.buildDefaultCreateTableRequests(provisionedThroughput, billingMode,
+                            streamsEnabled),
                     tablePrefix)
             ));
 
@@ -65,6 +69,7 @@ public class HybridSharedTableBuilder {
                 pollIntervalSeconds),
             MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
+                .withBillingMode(billingMode)
                 .withContext(mtContext)
                 .withTableDescriptionTableName("_tablemetadata")
                 .withPollIntervalSeconds(pollIntervalSeconds)
@@ -75,6 +80,16 @@ public class HybridSharedTableBuilder {
 
     public HybridSharedTableBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
         this.amazonDynamoDb = amazonDynamoDb;
+        return this;
+    }
+
+    /**
+     * Sets BillingMode for HybridSharedTableBuilder.
+     * @param billingMode the desired billing mode to be set
+     * @return {@code HybridSharedTableBuilder}
+     */
+    public HybridSharedTableBuilder withBillingMode(BillingMode billingMode) {
+        this.billingMode = billingMode;
         return this;
     }
 

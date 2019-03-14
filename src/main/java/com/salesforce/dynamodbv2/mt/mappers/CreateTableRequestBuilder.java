@@ -12,6 +12,7 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
@@ -45,7 +46,8 @@ public class CreateTableRequestBuilder {
     }
 
     private void setDefaults() {
-        if (createTableRequest.getProvisionedThroughput() == null) {
+        if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest.getBillingMode() == null
+                || createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED))) {
             createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L)
                 .withWriteCapacityUnits(1L));
         }
@@ -110,11 +112,14 @@ public class CreateTableRequestBuilder {
             if (this.createTableRequest.getGlobalSecondaryIndexes() == null) {
                 this.createTableRequest.setGlobalSecondaryIndexes(new ArrayList<>());
             }
-            this.createTableRequest.getGlobalSecondaryIndexes().add(
-                new GlobalSecondaryIndex().withIndexName(indexName)
+            GlobalSecondaryIndex gsi = new GlobalSecondaryIndex().withIndexName(indexName)
                     .withKeySchema(buildKeySchema(secondaryIndexKey))
-                    .withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
+            if (this.createTableRequest.getBillingMode() == null
+                    || this.createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.toString())) {
+                gsi.withProvisionedThroughput(new ProvisionedThroughput(provisionedThroughput, provisionedThroughput));
+            }
+            this.createTableRequest.getGlobalSecondaryIndexes().add(gsi);
         } else {
             if (this.createTableRequest.getLocalSecondaryIndexes() == null) {
                 this.createTableRequest.setLocalSecondaryIndexes(new ArrayList<>());
@@ -137,6 +142,18 @@ public class CreateTableRequestBuilder {
     public CreateTableRequestBuilder withProvisionedThroughput(Long readCapacityUnits, Long writeCapacityUnits) {
         this.createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(readCapacityUnits,
             writeCapacityUnits));
+        return this;
+    }
+
+    /**
+     * Sets the billing mode for the CreateTableRequest instance.
+     * @param billingMode the read-capacity units
+     * @return this {@code CreateTableRequestBuilder} object
+     */
+    public CreateTableRequestBuilder withBillingMode(BillingMode billingMode) {
+        if (billingMode != null) {
+            this.createTableRequest.withBillingMode(billingMode);
+        }
         return this;
     }
 
@@ -164,5 +181,9 @@ public class CreateTableRequestBuilder {
             addAttributeDefinition(primaryKey.getRangeKey().get(), primaryKey.getRangeKeyType().get());
         }
         return keySchemaElements;
+    }
+
+    public CreateTableRequest getCreateTableRequest() {
+        return createTableRequest;
     }
 }

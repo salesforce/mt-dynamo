@@ -15,6 +15,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
@@ -22,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
@@ -98,11 +100,13 @@ import java.util.stream.Collectors;
  *   as 3.  However, the mapping layer would also need to be responsible for maintaining consistency with respect to
  *   sorting so it was not implemented.
  */
-public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
+public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implements TableBuilder {
 
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
+
+    private BillingMode billingMode;
     private Boolean streamsEnabled;
 
     public static SharedTableBuilder builder() {
@@ -133,6 +137,11 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         return this;
     }
 
+    public SharedTableBuilder withBillingMode(BillingMode billingMode) {
+        this.billingMode = billingMode;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      */
@@ -149,12 +158,20 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
         }
+        if (this.billingMode == null) {
+            this.billingMode = BillingMode.PROVISIONED;
+        }
         if (streamsEnabled == null) {
             streamsEnabled = true;
         }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                this.streamsEnabled);
+                    this.billingMode, this.streamsEnabled);
+        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
+            this.createTableRequests = createTableRequests.stream()
+                    .map(createTableRequest ->
+                            createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
+                    .collect(Collectors.toList());
         }
         super.setDefaults();
     }
@@ -165,7 +182,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
     /**
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
-    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
+    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput, BillingMode billingMode,
         boolean streamsEnabled) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
@@ -198,11 +215,28 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder {
             mtSharedTableStaticSnNoLsi,
             mtSharedTableStaticSbNoLsi
         ).stream().map(createTableRequestBuilder -> {
+            setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
             addSis(createTableRequestBuilder, provisionedThroughput);
             addStreamSpecification(createTableRequestBuilder, streamsEnabled);
-            return createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput,
-                provisionedThroughput).build();
+            return createTableRequestBuilder.build();
         }).collect(Collectors.toList());
+    }
+
+    /**
+     * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
+     * request builder.
+     * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
+     * @param provisionedThroughput the throughput to assign to the request builder. If 0, billing mode is set to PPR.
+     */
+    private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
+                                       long provisionedThroughput) {
+
+        if (billingMode != null && billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
+            createTableRequestBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
+        } else {
+            createTableRequestBuilder.withBillingMode(billingMode);
+            createTableRequestBuilder.withProvisionedThroughput(provisionedThroughput, provisionedThroughput);
+        }
     }
 
     private static void addSis(CreateTableRequestBuilder createTableRequestBuilder, long defaultProvisionedThroughput) {

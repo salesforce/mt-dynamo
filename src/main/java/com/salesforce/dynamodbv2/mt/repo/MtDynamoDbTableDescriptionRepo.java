@@ -12,6 +12,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
@@ -19,7 +20,6 @@ import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
@@ -31,6 +31,7 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,6 +55,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private static final Gson GSON = new Gson();
     private final AmazonDynamoDB amazonDynamoDb;
+    private BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
     private final String tableDescriptionTableName;
@@ -64,6 +66,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final MtCache<TableDescription> cache;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
+                                           BillingMode billingMode,
                                            MtAmazonDynamoDbContextProvider mtContext,
                                            String tableDescriptionTableName,
                                            Optional<String> tablePrefix,
@@ -72,6 +75,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String delimiter,
                                            int pollIntervalSeconds) {
         this.amazonDynamoDb = amazonDynamoDb;
+        this.billingMode = billingMode;
         this.mtContext = mtContext;
         adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
@@ -157,46 +161,74 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
+        CreateTableRequest createTableRequest = new CreateTableRequest();
+        DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
+
         adminUtils.createTableIfNotExists(
-            new CreateTableRequest().withTableName(tableDescriptionTableName)
+                createTableRequest.withTableName(tableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
                 .withAttributeDefinitions(new AttributeDefinition()
                     .withAttributeName(tableDescriptionTableHashKeyField)
-                    .withAttributeType(ScalarAttributeType.S))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
+                    .withAttributeType(ScalarAttributeType.S)),
             pollIntervalSeconds);
     }
 
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
         TableDescription tableDescription = new TableDescription()
-            .withTableName(createTableRequest.getTableName())
-            .withKeySchema(createTableRequest.getKeySchema())
-            .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-            .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                .withReadCapacityUnits(createTableRequest.getProvisionedThroughput().getReadCapacityUnits())
-                .withWriteCapacityUnits(createTableRequest.getProvisionedThroughput().getWriteCapacityUnits()))
-            .withStreamSpecification(createTableRequest.getStreamSpecification());
+                .withTableName(createTableRequest.getTableName())
+                .withKeySchema(createTableRequest.getKeySchema())
+                .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
+                .withStreamSpecification(createTableRequest.getStreamSpecification());
+
+        // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
+        DynamoDbCapacity capacityUtil = new DynamoDbCapacity();
+        final boolean setProvisionedThroughput = (createTableRequest.getBillingMode() == null
+                || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
+
+        if (setProvisionedThroughput) {
+            long readCapacityUnits = capacityUtil.getCapacity(
+                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+            long writeCapacityUnits = capacityUtil.getCapacity(
+                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
+
+            tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                    .withReadCapacityUnits(readCapacityUnits)
+                    .withWriteCapacityUnits(writeCapacityUnits));
+        }
+
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
                 new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
-                    .withKeySchema(lsi.getKeySchema())
-                    .withProjection(lsi.getProjection())).collect(Collectors.toList()));
+                        .withKeySchema(lsi.getKeySchema())
+                        .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
+
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
             tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
-                gsi -> new GlobalSecondaryIndexDescription().withIndexName(gsi.getIndexName())
-                    .withKeySchema(gsi.getKeySchema())
-                    .withProjection(gsi.getProjection())
-                    .withProvisionedThroughput(new ProvisionedThroughputDescription()
-                        .withReadCapacityUnits(gsi.getProvisionedThroughput().getReadCapacityUnits())
-                        .withWriteCapacityUnits(gsi.getProvisionedThroughput().getWriteCapacityUnits())))
-                .collect(Collectors.toList()));
+                gsi -> {
+                    GlobalSecondaryIndexDescription gsiDescription = new GlobalSecondaryIndexDescription()
+                        .withIndexName(gsi.getIndexName())
+                        .withKeySchema(gsi.getKeySchema())
+                        .withProjection(gsi.getProjection());
+
+                    if (setProvisionedThroughput) {
+                        long readCapacityUnits = capacityUtil.getCapacity(
+                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+                        long writeCapacityUnits = capacityUtil.getCapacity(
+                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
+
+                        gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                                .withReadCapacityUnits(readCapacityUnits)
+                                .withWriteCapacityUnits(writeCapacityUnits));
+                    }
+                    return gsiDescription;
+                }).collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
-            tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
-            tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
+                tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
+                tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
     private String tableDataToJson(TableDescription tableDescription) {
@@ -223,6 +255,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private String tableDescriptionTableDataField;
         private String delimiter;
         private Integer pollIntervalSeconds;
+        private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
@@ -237,6 +270,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
             this.tableDescriptionTableName = tableDescriptionTableName;
+            return this;
+        }
+
+        public MtDynamoDbTableDescriptionRepoBuilder withBillingMode(BillingMode billingMode) {
+            this.billingMode = billingMode;
             return this;
         }
 
@@ -278,6 +316,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             validate();
             return new MtDynamoDbTableDescriptionRepo(
                 amazonDynamoDb,
+                billingMode,
                 mtContext,
                 tableDescriptionTableName,
                 tablePrefix,

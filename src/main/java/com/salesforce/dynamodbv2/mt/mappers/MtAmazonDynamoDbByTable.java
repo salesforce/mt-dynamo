@@ -11,6 +11,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
@@ -34,6 +35,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.HashMap;
 import java.util.List;
@@ -61,10 +63,13 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
     private final String delimiter;
     private final Optional<String> tablePrefix;
+    private BillingMode billingMode;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
-                                    String delimiter, Optional<String> tablePrefix) {
+                                    BillingMode billingMode, String delimiter, Optional<String> tablePrefix) {
         super(mtContext, amazonDynamoDb);
+        this.billingMode = billingMode;
+        // TODO add billingMode support
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
     }
@@ -110,6 +115,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * TODO: write Javadoc.
      */
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
+        DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
         CreateTableRequest request = createTableRequest.clone()
             .withTableName(buildPrefixedTableName(createTableRequest.getTableName()));
         CreateTableResult result = getAmazonDynamoDb().createTable(request);
@@ -213,15 +219,21 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return new MtAmazonDynamoDbBuilder();
     }
 
-    public static class MtAmazonDynamoDbBuilder {
+    public static class MtAmazonDynamoDbBuilder implements TableBuilder {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
+        private BillingMode billingMode;
         private String delimiter;
         private Optional<String> tablePrefix;
 
         public MtAmazonDynamoDbBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
+            return this;
+        }
+
+        public MtAmazonDynamoDbBuilder withBillingMode(BillingMode billingMode) {
+            this.billingMode = billingMode;
             return this;
         }
 
@@ -250,7 +262,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             setDefaults();
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
-            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, delimiter, tablePrefix);
+            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, billingMode, delimiter, tablePrefix);
         }
 
         private void setDefaults() {
@@ -259,6 +271,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             }
             if (tablePrefix == null) {
                 tablePrefix = Optional.empty();
+            }
+            if (billingMode == null) {
+                billingMode = BillingMode.PROVISIONED;
             }
         }
 

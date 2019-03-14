@@ -48,11 +48,13 @@ public class AmazonDynamoDbAdminUtils {
      *     created
      */
     public void createTableIfNotExists(CreateTableRequest createTableRequest, int pollIntervalSeconds) {
+
         try {
-            if (!tableExists(createTableRequest.getTableName())) {
+            if (!tableExists(createTableRequest.getTableName(), TableStatus.ACTIVE)) {
                 String tableName = createTableRequest.getTableName();
                 amazonDynamoDb.createTable(createTableRequest);
-                awaitTableActive(tableName, pollIntervalSeconds, TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
+                awaitTableActive(tableName, TableStatus.CREATING, pollIntervalSeconds,
+                        TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
                     createTableRequest.getTableName()));
@@ -63,7 +65,7 @@ public class AmazonDynamoDbAdminUtils {
             }
         } catch (TableInUseException e) {
             if (TableStatus.CREATING.equals(e.getStatus())) {
-                awaitTableActive(createTableRequest.getTableName(),
+                awaitTableActive(createTableRequest.getTableName(), TableStatus.CREATING,
                     pollIntervalSeconds,
                     TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
             } else {
@@ -82,7 +84,7 @@ public class AmazonDynamoDbAdminUtils {
      */
     public void deleteTableIfExists(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
         try {
-            if (!tableExists(tableName)) {
+            if (!tableExists(tableName, TableStatus.DELETING)) {
                 return;
             } else {
                 amazonDynamoDb.deleteTable(new DeleteTableRequest().withTableName(tableName));
@@ -97,42 +99,46 @@ public class AmazonDynamoDbAdminUtils {
         await().pollInSameThread()
             .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
             .atMost(timeoutSeconds, SECONDS)
-            .until(() -> !tableExists(tableName));
+            .until(() -> !tableExists(tableName, TableStatus.DELETING));
     }
 
-    private void awaitTableActive(String tableName, int pollIntervalSeconds, int timeoutSeconds) {
+    private void awaitTableActive(String tableName, TableStatus expectedTableStatus, int pollIntervalSeconds,
+                                  int timeoutSeconds) {
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
             .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
             .atMost(timeoutSeconds, SECONDS)
-            .until(() -> tableActive(tableName));
+            .until(() -> tableActive(tableName, expectedTableStatus));
     }
 
-    private boolean tableExists(String tableName) throws TableInUseException {
+    private boolean tableExists(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
         try {
-            getTableStatus(tableName);
+            getTableStatus(tableName, expectedTableStatus);
             return true;
         } catch (ResourceNotFoundException e) {
             return false;
         }
     }
 
-    private TableStatus getTableStatus(String tableName) throws TableInUseException {
+    private TableStatus getTableStatus(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
         try {
-            final TableStatus tableStatus = TableStatus.fromValue(describeTable(tableName).getTableStatus());
-            log.info("table=" + tableName + " is " + tableStatus);
-            switch (tableStatus) {
+            final TableStatus currentTableStatus = TableStatus.fromValue(describeTable(tableName).getTableStatus());
+            log.info("table=" + tableName + " is " + currentTableStatus);
+
+            switch (currentTableStatus) {
+                case ACTIVE:
+                    break;
                 case CREATING:
                 case UPDATING:
                 case DELETING:
-                    throw new TableInUseException(tableName, tableStatus);
-                case ACTIVE:
+                    if (!currentTableStatus.equals(expectedTableStatus)) {
+                        throw new TableInUseException(tableName, currentTableStatus);
+                    }
                     break;
                 default:
-                    throw new IllegalStateException("Unsupported TableStatus " + tableStatus);
+                    throw new IllegalStateException("Unsupported TableStatus " + currentTableStatus);
             }
-
-            return tableStatus;
+            return currentTableStatus;
         } catch (ResourceNotFoundException e) {
             log.info("table=" + tableName + " does not exist");
             throw e;
@@ -158,9 +164,9 @@ public class AmazonDynamoDbAdminUtils {
         }
     }
 
-    private boolean tableActive(String tableName) throws TableInUseException {
+    private boolean tableActive(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
         try {
-            return TableStatus.ACTIVE.equals(getTableStatus(tableName));
+            return TableStatus.ACTIVE.equals(getTableStatus(tableName, expectedTableStatus));
         } catch (ResourceNotFoundException e) {
             return false;
         }
