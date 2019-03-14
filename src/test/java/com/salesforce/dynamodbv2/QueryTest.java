@@ -16,23 +16,28 @@ import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_HIGH_N_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_LOW_N_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_MIDDLE_N_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MAX;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MIN;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
+import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
@@ -43,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -100,161 +106,120 @@ class QueryTest {
 
     // test legacy calls (see {@code QueryMapper} for more on "legacy".
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk > rkLow, so there
-     * should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk > RANGE_KEY_N_MIN, so there should be RANGE_KEY_N_MAX - RANGE_KEY_N_MIN results:
+     * (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsGtLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GT,
             testArgument,
-            RANGE_KEY_LOW_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN),
+            IntStream.rangeClosed(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.toSet()));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk > rkMiddle, so
-     * there should be 1 result: (hk, rkHigh).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk > RANGE_KEY_N_MIN + 1, so there should be RANGE_KEY_N_MAX - (RANGE_KEY_N_MIN + 1) results:
+     * (hk, RANGE_KEY_N_MIN + 2), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsGtMiddle(TestArgument testArgument) {
+    void queryWithKeyConditionsGtAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GT,
             testArgument,
-            RANGE_KEY_MIDDLE_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_HIGH_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN + 1),
+            IntStream.rangeClosed(RANGE_KEY_N_MIN + 2, RANGE_KEY_N_MAX)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.toSet()));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk > rkHigh, so
-     * there should be 0 results.
-     */
-    @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsGtHigh(TestArgument testArgument) {
-        queryWithKeyConditionsComparisonOperatorInner(GT,
-            testArgument,
-            RANGE_KEY_HIGH_N_VALUE,
-            ImmutableSet.of());
-    }
-
-    /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkLow, so
-     * there should be 3 results: (hk, rkLow), (hk, rkMiddle), and (hk, rkHigh).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk >= RANGE_KEY_N_MIN, so there should be RANGE_KEY_N_MAX - RANGE_KEY_N_MIN + 1 results:
+     * (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsGeLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GE,
             testArgument,
-            RANGE_KEY_LOW_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN),
+            IntStream.rangeClosed(RANGE_KEY_N_MIN, RANGE_KEY_N_MAX)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.toSet()));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkMiddle, so
-     * there should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk >= RANGE_KEY_N_MIN + 1, so there should be RANGE_KEY_N_MAX - RANGE_KEY_N_MIN results:
+     * (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsGeMiddle(TestArgument testArgument) {
+    void queryWithKeyConditionsGeAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GE,
             testArgument,
-            RANGE_KEY_MIDDLE_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN + 1),
+            IntStream.rangeClosed(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.toSet()));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk >= rkHigh, so
-     * there should be 1 result: (hk, rkHigh).
-     */
-    @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsGeHigh(TestArgument testArgument) {
-        queryWithKeyConditionsComparisonOperatorInner(GE,
-            testArgument,
-            RANGE_KEY_HIGH_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_HIGH_N_VALUE));
-    }
-
-    /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkLow, so there
-     * should be 0 results.
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk < RANGE_KEY_N_MIN, so there should be 0 results.
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsLtLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LT,
             testArgument,
-            RANGE_KEY_LOW_N_VALUE,
+            String.valueOf(RANGE_KEY_N_MIN),
             ImmutableSet.of());
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkMiddle, so
-     * there should be 1 result: (hk, rkLow).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk < RANGE_KEY_N_MIN + 1, so there should be 1 result: (hk, RANGE_KEY_N_MIN).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsLtMiddle(TestArgument testArgument) {
+    void queryWithKeyConditionsLtAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LT,
             testArgument,
-            RANGE_KEY_MIDDLE_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN + 1),
+            ImmutableSet.of(String.valueOf(RANGE_KEY_N_MIN)));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk < rkHigh, so
-     * there should be 2 results: (hk, rkMiddle) and (hk, rkHigh).
-     */
-    @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsLtHigh(TestArgument testArgument) {
-        queryWithKeyConditionsComparisonOperatorInner(LT,
-            testArgument,
-            RANGE_KEY_HIGH_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE));
-    }
-
-    /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkLow, so
-     * there should be 1 result: (hk, rkLow).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk <= RANGE_KEY_N_MIN, so there should be 1 result: (hk, RANGE_KEY_N_MIN).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryWithKeyConditionsLeLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LE,
             testArgument,
-            RANGE_KEY_LOW_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN),
+            ImmutableSet.of(String.valueOf(RANGE_KEY_N_MIN)));
     }
 
     /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkMiddle, so
-     * there should be 2 results: (hk, rkLow) and (hk, rkMiddle).
+     * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
+     * rk <= RANGE_KEY_N_MIN + 1, so there should be 2 results: (hk, RANGE_KEY_N_MIN) and (hk, RANGE_KEY_N_MIN + 1).
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsLeMiddle(TestArgument testArgument) {
+    void queryWithKeyConditionsLeAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LE,
             testArgument,
-            RANGE_KEY_MIDDLE_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE));
+            String.valueOf(RANGE_KEY_N_MIN + 1),
+            ImmutableSet.of(String.valueOf(RANGE_KEY_N_MIN), String.valueOf(RANGE_KEY_N_MIN + 1)));
     }
-
-    /**
-     * Table has (hk, rkLow), (hk, rkMiddle), (hk, rkHigh); we ask for items that match hk and have rk <= rkHigh, so
-     * there should be 3 results: (hk, rkLow), (hk, rkMiddle), and (hk, rkHigh).
-     */
-    @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryWithKeyConditionsLeHigh(TestArgument testArgument) {
-        queryWithKeyConditionsComparisonOperatorInner(LE,
-            testArgument,
-            RANGE_KEY_HIGH_N_VALUE,
-            ImmutableSet.of(RANGE_KEY_LOW_N_VALUE, RANGE_KEY_MIDDLE_N_VALUE, RANGE_KEY_HIGH_N_VALUE));
-    }
-
 
     // see any caller
     private void queryWithKeyConditionsComparisonOperatorInner(ComparisonOperator op,
@@ -262,16 +227,13 @@ class QueryTest {
                                                                String valueForComparisonOperator,
                                                                Set<String> expectedRangeKeyValues) {
         testArgument.forEachOrgContext(org -> {
-            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
-                .query(new QueryRequest().withTableName(TABLE4)
-                    .withKeyConditions(ImmutableMap.of(
-                        HASH_KEY_FIELD,
-                        new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttributeValue(
-                            testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)),
-                        RANGE_KEY_FIELD,
-                        new Condition().withComparisonOperator(op).withAttributeValueList(createAttributeValue(
-                            N, valueForComparisonOperator))))
-                ).getItems();
+            final QueryRequest queryRequest = new QueryRequest()
+                .withTableName(TABLE4)
+                .withKeyConditions(getKeyConditions(op, valueForComparisonOperator, testArgument.getHashKeyAttrType()));
+            final List<Map<String, AttributeValue>> items = testArgument
+                .getAmazonDynamoDb()
+                .query(queryRequest)
+                .getItems();
             final Set<Map<String, AttributeValue>> expectedItemsSet = expectedRangeKeyValues.stream()
                 .map(rangeKey -> ItemBuilder
                     .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -281,6 +243,18 @@ class QueryTest {
                 .collect(Collectors.toSet());
             assertEquals(expectedItemsSet, new HashSet<>(items));
         });
+    }
+
+    private Map<String, Condition> getKeyConditions(ComparisonOperator op,
+                                                    String valueForComparisonOperator,
+                                                    ScalarAttributeType hashKeyAttrType) {
+        return ImmutableMap.of(
+            HASH_KEY_FIELD,
+            new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttributeValue(
+                hashKeyAttrType, HASH_KEY_VALUE)),
+            RANGE_KEY_FIELD,
+            new Condition().withComparisonOperator(op).withAttributeValueList(createAttributeValue(
+                N, valueForComparisonOperator)));
     }
 
     // TODO: non-legacy query test(s); legacy & non-legacy scan tests
@@ -436,5 +410,53 @@ class QueryTest {
                     .indexField(S, INDEX_FIELD_VALUE)
                     .build()));
         });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryWithPaging(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> queryAndAssertItemKeys(testArgument.getAmazonDynamoDb(),
+            testArgument.getHashKeyAttrType()));
+    }
+
+    private void queryAndAssertItemKeys(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType) {
+        int maxPageSize = 4;
+        final Set<Integer> expectedItems = IntStream.rangeClosed(2, RANGE_KEY_N_MAX)
+            .boxed()
+            .collect(Collectors.toSet());
+        final int expectedReadCount = expectedItems.size();
+
+        Map<String, AttributeValue> exclusiveStartKey = null;
+        int pageCount = 0;
+        do {
+            ++pageCount;
+            final QueryRequest queryRequest = new QueryRequest()
+                .withTableName(TABLE4)
+                .withKeyConditions(getKeyConditions(GT, "1", hashKeyAttrType))
+                .withLimit(maxPageSize)
+                .withExclusiveStartKey(exclusiveStartKey);
+            final QueryResult queryResult = amazonDynamoDb.query(queryRequest);
+            exclusiveStartKey = queryResult.getLastEvaluatedKey();
+            final List<Map<String, AttributeValue>> items = queryResult.getItems();
+
+            if (items.isEmpty()) {
+                assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
+                assertNull(exclusiveStartKey);
+            } else {
+                assertTrue(items.stream()
+                    .map(i -> i.get(RANGE_KEY_FIELD))
+                    .map(i -> attributeValueToString(N, i)) // TABLE4's rk is of type N
+                    .map(Integer::parseInt)
+                    .allMatch(expectedItems::remove));
+            }
+        } while (exclusiveStartKey != null);
+
+        assertEquals(intCeilFrac(expectedReadCount, maxPageSize), pageCount);
+        assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
+    }
+
+    // return the ceiling of the result of dividing {@code numerator} by {@code denominator}.
+    private static int intCeilFrac(int numerator, int denominator) {
+        return (numerator + denominator - 1) / denominator;
     }
 }
