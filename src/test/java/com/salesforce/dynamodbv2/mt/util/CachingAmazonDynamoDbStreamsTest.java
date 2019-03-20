@@ -814,7 +814,12 @@ class CachingAmazonDynamoDbStreamsTest {
             .withMaxIteratorCacheSize(0)
             .build();
 
-        assertGetRecords(cachingStreams, request, null, 0, 5);
+        String iterator1 = assertGetRecords(cachingStreams, request, null, 0, 5);
+        /*
+         * iterator1 is a physical iterator but should be virtual one, and therefore the CachingShardIterator
+         * fails to convert to from a String to a CachingShardIterator
+         */
+        assertGetRecords(cachingStreams, iterator1, null, Collections.emptyList());
         assertGetRecords(cachingStreams, request, null, 0, 5);
 
         assertCacheMisses(streams, 2, 2);
