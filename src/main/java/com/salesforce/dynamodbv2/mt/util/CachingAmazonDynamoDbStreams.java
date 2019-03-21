@@ -850,11 +850,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
                 // now lookup result: may not be exactly what we loaded if we merged result with other segments.
                 // can also be empty if the cache is too small to hold the result, in which case we just return loaded.
-                result = getFromCache(loadedPosition).orElse(null);
-                if (result == null) {
-                    loadedRecordsResult.setNextShardIterator(cachedResult.get().getNextShardIterator());
-                    result = loadedRecordsResult;
-                }
+                result = getFromCache(loadedPosition).orElseGet(() ->
+                        new GetRecordsResult().withRecords(loadedRecordsResult.getRecords())
+                                .withNextShardIterator(loadedRecordsResult.getNextShardIterator() == null ? null
+                                        : loadedPosition.iteratorAfterResult(loadedRecordsResult).toExternalString()));
 
             } finally {
                 writeLock.unlock();
