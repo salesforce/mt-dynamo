@@ -821,6 +821,36 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that a virtual iterator, rather than physical iterator is returned as the next shard iterator.
+     */
+    @Test
+    void testVirtualIteratorReturned() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest firstRequest = newAtSequenceNumberRequest(1);
+        String iterator = mockGetShardIterator(streams, firstRequest);
+        mockGetRecords(streams, iterator, 0, 6);
+
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+                .withMaxRecordsByteSize(0L)
+                .withMaxIteratorCacheSize(0)
+                .build();
+
+        String nextShardIterator = assertGetRecords(cachingStreams, firstRequest, null, 0, 6);
+
+        // Mock nextShardIterator result from first request and compare mock to result from previous assertGetRecords
+        GetShardIteratorRequest secondRequest = newAfterSequenceNumberRequest(5);
+        String secondIterator = mockGetShardIterator(streams, secondRequest);
+        mockGetRecords(streams, secondIterator, 5, 9);
+
+        assert (nextShardIterator.equals(cachingStreams.getShardIterator(secondRequest).getShardIterator()));
+
+        assertGetRecords(cachingStreams, secondRequest, null, 5, 9);
+
+        assertCacheMisses(streams, 2, 2);
+    }
+
+    /**
      * Verifies that cache properly separates streams and shards.
      */
     @Test
