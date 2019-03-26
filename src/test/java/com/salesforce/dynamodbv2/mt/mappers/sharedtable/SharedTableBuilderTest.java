@@ -37,6 +37,7 @@ class SharedTableBuilderTest {
     private static String tablePrefix;
     private static AtomicInteger counter = new AtomicInteger();
     private static String tableName;
+    private static String defaultTableName = "_tablemetadata";
 
     @BeforeEach
     void beforeEach() {
@@ -78,6 +79,7 @@ class SharedTableBuilderTest {
 
         DynamoDbTestUtils.assertProvisionedIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
                 ""), LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
@@ -90,7 +92,8 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB,1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
@@ -103,6 +106,7 @@ class SharedTableBuilderTest {
                 .build();
 
         DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
@@ -131,6 +135,7 @@ class SharedTableBuilderTest {
 
         DynamoDbTestUtils.assertPayPerRequestIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
                 ""), LOCAL_DYNAMO_DB);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB);
     }
 
     @Test
@@ -146,6 +151,8 @@ class SharedTableBuilderTest {
         for (String table: getPrefixedTables()) {
             DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
         }
+
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB);
     }
 
     private List<String> getPrefixedTables() {
