@@ -183,10 +183,15 @@ public class DefaultTestSetup implements TestSetup {
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                    .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                .withGlobalSecondaryIndexes(
+                        new GlobalSecondaryIndex().withIndexName("testgsi")
+                            .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
+                        new GlobalSecondaryIndex().withIndexName("testgsi_tablerkasindexhk")
+                                .withKeySchema(new KeySchemaElement(RANGE_KEY_FIELD, KeyType.HASH))
+                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                 .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(INDEX_FIELD, RANGE))
