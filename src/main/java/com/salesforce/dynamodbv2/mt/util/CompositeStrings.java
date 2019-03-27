@@ -39,8 +39,11 @@ public class CompositeStrings {
         // now construct composite key
         char[] composite = new char[length];
         int j = 0;
+        boolean first = true;
         for (String value : values) {
-            if (j > 0) {
+            if (first) {
+                first = false;
+            } else {
                 composite[j++] = separator;
             }
             for (int i = 0; i < value.length(); i++) {
