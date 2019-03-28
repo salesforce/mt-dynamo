@@ -160,6 +160,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return tableDescriptionTableName;
     }
 
+    public void createDefaultDescriptionTable() {
+        createTableDescriptionTableIfNotExists(this.pollIntervalSeconds);
+    }
+
     private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
         DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);

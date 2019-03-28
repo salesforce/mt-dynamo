@@ -173,6 +173,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
                             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
                     .collect(Collectors.toList());
         }
+        super.withBillingMode(this.billingMode);
         super.setDefaults();
     }
 

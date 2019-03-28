@@ -12,6 +12,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
@@ -91,6 +92,7 @@ public class SharedTableCustomDynamicBuilder {
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
     private String name;
     private AmazonDynamoDB amazonDynamoDb;
+    private BillingMode billingMode;
     private MtAmazonDynamoDbContextProvider mtContext;
     private Character delimiter;
     private MtTableDescriptionRepo mtTableDescriptionRepo;
@@ -143,6 +145,11 @@ public class SharedTableCustomDynamicBuilder {
 
     public SharedTableCustomDynamicBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
         this.amazonDynamoDb = amazonDynamoDb;
+        return this;
+    }
+
+    public SharedTableCustomDynamicBuilder withBillingMode(BillingMode billingMode) {
+        this.billingMode = billingMode;
         return this;
     }
 
@@ -212,6 +219,9 @@ public class SharedTableCustomDynamicBuilder {
         if (name == null) {
             name = "MtAmazonDynamoDbBySharedTable";
         }
+        if (this.billingMode == null) {
+            this.billingMode = BillingMode.PROVISIONED;
+        }
         if (secondaryIndexMapper == null) {
             secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
         }
@@ -233,10 +243,13 @@ public class SharedTableCustomDynamicBuilder {
         if (mtTableDescriptionRepo == null) {
             mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
+                .withBillingMode(billingMode)
                 .withContext(mtContext)
                 .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLENAME)
                 .withPollIntervalSeconds(pollIntervalSeconds)
                 .withTablePrefix(tablePrefix).build();
+
+            ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
         }
     }
 
