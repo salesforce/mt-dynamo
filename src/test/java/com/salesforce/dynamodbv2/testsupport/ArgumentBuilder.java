@@ -26,6 +26,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
@@ -144,6 +145,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         String hashKeyField = "hashKeyField";
         String rangeKeyField = "rangeKeyField";
         String indexField = "indexField";
+        String indexField2 = "indexField2";
         String indexRangeField = "indexRangeField";
         CreateTableRequestFactory createTableRequestFactory = new CreateTableRequestFactory() {
             @Override
@@ -160,9 +162,12 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                     case '4':
                         retvalInnards = physicalTables.get(1);
                         break;
+                    case '5':
+                        retvalInnards = physicalTables.get(2);
+                        break;
                     default:
                         isDefault = true;
-                        retvalInnards = physicalTables.get(2);
+                        retvalInnards = physicalTables.get(3);
                 }
 
                 final String physicalTableName = retvalInnards.getTableName();
@@ -173,37 +178,13 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
             @Override
             public List<CreateTableRequest> getPhysicalTables() {
+                CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder();
+                baseBuilder.withProvisionedThroughput(1L, 1L);
                 return ImmutableList.of(
-                        new CreateTableRequest()
+                        baseBuilder
                                 .withTableName("table_3")
-                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
                                         new AttributeDefinition(rangeKeyField, S),
-                                        new AttributeDefinition(indexField, S),
-                                        new AttributeDefinition(indexRangeField, S))
-                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
-                                .withGlobalSecondaryIndexes(
-                                        new GlobalSecondaryIndex().withIndexName("testgsi")
-                                            .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
-                                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                                        new GlobalSecondaryIndex().withIndexName("testgsi_tablerkasindexhk")
-                                                .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
-                                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                                                new KeySchemaElement(indexRangeField, KeyType.RANGE))
-                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                                .withStreamSpecification(new StreamSpecification()
-                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                                        .withStreamEnabled(true)),
-                        new CreateTableRequest()
-                                .withTableName("table_4")
-                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
-                                        new AttributeDefinition(rangeKeyField, N),
                                         new AttributeDefinition(indexField, S),
                                         new AttributeDefinition(indexRangeField, S))
                                 .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
@@ -218,7 +199,27 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                                 .withStreamSpecification(new StreamSpecification()
                                         .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                                        .withStreamEnabled(true)),
+                                        .withStreamEnabled(true))
+                                .build(),
+                        baseBuilder
+                                .withTableName("table_4")
+                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
+                                        new AttributeDefinition(rangeKeyField, N), // unlike table_3
+                                        new AttributeDefinition(indexField, S),
+                                        new AttributeDefinition(indexRangeField, S))
+                                .build(),
+                        baseBuilder
+                                .withTableName("table_5")
+                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
+                                        new AttributeDefinition(rangeKeyField, S),
+                                        new AttributeDefinition(indexField2, S),
+                                        new AttributeDefinition(indexRangeField, S))
+                                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
+                                        .withIndexName("testgsi_table_rk_as_index_hk")
+                                        .withKeySchema(new KeySchemaElement(indexField2, KeyType.HASH))
+                                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .build(),
                         new CreateTableRequest()
                                 .withTableName("table_default")
                                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
@@ -294,7 +295,13 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withTableMapper(virtualTableDescription -> {
                 final String virtualTableName = virtualTableDescription.getTableName();
                 switch (virtualTableName.charAt(virtualTableName.length() - 1)) {
+                    /*
+                     * Virtual TABLE3 and TABLE5 can map to HK_RK_S_TABLE_NAME because the virtual they both have
+                     * GSI's that map to the physical table's 'testgsi' key based on the fact that the data types of
+                     * the indices key.
+                     */
                     case '3':
+                    case '5':
                         return HK_RK_S_TABLE_NAME;
                     case '4':
                         return HK_RK_N_TABLE_NAME;

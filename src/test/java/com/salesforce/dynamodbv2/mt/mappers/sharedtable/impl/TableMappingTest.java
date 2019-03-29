@@ -172,37 +172,6 @@ class TableMappingTest {
     }
 
     @Test
-    void getAllPhysicalToVirtualFieldMappings() {
-        assertEquals(ImmutableMap.of(
-                "physicalhk", ImmutableList.of(new FieldMapping(
-                        new Field("physicalhk", S),
-                        new Field("virtualhk", N),
-                        "virtualTableName",
-                        "physicalTableName",
-                        TABLE,
-                        true)),
-                "physicalrk", ImmutableList.of(new FieldMapping(
-                        new Field("physicalrk", N),
-                        new Field("virtualrk", N),
-                        "virtualTableName",
-                        "physicalTableName",
-                        TABLE,
-                        false)),
-                "physicalgsihk", ImmutableList.of(new FieldMapping(new Field("physicalgsihk", S),
-                        new Field("virtualgsihk", S),
-                        "virtualgsi",
-                        "physicalgsi",
-                        SECONDARYINDEX,
-                        true)),
-                "physicalgsirk", ImmutableList.of(new FieldMapping(new Field("physicalgsirk", N),
-                        new Field("virtualgsirk", N),
-                        "virtualgsi",
-                        "physicalgsi",
-                        SECONDARYINDEX,
-                        false))), sut.getAllPhysicalToVirtualFieldMappings());
-    }
-
-    @Test
     void getIndexPrimaryKeyFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings.entrySet().stream()
                         .filter(fieldMappingEntry -> fieldMappingEntry.getKey().contains("gsi"))

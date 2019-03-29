@@ -18,7 +18,6 @@ import static java.lang.String.format;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
-import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -28,8 +27,8 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
+
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,16 +41,17 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
+// TODO msgroi somewhere validate only one GSI and one(?) LSI?
 class TableMapping {
 
     private final DynamoTableDescription virtualTable;
     private DynamoTableDescription physicalTable;
     private final DynamoSecondaryIndexMapper secondaryIndexMapper;
     private final Map<String, List<FieldMapping>> virtualToPhysicalMappings;
-    private final Map<String, List<FieldMapping>> physicalToVirtualMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> secondaryIndexFieldMappings;
 
     private final ItemMapper itemMapper;
+    private final ItemMapper keyMapper;
     private final QueryAndScanMapper queryAndScanMapper;
     private final ConditionMapper conditionMapper;
 
@@ -67,12 +67,18 @@ class TableMapping {
         this.secondaryIndexFieldMappings =
             buildIndexPrimaryKeyFieldMappings(virtualTable, physicalTable, secondaryIndexMapper);
         this.virtualToPhysicalMappings = buildAllVirtualToPhysicalFieldMappings(virtualTable);
-        this.physicalToVirtualMappings = buildAllPhysicalToVirtualFieldMappings(virtualToPhysicalMappings);
         validateVirtualPhysicalCompatibility();
         FieldMapper fieldMapper = new FieldMapper(mtContext,
             virtualTable.getTableName(),
             new FieldPrefixFunction(delimiter));
-        itemMapper = new ItemMapper(this, fieldMapper);
+        itemMapper = new ItemMapper(
+                fieldMapper,
+                virtualToPhysicalMappings
+        );
+        keyMapper = new ItemMapper(
+                fieldMapper,
+                buildVirtualToPhysicalKeyFieldMappings()
+        );
         queryAndScanMapper = new QueryAndScanMapper(this, fieldMapper);
         conditionMapper = new ConditionMapper(this, fieldMapper);
     }
@@ -87,6 +93,10 @@ class TableMapping {
 
     ItemMapper getItemMapper() {
         return itemMapper;
+    }
+
+    ItemMapper getKeyMapper() {
+        return keyMapper;
     }
 
     QueryAndScanMapper getQueryAndScanMapper() {
@@ -141,13 +151,6 @@ class TableMapping {
     }
 
     /*
-     * Returns a mapping of physical to virtual fields.
-     */
-    Map<String, List<FieldMapping>> getAllPhysicalToVirtualFieldMappings() {
-        return physicalToVirtualMappings;
-    }
-
-    /*
      * Returns a mapping of primary key fields for a specific secondary index, virtual to physical.
      */
     List<FieldMapping> getIndexPrimaryKeyFieldMappings(DynamoSecondaryIndex virtualSecondaryIndex) {
@@ -194,25 +197,16 @@ class TableMapping {
 
     private Map<String, List<FieldMapping>> buildAllVirtualToPhysicalFieldMappings(
         DynamoTableDescription virtualTable) {
-        Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
-        getTablePrimaryKeyFieldMappings().forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping));
+        Map<String, List<FieldMapping>> fieldMappings = new HashMap<>(buildVirtualToPhysicalKeyFieldMappings());
         virtualTable.getSis().forEach(virtualSi -> getIndexPrimaryKeyFieldMappings(virtualSi)
             .forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping)));
         return fieldMappings;
     }
 
-    private Map<String, List<FieldMapping>> buildAllPhysicalToVirtualFieldMappings(
-        Map<String, List<FieldMapping>> virtualToPhysicalMappings) {
+    // TODO msgroi unit test
+    private Map<String, List<FieldMapping>> buildVirtualToPhysicalKeyFieldMappings() {
         Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
-        virtualToPhysicalMappings.values().stream()
-            .flatMap(Collection::stream)
-            .forEach(fieldMapping -> fieldMappings.put(fieldMapping.getTarget().getName(),
-                ImmutableList.of(new FieldMapping(fieldMapping.getTarget(),
-                    fieldMapping.getSource(),
-                    fieldMapping.getVirtualIndexName(),
-                    fieldMapping.getPhysicalIndexName(),
-                    fieldMapping.getIndexType(),
-                    fieldMapping.isContextAware()))));
+        getTablePrimaryKeyFieldMappings().forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping));
         return fieldMappings;
     }
 
@@ -257,7 +251,7 @@ class TableMapping {
     /*
      * Helper method for adding a single FieldMapping object to the existing list of FieldMapping objects.
      */
-    private void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
+    private static void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
         String key = fieldMappingToAdd.getSource().getName();
         List<FieldMapping> fieldMapping = fieldMappings.computeIfAbsent(key, k -> new ArrayList<>());
         fieldMapping.add(fieldMappingToAdd);

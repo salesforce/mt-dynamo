@@ -25,7 +25,9 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * TODO: write Javadoc.
@@ -42,7 +44,7 @@ public class CreateTableRequestBuilder {
 
     public CreateTableRequest build() {
         setDefaults();
-        return createTableRequest;
+        return createTableRequest.clone();
     }
 
     private void setDefaults() {
@@ -92,6 +94,18 @@ public class CreateTableRequestBuilder {
         addAttributeDefinition(rangeKeyField, rangeKeyType);
         createTableRequest.withKeySchema(new KeySchemaElement(hashKeyField, HASH),
             new KeySchemaElement(rangeKeyField, RANGE));
+        return this;
+    }
+
+    /**
+     * Adds <code>AttributeDefinition</code>s.
+     *
+     * @param attributeDefinitions attribute definitions to add
+     * @return CreateTableRequestBuilder
+     */
+    public CreateTableRequestBuilder withAttributeDefinitions(AttributeDefinition... attributeDefinitions) {
+        this.createTableRequest.setAttributeDefinitions(Optional.ofNullable(attributeDefinitions)
+                .map(Arrays::asList).orElse(null));
         return this;
     }
 
@@ -162,6 +176,35 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
+    public CreateTableRequestBuilder withKeySchema(KeySchemaElement... keySchema) {
+        this.createTableRequest.withKeySchema(Optional.ofNullable(keySchema).map(Arrays::asList).orElse(null));
+        return this;
+    }
+
+    /**
+     * Set the list of global secondary indices.
+     *
+     * @param globalSecondaryIndexes global secondary indices to add
+     * @return CreateTableRequestBuilder
+     */
+    public CreateTableRequestBuilder withGlobalSecondaryIndexes(GlobalSecondaryIndex... globalSecondaryIndexes) {
+        this.createTableRequest.setGlobalSecondaryIndexes(Optional.ofNullable(globalSecondaryIndexes)
+                .map(Arrays::asList).orElse(null));
+        return this;
+    }
+
+    /**
+     * Sets the list of local secondary indices.
+     *
+     * @param localSecondaryIndexes local secondary indices to add
+     * @return CreateTableRequestBuilder
+     */
+    public CreateTableRequestBuilder withLocalSecondaryIndexes(LocalSecondaryIndex... localSecondaryIndexes) {
+        this.createTableRequest.setLocalSecondaryIndexes(Optional.ofNullable(localSecondaryIndexes)
+                .map(Arrays::asList).orElse(null));
+        return this;
+    }
+
     private void addAttributeDefinition(String field, ScalarAttributeType fieldType) {
         if (createTableRequest.getAttributeDefinitions() == null) {
             createTableRequest.setAttributeDefinitions(new ArrayList<>());
@@ -186,4 +229,5 @@ public class CreateTableRequestBuilder {
     public CreateTableRequest getCreateTableRequest() {
         return createTableRequest;
     }
+
 }
