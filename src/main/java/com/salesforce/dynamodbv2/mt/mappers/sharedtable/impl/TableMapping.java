@@ -18,6 +18,7 @@ import static java.lang.String.format;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -41,7 +42,6 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-// TODO msgroi somewhere validate only one GSI and one(?) LSI?
 class TableMapping {
 
     private final DynamoTableDescription virtualTable;
@@ -67,7 +67,7 @@ class TableMapping {
         this.secondaryIndexFieldMappings =
             buildIndexPrimaryKeyFieldMappings(virtualTable, physicalTable, secondaryIndexMapper);
         this.virtualToPhysicalMappings = buildAllVirtualToPhysicalFieldMappings(virtualTable);
-        validateVirtualPhysicalCompatibility();
+        validateMapping();
         FieldMapper fieldMapper = new FieldMapper(mtContext,
             virtualTable.getTableName(),
             new FieldPrefixFunction(delimiter));
@@ -203,8 +203,8 @@ class TableMapping {
         return fieldMappings;
     }
 
-    // TODO msgroi unit test
-    private Map<String, List<FieldMapping>> buildVirtualToPhysicalKeyFieldMappings() {
+    @VisibleForTesting
+    Map<String, List<FieldMapping>> buildVirtualToPhysicalKeyFieldMappings() {
         Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
         getTablePrimaryKeyFieldMappings().forEach(fieldMapping -> addFieldMapping(fieldMappings, fieldMapping));
         return fieldMappings;
@@ -255,6 +255,15 @@ class TableMapping {
         String key = fieldMappingToAdd.getSource().getName();
         List<FieldMapping> fieldMapping = fieldMappings.computeIfAbsent(key, k -> new ArrayList<>());
         fieldMapping.add(fieldMappingToAdd);
+    }
+
+    /*
+     * Validates the table mapping.
+     */
+    private void validateMapping() {
+        checkArgument(virtualTable.getGsis().size() <= 1, "no more than one GSI is supported");
+        checkArgument(virtualTable.getLsis().size() <= 1, "no more than one LSI is supported");
+        validateVirtualPhysicalCompatibility();
     }
 
     /*
@@ -313,9 +322,6 @@ class TableMapping {
             try {
                 DynamoSecondaryIndex physicalLsi = secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualLsi,
                                                                                                      physicalTable);
-                checkArgument(!usedPhysicalLsis.containsKey(physicalLsi),
-                    "two virtual LSIs (one:" + usedPhysicalLsis.get(physicalLsi) + ", two:"
-                        + virtualLsi + "), mapped to one physical LSI: " + physicalLsi);
                 usedPhysicalLsis.put(physicalLsi, virtualLsi);
             } catch (MappingException e) {
                 throw new IllegalArgumentException("failure mapping virtual to physical " + virtualLsi.getType() + ": "

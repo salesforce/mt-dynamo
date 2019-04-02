@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
@@ -50,15 +51,8 @@ import org.junit.jupiter.api.Test;
 class TableMappingTest {
 
     private static final char DELIMITER = '.';
-    private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
-            .builder()
-            .withTableName("virtualTableName")
-            .withTableKeySchema("virtualhk", N, "virtualrk", N)
-            .addSi("virtualgsi",
-                    GSI,
-                    new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
-                    1L)
-            .build());
+    private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
+            buildDefaultCreateTableRequestBuilderWithGsi().build());
     private final DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
             .builder()
             .withTableName("physicalTableName")
@@ -76,7 +70,7 @@ class TableMappingTest {
     );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
             "virtualhk", ImmutableList.of(
-                    new FieldMapping(new Field("virtualhk", N),
+                    new FieldMapping(new Field("virtualhk", S),
                             new Field("physicalhk", S),
                             "virtualTableName",
                             "physicalTableName",
@@ -129,30 +123,24 @@ class TableMappingTest {
 
     @Test
     void getAllVirtualToPhysicalFieldMappingsDeduped() {
-        TableMapping sut = new TableMapping(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
-            .builder()
-            .withTableName("virtualTableName")
-            .withTableKeySchema("hk", S, "rk", S)
-            .addSi("virtualgsi",
-                GSI,
-                new PrimaryKey("virtualgsihk", S, "virtualindex", S),
-                1L)
-            .addSi("virtuallsi",
-                LSI,
-                new PrimaryKey("hk", S, "virtualindex", S),
-                1L)
-            .build()),
+        TableMapping sut = new TableMapping(new DynamoTableDescriptionImpl(
+                buildDefaultCreateTableRequestBuilderWithGsi()
+                .addSi("virtuallsi",
+                        LSI,
+                        new PrimaryKey("virtualhk", S, "virtualgsirk", N),
+                        1L)
+                .build()),
             new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
                 .builder()
                 .withTableName("physicalTableName")
-                .withTableKeySchema("physicalhk", S, "physicalrk", S)
+                .withTableKeySchema("physicalhk", S, "physicalrk", N)
                 .addSi("physicalgsi",
                     GSI,
-                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", S),
+                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
                     1L)
                 .addSi("virtuallsi",
                     LSI,
-                    new PrimaryKey("physicalhk", S, "physicallsirk", S),
+                    new PrimaryKey("physicalhk", S, "physicallsirk", N),
                     1L)
                 .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -160,14 +148,15 @@ class TableMappingTest {
             DELIMITER
         );
         Map<String, List<FieldMapping>> fieldMappings = sut.getAllVirtualToPhysicalFieldMappings();
-        Map<String, Integer> expectedMappingCounts = ImmutableMap.of("hk", 2,
-            "rk", 1,
-            "virtualindex", 2,
-            "virtualgsihk", 1);
+        Map<String, Integer> expectedMappingCounts = ImmutableMap.of("virtualhk", 2,
+            "virtualrk", 1,
+            "virtualgsihk", 1,
+            "virtualgsirk", 2);
         assertEquals(4, expectedMappingCounts.keySet().size());
         expectedMappingCounts.forEach((key, expectedCount) ->
             assertEquals(expectedCount.intValue(), fieldMappings.get(key).size(), "key=" + key));
-        Set<String> expectedMappingCountsDeduped = ImmutableSet.of("hk", "rk", "virtualindex", "virtualgsihk");
+        Set<String> expectedMappingCountsDeduped =
+                ImmutableSet.of("virtualhk", "virtualrk", "virtualgsihk", "virtualgsirk");
         assertEquals(expectedMappingCountsDeduped, sut.getAllVirtualToPhysicalFieldMappingsDeduped().keySet());
     }
 
@@ -179,6 +168,14 @@ class TableMappingTest {
                             fieldMappingEntry -> fieldMappingEntry.getValue().stream())
                         .collect(Collectors.toList()),
                 sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").get()));
+    }
+
+    @Test
+    void buildVirtualToPhysicalKeyFieldMappings() {
+        assertEquals(virtualToPhysicalFieldMappings.entrySet().stream().filter(entry
+            -> ImmutableSet.of("virtualhk", "virtualrk").contains(entry.getKey()))
+                        .collect(Collectors.toMap(Entry::getKey, Entry::getValue)),
+                sut.buildVirtualToPhysicalKeyFieldMappings());
     }
 
     @Test
@@ -257,41 +254,6 @@ class TableMappingTest {
     }
 
     @Test
-    void validateLsiMappings() {
-        DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder
-                        .builder()
-                        .withTableName("virtualTableName")
-                        .withTableKeySchema("virtualhk", N, "virtualrk", N)
-                        .addSi("virtualgsi1",
-                                LSI,
-                                new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
-                                1L)
-                        .addSi("virtualgsi2",
-                                LSI,
-                                new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
-                                1L).build());
-        DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder
-                        .builder()
-                        .withTableName("physicalTableName")
-                        .withTableKeySchema("physicalhk", S, "physicalrk", N)
-                        .addSi("physicalgsi",
-                                LSI,
-                                new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
-                                1L)
-                        .build());
-        assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
-                        virtualTable,
-                        new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
-                        new DynamoSecondaryIndexMapperByTypeImpl(),
-                        null,
-                        '.'
-                ),
-                "two virtual LSIs");
-    }
-
-    @Test
     void validatePhysicalTable() {
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
@@ -327,6 +289,51 @@ class TableMappingTest {
                         + "type N");
     }
 
+    @Test
+    void moreThanOneGsi() {
+        assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
+                new DynamoTableDescriptionImpl(buildDefaultCreateTableRequestBuilderWithGsi()
+                .addSi("virtualgsi2",
+                        GSI,
+                        new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
+                        1L)
+                .build()),
+                new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
+                new DynamoSecondaryIndexMapperByTypeImpl(),
+                null,
+                DELIMITER
+        ), "no more than one GSI is supported");
+    }
+
+    @Test
+    void moreThanOneLsi() {
+        assertException((TestFunction<IllegalArgumentException>) () -> new TableMapping(
+                new DynamoTableDescriptionImpl(buildDefaultCreateTableRequestBuilder()
+                .addSi("virtuallsi",
+                        LSI,
+                        new PrimaryKey("virtuallsihk", S, "virtuallsirk", N),
+                        1L)
+                .addSi("virtuallsi2",
+                        LSI,
+                        new PrimaryKey("virtuallsihk", S, "virtuallsirk", N),
+                        1L)
+                .build()),
+                new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
+                        CreateTableRequestBuilder
+                                .builder()
+                                .withTableName("physicalTableName")
+                                .withTableKeySchema("physicalhk", S, "physicalrk", N)
+                                .addSi("physicallsi",
+                                        LSI,
+                                        new PrimaryKey("physicallsihk", S, "physicallsirk", N),
+                                        1L)
+                                .build()).getCreateTableRequest()),
+                new DynamoSecondaryIndexMapperByTypeImpl(),
+                null,
+                DELIMITER
+        ), "no more than one LSI is supported");
+    }
+
     private static void assertException(TestFunction test, String expectedMessagePrefix) {
         try {
             test.run();
@@ -339,7 +346,23 @@ class TableMappingTest {
         }
     }
 
+    private static CreateTableRequestBuilder buildDefaultCreateTableRequestBuilder() {
+        return CreateTableRequestBuilder
+                .builder()
+                .withTableName("virtualTableName")
+                .withTableKeySchema("virtualhk", S, "virtualrk", N);
+    }
+
+    private static CreateTableRequestBuilder buildDefaultCreateTableRequestBuilderWithGsi() {
+        return buildDefaultCreateTableRequestBuilder()
+                .addSi("virtualgsi",
+                        GSI,
+                        new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
+                        1L);
+    }
+
     private interface TestFunction<T extends Throwable> {
+
         void run() throws T;
     }
 
