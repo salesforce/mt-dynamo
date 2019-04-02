@@ -17,8 +17,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -132,7 +130,7 @@ class MtAmazonDynamoDbChainTest {
                 .getResource(GOLD_FILE).toURI()))) {
             expectedLogMessages = stream.collect(Collectors.toList());
         }
-        if (!is(expectedLogMessages).matches(logAggregator.messages)) {
+        if (!expectedLogMessages.equals(logAggregator.messages)) {
             // log
             logAggregator.messages.forEach(message -> System.out.println("\"" + message + "\","));
             fail("Expected output does not match gold file.  To troubleshoot, diff the above"
@@ -235,7 +233,7 @@ class MtAmazonDynamoDbChainTest {
         Map<String, AttributeValue> originalItem = new HashMap<>(item);
         PutItemRequest putItemRequest = new PutItemRequest().withTableName(tableName1).withItem(item);
         amazonDynamoDb.putItem(putItemRequest);
-        assertThat(putItemRequest.getItem(), is(originalItem));
+        assertEquals(originalItem, putItemRequest.getItem());
         assertEquals(tableName1, putItemRequest.getTableName());
 
         // put item in ctx2
@@ -267,9 +265,9 @@ class MtAmazonDynamoDbChainTest {
         List<Map<String, AttributeValue>> queryItems1 = amazonDynamoDb.query(queryRequest).getItems();
         assertItemValue("someValue1", queryItems1.get(0));
         assertEquals(tableName1, queryRequest.getTableName());
-        assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression));
-        assertThat(queryRequest.getExpressionAttributeNames(), is(queryExpressionAttrNames));
-        assertThat(queryRequest.getExpressionAttributeValues(), is(queryExpressionAttrValues));
+        assertEquals(keyConditionExpression, queryRequest.getKeyConditionExpression());
+        assertEquals(queryExpressionAttrNames, queryRequest.getExpressionAttributeNames());
+        assertEquals(queryExpressionAttrValues, queryRequest.getExpressionAttributeValues());
 
         // query item from ctx using keyConditions
         QueryRequest queryRequestKeyConditions = new QueryRequest().withTableName(tableName1)
@@ -316,9 +314,9 @@ class MtAmazonDynamoDbChainTest {
             .withExpressionAttributeValues(scanExpressionAttrValues1);
         assertItemValue("someValue2", amazonDynamoDb.scan(scanRequest).getItems().get(0));
         assertEquals(tableName1, scanRequest.getTableName());
-        assertThat(scanRequest.getFilterExpression(), is(filterExpression1));
-        assertThat(scanRequest.getExpressionAttributeNames(), is(scanExpressionAttrNames1));
-        assertThat(scanRequest.getExpressionAttributeValues(), is(scanExpressionAttrValues1));
+        assertEquals(filterExpression1, scanRequest.getFilterExpression());
+        assertEquals(scanExpressionAttrNames1, scanRequest.getExpressionAttributeNames());
+        assertEquals(scanExpressionAttrValues1, scanRequest.getExpressionAttributeValues());
 
         // scan item from ctx using scanFilter
         ScanRequest scanRequestKeyConditions = new ScanRequest().withTableName(tableName1)
@@ -341,9 +339,9 @@ class MtAmazonDynamoDbChainTest {
             .withExpressionAttributeValues(scanExpressionAttrValues2);
         assertItemValue("someValue2", amazonDynamoDb.scan(scanRequest2).getItems().get(0));
         assertEquals(tableName1, queryRequest.getTableName());
-        assertThat(scanRequest2.getFilterExpression(), is(filterExpression2));
-        assertThat(scanRequest2.getExpressionAttributeNames(), is(scanExpressionAttrNames2));
-        assertThat(scanRequest2.getExpressionAttributeValues(), is(scanExpressionAttrValues2));
+        assertEquals(filterExpression2, scanRequest2.getFilterExpression());
+        assertEquals(scanExpressionAttrNames2, scanRequest2.getExpressionAttributeNames());
+        assertEquals(scanExpressionAttrValues2, scanRequest2.getExpressionAttributeValues());
 
         // scan all
         mtContext.setContext("ctx1");
@@ -373,7 +371,7 @@ class MtAmazonDynamoDbChainTest {
         amazonDynamoDb.updateItem(updateItemRequest);
         assertItemValue("someValue1Updated",
                 getItem(amazonDynamoDb, tableName1, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
-        assertThat(updateItemRequest.getKey(), is(originalUpdateItemKey));
+        assertEquals(originalUpdateItemKey, updateItemRequest.getKey());
         assertEquals(tableName1, updateItemRequest.getTableName());
 
         // update item in ctx2
@@ -453,7 +451,7 @@ class MtAmazonDynamoDbChainTest {
         assertItemValue("someValueTable2",
                 getItem(amazonDynamoDb, tableName2, HASH_KEY_VALUE, HASH_KEY_ATTR_TYPE, Optional.empty()));
         assertEquals(tableName1, deleteItemRequest.getTableName());
-        assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey));
+        assertEquals(originalDeleteItemKey, deleteItemRequest.getKey());
 
         // table with hk/rk and gsi/lsi
 
@@ -474,7 +472,7 @@ class MtAmazonDynamoDbChainTest {
         GetItemRequest getItemRequest4 = new GetItemRequest().withTableName(tableName3).withKey(new HashMap<>(
             ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(HASH_KEY_ATTR_TYPE, "hashKeyValue3"),
                 RANGE_KEY_FIELD, createStringAttribute("rangeKeyValue3a"))));
-        assertThat(amazonDynamoDb.getItem(getItemRequest4).getItem(), is(table3item1));
+        assertEquals(table3item1, amazonDynamoDb.getItem(getItemRequest4).getItem());
 
         // delete and create table and verify no leftover data
         deleteTable(mtContext, amazonDynamoDb, "ctx1", tableName1);
@@ -500,7 +498,7 @@ class MtAmazonDynamoDbChainTest {
                     ":value2", createStringAttribute("rangeKeyValue")))).getItems();
         assertEquals(1, queryItems6.size());
         Map<String, AttributeValue> queryItem6 = queryItems6.get(0);
-        assertThat(queryItem6, is(table3item3));
+        assertEquals(table3item3, queryItem6);
 
         // query hk with filter expression on someField
         List<Map<String, AttributeValue>> queryItemsFe = amazonDynamoDb.query(
@@ -521,7 +519,7 @@ class MtAmazonDynamoDbChainTest {
                 .withIndexName("testgsi")).getItems();
         assertEquals(1, queryItems4.size());
         Map<String, AttributeValue> queryItem4 = queryItems4.get(0);
-        assertThat(queryItem4, is(table3item3));
+        assertEquals(table3item3, queryItem4);
 
         // query on lsi
         QueryRequest queryRequest5 = new QueryRequest().withTableName(tableName3)
@@ -534,7 +532,7 @@ class MtAmazonDynamoDbChainTest {
         List<Map<String, AttributeValue>> queryItems5 = amazonDynamoDb.query(queryRequest5).getItems();
         assertEquals(1, queryItems5.size());
         Map<String, AttributeValue> queryItem5 = queryItems5.get(0);
-        assertThat(queryItem5, is(table3item3));
+        assertEquals(table3item3, queryItem5);
 
         // scan on hk and rk
         String filterExpressionHkRk = "#name1 = :value1 AND #name2 = :value2";
@@ -551,7 +549,7 @@ class MtAmazonDynamoDbChainTest {
             .scan(scanRequestHkRk).getItems();
         assertEquals(1, scanItemsHkRk.size());
         Map<String, AttributeValue> scanItemHkRk = scanItemsHkRk.get(0);
-        assertThat(scanItemHkRk, is(table3item3));
+        assertEquals(table3item3, scanItemHkRk);
 
         // scan all on table with gsi and confirm fields with gsi is saved
         mtContext.setContext("ctx1");
@@ -563,7 +561,7 @@ class MtAmazonDynamoDbChainTest {
             .getItems();
         assertEquals(1, scanItems4.size());
         Map<String, AttributeValue> scanItem4 = scanItems4.get(0);
-        assertThat(scanItem4, is(table3item3));
+        assertEquals(table3item3, scanItem4);
 
         // log end
         LOG.info("END test " + testDescription);
@@ -580,9 +578,10 @@ class MtAmazonDynamoDbChainTest {
     }
 
     private void assertItemValue(String expectedValue, Map<String, AttributeValue> actualItem) {
-        assertThat(actualItem, is(ImmutableMap.of(HASH_KEY_FIELD,
+        assertEquals(ImmutableMap.of(HASH_KEY_FIELD,
             createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
-            SOME_FIELD, createStringAttribute(expectedValue))));
+            SOME_FIELD, createStringAttribute(expectedValue)),
+            actualItem);
     }
 
     private void deleteTable(MtAmazonDynamoDbContextProvider mtContext,

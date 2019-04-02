@@ -13,8 +13,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -66,30 +64,32 @@ class ScanTest {
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
-            assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                        .build()));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
+                testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0));
             assertEquals(TABLE1, scanRequest.getTableName());
-            assertThat(scanRequest.getFilterExpression(), is(filterExpression));
-            assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames));
-            assertThat(scanRequest.getExpressionAttributeValues(), is(expressionAttrValues));
+            assertEquals(filterExpression, scanRequest.getFilterExpression());
+            assertEquals(expressionAttrNames, scanRequest.getExpressionAttributeNames());
+            assertEquals(expressionAttrValues, scanRequest.getExpressionAttributeValues());
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org -> assertThat(testArgument.getAmazonDynamoDb().scan(new ScanRequest()
-                        .withTableName(TABLE1)
-                        .withScanFilter(ImmutableMap.of(
-                                HASH_KEY_FIELD,
-                                new Condition().withComparisonOperator(EQ)
-                                        .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
-                                                HASH_KEY_VALUE))))).getItems().get(0),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                        .build())));
+        testArgument.forEachOrgContext(org -> {
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
+                testArgument.getAmazonDynamoDb().scan(new ScanRequest()
+                    .withTableName(TABLE1)
+                    .withScanFilter(ImmutableMap.of(
+                        HASH_KEY_FIELD,
+                        new Condition().withComparisonOperator(EQ)
+                            .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
+                                HASH_KEY_VALUE))))).getItems().get(0));
+        });
     }
 
     @ParameterizedTest(name = "{arguments}")
@@ -103,14 +103,14 @@ class ScanTest {
             ScanRequest scanRequest = new ScanRequest().withTableName(TABLE1).withFilterExpression(filterExpression)
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
-            assertThat(testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                        .build()));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
+                testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0));
             assertEquals(TABLE1, scanRequest.getTableName()); // assert no side effects
-            assertThat(scanRequest.getFilterExpression(), is(filterExpression)); // assert no side effects
-            assertThat(scanRequest.getExpressionAttributeNames(), is(expressionAttrNames)); // assert no side effects
-            assertThat(scanRequest.getExpressionAttributeValues(), is(expressionAttrValues)); // assert no side effects
+            assertEquals(filterExpression, scanRequest.getFilterExpression()); // assert no side effects
+            assertEquals(expressionAttrNames, scanRequest.getExpressionAttributeNames()); // assert no side effects
+            assertEquals(expressionAttrValues, scanRequest.getExpressionAttributeValues()); // assert no side effects
         });
     }
 

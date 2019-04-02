@@ -4,8 +4,6 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -59,13 +57,13 @@ public class TestSupport {
                                                       ScalarAttributeType hashKeyAttrType,
                                                       Optional<String> rangeKeyValueOpt) {
         Map<String, AttributeValue> keys = ItemBuilder.builder(hashKeyAttrType, hashKeyValue)
-                .rangeKeyStringOpt(rangeKeyValueOpt)
-                .build();
+            .rangeKeyStringOpt(rangeKeyValueOpt)
+            .build();
         Map<String, AttributeValue> originalKeys = new HashMap<>(keys);
         GetItemRequest getItemRequest = new GetItemRequest().withTableName(tableName).withKey(keys);
         GetItemResult getItemResult = amazonDynamoDb.getItem(getItemRequest);
         assertEquals(tableName, getItemRequest.getTableName()); // assert no side effects
-        assertThat(getItemRequest.getKey(), is(originalKeys)); // assert no side effects
+        assertEquals(originalKeys, getItemRequest.getKey()); // assert no side effects
         return getItemResult.getItem();
     }
 
@@ -80,10 +78,10 @@ public class TestSupport {
                                                                 List<Optional<String>> rangeKeyValueOpts) {
         Preconditions.checkArgument(hashKeyValues.size() == rangeKeyValueOpts.size());
         List<Map<String, AttributeValue>> keys = IntStream.range(0, hashKeyValues.size())
-                .mapToObj(i -> ItemBuilder.builder(hashKeyAttrType, hashKeyValues.get(i))
-                        .rangeKeyStringOpt(rangeKeyValueOpts.get(i))
-                        .build())
-                .collect(Collectors.toList());
+            .mapToObj(i -> ItemBuilder.builder(hashKeyAttrType, hashKeyValues.get(i))
+                .rangeKeyStringOpt(rangeKeyValueOpts.get(i))
+                .build())
+            .collect(Collectors.toList());
 
         Set<Map<String, AttributeValue>> originalKeys = new HashSet<>(keys);
         final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
@@ -102,8 +100,8 @@ public class TestSupport {
             requestItems = batchGetItemResult.getUnprocessedKeys();
         } while (!unprocessedKeys.isEmpty());
         assertEquals(originalKeys, resultItems.stream()
-                .map(TestSupport::stripItemToPk)
-                .collect(Collectors.toSet()));
+            .map(TestSupport::stripItemToPk)
+            .collect(Collectors.toSet()));
         return resultItems;
     }
 
@@ -112,8 +110,8 @@ public class TestSupport {
      */
     private static Map<String, AttributeValue> stripItemToPk(Map<String, AttributeValue> item) {
         return item.entrySet().stream()
-                .filter(p -> p.getKey().equals(HASH_KEY_FIELD) || p.getKey().equals(RANGE_KEY_FIELD))
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            .filter(p -> p.getKey().equals(HASH_KEY_FIELD) || p.getKey().equals(RANGE_KEY_FIELD))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     /*

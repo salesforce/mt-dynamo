@@ -25,8 +25,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -72,15 +70,16 @@ class QueryTest {
                 .withExpressionAttributeValues(queryExpressionAttrValues);
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                    .build()));
+                    .build(),
+                items.get(0));
             assertEquals(TABLE1, queryRequest.getTableName()); // assert no side effects
-            assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression)); // assert no side effects
+            assertEquals(keyConditionExpression, queryRequest.getKeyConditionExpression()); // assert no side effects
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeNames(), is(queryExpressionAttrNames));
+            assertEquals(queryExpressionAttrNames, queryRequest.getExpressionAttributeNames());
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeValues(), is(queryExpressionAttrValues));
+            assertEquals(queryExpressionAttrValues, queryRequest.getExpressionAttributeValues());
         });
     }
 
@@ -99,12 +98,13 @@ class QueryTest {
                 .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
                 .build());
-            assertThat(new HashSet<>(items), is(expectedItemsSet));
+            assertEquals(expectedItemsSet, new HashSet<>(items));
         });
     }
 
 
     // test legacy calls (see {@code QueryMapper} for more on "legacy".
+
     /**
      * Table has (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX); we ask for items that match hk and have
      * rk > RANGE_KEY_N_MIN, so there should be RANGE_KEY_N_MAX - RANGE_KEY_N_MIN results:
@@ -268,9 +268,10 @@ class QueryTest {
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createAttributeValue(
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)))).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                    .build()));
+                    .build(),
+                items.get(0));
         });
     }
 
@@ -285,9 +286,10 @@ class QueryTest {
                     .withExpressionAttributeValues(ImmutableMap.of(":value",
                         createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)))).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                    .build()));
+                    .build(),
+                items.get(0));
         });
     }
 
@@ -308,16 +310,17 @@ class QueryTest {
                 .withExpressionAttributeValues(queryExpressionAttrValues);
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build()));
+                    .build(),
+                items.get(0));
             assertEquals(TABLE3, queryRequest.getTableName()); // assert no side effects
-            assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression)); // assert no side effects
+            assertEquals(keyConditionExpression, queryRequest.getKeyConditionExpression()); // assert no side effects
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeNames(), is(queryExpressionAttrNames));
+            assertEquals(queryExpressionAttrNames, queryRequest.getExpressionAttributeNames());
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeValues(), is(queryExpressionAttrValues));
+            assertEquals(queryExpressionAttrValues, queryRequest.getExpressionAttributeValues());
         });
     }
 
@@ -335,21 +338,23 @@ class QueryTest {
                 .withExpressionAttributeValues(queryExpressionAttrValues);
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(2, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build()));
-            assertThat(items.get(1), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .build(),
+                items.get(0));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
                     .indexField(S, INDEX_FIELD_VALUE)
-                    .build()));
+                    .build(),
+                items.get(1));
             assertEquals(TABLE3, queryRequest.getTableName()); // assert no side effects
-            assertThat(queryRequest.getKeyConditionExpression(), is(keyConditionExpression)); // assert no side effects
+            assertEquals(keyConditionExpression, queryRequest.getKeyConditionExpression()); // assert no side effects
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeNames(), is(queryExpressionAttrNames));
+            assertEquals(queryExpressionAttrNames, queryRequest.getExpressionAttributeNames());
             // assert no side effects
-            assertThat(queryRequest.getExpressionAttributeValues(), is(queryExpressionAttrValues));
+            assertEquals(queryExpressionAttrValues, queryRequest.getExpressionAttributeValues());
         });
     }
 
@@ -365,11 +370,12 @@ class QueryTest {
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                         ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
                     .indexField(S, INDEX_FIELD_VALUE)
-                    .build()));
+                    .build(),
+                items.get(0));
         });
     }
 
@@ -383,11 +389,12 @@ class QueryTest {
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(INDEX_FIELD_VALUE)))
                     .withIndexName("testgsi")).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
                     .indexField(S, INDEX_FIELD_VALUE)
-                    .build()));
+                    .build(),
+                items.get(0));
         });
     }
 
@@ -404,11 +411,11 @@ class QueryTest {
                 .withIndexName("testlsi");
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
-            assertThat(items.get(0), is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
-                    .build()));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+                .indexField(S, INDEX_FIELD_VALUE)
+                .build(), items.get(0));
         });
     }
 
