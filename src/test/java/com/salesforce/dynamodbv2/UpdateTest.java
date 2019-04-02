@@ -14,8 +14,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -57,15 +55,15 @@ class UpdateTest {
                 .withExpressionAttributeValues(ImmutableMap.of(":someValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.empty()),
-                    is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                            .build()));
-            assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
+                    Optional.empty()));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
             assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
         });
     }
@@ -85,14 +83,14 @@ class UpdateTest {
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.empty()),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                        .build()));
+                    Optional.empty()));
         });
     }
 
@@ -112,14 +110,14 @@ class UpdateTest {
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.empty()),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                        .build()));
+                    Optional.empty()));
         });
     }
 
@@ -137,16 +135,16 @@ class UpdateTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#indexField", INDEX_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":newValue",
                     createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"))));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
-                TABLE3,
-                HASH_KEY_VALUE,
-                testArgument.getHashKeyAttrType(),
-                Optional.of(RANGE_KEY_S_VALUE)),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                    .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
-                    .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build()));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE3,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.of(RANGE_KEY_S_VALUE)));
         });
     }
 
@@ -164,14 +162,15 @@ class UpdateTest {
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
-                    TABLE1,
-                    HASH_KEY_VALUE,
-                    testArgument.getHashKeyAttrType(),
-                    Optional.empty()),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                        .build()));
+            assertEquals(ItemBuilder
+                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                TABLE1,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.empty()));
         });
     }
 
@@ -194,14 +193,14 @@ class UpdateTest {
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.empty()),
-                       is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                               .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                               .build()));
+                    Optional.empty()));
         });
     }
 
@@ -221,16 +220,16 @@ class UpdateTest {
                 .withExpressionAttributeValues(ImmutableMap.of(":someValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_S_VALUE)),
-                       is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                               .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                               .rangeKey(S, RANGE_KEY_S_VALUE)
-                               .build()));
-            assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
+                    Optional.of(RANGE_KEY_S_VALUE)));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
             assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
         });
     }
@@ -254,17 +253,17 @@ class UpdateTest {
                     ":indexValue", createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"),
                     ":someValue", createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
-                TABLE3,
-                HASH_KEY_VALUE,
-                testArgument.getHashKeyAttrType(),
-                Optional.of(RANGE_KEY_S_VALUE)),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                    .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
-                    .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build()));
-            assertThat(updateItemRequest.getKey(), is(new HashMap<>(updateItemKey))); // assert no side effects
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE3,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.of(RANGE_KEY_S_VALUE)));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
             assertEquals(TABLE3, updateItemRequest.getTableName()); // assert no side effects
         });
     }
@@ -285,15 +284,15 @@ class UpdateTest {
                     + TABLE3 + org))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_S_VALUE)),
-                       is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                               .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                               .rangeKey(S, RANGE_KEY_S_VALUE)
-                               .build()));
+                    Optional.of(RANGE_KEY_S_VALUE)));
         });
     }
 
@@ -316,15 +315,15 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_S_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_S_VALUE)),
-                is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                        .rangeKey(S, RANGE_KEY_S_VALUE)
-                        .build()));
+                    Optional.of(RANGE_KEY_S_VALUE)));
         });
     }
 
@@ -348,15 +347,15 @@ class UpdateTest {
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
-            assertThat(getItem(testArgument.getAmazonDynamoDb(),
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                .rangeKey(S, RANGE_KEY_S_VALUE)
+                .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_S_VALUE)),
-                       is(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                               .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                               .rangeKey(S, RANGE_KEY_S_VALUE)
-                               .build()));
+                    Optional.of(RANGE_KEY_S_VALUE)));
         });
     }
 

@@ -22,7 +22,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
         <junit.version>5.4.1</junit.version>
         <aws.sdk.version>1.11.529</aws.sdk.version>
-        <hamcrest.version>2.1</hamcrest.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -65,11 +64,6 @@
             <version>1.7.26</version>
         </dependency>
         <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-core</artifactId>
-            <version>${hamcrest.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
             <version>3.0.2</version>
@@ -98,12 +92,6 @@
             <groupId>com.amazonaws</groupId>
             <artifactId>DynamoDBLocal</artifactId>
             <version>1.11.477</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-library</artifactId>
-            <version>${hamcrest.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -210,7 +198,7 @@
                             <goal>analyze-only</goal>
                         </goals>
                         <configuration>
-                            <failOnWarning>false</failOnWarning>
+                            <failOnWarning>true</failOnWarning>
                             <ignoredUnusedDeclaredDependencies>ch.qos.logback:logback-classic</ignoredUnusedDeclaredDependencies>
                             <ignoredUnusedDeclaredDependencies>org.junit.jupiter:junit-jupiter-engine</ignoredUnusedDeclaredDependencies>
                         </configuration>

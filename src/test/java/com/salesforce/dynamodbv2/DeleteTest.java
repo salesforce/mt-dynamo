@@ -10,8 +10,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -57,26 +55,26 @@ class DeleteTest {
                 testArgument.getHashKeyAttrType(),
                 Optional.empty()));
         assertEquals(TABLE1, deleteItemRequest.getTableName()); // assert no side effects
-        assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
-        assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .someField(S, SOME_FIELD_VALUE + TABLE2 + org)
-                        .build(),
-                   is(getItem(testArgument.getAmazonDynamoDb(),
-                           TABLE2,
-                           HASH_KEY_VALUE,
-                           testArgument.getHashKeyAttrType(),
-                           Optional.empty()))); // assert different table, same org
+        assertEquals(originalDeleteItemKey, deleteItemRequest.getKey()); // assert no side effects
+        assertEquals(getItem(testArgument.getAmazonDynamoDb(),
+            TABLE2,
+            HASH_KEY_VALUE,
+            testArgument.getHashKeyAttrType(),
+            Optional.empty()),
+            ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE2 + org)
+                .build()); // assert different table, same org
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
             // assert same table, different orgs
-            assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .someField(S, SOME_FIELD_VALUE + TABLE1 + otherOrg)
-                            .build(),
-                       is(getItem(testArgument.getAmazonDynamoDb(),
-                               TABLE1,
-                               HASH_KEY_VALUE,
-                               testArgument.getHashKeyAttrType(),
-                               Optional.empty())));
+            assertEquals(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE1,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.empty()),
+                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + otherOrg)
+                    .build());
         });
     }
 
@@ -162,19 +160,19 @@ class DeleteTest {
                 testArgument.getHashKeyAttrType(),
                 Optional.of(RANGE_KEY_S_VALUE)));
         assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
-        assertThat(deleteItemRequest.getKey(), is(originalDeleteItemKey)); // assert no side effects
+        assertEquals(originalDeleteItemKey, deleteItemRequest.getKey()); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
             // assert same table, different orgs
-            assertThat(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .someField(S, SOME_FIELD_VALUE + TABLE3 + otherOrg)
-                            .rangeKey(S, RANGE_KEY_S_VALUE)
-                            .build(),
-                       is(getItem(testArgument.getAmazonDynamoDb(),
-                               TABLE3,
-                               HASH_KEY_VALUE,
-                               testArgument.getHashKeyAttrType(),
-                               Optional.of(RANGE_KEY_S_VALUE))));
+            assertEquals(getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3,
+                HASH_KEY_VALUE,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_S_VALUE)),
+                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + otherOrg)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build());
         });
     }
 
