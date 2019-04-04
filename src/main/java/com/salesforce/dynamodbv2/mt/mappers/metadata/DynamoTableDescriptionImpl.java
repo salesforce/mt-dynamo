@@ -205,12 +205,12 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         if (!Objects.equals(streamSpecification, that.streamSpecification)) {
             return false;
         }
-
         return tableName.equals(that.tableName)
             && attributeDefinitions.equals(that.attributeDefinitions)
             && primaryKey.equals(that.primaryKey)
             && gsiMap.equals(that.gsiMap)
             && lsiMap.equals(that.lsiMap);
+
     }
 
     @Override

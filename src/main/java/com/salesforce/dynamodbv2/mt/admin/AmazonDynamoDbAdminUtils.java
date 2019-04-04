@@ -53,8 +53,8 @@ public class AmazonDynamoDbAdminUtils {
             if (!tableExists(createTableRequest.getTableName(), TableStatus.ACTIVE)) {
                 String tableName = createTableRequest.getTableName();
                 amazonDynamoDb.createTable(createTableRequest);
-                awaitTableActive(tableName, TableStatus.CREATING, pollIntervalSeconds,
-                        TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
+                awaitTableActive(tableName, pollIntervalSeconds
+                );
             } else {
                 DynamoTableDescription existingTableDesc = new DynamoTableDescriptionImpl(describeTable(
                     createTableRequest.getTableName()));
@@ -65,9 +65,9 @@ public class AmazonDynamoDbAdminUtils {
             }
         } catch (TableInUseException e) {
             if (TableStatus.CREATING.equals(e.getStatus())) {
-                awaitTableActive(createTableRequest.getTableName(), TableStatus.CREATING,
-                    pollIntervalSeconds,
-                    TABLE_DDL_OPERATION_TIMEOUT_SECONDS);
+                awaitTableActive(createTableRequest.getTableName(),
+                    pollIntervalSeconds
+                );
             } else {
                 throw new ResourceInUseException("table=" + e.getTableName() + " is in " + e.getStatus() + " status");
             }
@@ -102,13 +102,13 @@ public class AmazonDynamoDbAdminUtils {
             .until(() -> !tableExists(tableName, TableStatus.DELETING));
     }
 
-    private void awaitTableActive(String tableName, TableStatus expectedTableStatus, int pollIntervalSeconds,
-                                  int timeoutSeconds) {
+    private void awaitTableActive(String tableName, int pollIntervalSeconds) {
+        int timeoutSeconds = TABLE_DDL_OPERATION_TIMEOUT_SECONDS;
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
             .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
             .atMost(timeoutSeconds, SECONDS)
-            .until(() -> tableActive(tableName, expectedTableStatus));
+            .until(() -> tableActive(tableName, TableStatus.CREATING));
     }
 
     private boolean tableExists(String tableName, TableStatus expectedTableStatus) throws TableInUseException {

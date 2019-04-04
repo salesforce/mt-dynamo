@@ -10,6 +10,7 @@ package com.salesforce.dynamodbv2.testsupport;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -523,11 +524,11 @@ class DocGeneratorRunner {
             Object[][] dataArr = data.toArray(new Object[0][0]);
             TextTable tt = new TextTable(columnNamesArr, dataArr);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (PrintStream ps = new PrintStream(baos, true, "UTF-8")) {
+            try (PrintStream ps = new PrintStream(baos, true, UTF_8.name())) {
                 tt.printTable(ps, 5);
                 appendToFile(new String(baos.toByteArray()));
             } catch (UnsupportedEncodingException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
             appendToFile("\n");
         }
@@ -543,7 +544,12 @@ class DocGeneratorRunner {
         }
 
         private Path getOutputFile(String outputFilePath) {
-            new File(outputFilePath).getParentFile().mkdirs();
+            File parentDir = new File(outputFilePath).getParentFile();
+            if (!parentDir.exists()) {
+                if (!parentDir.mkdirs()) {
+                    throw new RuntimeException("failed to create directory " + parentDir);
+                }
+            }
             Path outputFile = Paths.get(outputFilePath);
             try {
                 Files.createDirectories(Paths.get(DOCS_DIR));
