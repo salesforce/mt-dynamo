@@ -561,7 +561,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     throw new RuntimeException("Unhandled case in switch statement");
             }
             String rest = compositeStrings.join(fields);
-            return Objects.requireNonNullElse(dynamoDbIterator, streamArn) + ITERATOR_SEPARATOR + rest;
+            if (dynamoDbIterator == null) {
+                return streamArn + ITERATOR_SEPARATOR + rest;
+            } else {
+                return dynamoDbIterator + ITERATOR_SEPARATOR + rest;
+            }
         }
 
         @Override
