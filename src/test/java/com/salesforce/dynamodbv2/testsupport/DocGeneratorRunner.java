@@ -315,7 +315,7 @@ class DocGeneratorRunner {
                 getAccounts()).runAll();
     }
 
-    public class DocGenerator {
+    class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
                 .put("_tablemetadata", ImmutableList.of("table", "data"))
@@ -323,19 +323,19 @@ class DocGeneratorRunner {
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
                 .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
 
-        private String test;
-        private Path outputFile;
+        private final String test;
+        private final Path outputFile;
         private List<Map<String, String>> ctxTablePairs;
-        private boolean manuallyPrefixTableNames;
-        private Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
-        private MtAmazonDynamoDbContextProvider mtContext;
-        private Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
-        private AmazonDynamoDB amazonDynamoDb;
-        private int timeoutSeconds = 600;
-        private boolean isLocalDynamo;
+        private final boolean manuallyPrefixTableNames;
+        private final Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
+        private final MtAmazonDynamoDbContextProvider mtContext;
+        private final Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
+        private final AmazonDynamoDB amazonDynamoDb;
+        private final int timeoutSeconds = 600;
+        private final boolean isLocalDynamo;
         private String tableName1;
         private String tableName2;
-        private ScalarAttributeType hashKeyAttrType;
+        private final ScalarAttributeType hashKeyAttrType;
 
         private DocGenerator(String test,
             String outputFilePath,
@@ -640,10 +640,10 @@ class DocGeneratorRunner {
     private static class TestAccountCredentialsMapper implements MtAccountCredentialsMapper,
         Supplier<Map<String, AmazonDynamoDB>> {
 
-        AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
-        AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
-        AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
-        AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
+        final AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
+        final AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
+        final AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
+        final AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
 
         @Override
         public AWSCredentialsProvider getAwsCredentialsProvider(String context) {

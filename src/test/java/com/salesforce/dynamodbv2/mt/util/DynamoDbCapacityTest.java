@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class DynamoDbCapacityTest {
 
-    private DynamoDbCapacity capacityTest = new DynamoDbCapacity();
+    private final DynamoDbCapacity capacityTest = new DynamoDbCapacity();
 
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";

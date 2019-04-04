@@ -352,9 +352,8 @@ class CachingAmazonDynamoDbStreamsTest {
         return nextIterator;
     }
 
-    private static String mockGetAllRecords(AmazonDynamoDBStreams streams, String iterator) {
+    private static void mockGetAllRecords(AmazonDynamoDBStreams streams, String iterator) {
         mockGetRecords(streams, iterator, records, null);
-        return null;
     }
 
     private static String assertGetRecords(AmazonDynamoDBStreams streams,

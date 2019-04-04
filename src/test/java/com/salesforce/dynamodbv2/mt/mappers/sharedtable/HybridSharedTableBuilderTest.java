@@ -20,13 +20,13 @@ import org.junit.jupiter.api.Test;
  */
 class HybridSharedTableBuilderTest {
 
-    private static DynamoTableDescription virtualTable1 = mock(DynamoTableDescription.class);
-    private static CreateTableRequest createTableRequest1 = mock(CreateTableRequest.class);
-    private static CreateTableRequestFactory ctrf1 = mock(CreateTableRequestFactory.class);
-    private static DynamoTableDescription virtualTable2 = mock(DynamoTableDescription.class);
-    private static CreateTableRequest createTableRequest2 = mock(CreateTableRequest.class);
-    private static CreateTableRequestFactory ctrf2 = mock(CreateTableRequestFactory.class);
-    private static DynamoTableDescription virtualTable3 = mock(DynamoTableDescription.class);
+    private static final DynamoTableDescription virtualTable1 = mock(DynamoTableDescription.class);
+    private static final CreateTableRequest createTableRequest1 = mock(CreateTableRequest.class);
+    private static final CreateTableRequestFactory ctrf1 = mock(CreateTableRequestFactory.class);
+    private static final DynamoTableDescription virtualTable2 = mock(DynamoTableDescription.class);
+    private static final CreateTableRequest createTableRequest2 = mock(CreateTableRequest.class);
+    private static final CreateTableRequestFactory ctrf2 = mock(CreateTableRequestFactory.class);
+    private static final DynamoTableDescription virtualTable3 = mock(DynamoTableDescription.class);
 
     @BeforeAll
     static void beforeAll() {

@@ -24,7 +24,7 @@ class CreateTableRequestBuilderTest {
     private String indexName;
     private DynamoSecondaryIndex.DynamoSecondaryIndexType indexType;
 
-    CreateTableRequestBuilder testBuilder;
+    private CreateTableRequestBuilder testBuilder;
 
     void assertGlobalSecondaryIndexProvisionedThroughputResults(GlobalSecondaryIndex gsi,
                                                                 Long expectedProvisionedThroughput) {

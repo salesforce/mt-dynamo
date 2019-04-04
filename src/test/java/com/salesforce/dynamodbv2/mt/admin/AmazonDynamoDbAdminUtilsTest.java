@@ -26,20 +26,15 @@ import org.junit.jupiter.api.Test;
 
 class AmazonDynamoDbAdminUtilsTest {
 
-    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDb);
+    private final AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private final AmazonDynamoDbAdminUtils localUtils = new AmazonDynamoDbAdminUtils(localDynamoDb);
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
-    String tableName;
-    String fullTableName;
+    private String fullTableName;
 
     @BeforeEach
     void beforeEach() {
-        tableName = String.valueOf(System.currentTimeMillis());
+        String tableName = String.valueOf(System.currentTimeMillis());
         fullTableName = TABLE_PREFIX + tableName;
-    }
-
-    @Test
-    void createTableIfNotExists() {
     }
 
     private CreateTableRequest getTestCreateTableRequest(String tableName) {

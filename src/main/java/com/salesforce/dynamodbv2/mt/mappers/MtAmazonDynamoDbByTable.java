@@ -63,7 +63,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
     private final String delimiter;
     private final Optional<String> tablePrefix;
-    private BillingMode billingMode;
+    private final BillingMode billingMode;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     BillingMode billingMode, String delimiter, Optional<String> tablePrefix) {
@@ -293,12 +293,12 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     @VisibleForTesting
-    String buildPrefixedTableName(String unqualifiedTableName) {
+    private String buildPrefixedTableName(String unqualifiedTableName) {
         return getTableNamePrefix() + unqualifiedTableName;
     }
 
     @VisibleForTesting
-    String stripTableNamePrefix(String qualifiedTableName) {
+    private String stripTableNamePrefix(String qualifiedTableName) {
         final String tableNamePrefix = getTableNamePrefix();
         Preconditions.checkState(qualifiedTableName.startsWith(tableNamePrefix));
         return qualifiedTableName.substring(tableNamePrefix.length());

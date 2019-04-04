@@ -28,16 +28,16 @@ import org.junit.jupiter.api.Test;
 
 class SharedTableBuilderTest {
 
-    private static AmazonDynamoDB LOCAL_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+    private static final AmazonDynamoDB LOCAL_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
     private static final String TABLE_PREFIX_PREFIX = "oktodelete-testBillingMode.";
     private static String tablePrefix;
-    private static AtomicInteger counter = new AtomicInteger();
+    private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static String defaultTableName = "_tablemetadata";
+    private static final String defaultTableName = "_tablemetadata";
 
     @BeforeEach
     void beforeEach() {
@@ -45,10 +45,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static List<String> testTables = new ArrayList<>(new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
+    private static final List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
         "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
         "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-        "mt_sharedtablestatic_s_b_nolsi")));
+        "mt_sharedtablestatic_s_b_nolsi"));
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {

@@ -59,9 +59,9 @@ public class AmazonDynamoDbLocal {
         return new DynamoDbClients(localAmazonDynamoDb, localAmazonDynamoDbStreams);
     }
 
-    public static class DynamoDbClients {
-        private AmazonDynamoDB amazonDynamoDb;
-        private AmazonDynamoDBStreams amazonDynamoDbStreams;
+    static class DynamoDbClients {
+        private final AmazonDynamoDB amazonDynamoDb;
+        private final AmazonDynamoDBStreams amazonDynamoDbStreams;
 
         DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
             AmazonDynamoDBStreams amazonDynamoDbStreams) {

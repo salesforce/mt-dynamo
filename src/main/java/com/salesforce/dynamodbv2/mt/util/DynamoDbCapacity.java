@@ -14,7 +14,7 @@ public class DynamoDbCapacity {
         READ("READ"),
         WRITE("WRITE");
 
-        private String value;
+        private final String value;
 
         CapacityType(String value) {
             this.value = value;

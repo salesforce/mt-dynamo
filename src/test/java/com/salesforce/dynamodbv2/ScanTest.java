@@ -166,8 +166,8 @@ class ScanTest {
     }
 
     private static class ScanTestSetup extends DefaultTestSetup {
-        List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
-        Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
+        final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
+        final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
@@ -192,7 +192,7 @@ class ScanTest {
      */
     static class ScanTestArgumentProvider extends DefaultArgumentProvider {
 
-        public ScanTestArgumentProvider() {
+        ScanTestArgumentProvider() {
             super(scanTestSetup);
         }
 
