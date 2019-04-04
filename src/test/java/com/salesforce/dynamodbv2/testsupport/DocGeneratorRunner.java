@@ -528,7 +528,7 @@ class DocGeneratorRunner {
                 tt.printTable(ps, 5);
                 appendToFile(new String(baos.toByteArray()));
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             appendToFile("\n");
         }
