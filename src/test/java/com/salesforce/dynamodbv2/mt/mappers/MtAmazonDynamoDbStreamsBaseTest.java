@@ -227,15 +227,14 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-            boolean loggingEnabled = false;
-            if (loggingEnabled) {
-                dynamoDb = MtAmazonDynamoDbLogger.builder()
-                    .withAmazonDynamoDb(dynamoDb)
-                    .withLogAll()
-                    .withContext(MT_CONTEXT).build();
-            }
+            // enable logging
+            // dynamoDb = MtAmazonDynamoDbLogger.builder()
+            //     .withAmazonDynamoDb(dynamoDb)
+            //     .withLogAll()
+            //     .withContext(MT_CONTEXT).build();
+            // }
 
-            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
+            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.sharedTableBuilder()
                 .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)

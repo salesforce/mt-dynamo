@@ -182,7 +182,7 @@ class TableMappingTest {
     @Test
     void validateVirtualPhysicalCompatibility_missingVirtualHk() {
         assertException((TestFunction<NullPointerException>) () ->
-                        sut.validateCompatiblePrimaryKey(new PrimaryKey(null, S), null),
+                        sut.validateCompatiblePrimaryKey(new PrimaryKey(null, S), new PrimaryKey("hk", N)),
                 "hash key is required on virtual table");
     }
 

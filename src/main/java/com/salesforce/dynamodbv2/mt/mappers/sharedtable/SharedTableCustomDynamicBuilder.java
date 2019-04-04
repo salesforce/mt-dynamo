@@ -40,7 +40,7 @@ import java.util.Optional;
  * primary key if the physical primary key has a hash key of type S and either, range keys that are undefined on both
  * the virtual and physical tables or they are defined on both and have types that match.
  *
- * <p>The builder requires ...
+ * <p>The sharedTableCustomStaticBuilder requires ...
  *
  * <p>- A {@code CreateTableRequestFactory} implementation which allows the client to map virtual
  * {@code CreateTableRequest}s to physical {@code CreateTableRequest}s.  By default, requests that reference secondary

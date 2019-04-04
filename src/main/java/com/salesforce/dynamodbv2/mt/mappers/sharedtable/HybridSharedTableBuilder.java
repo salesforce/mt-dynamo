@@ -88,6 +88,7 @@ public class HybridSharedTableBuilder implements TableBuilder {
      * @param billingMode the desired billing mode to be set
      * @return {@code HybridSharedTableBuilder}
      */
+    @Override
     public HybridSharedTableBuilder withBillingMode(BillingMode billingMode) {
         this.billingMode = billingMode;
         return this;

@@ -20,6 +20,7 @@ public class DynamoDbCapacity {
             this.value = value;
         }
 
+        @Override
         public String toString() {
             return this.value;
         }
@@ -60,12 +61,8 @@ public class DynamoDbCapacity {
             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else if ((billingModeFromRequest == null || billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
                 && createTableRequest.getProvisionedThroughput() == null) {
-
-            if (createTableRequest.getProvisionedThroughput() == null) {
-                createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
-                        1L, 1L));
-            }
-
+            createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
+                    1L, 1L));
             createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         }
     }

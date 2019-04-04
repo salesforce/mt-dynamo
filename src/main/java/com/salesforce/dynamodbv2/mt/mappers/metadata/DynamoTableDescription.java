@@ -24,6 +24,7 @@ public interface DynamoTableDescription extends HasPrimaryKey {
 
     String getTableName();
 
+    @Override
     PrimaryKey getPrimaryKey();
 
     List<DynamoSecondaryIndex> getSis();

@@ -34,7 +34,7 @@ class AmazonDynamoDbAdminUtilsTest {
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
+        tableName = String.valueOf(System.currentTimeMillis());
         fullTableName = TABLE_PREFIX + tableName;
     }
 

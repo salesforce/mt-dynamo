@@ -33,7 +33,7 @@ public class MtDynamoDbTableDescriptionRepoTest {
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
+        tableName = String.valueOf(System.currentTimeMillis());
         fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.get(), tableName,"");
 
         mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()

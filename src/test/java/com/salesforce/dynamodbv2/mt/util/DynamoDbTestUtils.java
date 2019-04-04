@@ -63,6 +63,6 @@ public class DynamoDbTestUtils {
     }
 
     public static String getTimestampTableName() {
-        return new String(String.valueOf(System.currentTimeMillis()));
+        return String.valueOf(System.currentTimeMillis());
     }
 }

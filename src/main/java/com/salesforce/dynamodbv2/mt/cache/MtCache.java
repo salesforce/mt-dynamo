@@ -12,13 +12,14 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+import javax.annotation.Nullable;
 
 /**
  * TODO: write Javadoc.
@@ -29,7 +30,7 @@ public class MtCache<V> implements Cache<String, V> {
 
     private static final String DELIMITER = "-";
     private final MtAmazonDynamoDbContextProvider contextProvider;
-    private final Cache<Object, V> cache;
+    private final Cache<String, V> cache;
 
     public MtCache(MtAmazonDynamoDbContextProvider contextProvider) {
         this.contextProvider = contextProvider;
@@ -41,18 +42,20 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public V getIfPresent(Object key) {
+    public V getIfPresent(@Nullable Object key) {
         return cache.getIfPresent(getKey(key));
     }
 
     @Override
-    public V get(String key, Callable<? extends V> valueLoader) throws ExecutionException {
-        return cache.get(getKey(key), valueLoader);
+    public V get(@Nullable String key,
+                 @Nullable Callable<? extends V> valueLoader) throws ExecutionException {
+        return cache.get(getKey(key), Objects.requireNonNull(valueLoader));
     }
 
     @Override
-    public void put(String key, V value) {
-        cache.put(getKey(key), value);
+    public void put(@Nullable String key,
+                    @Nullable V value) {
+        cache.put(getKey(key), Objects.requireNonNull(value));
     }
 
     @Override
@@ -61,7 +64,7 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public void invalidate(Object key) {
+    public void invalidate(@Nullable Object key) {
         cache.invalidate(getKey(key));
     }
 
@@ -92,12 +95,12 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public ConcurrentMap asMap() {
+    public ConcurrentMap<String, V> asMap() {
         return cache.asMap();
     }
 
     @Override
-    public ImmutableMap<String, V> getAllPresent(Iterable<?> keys) {
+    public ImmutableMap<String, V> getAllPresent(@Nullable Iterable<?> keys) {
         throw new UnsupportedOperationException();
     }
 

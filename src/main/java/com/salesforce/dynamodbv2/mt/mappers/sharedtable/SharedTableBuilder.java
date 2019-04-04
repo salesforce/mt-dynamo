@@ -40,22 +40,21 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("checkstyle:LineLength")
 /*
  * Suppresses "Line is longer than 120 characters [LineLengthCheck]" warning.  The line length violation was deemed
  * acceptable in this case for the sake of making the table more readable.
- */
-@SuppressWarnings("checkstyle:LineLength")
-/**
- * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
+ *
+ * Maps virtual tables to a set of physical tables hard-coded into the sharedTableCustomStaticBuilder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
- * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
+ * any virtual table referenced by a client, there exists a physical table in the list predefined by the sharedTableCustomStaticBuilder
  * with a primary key whose elements are compatible.  It also requires that for any secondary index on a virtual
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
  * type (global vs. local) where the primary keys are compatible.
  *
  * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
- * The builder requires ...
+ * The sharedTableCustomStaticBuilder requires ...
  *
  * - an {@code AmazonDynamoDB} instance
  * - a multitenant context
@@ -109,7 +108,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
     private BillingMode billingMode;
     private Boolean streamsEnabled;
 
-    public static SharedTableBuilder builder() {
+    public static SharedTableBuilder sharedTableBuilder() {
         return new SharedTableBuilder();
     }
 
@@ -137,6 +136,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
         return this;
     }
 
+    @Override
     public SharedTableBuilder withBillingMode(BillingMode billingMode) {
         this.billingMode = billingMode;
         return this;
@@ -145,6 +145,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
@@ -154,6 +155,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
         return super.build();
     }
 
+    @Override
     protected void setDefaults() {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
@@ -225,9 +227,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
 
     /**
      * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
-     * request builder.
+     * request sharedTableCustomStaticBuilder.
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput the throughput to assign to the request builder. If 0, billing mode is set to PPR.
+     * @param provisionedThroughput the throughput to assign to the request sharedTableCustomStaticBuilder. If 0, billing mode is set to PPR.
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {

@@ -329,7 +329,6 @@ class DocGeneratorRunner {
         private boolean manuallyPrefixTableNames;
         private Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
         private MtAmazonDynamoDbContextProvider mtContext;
-        private String hashKeyField = "hashKeyField";
         private Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
         private AmazonDynamoDB amazonDynamoDb;
         private int timeoutSeconds = 600;
@@ -424,6 +423,7 @@ class DocGeneratorRunner {
 
         private void createTable(String context, String tableName) {
             mtContext.setContext(context);
+            String hashKeyField = "hashKeyField";
             createTable(context, new CreateTableRequest()
                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
                 .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
@@ -604,7 +604,7 @@ class DocGeneratorRunner {
     }
 
     private SharedTableCustomDynamicBuilder getBySharedTableBuilder() {
-        return SharedTableBuilder.builder()
+        return SharedTableBuilder.sharedTableBuilder()
                 .withPrecreateTables(false)
                 .withContext(MT_CONTEXT)
                 .withTruncateOnDeleteTable(true);

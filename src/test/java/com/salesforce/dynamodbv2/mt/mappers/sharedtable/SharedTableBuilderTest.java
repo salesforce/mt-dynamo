@@ -45,11 +45,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
-            "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
-            "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-            "mt_sharedtablestatic_s_b_nolsi")).stream()
-            .collect(Collectors.toList());
+    private static List<String> testTables = new ArrayList<>(new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
+        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
+        "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
+        "mt_sharedtablestatic_s_b_nolsi")));
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
@@ -67,7 +66,7 @@ class SharedTableBuilderTest {
                         .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
                 ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
 
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -84,7 +83,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithProvisionedInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -98,7 +97,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
@@ -123,7 +122,7 @@ class SharedTableBuilderTest {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 );
 
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -140,7 +139,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeIsPayPerRequestForDefaultCreateTableRequestsWithPayPerRequestInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)

@@ -242,7 +242,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /*
          * sharedTableCustomStaticBuilder
          */
-        AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.builder()
+        AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.sharedTableCustomStaticBuilder()
             .withCreateTableRequests(
                 new CreateTableRequest()
                     .withTableName(HK_TABLE_NAME)
@@ -317,7 +317,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /*
          * bySharedTable
          */
-        AmazonDynamoDB sharedTable = SharedTableBuilder.builder()
+        AmazonDynamoDB sharedTable = SharedTableBuilder.sharedTableBuilder()
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(MT_CONTEXT)

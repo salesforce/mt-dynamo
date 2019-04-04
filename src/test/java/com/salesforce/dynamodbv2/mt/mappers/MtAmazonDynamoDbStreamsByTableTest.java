@@ -24,6 +24,7 @@ class MtAmazonDynamoDbStreamsByTableTest extends MtAmazonDynamoDbStreamsBaseTest
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsByTableTest.class.getSimpleName() + ".";
 
     // work-around for command-line build: some previous tests don't seem to be clearing the mt context
+    @Override
     @BeforeEach
     void before() {
         MT_CONTEXT.setContext(null);
