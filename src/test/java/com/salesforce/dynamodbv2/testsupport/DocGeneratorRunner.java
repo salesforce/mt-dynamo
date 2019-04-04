@@ -544,7 +544,7 @@ class DocGeneratorRunner {
         }
 
         private Path getOutputFile(String outputFilePath) {
-            File parentDir = new File(outputFilePath).getParentFile();
+            final File parentDir = new File(outputFilePath).getParentFile();
             if (!parentDir.exists()) {
                 if (!parentDir.mkdirs()) {
                     throw new RuntimeException("failed to create directory " + parentDir);
