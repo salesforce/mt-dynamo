@@ -98,7 +98,7 @@ import java.util.stream.Collectors;
  * - Virtual tables with only a HK may not be mapped to a table that has both a HK and RK per
  *   https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html, "When you add an item, the primary
  *   key attribute(s) are the only required attributes.  Attribute values cannot be null."  See
- *   <code>SharedTableRangeKeyTest</code> for a simple test that demonstrates this.
+ *   {@code SharedTableRangeKeyTest} for a simple test that demonstrates this.
  * - All virtual types could have been mapped into a set of tables that have only byte array types, and convert
  *   all virtual types down to byte arrays and back.  This would necessitate a smaller set of tables, possibly as few
  *   as 3.  However, the mapping layer would also need to be responsible for maintaining consistency with respect to
