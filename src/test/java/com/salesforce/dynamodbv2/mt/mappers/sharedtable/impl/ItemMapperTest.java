@@ -28,26 +28,32 @@ class ItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
     private static final char DELIMITER = '.';
-    private static final ItemMapper SUT = new ItemMapper(new TableMapping(new DynamoTableDescriptionImpl(
-        CreateTableRequestBuilder.builder().withTableKeySchema("virtualhk", S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder.builder()
-            .withTableKeySchema("physicalhk", S).build())
-            .getCreateTableRequest()),
-        new DynamoSecondaryIndexMapperByTypeImpl(),
-        null,
-        DELIMITER
-    ), new MockFieldMapper());
+    private static final ItemMapper SUT = new ItemMapper(
+            new MockFieldMapper(),
+            new TableMapping(new DynamoTableDescriptionImpl(
+                    CreateTableRequestBuilder.builder()
+                        .withTableKeySchema("virtualhk", S, "virtualrk", S).build()),
+                    new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
+                            CreateTableRequestBuilder.builder()
+                                    .withTableKeySchema("physicalhk", S, "physicalrk", S).build())
+                            .getCreateTableRequest()),
+                    new DynamoSecondaryIndexMapperByTypeImpl(),
+                    null,
+                    DELIMITER
+            ).getAllVirtualToPhysicalFieldMappings());
 
     @Test
     void applyAndReverse() {
         Map<String, AttributeValue> item = ImmutableMap.of(
             "virtualhk", new AttributeValue().withS("hkvalue"),
+            "virtualrk", new AttributeValue().withS("rkvalue"),
             "somefield", new AttributeValue().withS("somevalue"));
 
         Map<String, AttributeValue> mappedItem = SUT.apply(item);
 
         assertEquals(ImmutableMap.of(
             "physicalhk", new AttributeValue().withS(PREFIX + "hkvalue"),
+            "physicalrk", new AttributeValue().withS("rkvalue"),
             "somefield", new AttributeValue().withS("somevalue")), mappedItem);
 
         Map<String, AttributeValue> reversedItem = SUT.reverse(mappedItem);

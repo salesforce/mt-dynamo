@@ -33,7 +33,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -52,8 +54,9 @@ public class DefaultTestSetup implements TestSetup {
     private static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
     public static final String TABLE1 = "Table1"; // has hk
     public static final String TABLE2 = "Table2"; // has hk
-    public static final String TABLE3 = "Table3"; // has hk, rk(S)
-    public static final String TABLE4 = "Table4"; // has hk, rk(N)
+    public static final String TABLE3 = "Table3"; // has hk, rk(S), GSI and LSI
+    public static final String TABLE4 = "Table4"; // has hk, rk(N), GSI and LSI
+    public static final String TABLE5 = "Table5"; // has hk, rk(S), GSI whose HK field is the table's RK field, no LSI
     private List<CreateTableRequest> createTableRequests;
 
     @Override
@@ -164,25 +167,23 @@ public class DefaultTestSetup implements TestSetup {
     }
 
     private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
-        return ImmutableList.of(
-            new CreateTableRequest()
+        /*
+         * Each successive table adds onto the previous table builder state that was used to create the previous table.
+         */
+        CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder()
                 .withTableName(TABLE1)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
-            new CreateTableRequest()
-                .withTableName(TABLE2)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)),
-            new CreateTableRequest()
-                .withTableName(TABLE3)
+                .withProvisionedThroughput(1L, 1L);
+        return ImmutableList.of(
+            baseBuilder.withTableName(TABLE1).build(),
+            baseBuilder.withTableName(TABLE2).build(),
+            baseBuilder.withTableName(TABLE3) // also has a RK, GSI's, and LSI's
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, S),
                     new AttributeDefinition(INDEX_FIELD, S))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                 .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
                     .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
@@ -190,23 +191,21 @@ public class DefaultTestSetup implements TestSetup {
                 .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(INDEX_FIELD, RANGE))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL))),
-            new CreateTableRequest()
-                .withTableName(TABLE4)
+                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL))).build(),
+            baseBuilder.withTableName(TABLE4) // same as TABLE3, but with different with RK of type N
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
-                    new AttributeDefinition(INDEX_FIELD, S))
+                    new AttributeDefinition(INDEX_FIELD, S)).build(),
+            baseBuilder.withTableName(TABLE5) // same as TABLE3, but with a GSI whose HK field is the table's RK field
+                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                    new AttributeDefinition(RANGE_KEY_FIELD, S))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                    .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
+                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi_table_rk_as_index_hk")
+                    .withKeySchema(new KeySchemaElement(RANGE_KEY_FIELD, KeyType.HASH))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(INDEX_FIELD, RANGE))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                .withLocalSecondaryIndexes(null).build()
         );
     }
 

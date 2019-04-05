@@ -267,7 +267,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         getItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        getItemRequest.setKey(tableMapping.getItemMapper().apply(getItemRequest.getKey()));
+        getItemRequest.setKey(tableMapping.getKeyMapper().apply(getItemRequest.getKey()));
 
         // get
         GetItemResult getItemResult = getAmazonDynamoDb().getItem(getItemRequest);

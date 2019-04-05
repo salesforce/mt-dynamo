@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
@@ -47,6 +48,23 @@ class GetTest {
                 .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.of(RANGE_KEY_S_VALUE))));
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void getHkRk_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
+        String table = TABLE5;
+        testArgument.forEachOrgContext(
+            org -> assertEquals(
+                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + table + org)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    table,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
                     Optional.of(RANGE_KEY_S_VALUE))));

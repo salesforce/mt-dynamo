@@ -10,7 +10,10 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,11 +29,13 @@ import java.util.Map;
 class ItemMapper {
 
     private final FieldMapper fieldMapper;
-    private final TableMapping tableMapping;
+    private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings;
+    private final Map<String, List<FieldMapping>> physicalToVirtualFieldMappings;
 
-    ItemMapper(TableMapping tableMapping, FieldMapper fieldMapper) {
+    ItemMapper(FieldMapper fieldMapper, Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings) {
         this.fieldMapper = fieldMapper;
-        this.tableMapping = tableMapping;
+        this.virtualToPhysicalFieldMappings = virtualToPhysicalFieldMappings;
+        this.physicalToVirtualFieldMappings = invertMapping(virtualToPhysicalFieldMappings);
     }
 
     /*
@@ -42,8 +47,6 @@ class ItemMapper {
      */
     Map<String, AttributeValue> apply(Map<String, AttributeValue> unqualifiedItem) {
         Map<String, AttributeValue> qualifiedItem = new HashMap<>();
-        Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings =
-            tableMapping.getAllVirtualToPhysicalFieldMappings();
         unqualifiedItem.forEach((field, attribute) -> {
             List<FieldMapping> fieldMappings = virtualToPhysicalFieldMappings.get(field);
             if (!isNullOrEmpty(fieldMappings)) {
@@ -70,8 +73,6 @@ class ItemMapper {
             return null;
         }
         Map<String, AttributeValue> unqualifiedItem = new HashMap<>();
-        Map<String, List<FieldMapping>> physicalToVirtualFieldMappings =
-            tableMapping.getAllPhysicalToVirtualFieldMappings();
         qualifiedItem.forEach((field, attribute) -> {
             List<FieldMapping> fieldMappings = physicalToVirtualFieldMappings.get((field));
             if (fieldMappings != null && !fieldMappings.isEmpty()) {
@@ -84,6 +85,22 @@ class ItemMapper {
             }
         });
         return unqualifiedItem;
+    }
+
+    @VisibleForTesting
+    protected static Map<String, List<FieldMapping>> invertMapping(
+            Map<String, List<FieldMapping>> mapping) {
+        Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
+        mapping.values().stream()
+                .flatMap(Collection::stream)
+                .forEach(fieldMapping -> fieldMappings.put(fieldMapping.getTarget().getName(),
+                        ImmutableList.of(new FieldMapping(fieldMapping.getTarget(),
+                                fieldMapping.getSource(),
+                                fieldMapping.getVirtualIndexName(),
+                                fieldMapping.getPhysicalIndexName(),
+                                fieldMapping.getIndexType(),
+                                fieldMapping.isContextAware()))));
+        return fieldMappings;
     }
 
 }

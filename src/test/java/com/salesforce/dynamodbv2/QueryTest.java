@@ -10,6 +10,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
@@ -47,6 +48,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -395,6 +397,26 @@ class QueryTest {
                     .indexField(S, INDEX_FIELD_VALUE)
                     .build(),
                 items.get(0));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryGsi_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            String table = TABLE5;
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
+                    new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
+                            .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
+                            .withExpressionAttributeValues(ImmutableMap.of(":value",
+                                    createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
+                            .withIndexName("testgsi_table_rk_as_index_hk")).getItems();
+            assertEquals(1, items.size());
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+                    .indexField(S, INDEX_FIELD_VALUE)
+                    .build(), items.get(0));
         });
     }
 
