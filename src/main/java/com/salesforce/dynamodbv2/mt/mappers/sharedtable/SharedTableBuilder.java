@@ -40,7 +40,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/*
+/**
  * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
  * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
@@ -48,25 +48,25 @@ import java.util.stream.Collectors;
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
  * type (global vs. local) where the primary keys are compatible.
  *
- * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
+ * <p>See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
- * The builder requires ...
+ * <p>The builder requires ...
  *
- * - an {@code AmazonDynamoDB} instance
+ * <p>- an {@code AmazonDynamoDB} instance
  * - a multitenant context
  *
- * Optionally ...
+ * <p>Optionally ...
  * - a list of {@code CreateTableRequest}s representing physical tables.  Default: See enumerated list of tables below.
  *
- * See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
+ * <p>See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
  *
- * Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi tables
- * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
+ * <p>Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi
+ * tables and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
  * counterpart based on the rules described in {@code PrimaryKeyMapperByTypeImpl}.
  *
- * All table names are prefixed with 'mt_sharedtablestatic_'.
+ * <p>All table names are prefixed with 'mt_sharedtablestatic_'.
  *
- * TABLE NAME   s_s       s_n       s_b       s_nolsi   s_s_nolsi s_n_nolsi s_b_nolsi
+ * <p>TABLE NAME   s_s       s_n       s_b       s_nolsi   s_s_nolsi s_n_nolsi s_b_nolsi
  * -----------  --------- --------- --------- --------- --------- --------- ---------
  * table hash   S         S         S         S         S         S         S
  * range        S         N         B         -         S         N         B
@@ -85,9 +85,10 @@ import java.util.stream.Collectors;
  * lsi 3 hash   S         S         S
  * lsi 3 range  B         B         B
  *
- * Design constraints:
+ * <p>Design constraints:
  *
- * - In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric tenant ID.
+ * <p>- In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric
+ * tenant ID.
  *   Therefore, all HKs must be of type S.
  * - Tables with LSIs are limited to 10GB
  *   (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.ItemCollections.SizeLimit).
