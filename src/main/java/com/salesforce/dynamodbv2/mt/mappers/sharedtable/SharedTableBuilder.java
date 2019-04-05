@@ -40,21 +40,17 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-@SuppressWarnings("checkstyle:LineLength")
 /*
- * Suppresses "Line is longer than 120 characters [LineLengthCheck]" warning.  The line length violation was deemed
- * acceptable in this case for the sake of making the table more readable.
- *
- * Maps virtual tables to a set of physical tables hard-coded into the sharedTableCustomStaticBuilder by comparing the types of the elements
+ * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
- * any virtual table referenced by a client, there exists a physical table in the list predefined by the sharedTableCustomStaticBuilder
+ * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
  * with a primary key whose elements are compatible.  It also requires that for any secondary index on a virtual
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
  * type (global vs. local) where the primary keys are compatible.
  *
  * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
- * The sharedTableCustomStaticBuilder requires ...
+ * The builder requires ...
  *
  * - an {@code AmazonDynamoDB} instance
  * - a multitenant context
@@ -68,18 +64,26 @@ import java.util.stream.Collectors;
  * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
  * counterpart based on the rules described in {@code PrimaryKeyMapperByTypeImpl}.
  *
- *                                  table           gsi                                                                                             lsi
- *                                  hash    range   hash        range       hash        range       hash        range       hash        range       hash    range       hash    range       hash        range
- *                                                  1                       2                       3                       4                       1       2           3
- *                                                  gsi_s_s                 gsi_s_n                 gsi_s_b                 gsi_s       -           lsi_s_s             lsi_s_n             lsi_s_ b
- *                                  hk      rk      gsi_s_s_hk  gsi_s_s_rk  gsi_s_n_hk  gsi_s_n_rk  gsi_s_b_hk  gsi_s_b_rk  gsi_s_hk    -           hk      lsi_s_s_rk  hk      lsi_s_n_rk  hk          lsi_s_b_rk
- *  mt_sharedtablestatic_s_s        S       S       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_n        S       N       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_b        S       B       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_nolsi    S       -       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_s_nolsi  S       S       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_n_nolsi  S       N       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_b_nolsi  S       B       S           S           S           N           S           B           S           -
+ * All table names are prefixed with 'mt_sharedtablestatic_'.
+ *
+ * TABLE NAME   s_s       s_n       s_b       s_nolsi   s_s_nolsi s_n_nolsi s_b_nolsi
+ * -----------  --------- --------- --------- --------- --------- --------- ---------
+ * table hash   S         S         S         S         S         S         S
+ * range        S         N         B         -         S         N         B
+ * gsi 1 hash   S         S         S         S         S         S         S
+ * gsi 1 range  S         S         S         S         S         S         S
+ * gsi 2 hash   S         S         S         S         S         S         S
+ * gsi 2 range  N         N         N         N         N         N         N
+ * gsi 3 hash   S         S         S         S         S         S         S
+ * gsi 3 range  B         B         B         B         B         B         B
+ * gsi 4 hash   S         S         S         S         S         S         S
+ * gsi 4 range  -         -         -         -         -         -         -
+ * lsi 1 hash   S         S         S
+ * lsi 1 range  S         S         S
+ * lsi 2 hash   S         S         S
+ * lsi 2 range  N         N         N
+ * lsi 3 hash   S         S         S
+ * lsi 3 range  B         B         B
  *
  * Design constraints:
  *
@@ -229,7 +233,8 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
      * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
      * request sharedTableCustomStaticBuilder.
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput the throughput to assign to the request sharedTableCustomStaticBuilder. If 0, billing mode is set to PPR.
+     * @param provisionedThroughput the throughput to assign to the request sharedTableCustomStaticBuilder.
+     *                              If 0, billing mode is set to PPR.
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {
