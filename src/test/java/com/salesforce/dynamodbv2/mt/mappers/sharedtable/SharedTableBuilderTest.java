@@ -12,17 +12,14 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,10 +42,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static final List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
+    private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
         "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
         "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-        "mt_sharedtablestatic_s_b_nolsi"));
+        "mt_sharedtablestatic_s_b_nolsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
