@@ -465,7 +465,7 @@ class DocGeneratorRunner {
                 List<Map<String, AttributeValue>> items = amazonDynamoDb.scan(new ScanRequest()
                         .withTableName(tableName))
                         .getItems();
-                appendToFile(new String(new char[5]).replace('\0', ' ') + tableName + "\n");
+                appendToFile("     " + tableName + "\n");
                 if (!items.isEmpty()) {
                     items.forEach(item -> {
                         if (columnNames.isEmpty()) {
