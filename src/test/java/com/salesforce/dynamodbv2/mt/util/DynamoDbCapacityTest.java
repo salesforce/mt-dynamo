@@ -38,8 +38,7 @@ class DynamoDbCapacityTest {
 
     private static Stream<Arguments> argumentsBillingModeSetOnRequest() {
         return Stream.of(
-
-            // Test when a request already has something set
+            // Test when a request already has BillingMode set
             Arguments.of(BillingMode.PAY_PER_REQUEST, null, BillingMode.PAY_PER_REQUEST),
             Arguments.of(BillingMode.PAY_PER_REQUEST, null, BillingMode.PROVISIONED),
             Arguments.of(BillingMode.PROVISIONED, null, BillingMode.PAY_PER_REQUEST),
@@ -51,7 +50,6 @@ class DynamoDbCapacityTest {
 
     private static Stream<Arguments> argumentsCapacitySetOnRequest() {
         return Stream.of(
-
             // Test when a request already has provisioned throughput set that provisioned throughput remains set
             Arguments.of(BillingMode.PAY_PER_REQUEST, new ProvisionedThroughput(5L, 5L)),
             Arguments.of(BillingMode.PAY_PER_REQUEST, new ProvisionedThroughput(1L, 1L)),
@@ -69,9 +67,6 @@ class DynamoDbCapacityTest {
 
     private static Stream<Arguments> argumentsNothingSetOnRequest() {
         return Stream.of(
-
-            // Test when a request already has provisioned throughput set that provisioned throughput remains set
-
             Arguments.of(BillingMode.PAY_PER_REQUEST, null, BillingMode.PAY_PER_REQUEST),
             Arguments.of(BillingMode.PROVISIONED, null, BillingMode.PROVISIONED),
             Arguments.of(null, null, BillingMode.PROVISIONED)
@@ -84,7 +79,6 @@ class DynamoDbCapacityTest {
     void testBillingModeWhenCreateTableRequestBillingModeIsSet(BillingMode billingModeInput,
                                                                ProvisionedThroughput inputProvisionedThroughput,
                                                                BillingMode expectedBillingMode) {
-
         assertNull(inputProvisionedThroughput);
 
         // Set Billing Mode for the create table request
@@ -102,7 +96,6 @@ class DynamoDbCapacityTest {
     void testBillingModeWhenCreateTableRequestProvisionedThroughputIsSet(BillingMode billingModeInput,
                                                                          ProvisionedThroughput
                                                                              inputProvisionedThroughput) {
-
         assertNotNull(inputProvisionedThroughput);
         String startingBillingMode = request.getBillingMode();
         assertNull(startingBillingMode);

@@ -50,7 +50,6 @@ class CreateTableRequestBuilderTest {
 
     @BeforeEach
     void beforeEach() {
-
         testBuilder = CreateTableRequestBuilder.builder()
             .withTableName("testBuilder")
             .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, S);
