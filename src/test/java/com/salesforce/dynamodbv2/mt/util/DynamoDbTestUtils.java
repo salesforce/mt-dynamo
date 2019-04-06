@@ -72,7 +72,7 @@ public class DynamoDbTestUtils {
 
     /**
      * For an expected billing mode, check that the table has the expected billing mode set as well as associated
-     * provisionedThroughput set where applicable
+     * provisionedThroughput set where applicable.
      * @param request the CreateTableRequest
      * @param expectedBillingMode the expected BillingMode
      * @param expectedProvisionedThroughput the expected ProvisionedThroughput value
