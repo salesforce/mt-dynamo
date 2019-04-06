@@ -28,8 +28,8 @@ public class DynamoDbCapacity {
 
     /**
      * Returns the capacity for a given ProvisionedThroughput type.
-     * @param throughput - ProvisionedThrouhgput instance
-     * @param capacityType - Type of ProvisionedThrouhgput
+     * @param throughput - ProvisionedThroughput instance
+     * @param capacityType - Type of ProvisionedThroughput
      * @return capacity set for given capacityType or default capacity if unset
      */
     public Long getCapacity(ProvisionedThroughput throughput, CapacityType capacityType) {
