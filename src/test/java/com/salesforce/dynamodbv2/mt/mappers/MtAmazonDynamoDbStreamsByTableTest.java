@@ -104,11 +104,11 @@ class MtAmazonDynamoDbStreamsByTableTest extends MtAmazonDynamoDbStreamsBaseTest
 
             // test with tenant contexts
             MT_CONTEXT.withContext(TENANTS[0], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
             });
             MT_CONTEXT.withContext(TENANTS[1], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
         } finally {

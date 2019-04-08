@@ -315,7 +315,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             MT_CONTEXT.withContext(TENANTS[0], () -> {
                 String streamArn = mtDynamoDb.describeTable(TENANT_TABLE_NAME).getTable().getLatestStreamArn();
                 assertNotNull(streamArn);
-                String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                String iterator = getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2);
             });
         } finally {
@@ -358,7 +358,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             MT_CONTEXT.withContext(tenant, () -> {
                 String streamArn = mtDynamoDb.describeTable(tableWithStreamsEnabled).getTable().getLatestStreamArn();
                 assertNotNull(streamArn);
-                String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                String iterator = getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, iterator, streamsEnabledRecord);
             });
 
@@ -367,7 +367,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 String streamArn = mtDynamoDb.describeTable(tableWithStreamsDisabled).getTable().getLatestStreamArn();
                 if (streamArn != null) {
                     // for byIndex, the streamArn will not be null, but it should return no records
-                    String iterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                    String iterator = getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
                     assertGetRecords(mtDynamoDbStreams, iterator);
                 }
             });
@@ -393,13 +393,13 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 String streamArn = mtDynamoDb.describeTable(TENANT_TABLE_NAME).getTable().getLatestStreamArn();
 
                 // first start at trim horizon
-                String thIterator = getShardIterator(mtDynamoDbStreams, streamArn).get();
+                String thIterator = getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
                 String lastSn = assertGetRecords(mtDynamoDbStreams, thIterator, 1, expected1);
                 assertNotNull(lastSn);
 
                 // now start at last record: expect to get next record
                 String afterIterator = getShardIterator(mtDynamoDbStreams, streamArn, AFTER_SEQUENCE_NUMBER, lastSn)
-                    .get();
+                    .orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
             });
 

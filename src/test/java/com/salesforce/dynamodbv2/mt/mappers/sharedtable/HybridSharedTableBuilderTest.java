@@ -40,9 +40,9 @@ class HybridSharedTableBuilderTest {
     void testIteratingCreateTableRequestFactory_getCreateTableRequest() {
         CreateTableRequestFactoryEnsemble sut = new CreateTableRequestFactoryEnsemble(ImmutableList.of(ctrf1, ctrf2));
         // resolved by ctrf1
-        assertEquals(createTableRequest1, sut.getCreateTableRequest(virtualTable1).get());
+        assertEquals(createTableRequest1, sut.getCreateTableRequest(virtualTable1).orElseThrow());
         // resolved by ctrf2
-        assertEquals(createTableRequest2, sut.getCreateTableRequest(virtualTable2).get());
+        assertEquals(createTableRequest2, sut.getCreateTableRequest(virtualTable2).orElseThrow());
         // resolved by neither
         assertFalse(sut.getCreateTableRequest(virtualTable3).isPresent());
     }
