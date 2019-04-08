@@ -192,7 +192,7 @@
                 <artifactId>maven-dependency-plugin</artifactId>
                 <version>3.1.1</version>
                 <!--
-                     Adding the maven-dependency-analyzer 1.1.1 dependency here orks around bug using
+                     Adding the maven-dependency-analyzer 1.1.1 dependency here works around bug using
                      dependency:analyze 3.1.1 with jdk11.  This dependency can be removed when maven-dependency-plugin
                      3.1.2 is published to Maven central.
 
