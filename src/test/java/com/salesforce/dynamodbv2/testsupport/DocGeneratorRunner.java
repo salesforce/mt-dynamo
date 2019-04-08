@@ -10,6 +10,7 @@ package com.salesforce.dynamodbv2.testsupport;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal.getNewAmazonDynamoDbLocal;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.StandardOpenOption.APPEND;
 import static java.nio.file.StandardOpenOption.CREATE;
 
@@ -315,7 +316,7 @@ class DocGeneratorRunner {
                 getAccounts()).runAll();
     }
 
-    public class DocGenerator {
+    class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
                 .put("_tablemetadata", ImmutableList.of("table", "data"))
@@ -323,20 +324,19 @@ class DocGeneratorRunner {
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
                 .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
 
-        private String test;
-        private Path outputFile;
+        private final String test;
+        private final Path outputFile;
         private List<Map<String, String>> ctxTablePairs;
-        private boolean manuallyPrefixTableNames;
-        private Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
-        private MtAmazonDynamoDbContextProvider mtContext;
-        private String hashKeyField = "hashKeyField";
-        private Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
-        private AmazonDynamoDB amazonDynamoDb;
-        private int timeoutSeconds = 600;
-        private boolean isLocalDynamo;
+        private final boolean manuallyPrefixTableNames;
+        private final Map<String, AmazonDynamoDB> targetAmazonDynamoDbs;
+        private final MtAmazonDynamoDbContextProvider mtContext;
+        private final Supplier<AmazonDynamoDB> amazonDynamoDbSupplier;
+        private final AmazonDynamoDB amazonDynamoDb;
+        private final int timeoutSeconds = 600;
+        private final boolean isLocalDynamo;
         private String tableName1;
         private String tableName2;
-        private ScalarAttributeType hashKeyAttrType;
+        private final ScalarAttributeType hashKeyAttrType;
 
         private DocGenerator(String test,
             String outputFilePath,
@@ -424,6 +424,7 @@ class DocGeneratorRunner {
 
         private void createTable(String context, String tableName) {
             mtContext.setContext(context);
+            String hashKeyField = "hashKeyField";
             createTable(context, new CreateTableRequest()
                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, hashKeyAttrType))
                 .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
@@ -464,7 +465,7 @@ class DocGeneratorRunner {
                 List<Map<String, AttributeValue>> items = amazonDynamoDb.scan(new ScanRequest()
                         .withTableName(tableName))
                         .getItems();
-                appendToFile(new String(new char[5]).replace('\0', ' ') + tableName + "\n");
+                appendToFile("     " + tableName + "\n");
                 if (!items.isEmpty()) {
                     items.forEach(item -> {
                         if (columnNames.isEmpty()) {
@@ -523,7 +524,7 @@ class DocGeneratorRunner {
             Object[][] dataArr = data.toArray(new Object[0][0]);
             TextTable tt = new TextTable(columnNamesArr, dataArr);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (PrintStream ps = new PrintStream(baos, true, "UTF-8")) {
+            try (PrintStream ps = new PrintStream(baos, true, UTF_8.name())) {
                 tt.printTable(ps, 5);
                 appendToFile(new String(baos.toByteArray()));
             } catch (UnsupportedEncodingException e) {
@@ -543,7 +544,12 @@ class DocGeneratorRunner {
         }
 
         private Path getOutputFile(String outputFilePath) {
-            new File(outputFilePath).getParentFile().mkdirs();
+            final File parentDir = new File(outputFilePath).getParentFile();
+            if (!parentDir.exists()) {
+                if (!parentDir.mkdirs()) {
+                    throw new RuntimeException("failed to create directory " + parentDir);
+                }
+            }
             Path outputFile = Paths.get(outputFilePath);
             try {
                 Files.createDirectories(Paths.get(DOCS_DIR));
@@ -604,7 +610,7 @@ class DocGeneratorRunner {
     }
 
     private SharedTableCustomDynamicBuilder getBySharedTableBuilder() {
-        return SharedTableBuilder.builder()
+        return SharedTableBuilder.sharedTableBuilder()
                 .withPrecreateTables(false)
                 .withContext(MT_CONTEXT)
                 .withTruncateOnDeleteTable(true);
@@ -640,10 +646,10 @@ class DocGeneratorRunner {
     private static class TestAccountCredentialsMapper implements MtAccountCredentialsMapper,
         Supplier<Map<String, AmazonDynamoDB>> {
 
-        AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
-        AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
-        AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
-        AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
+        final AWSCredentialsProvider ctx1CredentialsProvider = new ProfileCredentialsProvider();
+        final AWSCredentialsProvider ctx2CredentialsProvider = new ProfileCredentialsProvider("personal");
+        final AWSCredentialsProvider ctx3CredentialsProvider = new ProfileCredentialsProvider("scan1");
+        final AWSCredentialsProvider ctx4CredentialsProvider = new ProfileCredentialsProvider("scan2");
 
         @Override
         public AWSCredentialsProvider getAwsCredentialsProvider(String context) {

@@ -36,7 +36,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class ConditionMapperTest {
 
-    private static TableMapping tableMapping = mock(TableMapping.class);
+    private static final TableMapping tableMapping = mock(TableMapping.class);
     private static ConditionMapper SUT = null;
 
     @BeforeAll
@@ -169,7 +169,7 @@ class ConditionMapperTest {
             return filterExpression;
         }
 
-        public KeyConditionTestInputs build() {
+        KeyConditionTestInputs build() {
             return new KeyConditionTestInputs(org,
                     virtualTableName,
                     attributeNames,
@@ -217,8 +217,8 @@ class ConditionMapperTest {
     }
 
     private static class KeyConditionTestInvocation {
-        private KeyConditionTestInputs inputs;
-        private KeyConditionTestExpected expected;
+        private final KeyConditionTestInputs inputs;
+        private final KeyConditionTestExpected expected;
 
         KeyConditionTestInvocation(KeyConditionTestInputs inputs, KeyConditionTestExpected expected) {
             this.inputs = inputs;
@@ -229,7 +229,7 @@ class ConditionMapperTest {
             return inputs;
         }
 
-        public KeyConditionTestExpected getExpected() {
+        KeyConditionTestExpected getExpected() {
             return expected;
         }
     }

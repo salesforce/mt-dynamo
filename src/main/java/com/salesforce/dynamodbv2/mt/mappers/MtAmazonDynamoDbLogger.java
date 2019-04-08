@@ -74,6 +74,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
         final String tablesAsString = batchGetItemRequest.getRequestItems().keySet().stream().map(this::tableToString)
                 .collect(Collectors.joining(",", "[", "]"));
@@ -81,6 +82,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
         return super.batchGetItem(batchGetItemRequest);
     }
 
+    @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         log("createTable", tableToString(createTableRequest.getTableName()), createTableRequest.toString());
         return super.createTable(createTableRequest);
@@ -89,37 +91,44 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     /**
      * deleteItem logging wrapper.
      */
+    @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         log("deleteItem", tableToString(deleteItemRequest.getTableName()),
                 deleteItemRequestToString(deleteItemRequest));
         return super.deleteItem(deleteItemRequest);
     }
 
+    @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         log("deleteTable", tableToString(deleteTableRequest.getTableName()));
         return super.deleteTable(deleteTableRequest);
     }
 
+    @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         log("describeTable", tableToString(describeTableRequest.getTableName()));
         return super.describeTable(describeTableRequest);
     }
 
+    @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         log("getItem", tableToString(getItemRequest.getTableName()), "key=" + getItemRequest.getKey());
         return super.getItem(getItemRequest);
     }
 
+    @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         log("putItem", tableToString(putItemRequest.getTableName()), putItemRequestToString(putItemRequest));
         return super.putItem(putItemRequest);
     }
 
+    @Override
     public QueryResult query(QueryRequest queryRequest) {
         log("query", tableToString(queryRequest.getTableName()), queryRequestToString(queryRequest));
         return super.query(queryRequest);
     }
 
+    @Override
     public ScanResult scan(ScanRequest scanRequest) {
         log("scan", tableToString(scanRequest.getTableName()), scanRequestToString(scanRequest));
         return super.scan(scanRequest);
@@ -128,6 +137,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
     /**
      * updateItem logging wrapper.
      */
+    @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         log("updateItem", tableToString(updateItemRequest.getTableName()),
                 updateItemRequestToString(updateItemRequest));

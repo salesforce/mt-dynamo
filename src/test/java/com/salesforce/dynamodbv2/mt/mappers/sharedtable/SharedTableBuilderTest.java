@@ -12,32 +12,29 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.Projection;
 import com.amazonaws.services.dynamodbv2.model.ProjectionType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
-
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class SharedTableBuilderTest {
 
-    private static AmazonDynamoDB LOCAL_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+    private static final AmazonDynamoDB LOCAL_DYNAMO_DB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
     private static final String TABLE_PREFIX_PREFIX = "oktodelete-testBillingMode.";
     private static String tablePrefix;
-    private static AtomicInteger counter = new AtomicInteger();
+    private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static String defaultTableName = "_tablemetadata";
+    private static final String defaultTableName = "_tablemetadata";
 
     @BeforeEach
     void beforeEach() {
@@ -45,11 +42,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static List<String> testTables = new ArrayList<>(Arrays.asList("mt_sharedtablestatic_s_s",
-            "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
-            "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-            "mt_sharedtablestatic_s_b_nolsi")).stream()
-            .collect(Collectors.toList());
+    private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
+        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
+        "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
+        "mt_sharedtablestatic_s_b_nolsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
@@ -67,7 +63,7 @@ class SharedTableBuilderTest {
                         .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
                 ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
 
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -84,7 +80,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithProvisionedInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -98,7 +94,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
@@ -123,7 +119,7 @@ class SharedTableBuilderTest {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 );
 
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -140,7 +136,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeIsPayPerRequestForDefaultCreateTableRequestsWithPayPerRequestInputBillingMode() {
-        SharedTableBuilder.builder()
+        SharedTableBuilder.sharedTableBuilder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)

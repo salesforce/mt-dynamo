@@ -16,7 +16,7 @@ public class SingletonCreateTableRequestFactory implements CreateTableRequestFac
 
     private final CreateTableRequest createTableRequest;
 
-    protected SingletonCreateTableRequestFactory(CreateTableRequest createTableRequest) {
+    SingletonCreateTableRequestFactory(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
     }
 

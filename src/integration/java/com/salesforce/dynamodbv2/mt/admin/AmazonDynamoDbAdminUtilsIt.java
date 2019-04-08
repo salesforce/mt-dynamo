@@ -35,20 +35,19 @@ class AmazonDynamoDbAdminUtilsIt {
     /* This tests against hosted DynamoDB to ensure tables encounter TableInUse exception
     (local create times are too short) */
 
-    static final Regions REGION = Regions.US_EAST_1;
-    private static AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
+    private static final Regions REGION = Regions.US_EAST_1;
+    private static final AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(REGION).build();
-    private static AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
+    private static final AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
     private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
-    String tableName;
-    String fullTableName;
-    private static ArrayList<String> testTables = new ArrayList<>();
+    private String fullTableName;
+    private static final ArrayList<String> testTables = new ArrayList<>();
     private static final Logger LOG = LoggerFactory.getLogger(AmazonDynamoDbAdminUtilsIt.class);
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
+        String tableName = String.valueOf(System.currentTimeMillis());
         fullTableName = TABLE_PREFIX + tableName;
         testTables.add(fullTableName);
     }
@@ -123,7 +122,7 @@ class AmazonDynamoDbAdminUtilsIt {
                         && remoteDynamoDB.describeTable(table).getTable() != null
                         && remoteDynamoDB.describeTable(table).getTable().getTableStatus() != null
                         && remoteDynamoDB.describeTable(table).getTable().getTableStatus().equals(
-                        TableStatus.DELETING)) {
+                        TableStatus.DELETING.toString())) {
                     LOG.info("table delete already in progress for table: " + table);
                 }
             } catch (ResourceNotFoundException e) {

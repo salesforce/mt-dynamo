@@ -24,8 +24,9 @@ import java.util.stream.Collectors;
 /**
  * Maps virtual tables to a set of physical tables by comparing the types of the elements of the virtual table's
  * primary key against the corresponding types on the physical tables.  The list of physical tables is provided
- * to the builder when it is constructed along with a {@code TableMapping} implementation.  When {@code build()} is
- * called on the builder, the physical tables are created.  When requests are received for operations on a given table,
+ * to the sharedTableCustomStaticBuilder when it is constructed along with a {@code TableMapping} implementation.
+ * When {@code build()} is called on the sharedTableCustomStaticBuilder, the physical tables are created.  When
+ * requests are received for operations on a given table,
  * the {@code TableMapper} is called, passing in a virtual table description.  The {@code TableMapper} implementation
  * returns the name of the corresponding physical table.  The {@code TableMapper} may return the name of any physical
  * table as long as the table's virtual and physical primary-key types are compatible.  Also for any secondary index on
@@ -51,7 +52,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
     private Map<String, CreateTableRequest> createTableRequestsMap;
     private TableMapper tableMapper;
 
-    public static SharedTableCustomStaticBuilder builder() {
+    public static SharedTableCustomStaticBuilder sharedTableCustomStaticBuilder() {
         return new SharedTableCustomStaticBuilder();
     }
 
@@ -75,6 +76,7 @@ public class SharedTableCustomStaticBuilder extends SharedTableCustomDynamicBuil
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public MtAmazonDynamoDbBySharedTable build() {
         withName("SharedTableCustomStaticBuilder");
         createTableRequestsMap.values().forEach(

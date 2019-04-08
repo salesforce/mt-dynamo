@@ -14,12 +14,13 @@ public class DynamoDbCapacity {
         READ("READ"),
         WRITE("WRITE");
 
-        private String value;
+        private final String value;
 
         CapacityType(String value) {
             this.value = value;
         }
 
+        @Override
         public String toString() {
             return this.value;
         }
@@ -27,8 +28,8 @@ public class DynamoDbCapacity {
 
     /**
      * Returns the capacity for a given ProvisionedThroughput type.
-     * @param throughput - ProvisionedThrouhgput instance
-     * @param capacityType - Type of ProvisionedThrouhgput
+     * @param throughput - ProvisionedThroughput instance
+     * @param capacityType - Type of ProvisionedThroughput
      * @return capacity set for given capacityType or default capacity if unset
      */
     public Long getCapacity(ProvisionedThroughput throughput, CapacityType capacityType) {
@@ -60,12 +61,8 @@ public class DynamoDbCapacity {
             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST);
         } else if ((billingModeFromRequest == null || billingModeFromRequest.equals(BillingMode.PROVISIONED.toString()))
                 && createTableRequest.getProvisionedThroughput() == null) {
-
-            if (createTableRequest.getProvisionedThroughput() == null) {
-                createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
-                        1L, 1L));
-            }
-
+            createTableRequest.withProvisionedThroughput(new ProvisionedThroughput(
+                    1L, 1L));
             createTableRequest.withBillingMode(BillingMode.PROVISIONED);
         }
     }

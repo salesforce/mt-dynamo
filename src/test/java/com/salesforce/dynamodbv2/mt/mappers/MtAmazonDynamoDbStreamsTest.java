@@ -11,7 +11,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStr
 
 import org.junit.jupiter.api.Test;
 
-public class MtAmazonDynamoDbStreamsTest {
+class MtAmazonDynamoDbStreamsTest {
 
     /**
      * Verifies that getting a streams client for a non-multitenant dynamo instance throws an exception.

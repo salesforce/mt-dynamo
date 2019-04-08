@@ -49,7 +49,7 @@ import java.util.Optional;
  * <p>The multitenant context is separated from the table name by the delimiter,
  * which is '.' by default.
  *
- * <p>To use, call the static builder() method. The following parameters are
+ * <p>To use, call the static sharedTableCustomStaticBuilder() method. The following parameters are
  * required ... - an AmazonDynamoDB instance - a multitenant context
  *
  * <p>The following are optional arguments ... - delimiter: a String delimiter used
@@ -63,7 +63,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
     private final String delimiter;
     private final Optional<String> tablePrefix;
-    private BillingMode billingMode;
+    private final BillingMode billingMode;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     BillingMode billingMode, String delimiter, Optional<String> tablePrefix) {
@@ -80,6 +80,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * @param tableName Name of the table.
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
+    @Override
     protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
         return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
@@ -89,6 +90,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * Transform unqualified table names in request to qualified (by tenant) table names, make the dynamo request, then
      * transform qualified table names back into unqualified table names in the response.
      */
+    @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
         final BatchGetItemRequest batchGetItemRequestWithPrefixedTableNames = batchGetItemRequest.clone();
         batchGetItemRequestWithPrefixedTableNames.clearRequestItemsEntries();
@@ -114,6 +116,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
         CreateTableRequest request = createTableRequest.clone()
@@ -128,6 +131,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         deleteItemRequest = deleteItemRequest.clone();
         deleteItemRequest.withTableName(buildPrefixedTableName(deleteItemRequest.getTableName()));
@@ -137,6 +141,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         String unqualifiedTableName = deleteTableRequest.getTableName();
         deleteTableRequest = deleteTableRequest.clone();
@@ -149,6 +154,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         String unqualifiedTableName = describeTableRequest.getTableName();
         describeTableRequest = describeTableRequest.clone();
@@ -172,6 +178,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         getItemRequest = getItemRequest.clone();
         String prefixedTableName = buildPrefixedTableName(getItemRequest.getTableName());
@@ -182,6 +189,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         putItemRequest = putItemRequest.clone();
         putItemRequest.withTableName(buildPrefixedTableName(putItemRequest.getTableName()));
@@ -191,6 +199,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public QueryResult query(QueryRequest queryRequest) {
         queryRequest = queryRequest.clone();
         queryRequest.withTableName(buildPrefixedTableName(queryRequest.getTableName()));
@@ -200,6 +209,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public ScanResult scan(ScanRequest scanRequest) {
         scanRequest = scanRequest.clone();
         scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
@@ -209,6 +219,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         updateItemRequest = updateItemRequest.clone();
         updateItemRequest.withTableName(buildPrefixedTableName(updateItemRequest.getTableName()));
@@ -225,13 +236,14 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         private MtAmazonDynamoDbContextProvider mtContext;
         private BillingMode billingMode;
         private String delimiter;
-        private Optional<String> tablePrefix;
+        private Optional<String> tablePrefix = Optional.empty();
 
         public MtAmazonDynamoDbBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
             return this;
         }
 
+        @Override
         public MtAmazonDynamoDbBuilder withBillingMode(BillingMode billingMode) {
             this.billingMode = billingMode;
             return this;
@@ -269,9 +281,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             if (delimiter == null) {
                 delimiter = ".";
             }
-            if (tablePrefix == null) {
-                tablePrefix = Optional.empty();
-            }
             if (billingMode == null) {
                 billingMode = BillingMode.PROVISIONED;
             }
@@ -284,12 +293,12 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     @VisibleForTesting
-    String buildPrefixedTableName(String unqualifiedTableName) {
+    private String buildPrefixedTableName(String unqualifiedTableName) {
         return getTableNamePrefix() + unqualifiedTableName;
     }
 
     @VisibleForTesting
-    String stripTableNamePrefix(String qualifiedTableName) {
+    private String stripTableNamePrefix(String qualifiedTableName) {
         final String tableNamePrefix = getTableNamePrefix();
         Preconditions.checkState(qualifiedTableName.startsWith(tableNamePrefix));
         return qualifiedTableName.substring(tableNamePrefix.length());

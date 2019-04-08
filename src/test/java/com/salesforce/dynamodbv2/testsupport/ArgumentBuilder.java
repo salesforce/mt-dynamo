@@ -66,7 +66,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
     @VisibleForTesting
-    public static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
+    private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
@@ -242,7 +242,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /*
          * sharedTableCustomStaticBuilder
          */
-        AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.builder()
+        AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.sharedTableCustomStaticBuilder()
             .withCreateTableRequests(
                 new CreateTableRequest()
                     .withTableName(HK_TABLE_NAME)
@@ -317,7 +317,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /*
          * bySharedTable
          */
-        AmazonDynamoDB sharedTable = SharedTableBuilder.builder()
+        AmazonDynamoDB sharedTable = SharedTableBuilder.sharedTableBuilder()
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(MT_CONTEXT)
@@ -351,7 +351,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     private static class DynamicAccountMtMapper implements MtAccountMapper {
 
-        Map<String, LocalDynamoDbServer> contextServerMap = new HashMap<>();
+        final Map<String, LocalDynamoDbServer> contextServerMap = new HashMap<>();
 
         @Override
         public AmazonDynamoDB getAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext) {
@@ -374,15 +374,15 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      * when testing that instance.  See the {@link ArgumentBuilder} Javadoc for details.
      */
     public static class TestArgument {
-        private AmazonDynamoDB amazonDynamoDb;
-        private List<String> orgs;
-        private ScalarAttributeType hashKeyAttrType;
+        private final AmazonDynamoDB amazonDynamoDb;
+        private final List<String> orgs;
+        private final ScalarAttributeType hashKeyAttrType;
 
         /**
          * Takes the arguments that make up the inputs to a test invocation.
          */
-        public TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
-            ScalarAttributeType hashKeyAttrType) {
+        TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
+                     ScalarAttributeType hashKeyAttrType) {
             this.amazonDynamoDb = amazonDynamoDb;
             this.orgs = orgs;
             this.hashKeyAttrType = hashKeyAttrType;

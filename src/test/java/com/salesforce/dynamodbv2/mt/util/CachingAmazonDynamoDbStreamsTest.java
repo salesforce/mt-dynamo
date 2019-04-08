@@ -282,8 +282,7 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static String getMockRecordSequenceNumberPlusOne(int index) {
-        String sequenceNumber = getMockRecordSequenceNumber(index);
-        return String.valueOf(Integer.parseInt(sequenceNumber) + 1);
+        return String.valueOf(Integer.parseInt(getMockRecordSequenceNumber(index)) + 1);
     }
 
     private static String mockShardIterator(GetShardIteratorRequest iteratorRequest) {
@@ -352,9 +351,8 @@ class CachingAmazonDynamoDbStreamsTest {
         return nextIterator;
     }
 
-    private static String mockGetAllRecords(AmazonDynamoDBStreams streams, String iterator) {
+    private static void mockGetAllRecords(AmazonDynamoDBStreams streams, String iterator) {
         mockGetRecords(streams, iterator, records, null);
-        return null;
     }
 
     private static String assertGetRecords(AmazonDynamoDBStreams streams,

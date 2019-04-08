@@ -12,7 +12,7 @@ import java.util.Map;
  * @author msgroi
  */
 @VisibleForTesting
-public interface RequestWrapper {
+interface RequestWrapper {
 
     String getIndexName();
 

@@ -55,7 +55,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private static final Gson GSON = new Gson();
     private final AmazonDynamoDB amazonDynamoDb;
-    private BillingMode billingMode;
+    private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
     private final String tableDescriptionTableName;

@@ -62,7 +62,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testListStreams.";
         String randomTableName = "RandomTable";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
@@ -96,7 +96,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testRecords() {
         String tablePrefix = TABLE_PREFIX + "testRecords.";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
@@ -149,7 +149,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testLimit() {
         String tablePrefix = TABLE_PREFIX + "testLimit.";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
@@ -168,7 +168,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             // one record for tenant 1 on page 2 (don't expect to get)
             putTestItem(mtDynamoDb, TENANTS[1], i++);
             final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i++);
-            putTestItem(mtDynamoDb, TENANTS[1], i++);
+            putTestItem(mtDynamoDb, TENANTS[1], i);
 
             // now query change streams
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,

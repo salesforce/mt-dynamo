@@ -120,7 +120,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         return getShardIterator(mtDynamoDbStreams, streamArn, ShardIteratorType.TRIM_HORIZON, null);
     }
 
-    protected static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn,
+    static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn,
         ShardIteratorType type, String sequenceNumber) {
         return getShardId(mtDynamoDbStreams, streamArn).map(shardId ->
             mtDynamoDbStreams.getShardIterator(new GetShardIteratorRequest()
@@ -152,7 +152,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         return putTestItem(dynamoDb, TENANT_TABLE_NAME, tenant, id);
     }
 
-    protected static MtRecord putTestItem(AmazonDynamoDB dynamoDb, String table, String tenant, int id) {
+    static MtRecord putTestItem(AmazonDynamoDB dynamoDb, String table, String tenant, int id) {
         return MT_CONTEXT.withContext(tenant, sid -> {
             PutItemRequest put = new PutItemRequest(table, ImmutableMap.of(
                 ID_ATTR_NAME, new AttributeValue(sid),
@@ -167,7 +167,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         }, String.valueOf(id));
     }
 
-    protected static boolean equals(MtRecord expected, Record actual) {
+    static boolean equals(MtRecord expected, Record actual) {
         if (!(actual instanceof MtRecord)) {
             return false;
         }
@@ -183,11 +183,11 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         assertTrue(equals(expected, actual));
     }
 
-    protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
-        return assertGetRecords(streams, iterator, null, expected);
+    protected static void assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
+        assertGetRecords(streams, iterator, null, expected);
     }
 
-    protected static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, Integer limit,
+    static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, Integer limit,
         MtRecord... expected) {
         GetRecordsResult result = streams
             .getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(limit));
@@ -227,15 +227,14 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-            boolean loggingEnabled = false;
-            if (loggingEnabled) {
-                dynamoDb = MtAmazonDynamoDbLogger.builder()
-                    .withAmazonDynamoDb(dynamoDb)
-                    .withLogAll()
-                    .withContext(MT_CONTEXT).build();
-            }
+            // enable logging
+            // dynamoDb = MtAmazonDynamoDbLogger.builder()
+            //     .withAmazonDynamoDb(dynamoDb)
+            //     .withLogAll()
+            //     .withContext(MT_CONTEXT).build();
+            // }
 
-            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
+            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.sharedTableBuilder()
                 .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)

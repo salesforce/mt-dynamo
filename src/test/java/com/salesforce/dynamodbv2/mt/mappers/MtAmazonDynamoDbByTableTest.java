@@ -16,15 +16,14 @@ import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class MtAmazonDynamoDbByTableTest {
+class MtAmazonDynamoDbByTableTest {
 
-    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    CreateTableRequest request;
-    MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
-    String tableName;
-    String fullTableName;
+    private final AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private CreateTableRequest request;
+    private MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder mtDynamoDbByTableBuilder;
+    private String fullTableName;
 
-    public static final MtAmazonDynamoDbContextProvider ctx =
+    private static final MtAmazonDynamoDbContextProvider ctx =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String tablePrefix = "oktodelete-testBillingMode";
@@ -32,8 +31,8 @@ public class MtAmazonDynamoDbByTableTest {
     @BeforeEach
     void beforeEach() {
         ctx.setContext("");
-        tableName = DynamoDbTestUtils.getTimestampTableName();
-        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix,  tableName, ".");
+        String tableName = DynamoDbTestUtils.getTimestampTableName();
+        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName, ".");
 
         request = new CreateTableRequest()
                 .withTableName(tableName)

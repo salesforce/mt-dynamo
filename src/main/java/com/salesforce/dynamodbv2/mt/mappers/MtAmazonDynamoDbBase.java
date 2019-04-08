@@ -109,7 +109,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
 
-    public MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
+    protected MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
                                 AmazonDynamoDB amazonDynamoDb) {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
@@ -322,47 +322,58 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public ListTablesResult listTables() {
         return getAmazonDynamoDb().listTables();
     }
 
+    @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public ListTablesResult listTables(Integer limit) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public ListTagsOfResourceResult listTagsOfResource(ListTagsOfResourceRequest listTagsOfResourceRequest) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
+    @Override
     public PutItemResult putItem(String tableName, Map<String, AttributeValue> item) {
         return putItem(new PutItemRequest().withTableName(tableName).withItem(item));
     }
 
+    @Override
     public PutItemResult putItem(String tableName, Map<String, AttributeValue> item, String returnValues) {
         return putItem(new PutItemRequest().withTableName(tableName).withItem(item).withReturnValues(returnValues));
     }
 
+    @Override
     public QueryResult query(QueryRequest queryRequest) {
         return getAmazonDynamoDb().query(queryRequest);
     }
 
+    @Override
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public ScanResult scan(ScanRequest scanRequest) {
         return getAmazonDynamoDb().scan(scanRequest);
     }

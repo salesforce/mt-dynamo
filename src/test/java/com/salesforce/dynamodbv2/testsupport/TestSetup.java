@@ -10,7 +10,7 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
  *
  * @author msgroi
  */
-public interface TestSetup {
+interface TestSetup {
 
     void setupTest(TestArgument testArgument);
 

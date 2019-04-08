@@ -49,7 +49,7 @@ public class CreateTableRequestBuilder {
 
     private void setDefaults() {
         if (createTableRequest.getProvisionedThroughput() == null && (createTableRequest.getBillingMode() == null
-                || createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED))) {
+                || createTableRequest.getBillingMode().equals(BillingMode.PROVISIONED.name()))) {
             createTableRequest.setProvisionedThroughput(new ProvisionedThroughput().withReadCapacityUnits(1L)
                 .withWriteCapacityUnits(1L));
         }

@@ -78,18 +78,17 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org -> {
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                .build(),
-                testArgument.getAmazonDynamoDb().scan(new ScanRequest()
-                    .withTableName(TABLE1)
-                    .withScanFilter(ImmutableMap.of(
-                        HASH_KEY_FIELD,
-                        new Condition().withComparisonOperator(EQ)
-                            .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
-                                HASH_KEY_VALUE))))).getItems().get(0));
-        });
+        testArgument.forEachOrgContext(org -> assertEquals(
+            ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+            .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+            .build(),
+            testArgument.getAmazonDynamoDb().scan(new ScanRequest()
+                .withTableName(TABLE1)
+                .withScanFilter(ImmutableMap.of(
+                    HASH_KEY_FIELD,
+                    new Condition().withComparisonOperator(EQ)
+                        .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
+                            HASH_KEY_VALUE))))).getItems().get(0)));
     }
 
     @ParameterizedTest(name = "{arguments}")
@@ -167,8 +166,8 @@ class ScanTest {
     }
 
     private static class ScanTestSetup extends DefaultTestSetup {
-        List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
-        Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
+        final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
+        final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
@@ -193,7 +192,7 @@ class ScanTest {
      */
     static class ScanTestArgumentProvider extends DefaultArgumentProvider {
 
-        public ScanTestArgumentProvider() {
+        ScanTestArgumentProvider() {
             super(scanTestSetup);
         }
 

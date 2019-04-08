@@ -55,6 +55,7 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
         return type;
     }
 
+    @Override
     public PrimaryKey getPrimaryKey() {
         return primaryKey;
     }

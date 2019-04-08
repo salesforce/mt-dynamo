@@ -40,11 +40,6 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/*
- * Suppresses "Line is longer than 120 characters [LineLengthCheck]" warning.  The line length violation was deemed
- * acceptable in this case for the sake of making the table more readable.
- */
-@SuppressWarnings("checkstyle:LineLength")
 /**
  * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
@@ -53,38 +48,47 @@ import java.util.stream.Collectors;
  * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
  * type (global vs. local) where the primary keys are compatible.
  *
- * See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
+ * <p>See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
  *
- * The builder requires ...
+ * <p>The builder requires ...
  *
- * - an {@code AmazonDynamoDB} instance
+ * <p>- an {@code AmazonDynamoDB} instance
  * - a multitenant context
  *
- * Optionally ...
+ * <p>Optionally ...
  * - a list of {@code CreateTableRequest}s representing physical tables.  Default: See enumerated list of tables below.
  *
- * See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
+ * <p>See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
  *
- * Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi tables
- * and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
+ * <p>Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi
+ * tables and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
  * counterpart based on the rules described in {@code PrimaryKeyMapperByTypeImpl}.
  *
- *                                  table           gsi                                                                                             lsi
- *                                  hash    range   hash        range       hash        range       hash        range       hash        range       hash    range       hash    range       hash        range
- *                                                  1                       2                       3                       4                       1       2           3
- *                                                  gsi_s_s                 gsi_s_n                 gsi_s_b                 gsi_s       -           lsi_s_s             lsi_s_n             lsi_s_ b
- *                                  hk      rk      gsi_s_s_hk  gsi_s_s_rk  gsi_s_n_hk  gsi_s_n_rk  gsi_s_b_hk  gsi_s_b_rk  gsi_s_hk    -           hk      lsi_s_s_rk  hk      lsi_s_n_rk  hk          lsi_s_b_rk
- *  mt_sharedtablestatic_s_s        S       S       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_n        S       N       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_b        S       B       S           S           S           N           S           B           S           -           S       S           S       N           S           B
- *  mt_sharedtablestatic_s_nolsi    S       -       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_s_nolsi  S       S       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_n_nolsi  S       N       S           S           S           N           S           B           S           -
- *  mt_sharedtablestatic_s_b_nolsi  S       B       S           S           S           N           S           B           S           -
+ * <p>All table names are prefixed with 'mt_sharedtablestatic_'.
  *
- * Design constraints:
+ * <p>TABLE NAME   s_s       s_n       s_b       s_nolsi   s_s_nolsi s_n_nolsi s_b_nolsi
+ * -----------  --------- --------- --------- --------- --------- --------- ---------
+ * table hash   S         S         S         S         S         S         S
+ * range        S         N         B         -         S         N         B
+ * gsi 1 hash   S         S         S         S         S         S         S
+ * gsi 1 range  S         S         S         S         S         S         S
+ * gsi 2 hash   S         S         S         S         S         S         S
+ * gsi 2 range  N         N         N         N         N         N         N
+ * gsi 3 hash   S         S         S         S         S         S         S
+ * gsi 3 range  B         B         B         B         B         B         B
+ * gsi 4 hash   S         S         S         S         S         S         S
+ * gsi 4 range  -         -         -         -         -         -         -
+ * lsi 1 hash   S         S         S
+ * lsi 1 range  S         S         S
+ * lsi 2 hash   S         S         S
+ * lsi 2 range  N         N         N
+ * lsi 3 hash   S         S         S
+ * lsi 3 range  B         B         B
  *
- * - In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric tenant ID.
+ * <p>Design constraints:
+ *
+ * <p>- In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric
+ * tenant ID.
  *   Therefore, all HKs must be of type S.
  * - Tables with LSIs are limited to 10GB
  *   (https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/LSI.html#LSI.ItemCollections.SizeLimit).
@@ -94,7 +98,7 @@ import java.util.stream.Collectors;
  * - Virtual tables with only a HK may not be mapped to a table that has both a HK and RK per
  *   https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_PutItem.html, "When you add an item, the primary
  *   key attribute(s) are the only required attributes.  Attribute values cannot be null."  See
- *   {@link SharedTableRangeKeyTest} for a simple test that demonstrates this.
+ *   {@code SharedTableRangeKeyTest} for a simple test that demonstrates this.
  * - All virtual types could have been mapped into a set of tables that have only byte array types, and convert
  *   all virtual types down to byte arrays and back.  This would necessitate a smaller set of tables, possibly as few
  *   as 3.  However, the mapping layer would also need to be responsible for maintaining consistency with respect to
@@ -109,7 +113,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
     private BillingMode billingMode;
     private Boolean streamsEnabled;
 
-    public static SharedTableBuilder builder() {
+    public static SharedTableBuilder sharedTableBuilder() {
         return new SharedTableBuilder();
     }
 
@@ -137,6 +141,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
         return this;
     }
 
+    @Override
     public SharedTableBuilder withBillingMode(BillingMode billingMode) {
         this.billingMode = billingMode;
         return this;
@@ -145,6 +150,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
@@ -154,6 +160,7 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
         return super.build();
     }
 
+    @Override
     protected void setDefaults() {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
@@ -225,9 +232,10 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
 
     /**
      * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
-     * request builder.
+     * request sharedTableCustomStaticBuilder.
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput the throughput to assign to the request builder. If 0, billing mode is set to PPR.
+     * @param provisionedThroughput the throughput to assign to the request sharedTableCustomStaticBuilder.
+     *                              If 0, billing mode is set to PPR.
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {

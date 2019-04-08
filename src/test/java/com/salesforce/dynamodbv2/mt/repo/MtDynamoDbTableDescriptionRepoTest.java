@@ -20,20 +20,20 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class MtDynamoDbTableDescriptionRepoTest {
+class MtDynamoDbTableDescriptionRepoTest {
 
-    AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    String tableName;
-    String fullTableName;
+    private final AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private String tableName;
+    private String fullTableName;
 
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final Optional<String> tablePrefix = Optional.of("oktodelete-testBillingMode.");
-    MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
+    private MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
 
     @BeforeEach
     void beforeEach() {
-        tableName = new String(String.valueOf(System.currentTimeMillis()));
+        tableName = String.valueOf(System.currentTimeMillis());
         fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.get(), tableName,"");
 
         mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()

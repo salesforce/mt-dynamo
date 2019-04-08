@@ -106,7 +106,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * value should be used as a rough guideline.
          *
          * @param maxRecordsByteSize Maximum cache size in sum of record bytes.
-         * @return This builder.
+         * @return This sharedTableCustomStaticBuilder.
          */
         public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
             checkArgument(maxRecordsByteSize >= 0);
@@ -118,7 +118,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * Sleep function to use for retry backoff. Defaults to {@link Thread#sleep(long)}.
          *
          * @param sleeper Sleeper implementation.
-         * @return This builder.
+         * @return This sharedTableCustomStaticBuilder.
          */
         public Builder withSleeper(Sleeper sleeper) {
             this.sleeper = sleeper;
@@ -130,7 +130,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * underlying stream into the cache.
          *
          * @param maxGetRecordsRetries Maximum number of retries.
-         * @return This builder.
+         * @return This sharedTableCustomStaticBuilder.
          */
         public Builder withMaxGetRecordsRetries(int maxGetRecordsRetries) {
             checkArgument(maxGetRecordsRetries >= 0);
@@ -143,7 +143,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * underlying stream into the cache.
          *
          * @param getRecordsLimitExceededBackoffInMillis Backoff time in millis.
-         * @return This builder.
+         * @return This sharedTableCustomStaticBuilder.
          */
         public Builder withGetRecordsLimitExceededBackoffInMillis(long getRecordsLimitExceededBackoffInMillis) {
             checkArgument(getRecordsLimitExceededBackoffInMillis >= 0);
@@ -155,7 +155,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * Maximum number of shard iterators to cache.
          *
          * @param maxIteratorCacheSize  Maximum number of iterators to cache.
-         * @return this builder.
+         * @return this sharedTableCustomStaticBuilder.
          */
         public Builder withMaxIteratorCacheSize(int maxIteratorCacheSize) {
             this.maxIteratorCacheSize = maxIteratorCacheSize;
@@ -561,11 +561,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     throw new RuntimeException("Unhandled case in switch statement");
             }
             String rest = compositeStrings.join(fields);
-            if (dynamoDbIterator == null) {
-                return streamArn + ITERATOR_SEPARATOR + rest;
-            } else {
-                return dynamoDbIterator + ITERATOR_SEPARATOR + rest;
-            }
+            return (dynamoDbIterator == null ? streamArn : dynamoDbIterator) + ITERATOR_SEPARATOR + rest;
         }
 
         @Override

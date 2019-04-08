@@ -70,7 +70,8 @@ import org.slf4j.LoggerFactory;
  * tables that store the data in AWS.
  *
  * <p>SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
- * preconfigured to support a number of common mappings.  See Javadoc for each provided builder for details.
+ * preconfigured to support a number of common mappings.  See Javadoc for each provided sharedTableCustomStaticBuilder
+ * for details.
  *
  * <p>Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
  *
@@ -130,6 +131,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
     }
 
+    @Override
     protected boolean isMtTable(String tableName) {
         return mtTables.containsKey(tableName);
     }
@@ -155,6 +157,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * Retrieves batches of items using their primary key.
      */
+    @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
         // clone request and clear items
         Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
@@ -200,6 +203,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         return new CreateTableResult()
             .withTableDescription(withTenantStreamArn(mtTableDescriptionRepo.createTable(createTableRequest)));
@@ -208,6 +212,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         // map table name
         deleteItemRequest = deleteItemRequest.clone();
@@ -227,6 +232,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         if (deleteTableAsync) {
             Executors.newSingleThreadExecutor().submit(() -> {
@@ -260,6 +266,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         // map table name
         getItemRequest = getItemRequest.clone();
@@ -293,6 +300,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
         putItemRequest = putItemRequest.clone();
@@ -312,6 +320,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public QueryResult query(QueryRequest queryRequest) {
         final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
 
@@ -336,6 +345,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public ScanResult scan(ScanRequest scanRequest) {
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
@@ -413,6 +423,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * TODO: write Javadoc.
      */
+    @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         // validate that attributeUpdates are not being used
         validateUpdateItemRequest(updateItemRequest);

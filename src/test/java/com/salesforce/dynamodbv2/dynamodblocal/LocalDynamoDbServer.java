@@ -22,7 +22,7 @@ public class LocalDynamoDbServer {
 
     private static final Logger log = LoggerFactory.getLogger(LocalDynamoDbServer.class);
     private DynamoDBProxyServer server;
-    private int port;
+    private final int port;
     private boolean running;
 
     public LocalDynamoDbServer() {
