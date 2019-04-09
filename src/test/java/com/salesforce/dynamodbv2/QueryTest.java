@@ -455,10 +455,10 @@ class QueryTest {
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void differentTablesSameIndexName(TestArgument testArgument) {
+    void queryGsiTwoTablesSameIndexName(TestArgument testArgument) {
         String gsiHkField = "gsihk";
         String gsiHkFieldValue = "gsihkvalue";
-        String tablePrefix = "DifferentTablesSameIndexNameTestTable";
+        String tablePrefix = "queryGsiTwoTablesSameIndexNameTable";
         String gsiName = "testgsi";
         int tableCount = 2;
 

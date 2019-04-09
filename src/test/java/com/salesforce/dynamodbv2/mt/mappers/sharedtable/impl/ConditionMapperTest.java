@@ -271,7 +271,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field", "physicalgsihk")
-                                .attributeValues(":value", "ctx.virtualTable\\.virtualgsi.hkgsivalue").build()
+                                .attributeValues(":value", "ctx.virtualTable.hkgsivalue").build()
                 ),
                 // map table's hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -364,7 +364,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3\\.testgsi.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
                 ),
                 // map lsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -420,7 +420,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3\\.testgsi.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
                 ),
                 // map attribute_exists expression
                 new KeyConditionTestInvocation(

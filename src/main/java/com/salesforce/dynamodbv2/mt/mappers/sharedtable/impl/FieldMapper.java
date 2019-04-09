@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -22,7 +21,6 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
  */
 class FieldMapper {
 
-    private static final String SEPARATOR = ".";
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
     private final FieldPrefixFunction fieldPrefixFunction;
@@ -38,8 +36,7 @@ class FieldMapper {
     AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
         return new AttributeValue(
             fieldPrefixFunction.apply(mtContext,
-                virtualTableName
-                + (fieldMapping.getIndexType() == SECONDARYINDEX ? SEPARATOR + fieldMapping.getVirtualIndexName() : ""),
+                virtualTableName,
                 convertToStringNotNull(fieldMapping.getSource().getType(),
                     unqualifiedAttribute)).getQualifiedValue());
     }
