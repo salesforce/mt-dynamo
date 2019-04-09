@@ -78,7 +78,7 @@ public class PrimaryKey {
             + "hashKey='" + hashKey + '\''
             + ", hashKeyType=" + hashKeyType
             + (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType="
-            + (rangeKeyType.map(Enum::name).orElse("null"))))
+            + (rangeKeyType.map(Enum::toString).orElse("<NONE>"))))
             + "}";
     }
 
