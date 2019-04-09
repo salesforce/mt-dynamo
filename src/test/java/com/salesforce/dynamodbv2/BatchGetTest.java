@@ -5,7 +5,6 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
@@ -19,7 +18,6 @@ import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -78,8 +76,7 @@ class BatchGetTest {
                 final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                             hashKeyValues.get(1))
                         .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                        .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                        .indexField(S, INDEX_FIELD_VALUE)
+                        .withDefaults()
                         .build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });

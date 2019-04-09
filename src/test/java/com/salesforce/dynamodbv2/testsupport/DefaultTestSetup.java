@@ -3,9 +3,15 @@ package com.salesforce.dynamodbv2.testsupport;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_HK_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_RK_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI_HK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
@@ -35,7 +41,6 @@ import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -116,6 +121,9 @@ public class DefaultTestSetup implements TestSetup {
                                 .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
                                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
                                 .indexField(S, INDEX_FIELD_VALUE)
+                                .gsiHkField(S, GSI_HK_FIELD_VALUE)
+                                .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
+                                .gsi2RkField(N, GSI2_RK_FIELD_VALUE)
                                 .build()));
                     break;
                 case N:
@@ -181,13 +189,23 @@ public class DefaultTestSetup implements TestSetup {
             baseBuilder.withTableName(TABLE3) // also has a RK, GSI's, and LSI's
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, S),
-                    new AttributeDefinition(INDEX_FIELD, S))
+                    new AttributeDefinition(INDEX_FIELD, S),
+                    new AttributeDefinition(GSI_HK_FIELD, S),
+                    new AttributeDefinition(GSI2_HK_FIELD, S),
+                    new AttributeDefinition(GSI2_RK_FIELD, N))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                    .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                .withGlobalSecondaryIndexes(
+                    new GlobalSecondaryIndex().withIndexName("testgsi")
+                        .withKeySchema(new KeySchemaElement(GSI_HK_FIELD, KeyType.HASH))
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
+                    new GlobalSecondaryIndex().withIndexName("testgsi2")
+                        .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
+                            new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
+                )
                 .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(INDEX_FIELD, RANGE))
@@ -195,7 +213,11 @@ public class DefaultTestSetup implements TestSetup {
             baseBuilder.withTableName(TABLE4) // same as TABLE3, but with different with RK of type N
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
-                    new AttributeDefinition(INDEX_FIELD, S)).build(),
+                    new AttributeDefinition(INDEX_FIELD, S),
+                    new AttributeDefinition(GSI_HK_FIELD, S),
+                    new AttributeDefinition(GSI2_HK_FIELD, S),
+                    new AttributeDefinition(GSI2_RK_FIELD, N)
+                ).build(),
             baseBuilder.withTableName(TABLE5) // same as TABLE3, but with a GSI whose HK field is the table's RK field
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, S))
