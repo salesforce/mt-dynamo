@@ -53,7 +53,7 @@ class FieldMapperTest {
         assertMapper(S,
             SECONDARYINDEX,
             () -> new AttributeValue().withS(value),
-            mtContext.getContext() + DELIMITER + "virtualindex" + DELIMITER + value,
+            mtContext.getContext() + DELIMITER + "virtualtable\\" + DELIMITER + "virtualindex" + DELIMITER + value,
             mtContext);
     }
 

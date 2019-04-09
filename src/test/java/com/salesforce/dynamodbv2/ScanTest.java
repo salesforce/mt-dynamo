@@ -28,8 +28,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
@@ -50,7 +48,6 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class ScanTest {
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
     private static final ScanTestSetup scanTestSetup = new ScanTestSetup();
 
     @ParameterizedTest(name = "{arguments}")
@@ -174,7 +171,7 @@ class ScanTest {
             CreateTableRequest createTableRequest) {
             int ordinal = (Integer.parseInt(org.substring(org.indexOf("-") + 1)) - 1) % ORGS_PER_TEST;
             int putCount = ordinal < orgPutCounts.size() ? orgPutCounts.get(ordinal) : new Random().nextInt(10);
-            MT_CONTEXT.setContext(org);
+            getMtContext().setContext(org);
             Set<Integer> itemKeys = new HashSet<>();
             orgItemKeys.put(org, itemKeys);
             // insert some data for another tenant as noise

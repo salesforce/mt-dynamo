@@ -7,6 +7,7 @@ import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
@@ -31,14 +32,18 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
@@ -48,7 +53,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -446,6 +450,57 @@ class QueryTest {
     void queryWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> queryAndAssertItemKeys(testArgument.getAmazonDynamoDb(),
             testArgument.getHashKeyAttrType()));
+    }
+
+    /**
+     * This test specifically addresses a bug whereby two different tables for the same tenant that
+     * happen to have the same GSI name would cause unexpected results when the GSI was queried.
+     */
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void differentTablesSameIndexName(TestArgument testArgument) {
+        String gsiHkField = "gsihk";
+        String gsiHkFieldValue = "gsihkvalue";
+        String tablePrefix = "DifferentTablesSameIndexNameTestTable";
+        String gsiName = "testgsi";
+        int tableCount = 2;
+
+        AmazonDynamoDB amazonDynamoDb = testArgument.getAmazonDynamoDb();
+        testArgument.forEachOrgContext(org -> {
+            CreateTableRequestBuilder requestBuilder = CreateTableRequestBuilder.builder()
+                .withAttributeDefinitions(
+                    new AttributeDefinition(HASH_KEY_FIELD, testArgument.getHashKeyAttrType()),
+                    new AttributeDefinition(gsiHkField, S))
+                .withTableKeySchema(HASH_KEY_FIELD, S)
+                .addSi(gsiName, GSI, new PrimaryKey(gsiHkField, S), 1L);
+
+            for (int i = 0; i < tableCount; i++) {
+                // create two tables with the same index name
+                String tableName = tablePrefix + i;
+                testArgument.getAmazonDynamoDb().createTable(
+                    requestBuilder.withTableName(tableName).build());
+                // insert an item into two different tables with the same value in the gsiHkField field
+                amazonDynamoDb.putItem(
+                    new PutItemRequest().withTableName(tableName).withItem(
+                        ImmutableMap.of(
+                            HASH_KEY_FIELD, createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE + i),
+                            gsiHkField, createStringAttribute(gsiHkFieldValue))));
+            }
+
+            // perform a query using the GSI
+            for (int i = 0; i < tableCount; i++) {
+                String tableName = tablePrefix + i;
+                List<Map<String, AttributeValue>> items = amazonDynamoDb.query(
+                    new QueryRequest().withTableName(tableName).withKeyConditionExpression("#name = :value")
+                        .withExpressionAttributeNames(ImmutableMap.of("#name", gsiHkField))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value",
+                            createStringAttribute(gsiHkFieldValue)))
+                        .withIndexName(gsiName)).getItems();
+                assertEquals(1, items.size());
+                assertEquals(createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE + i),
+                    items.get(0).get(HASH_KEY_FIELD));
+            }
+        });
     }
 
     private void queryAndAssertItemKeys(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType) {
