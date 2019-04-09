@@ -160,7 +160,8 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             si = getLsi(indexName);
         }
         if (!si.isPresent()) {
-            throw new IllegalArgumentException("secondary index '" + indexName + "' not found");
+            throw new IllegalArgumentException("secondary index '" + indexName
+                + "' not found on table " + this.getTableName());
         }
         return si.get();
     }

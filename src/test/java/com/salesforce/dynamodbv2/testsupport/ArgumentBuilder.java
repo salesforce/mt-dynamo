@@ -2,6 +2,9 @@ package com.salesforce.dynamodbv2.testsupport;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.regions.Regions;
@@ -81,7 +84,6 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     private static final String HK_RK_N_TABLE_NAME = "hkRkNTable"; // range-key type: N
     private static final String HASH_KEY_FIELD = "HASH_KEY_FIELD";
     private static final String RANGE_KEY_FIELD = "RANGE_KEY_FIELD";
-    private static final String INDEX_FIELD = "INDEX_FIELD";
     private static final String INDEX_RANGE_FIELD = "INDEX_RANGE_FIELD";
 
     public ArgumentBuilder() {
@@ -144,9 +146,11 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
          */
         String hashKeyField = "hashKeyField";
         String rangeKeyField = "rangeKeyField";
-        String indexField = "indexField";
         String indexField2 = "indexField2";
         String indexRangeField = "indexRangeField";
+        String gsiHkField = "gsiHkField";
+        String gsi2HkField = "gsi2HkField";
+        String gsi2RkField = "gsi2RkField";
         CreateTableRequestFactory createTableRequestFactory = new CreateTableRequestFactory() {
             @Override
             public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
@@ -185,14 +189,22 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                                 .withTableName("table_3")
                                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
                                         new AttributeDefinition(rangeKeyField, S),
-                                        new AttributeDefinition(indexField, S),
+                                        new AttributeDefinition(gsiHkField, S),
+                                        new AttributeDefinition(gsi2HkField, S),
+                                        new AttributeDefinition(gsi2RkField, N),
                                         new AttributeDefinition(indexRangeField, S))
                                 .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
                                         new KeySchemaElement(rangeKeyField, KeyType.RANGE))
-                                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                                        .withKeySchema(new KeySchemaElement(indexField, KeyType.HASH))
-                                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                                .withGlobalSecondaryIndexes(
+                                        new GlobalSecondaryIndex().withIndexName("testgsi")
+                                            .withKeySchema(new KeySchemaElement(gsiHkField, KeyType.HASH))
+                                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
+                                        new GlobalSecondaryIndex().withIndexName("testgsi2")
+                                            .withKeySchema(new KeySchemaElement(gsi2HkField, KeyType.HASH),
+                                                new KeySchemaElement(gsi2RkField, KeyType.RANGE))
+                                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                                 .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                                         .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
                                                 new KeySchemaElement(indexRangeField, KeyType.RANGE))
@@ -205,7 +217,9 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                                 .withTableName("table_4")
                                 .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
                                         new AttributeDefinition(rangeKeyField, N), // unlike table_3
-                                        new AttributeDefinition(indexField, S),
+                                        new AttributeDefinition(gsiHkField, S),
+                                        new AttributeDefinition(gsi2HkField, S),
+                                        new AttributeDefinition(gsi2RkField, N),
                                         new AttributeDefinition(indexRangeField, S))
                                 .build(),
                         baseBuilder
@@ -241,7 +255,12 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
         /*
          * sharedTableCustomStaticBuilder
+         *
+         * Setting the physical table's hk field to something that other than GSI_HK_FIELD works around a bug
+         * where a client is allowed to pass an item that has a field that matches a physical field name
+         * causing unexpected behavior.  Our tests happen to do this.  TODO: fix this bug.
          */
+        String sharedTableGsiHkField = GSI_HK_FIELD + "suffix";
         AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.sharedTableCustomStaticBuilder()
             .withCreateTableRequests(
                 new CreateTableRequest()
@@ -257,14 +276,22 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
                         new AttributeDefinition(RANGE_KEY_FIELD, S),
-                        new AttributeDefinition(INDEX_FIELD, S),
-                        new AttributeDefinition(INDEX_RANGE_FIELD, S))
+                        new AttributeDefinition(INDEX_RANGE_FIELD, S),
+                        new AttributeDefinition(sharedTableGsiHkField, S),
+                        new AttributeDefinition(GSI2_HK_FIELD, S),
+                        new AttributeDefinition(GSI2_RK_FIELD, N))
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
-                    .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                        .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                    .withGlobalSecondaryIndexes(
+                        new GlobalSecondaryIndex().withIndexName("testgsi")
+                            .withKeySchema(new KeySchemaElement(sharedTableGsiHkField, KeyType.HASH))
+                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
+                        new GlobalSecondaryIndex().withIndexName("testgsi2")
+                            .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
+                                new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
+                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                         .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                             new KeySchemaElement(INDEX_RANGE_FIELD, KeyType.RANGE))
@@ -277,14 +304,22 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
                         new AttributeDefinition(RANGE_KEY_FIELD, N),
-                        new AttributeDefinition(INDEX_FIELD, S),
-                        new AttributeDefinition(INDEX_RANGE_FIELD, S))
+                        new AttributeDefinition(INDEX_RANGE_FIELD, S),
+                        new AttributeDefinition(GSI_HK_FIELD, S),
+                        new AttributeDefinition(GSI2_HK_FIELD, S),
+                        new AttributeDefinition(GSI2_RK_FIELD, N))
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
-                    .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
-                        .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+                    .withGlobalSecondaryIndexes(
+                        new GlobalSecondaryIndex().withIndexName("testgsi")
+                            .withKeySchema(new KeySchemaElement(GSI_HK_FIELD, KeyType.HASH))
+                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
+                        new GlobalSecondaryIndex().withIndexName("testgsi2")
+                            .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
+                                new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
+                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
                     .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
                         .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                             new KeySchemaElement(INDEX_RANGE_FIELD, KeyType.RANGE))

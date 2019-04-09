@@ -47,6 +47,9 @@ public class TestSupport {
     public static final String SOME_OTHER_FIELD_VALUE = SOME_FIELD_VALUE + "2";
     public static final String SOME_OTHER_OTHER_FIELD_VALUE = "someOtherValue";
     public static final String INDEX_FIELD_VALUE = "indexFieldValue";
+    public static final String GSI_HK_FIELD_VALUE = "gsiHkFieldValue";
+    public static final String GSI2_HK_FIELD_VALUE = "gsi2HkFieldValue";
+    public static final String GSI2_RK_FIELD_VALUE = "2";
 
     /**
      * Retrieves the item with the provided HK and RK values.
