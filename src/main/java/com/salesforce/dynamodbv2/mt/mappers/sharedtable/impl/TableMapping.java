@@ -171,9 +171,9 @@ class TableMapping {
             true));
         if (virtualTable.getPrimaryKey().getRangeKey().isPresent()) {
             fieldMappings.add(new FieldMapping(new Field(virtualTable.getPrimaryKey().getRangeKey().get(),
-                virtualTable.getPrimaryKey().getRangeKeyType().get()),
-                new Field(physicalTable.getPrimaryKey().getRangeKey().get(),
-                    physicalTable.getPrimaryKey().getRangeKeyType().get()),
+                virtualTable.getPrimaryKey().getRangeKeyType().orElseThrow()),
+                new Field(physicalTable.getPrimaryKey().getRangeKey().orElseThrow(),
+                    physicalTable.getPrimaryKey().getRangeKeyType().orElseThrow()),
                 virtualTable.getTableName(),
                 physicalTable.getTableName(),
                 TABLE,
@@ -229,9 +229,9 @@ class TableMapping {
                     true));
                 if (virtualSi.getPrimaryKey().getRangeKey().isPresent()) {
                     fieldMappings.add(new FieldMapping(new Field(virtualSi.getPrimaryKey().getRangeKey().get(),
-                        virtualSi.getPrimaryKey().getRangeKeyType().get()),
-                        new Field(physicalSi.getPrimaryKey().getRangeKey().get(),
-                            physicalSi.getPrimaryKey().getRangeKeyType().get()),
+                        virtualSi.getPrimaryKey().getRangeKeyType().orElseThrow()),
+                        new Field(physicalSi.getPrimaryKey().getRangeKey().orElseThrow(),
+                            physicalSi.getPrimaryKey().getRangeKeyType().orElseThrow()),
                         virtualSi.getIndexName(),
                         physicalSi.getIndexName(),
                         SECONDARYINDEX,
@@ -343,7 +343,8 @@ class TableMapping {
         if (virtualPrimaryKey.getRangeKey().isPresent()) {
             checkArgument(physicalPrimaryKey.getRangeKey().isPresent(),
                           "rangeKey exists on virtual primary key but not on physical");
-            checkArgument(virtualPrimaryKey.getRangeKeyType().get() == physicalPrimaryKey.getRangeKeyType().get(),
+            checkArgument(virtualPrimaryKey.getRangeKeyType().orElseThrow()
+                    == physicalPrimaryKey.getRangeKeyType().orElseThrow(),
                           "virtual and physical range-key types mismatch");
         }
     }

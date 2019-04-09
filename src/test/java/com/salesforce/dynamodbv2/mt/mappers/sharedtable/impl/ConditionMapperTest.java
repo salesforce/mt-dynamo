@@ -492,21 +492,21 @@ class ConditionMapperTest {
     void findVirtualValuePlaceholderInEitherExpression() {
         assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue",
-            "#hk = :currentValue", "#hk").get());
+            "#hk = :currentValue", "#hk").orElseThrow());
         assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#hk").get());
+                "#hk").orElseThrow());
         assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#rk").get());
+                "#rk").orElseThrow());
         assertFalse(ConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentValue", "#invalid").isPresent());
         assertEquals(":ue1", ConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2",
-            null, "#ue1").get());
+            null, "#ue1").orElseThrow());
         assertFalse(ConditionMapper.findVirtualValuePlaceholder(
             null, null, "#invalid").isPresent());
     }
@@ -516,11 +516,11 @@ class ConditionMapperTest {
         assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue", "#hk"));
         assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
-            "#hk = :currentValue", "#hk").get());
+            "#hk = :currentValue", "#hk").orElseThrow());
         assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
-            "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").get());
+            "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").orElseThrow());
         assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
-            "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").get());
+            "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").orElseThrow());
         assertEquals(Optional.of(":ue1"), ConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
         assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(

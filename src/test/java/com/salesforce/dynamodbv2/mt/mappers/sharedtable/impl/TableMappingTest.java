@@ -168,7 +168,7 @@ class TableMappingTest {
                         .flatMap((Function<Entry<String, List<FieldMapping>>, Stream<FieldMapping>>)
                             fieldMappingEntry -> fieldMappingEntry.getValue().stream())
                         .collect(Collectors.toList()),
-                sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").get()));
+                sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").orElseThrow()));
     }
 
     @Test
