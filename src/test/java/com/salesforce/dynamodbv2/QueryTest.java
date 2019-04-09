@@ -12,10 +12,12 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI_HK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MAX;
@@ -351,8 +353,7 @@ class QueryTest {
                 items.get(0));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
+                    .withDefaults()
                     .build(),
                 items.get(1));
             assertEquals(TABLE3, queryRequest.getTableName()); // assert no side effects
@@ -378,8 +379,7 @@ class QueryTest {
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
+                    .withDefaults()
                     .build(),
                 items.get(0));
         });
@@ -391,14 +391,13 @@ class QueryTest {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(TABLE3).withKeyConditionExpression("#name = :value")
-                    .withExpressionAttributeNames(ImmutableMap.of("#name", INDEX_FIELD))
-                    .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(INDEX_FIELD_VALUE)))
+                    .withExpressionAttributeNames(ImmutableMap.of("#name", GSI_HK_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(GSI_HK_FIELD_VALUE)))
                     .withIndexName("testgsi")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
+                    .withDefaults()
                     .build(),
                 items.get(0));
         });
@@ -417,10 +416,9 @@ class QueryTest {
                             .withIndexName("testgsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
-                    .build(), items.get(0));
+                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+                .withDefaults()
+                .build(), items.get(0));
         });
     }
 
@@ -439,8 +437,7 @@ class QueryTest {
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                .indexField(S, INDEX_FIELD_VALUE)
+                .withDefaults()
                 .build(), items.get(0));
         });
     }
