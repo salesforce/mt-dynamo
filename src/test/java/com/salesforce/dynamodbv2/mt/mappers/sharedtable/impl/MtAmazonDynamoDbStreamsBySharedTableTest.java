@@ -125,11 +125,11 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
 
             // test with each tenant context
             MT_CONTEXT.withContext(TENANTS[0], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
             });
             MT_CONTEXT.withContext(TENANTS[1], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
 
@@ -175,7 +175,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
             MT_CONTEXT.withContext(TENANTS[0], () -> {
-                String iterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).get();
+                String iterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 GetRecordsResult result = mtDynamoDbStreams.getRecords(new GetRecordsRequest()
                     .withShardIterator(iterator)
                     .withLimit(3));

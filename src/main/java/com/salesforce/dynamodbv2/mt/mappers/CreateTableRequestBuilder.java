@@ -221,7 +221,7 @@ public class CreateTableRequestBuilder {
         addAttributeDefinition(primaryKey.getHashKey(), primaryKey.getHashKeyType());
         if (primaryKey.getRangeKey().isPresent()) {
             keySchemaElements.add(new KeySchemaElement(primaryKey.getRangeKey().get(), RANGE));
-            addAttributeDefinition(primaryKey.getRangeKey().get(), primaryKey.getRangeKeyType().get());
+            addAttributeDefinition(primaryKey.getRangeKey().get(), primaryKey.getRangeKeyType().orElseThrow());
         }
         return keySchemaElements;
     }

@@ -59,8 +59,8 @@ class DynamoSecondaryIndexTest {
         PrimaryKey primaryKey = sut.getPrimaryKey();
         assertEquals("hk", primaryKey.getHashKey());
         assertEquals(S, primaryKey.getHashKeyType());
-        assertEquals("rk", primaryKey.getRangeKey().get());
-        assertEquals(N, primaryKey.getRangeKeyType().get());
+        assertEquals("rk", primaryKey.getRangeKey().orElseThrow());
+        assertEquals(N, primaryKey.getRangeKeyType().orElseThrow());
         assertEquals("index2", sut.getIndexName());
         assertEquals(LSI, sut.getType());
         assertNotNull(sut.toString());
