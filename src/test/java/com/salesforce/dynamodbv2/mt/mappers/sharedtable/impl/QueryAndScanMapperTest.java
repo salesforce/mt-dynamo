@@ -140,7 +140,7 @@ class QueryAndScanMapperTest {
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx.virtualgsi.hkgsivalue"))),
+                                new AttributeValue().withS("ctx.virtualTable.hkgsivalue"))),
                 queryRequest);
     }
 
@@ -186,7 +186,7 @@ class QueryAndScanMapperTest {
                         .withFilterExpression(scanRequest.getFilterExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalgsihk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx.virtualgsi.hkgsivalue"))),
+                                new AttributeValue().withS("ctx.virtualTable.hkgsivalue"))),
                 scanRequest);
     }
 

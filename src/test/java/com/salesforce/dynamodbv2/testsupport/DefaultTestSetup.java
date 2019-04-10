@@ -141,6 +141,10 @@ public class DefaultTestSetup implements TestSetup {
         }
     }
 
+    protected MtAmazonDynamoDbContextProvider getMtContext() {
+        return mtContext;
+    }
+
     /**
      * Gets the {@code ScalarAttributeType} associated with the one key in the key schema with {@code KeyType}
      * {@code keyType}.

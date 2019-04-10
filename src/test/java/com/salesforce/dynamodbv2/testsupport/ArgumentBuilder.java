@@ -365,8 +365,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
              */
             //byAccount,
             byTable,
-            sharedTableCustomDynamic,
-            sharedTableCustomStaticBuilder,
+            // sharedTableCustomDynamic, // TODO remove this strategy
+            // sharedTableCustomStaticBuilder, // TODO remove this strategy
             sharedTable
         );
     }
