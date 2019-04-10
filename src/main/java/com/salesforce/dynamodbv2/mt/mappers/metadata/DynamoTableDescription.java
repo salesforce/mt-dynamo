@@ -35,8 +35,6 @@ public interface DynamoTableDescription extends HasPrimaryKey {
 
     List<DynamoSecondaryIndex> getLsis();
 
-    Optional<DynamoSecondaryIndex> getLsi(String indexName);
-
     DynamoSecondaryIndex findSi(String indexName);
 
     StreamSpecification getStreamSpecification();

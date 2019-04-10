@@ -200,8 +200,10 @@ public class CreateTableRequestBuilder {
      * @return CreateTableRequestBuilder
      */
     public CreateTableRequestBuilder withLocalSecondaryIndexes(LocalSecondaryIndex... localSecondaryIndexes) {
-        this.createTableRequest.setLocalSecondaryIndexes(Optional.ofNullable(localSecondaryIndexes)
-                .map(Arrays::asList).orElse(null));
+        this.createTableRequest.setLocalSecondaryIndexes(
+            localSecondaryIndexes == null || localSecondaryIndexes.length == 0
+            ? null
+            : Arrays.asList(localSecondaryIndexes));
         return this;
     }
 

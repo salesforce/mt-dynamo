@@ -108,7 +108,7 @@ public class AmazonDynamoDbAdminUtils {
         await().pollInSameThread()
             .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
             .atMost(timeoutSeconds, SECONDS)
-            .until(() -> tableActive(tableName, TableStatus.CREATING));
+            .until(() -> tableActive(tableName));
     }
 
     private boolean tableExists(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
@@ -164,9 +164,9 @@ public class AmazonDynamoDbAdminUtils {
         }
     }
 
-    private boolean tableActive(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
+    private boolean tableActive(String tableName) throws TableInUseException {
         try {
-            return TableStatus.ACTIVE.equals(getTableStatus(tableName, expectedTableStatus));
+            return TableStatus.ACTIVE.equals(getTableStatus(tableName, TableStatus.CREATING));
         } catch (ResourceNotFoundException e) {
             return false;
         }

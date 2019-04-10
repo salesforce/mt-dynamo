@@ -149,17 +149,12 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     @Override
-    public Optional<DynamoSecondaryIndex> getLsi(String indexName) {
-        return Optional.ofNullable(lsiMap.get(indexName));
-    }
-
-    @Override
     public DynamoSecondaryIndex findSi(String indexName) {
         Optional<DynamoSecondaryIndex> si = getGsi(indexName);
-        if (!si.isPresent()) {
-            si = getLsi(indexName);
+        if (si.isEmpty()) {
+            si = Optional.ofNullable(lsiMap.get(indexName));
         }
-        if (!si.isPresent()) {
+        if (si.isEmpty()) {
             throw new IllegalArgumentException("secondary index '" + indexName
                 + "' not found on table " + this.getTableName());
         }

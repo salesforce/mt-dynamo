@@ -82,8 +82,8 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
                 PrimaryKey primaryKey = hasPrimaryKey.getPrimaryKey();
                 return primaryKey.getHashKeyType().equals(primaryKeyToFind.getHashKeyType())
                     && // either range key doesn't exist on both
-                    ((!primaryKeyToFind.getRangeKey().isPresent()
-                        && !primaryKey.getRangeKey().isPresent())
+                    ((primaryKeyToFind.getRangeKey().isEmpty()
+                        && primaryKey.getRangeKey().isEmpty())
                         // or they are present on both and equal
                         || ((primaryKeyToFind.getRangeKeyType().isPresent()
                             && primaryKey.getRangeKeyType().isPresent())

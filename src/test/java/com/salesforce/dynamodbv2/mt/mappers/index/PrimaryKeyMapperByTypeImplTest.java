@@ -133,7 +133,7 @@ class PrimaryKeyMapperByTypeImplTest {
         PrimaryKey pk2 = hasPrimaryKey2.getPrimaryKey();
         org.junit.jupiter.api.Assertions.assertEquals(pk1.getHashKeyType(), pk2.getHashKeyType());
         assertTrue((pk1.getRangeKey().isPresent() && pk2.getRangeKey().isPresent())
-                || (!pk1.getRangeKey().isPresent() && !pk2.getRangeKey().isPresent()),
+                || (pk1.getRangeKey().isEmpty() && pk2.getRangeKey().isEmpty()),
             () -> "expected range key to be " + (pk1.getRangeKeyType().isPresent()
                 ? "present with type=" + pk1.getRangeKeyType().get()
                 : "NOT present but found with type=" + pk2.getRangeKeyType().orElseThrow()));

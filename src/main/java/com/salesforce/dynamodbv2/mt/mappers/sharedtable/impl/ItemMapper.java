@@ -10,9 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -87,9 +85,8 @@ class ItemMapper {
         return unqualifiedItem;
     }
 
-    @VisibleForTesting
-    protected static Map<String, List<FieldMapping>> invertMapping(
-            Map<String, List<FieldMapping>> mapping) {
+    private static Map<String, List<FieldMapping>> invertMapping(
+        Map<String, List<FieldMapping>> mapping) {
         Map<String, List<FieldMapping>> fieldMappings = new HashMap<>();
         mapping.values().stream()
                 .flatMap(Collection::stream)

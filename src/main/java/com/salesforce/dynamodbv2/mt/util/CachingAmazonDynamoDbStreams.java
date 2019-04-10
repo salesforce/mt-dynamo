@@ -560,8 +560,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 default:
                     throw new RuntimeException("Unhandled case in switch statement");
             }
-            String rest = compositeStrings.join(fields);
-            return (dynamoDbIterator == null ? streamArn : dynamoDbIterator) + ITERATOR_SEPARATOR + rest;
+            return (Objects.requireNonNullElse(dynamoDbIterator, streamArn))
+                + ITERATOR_SEPARATOR + compositeStrings.join(fields);
         }
 
         @Override
@@ -789,7 +789,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 continue;
             } catch (ExpiredIteratorException e) {
                 // if we loaded the iterator from our cache, reload it
-                if (!iterator.getDynamoDbIterator().isPresent()) {
+                if (iterator.getDynamoDbIterator().isEmpty()) {
                     if (LOG.isInfoEnabled()) {
                         LOG.info("Cached iterator expired: iterator={}, expired={}.", iterator, dynamoDbIterator);
                     }

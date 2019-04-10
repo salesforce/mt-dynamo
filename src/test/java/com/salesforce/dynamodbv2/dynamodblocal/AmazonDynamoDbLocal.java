@@ -56,25 +56,18 @@ public class AmazonDynamoDbLocal {
         AmazonDynamoDBLocal amazonDynamoDbLocalClient = getNewAmazonDynamoDbLocalClient();
         localAmazonDynamoDb = amazonDynamoDbLocalClient.amazonDynamoDB();
         localAmazonDynamoDbStreams = amazonDynamoDbLocalClient.amazonDynamoDBStreams();
-        return new DynamoDbClients(localAmazonDynamoDb, localAmazonDynamoDbStreams);
+        return new DynamoDbClients(localAmazonDynamoDb);
     }
 
     static class DynamoDbClients {
         private final AmazonDynamoDB amazonDynamoDb;
-        private final AmazonDynamoDBStreams amazonDynamoDbStreams;
 
-        DynamoDbClients(AmazonDynamoDB amazonDynamoDb,
-            AmazonDynamoDBStreams amazonDynamoDbStreams) {
+        DynamoDbClients(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
-            this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
         AmazonDynamoDB getAmazonDynamoDb() {
             return amazonDynamoDb;
-        }
-
-        AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
-            return amazonDynamoDbStreams;
         }
     }
 
