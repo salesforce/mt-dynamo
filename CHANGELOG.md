@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.34 (April 9, 2019)
 
-* Fixed bug [querying secondary indexes may yield expected results if two tables in the same tenant have the same index name](https://github.com/salesforce/mt-dynamo/pull/342)
+* Fixed bug [querying secondary indexes may yield unexpected results if two tables in the same tenant have the same index name](https://github.com/salesforce/mt-dynamo/pull/342)
 * Fixed bug [removed invalid constraint on the number of secondary indexes](https://github.com/salesforce/mt-dynamo/pull/340)
 
 ## 0.9.33 (April 5, 2019)
