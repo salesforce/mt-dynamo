@@ -49,7 +49,7 @@ import java.util.Optional;
  * <p>The multitenant context is separated from the table name by the delimiter,
  * which is '.' by default.
  *
- * <p>To use, call the static sharedTableCustomStaticBuilder() method. The following parameters are
+ * <p>To use, call the static builder() method. The following parameters are
  * required ... - an AmazonDynamoDB instance - a multitenant context
  *
  * <p>The following are optional arguments ... - delimiter: a String delimiter used

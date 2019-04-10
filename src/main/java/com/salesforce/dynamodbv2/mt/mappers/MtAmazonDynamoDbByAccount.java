@@ -24,7 +24,7 @@ import java.util.function.Function;
  * <p>MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end
  * of the chain when it is used.
  *
- * <p>To use, call the static sharedTableCustomStaticBuilder() method.  The following parameters are required ...
+ * <p>To use, call the static builder() method.  The following parameters are required ...
  * - a multitenant context
  * - a MtAccountCredentialsMapper implementation that maps a context to an AWSCredentialsProvider
  *

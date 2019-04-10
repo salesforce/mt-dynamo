@@ -78,10 +78,6 @@ MtAmazonDynamoDbBySharedTableBuilders.SharedTable.builder()
 
 See Javadoc for `MtAmazonDynamoDbBySharedTableBuilders.SharedTable` for more build-time configuration options and details.  See `MtAmazonDynamoDbBySharedTableTest` for code examples.
 
-#### `SharedTableCustomDynamic` and `SharedTableCustomStatic`
-
-For more flexibility, there are additional builders provided in `MtAmazonDynamoDbBySharedTableBuilders` that allow you to provide custom mappings between "virtual" tables, those accessed by the application code that is using the AWS Dynamo Java API to multitenant physical tables.  See Javadoc for `MtAmazonDynamoDbBySharedTableBuilders` for details.
-
 ## Table Prefixes
 
 All builders support passing in a table prefix with a `withTablePrefix()` method.  This will provide naming separation between different applications using the `mt-dynamo` library against tables in the same AWS account.  It is recommended that you always provide a table prefix to prevent inadvertent commingling of data.
@@ -109,14 +105,7 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 
  * All implementations support the following methods `createTable`, `describeTable`, `deleteTable`, `getItem`, `batchGetItem`, `putItem`, `scan`, and `query`.
  * The following methods are NOT supported: `updateTable`, `batchWriteItem`, `createBackup`, `deleteBackup`, `listBackups`, `restoreTableFromBackup`, `createGlobalTable`, `updateGlobalTable`, `describeGlobalTable`, `listGlobalTables`, `describeContinuousBackups`, `describeLimits`, `describeTimeToLive`, `updateTimeToLive`, `listTagsOfResource`, `tagResource`, `untagResource`, `getCachedResponseMetadata`, `waiters`.
- * `ScanRequest` and `QueryRequest` calls currently only support EQ, GT, GE, LT, and LE conditions (GT, GE, LT, and LE via KeyConditions only).
- * All `SharedTable*` implementations...
-   * Table Primary Keys: Currently, this implementation supports tables with a primary key containing only a `HASH` field of type `STRING`, or a table containing a `HASH` field and a `RANGE` field both of type `STRING`
-   * `GSI`s / `LSI`s:  Currently, this implementation supports a single `GSI` with a key schema containing `HASH` key of type `STRING` or a single `LSI` with a key schema containing a `RANGE` key of type `STRING`.  When a query request contains a reference to an index, the `GSI` matching the types of the key schema of the referenced index will be used.  If none is found, then it will look for a matching LSI.
-   * Drop Tables: When dropping a table, if you don't explicitly specify `truncateOnDeleteTable=true`, then table data will be left behind even after the table is dropped.  If a table with the same name is later recreated under the same tenant identifier, the data will be restored.  Note that undetermined behavior should be expected in the event that the original table schema is different from the new table schema.
-   * Adding/removing `GSI`s/`LSI`s:  Adding or removing `GSI`s or `LSI`s on a table that contains data will cause queries and scans to yield unexpected results.
-   * Projections in all `query` and `scan` requests default to `ProjectionType.ALL`.
-   * See implementation-specific limitations in the Javadoc on each builder.
+ * For `SharedTable`-specific limitations, see `SharedTableBuilder`.
  
 ## References
 1. [The Force.com Multitenant Architecture](https://developer.salesforce.com/page/Multi_Tenant_Architecture)
