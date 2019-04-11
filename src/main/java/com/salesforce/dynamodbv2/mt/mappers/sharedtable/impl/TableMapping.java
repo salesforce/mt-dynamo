@@ -298,7 +298,7 @@ class TableMapping {
                     + virtualTable + ", physicalTable=" + physicalTable);
             }
         }).collect(Collectors.toSet()).size(),
-            "More than one virtual secondary index maps to a single physical secondary index");
+            "More than one virtual secondary index maps to the same physical secondary index");
     }
 
     /*
