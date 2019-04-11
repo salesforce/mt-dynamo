@@ -230,7 +230,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return new MtAmazonDynamoDbBuilder();
     }
 
-    public static class MtAmazonDynamoDbBuilder {
+    public static class MtAmazonDynamoDbBuilder implements TableBuilder {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
@@ -243,6 +243,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        @Override
         public MtAmazonDynamoDbBuilder withBillingMode(BillingMode billingMode) {
             this.billingMode = billingMode;
             return this;

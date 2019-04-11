@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
@@ -153,7 +154,7 @@ import java.util.stream.Collectors;
  *   sorting so it was not implemented.
  *
  */
-public class SharedTableBuilder {
+public class SharedTableBuilder implements TableBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
     private List<CreateTableRequest> createTableRequests;
@@ -208,6 +209,7 @@ public class SharedTableBuilder {
         return this;
     }
 
+    @Override
     public SharedTableBuilder withBillingMode(BillingMode billingMode) {
         this.billingMode = billingMode;
         return this;
