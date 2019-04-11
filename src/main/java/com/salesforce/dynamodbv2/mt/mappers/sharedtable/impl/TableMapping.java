@@ -14,7 +14,6 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.lang.String.format;
-import static java.util.function.Function.identity;
 
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
@@ -290,7 +289,7 @@ class TableMapping {
     void validateSecondaryIndexes(DynamoTableDescription virtualTable,
                                   DynamoTableDescription physicalTable,
                                   DynamoSecondaryIndexMapper secondaryIndexMapper) {
-        virtualTable.getSis().stream().map(virtualSi -> {
+        checkArgument(virtualTable.getSis().size() == virtualTable.getSis().stream().map(virtualSi -> {
             try {
                 return secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSi, physicalTable);
             } catch (MappingException e) {
@@ -298,7 +297,8 @@ class TableMapping {
                     + ": " + e.getMessage() + ", virtualSiPrimaryKey=" + virtualSi + ", virtualTable="
                     + virtualTable + ", physicalTable=" + physicalTable);
             }
-        }).collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, identity()));
+        }).collect(Collectors.toSet()).size(),
+            "More than one virtual secondary index maps to a single physical secondary index");
     }
 
     /*

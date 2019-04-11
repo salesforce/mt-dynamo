@@ -609,7 +609,7 @@ class DocGeneratorRunner {
     }
 
     private SharedTableBuilder getBySharedTableBuilder() {
-        return SharedTableBuilder.sharedTableBuilder()
+        return SharedTableBuilder.builder()
                 .withPrecreateTables(false)
                 .withContext(MT_CONTEXT)
                 .withTruncateOnDeleteTable(true);

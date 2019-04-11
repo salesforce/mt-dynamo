@@ -26,7 +26,6 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
-import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
@@ -154,7 +153,7 @@ import java.util.stream.Collectors;
  *   sorting so it was not implemented.
  *
  */
-public class SharedTableBuilder implements TableBuilder {
+public class SharedTableBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
     private List<CreateTableRequest> createTableRequests;
@@ -177,15 +176,11 @@ public class SharedTableBuilder implements TableBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
-    public static SharedTableBuilder sharedTableBuilder() {
-        return new SharedTableBuilder();
-    }
-
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
     }
 
-    protected static String prefix(Optional<String> tablePrefix, String tableName) {
+    private static String prefix(Optional<String> tablePrefix, String tableName) {
         return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
@@ -213,7 +208,6 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    @Override
     public SharedTableBuilder withBillingMode(BillingMode billingMode) {
         this.billingMode = billingMode;
         return this;
@@ -316,7 +310,8 @@ public class SharedTableBuilder implements TableBuilder {
     /**
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
-    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput, BillingMode billingMode,
+    private static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
+        BillingMode billingMode,
         boolean streamsEnabled) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
@@ -476,7 +471,7 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    protected Optional<String> getTablePrefix() {
+    private Optional<String> getTablePrefix() {
         return tablePrefix;
     }
 
@@ -499,7 +494,7 @@ public class SharedTableBuilder implements TableBuilder {
             return new DynamoTableDescriptionImpl(createTableRequest).getPrimaryKey();
         }
 
-        public CreateTableRequest getCreateTableRequest() {
+        private CreateTableRequest getCreateTableRequest() {
             return createTableRequest;
         }
 

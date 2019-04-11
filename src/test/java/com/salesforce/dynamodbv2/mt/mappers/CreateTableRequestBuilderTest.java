@@ -87,9 +87,9 @@ class CreateTableRequestBuilderTest {
             expectedCapacityUnits = 1L;
         }
 
-        testBuilder.withBillingMode(expectedBillingMode);
-        testBuilder.addSi(indexName, indexType, primaryKey, expectedCapacityUnits);
-        testBuilder.build();
+        testBuilder.withBillingMode(expectedBillingMode)
+            .addSi(indexName, indexType, primaryKey, expectedCapacityUnits)
+            .build();
 
         DynamoDbTestUtils.assertExpectedBillingModeIsSet(
             testBuilder.getCreateTableRequest(), expectedBillingMode, expectedCapacityUnits);

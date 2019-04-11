@@ -63,7 +63,7 @@ class SharedTableBuilderTest {
                         .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
                 ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
 
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -80,7 +80,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithProvisionedInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -94,7 +94,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
@@ -119,7 +119,7 @@ class SharedTableBuilderTest {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 );
 
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -136,7 +136,7 @@ class SharedTableBuilderTest {
 
     @Test
     void testBillingModeIsPayPerRequestForDefaultCreateTableRequestsWithPayPerRequestInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
