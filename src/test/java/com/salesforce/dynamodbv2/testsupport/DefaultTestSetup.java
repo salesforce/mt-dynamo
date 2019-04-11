@@ -190,7 +190,7 @@ public class DefaultTestSetup implements TestSetup {
         return ImmutableList.of(
             baseBuilder.withTableName(TABLE1).build(),
             baseBuilder.withTableName(TABLE2).build(),
-            baseBuilder.withTableName(TABLE3) // also has a RK, GSI's, and LSI's
+            baseBuilder.withTableName(TABLE3) // also has a RK, GSIs, and LSIs
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, S),
                     new AttributeDefinition(INDEX_FIELD, S),

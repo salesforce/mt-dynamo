@@ -939,7 +939,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      * Adds the given loaded result into the cache under the given loaded position. Discards records that overlap with
      * existing cache entries. If the entry is adjacent to existing entries, it will merge them, provided the resulting
      * record list does not exceed {@link #GET_RECORDS_LIMIT}. Returns the result that was actually added to the cache
-     * (which may include merged records). The loaded position may precede the first record, since seqeuence numbers are
+     * (which may include merged records). The loaded position may precede the first record, since sequence numbers are
      * not contiguous.
      *
      * @param loadedPosition Position from which the result was loaded in the stream.
