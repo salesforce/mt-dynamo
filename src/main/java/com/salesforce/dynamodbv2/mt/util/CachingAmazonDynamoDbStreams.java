@@ -560,7 +560,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 default:
                     throw new RuntimeException("Unhandled case in switch statement");
             }
-            return (Objects.requireNonNullElse(dynamoDbIterator, streamArn))
+            return Objects.requireNonNullElse(dynamoDbIterator, streamArn)
                 + ITERATOR_SEPARATOR + compositeStrings.join(fields);
         }
 
