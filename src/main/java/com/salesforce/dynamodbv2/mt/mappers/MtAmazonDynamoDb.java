@@ -23,10 +23,6 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
             return context;
         }
 
-        public void setContext(String context) {
-            this.context = context;
-        }
-
         public MtRecord withContext(String context) {
             this.context = context;
             return this;
@@ -34,10 +30,6 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
 
         public String getTableName() {
             return tableName;
-        }
-
-        public void setTableName(String tableName) {
-            this.tableName = tableName;
         }
 
         public MtRecord withTableName(String tableName) {
@@ -102,7 +94,5 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
                 + '}';
         }
     }
-
-    default void invalidateCaches() {}
 
 }

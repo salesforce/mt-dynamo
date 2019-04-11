@@ -24,10 +24,6 @@ public class DelegatingAmazonDynamoDbStreams implements AmazonDynamoDBStreams {
         this.dynamoDbStreams = dynamoDbStreams;
     }
 
-    public AmazonDynamoDBStreams getAmazonDynamoDbStreams() {
-        return dynamoDbStreams;
-    }
-
     @Override
     @Deprecated
     public void setEndpoint(String endpoint) {

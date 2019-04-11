@@ -167,7 +167,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             putTestItem(mtDynamoDb, TENANTS[1], i++);
             // one record for tenant 1 on page 2 (don't expect to get)
             putTestItem(mtDynamoDb, TENANTS[1], i++);
-            final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i++);
+            putTestItem(mtDynamoDb, TENANTS[0], i++);
             putTestItem(mtDynamoDb, TENANTS[1], i);
 
             // now query change streams

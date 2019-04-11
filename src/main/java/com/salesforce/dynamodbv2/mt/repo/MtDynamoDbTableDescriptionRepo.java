@@ -143,11 +143,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return tableDescription;
     }
 
-    @Override
-    public void invalidateCaches() {
-        cache.invalidateAll();
-    }
-
     private String getTableDescriptionTableName() {
         try {
             cache.get(tableDescriptionTableName, () -> {

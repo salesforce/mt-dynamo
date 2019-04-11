@@ -38,10 +38,6 @@ public class ShardIterator {
         this.rest = rest;
     }
 
-    public boolean isLocal() {
-        return local;
-    }
-
     public String getArn() {
         return arn;
     }

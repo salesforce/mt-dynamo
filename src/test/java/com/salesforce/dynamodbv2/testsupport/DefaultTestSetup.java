@@ -88,7 +88,7 @@ public class DefaultTestSetup implements TestSetup {
         String table = createTableRequest.getTableName();
         final Optional<ScalarAttributeType> rangeKeyAttributeTypeOpt = getScalarAttributeType(createTableRequest,
             KeyType.RANGE);
-        if (!rangeKeyAttributeTypeOpt.isPresent()) { // no range key
+        if (rangeKeyAttributeTypeOpt.isEmpty()) { // no range key
             // (hk-only tables) add two rows:
             // (hk1, {no rk}, table-and-org-specific-field-value1)
             // (hk2, {no rk}, table-and-org-specific-field-value2)
@@ -231,7 +231,7 @@ public class DefaultTestSetup implements TestSetup {
                     .withKeySchema(new KeySchemaElement(RANGE_KEY_FIELD, KeyType.HASH))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(null).build()
+                .withLocalSecondaryIndexes().build()
         );
     }
 
