@@ -52,12 +52,11 @@ import java.util.stream.Collectors;
  * Maps virtual tables to a set of 7 physical tables hard-coded into the builder by comparing the types of the elements
  * of the virtual table's primary key against the corresponding types on the physical tables.  It support mapping many
  * virtual tables to a single physical table, mapping field names and types, secondary indexes.  It supports for
- * allowing multitenant context to be added to table and index hash key fields.  Throughout this documentation,
- * virtual tables are meant to represent tables as they are understood by the developer using the DynamoDB Java API
+ * allowing multitenant context to be added to table and index hash key fields.  Throughout this documentation, virtual
+ * tables are meant to represent tables as they are understood by the developer using the DynamoDB Java API
  * (`AmazonDynamoDB`).  Physical tables represent the tables that store the data in AWS.  The implementation supports
- * virtual tables with up to 4 GSI's, where no more than one GSI hash/range key on a given virtual table may match
- * one of the following combinations: S(hk only), S-S, S-N, S-B.  It also supports up to 4 LSI's with the same
- * limitation.
+ * virtual tables with up to 4 GSIs, where no more than one GSI hash/range key on a given virtual table may match one of
+ * the following combinations: S(hk only), S-S, S-N, S-B.  It also supports up to 4 LSIs with the same limitation.
  *
  * <p>Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi
  * tables and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
