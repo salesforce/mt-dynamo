@@ -12,6 +12,7 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable.MtAmazonDynamoDbBuilder;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,17 @@ class MtAmazonDynamoDbByTableTest {
                 .withTablePrefix(tablePrefix)
                 .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
                 .withContext(ctx);
+    }
+
+    @Test
+    void testTableBuilderInterface() throws InterruptedException {
+        TableBuilder tableBuilder = mtDynamoDbByTableBuilder;
+        tableBuilder.withBillingMode(BillingMode.PROVISIONED);
+        MtAmazonDynamoDbByTable mtDynamoDbByTable = ((MtAmazonDynamoDbBuilder) tableBuilder).build();
+
+        mtDynamoDbByTable.createTable(request);
+        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
     }
 
     @Test
