@@ -1,50 +1,27 @@
 package com.salesforce.dynamodbv2.testsupport;
 
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
-import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.IS_LOCAL_DYNAMO;
 
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
-import com.amazonaws.services.dynamodbv2.model.KeyType;
-import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
-import com.amazonaws.services.dynamodbv2.model.Projection;
-import com.amazonaws.services.dynamodbv2.model.ProjectionType;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
-import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomStaticBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -79,12 +56,6 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
-    private static final String HK_TABLE_NAME = "hkTable";
-    private static final String HK_RK_S_TABLE_NAME = "hkRkSTable"; // range-key type: S
-    private static final String HK_RK_N_TABLE_NAME = "hkRkNTable"; // range-key type: N
-    private static final String HASH_KEY_FIELD = "HASH_KEY_FIELD";
-    private static final String RANGE_KEY_FIELD = "RANGE_KEY_FIELD";
-    private static final String INDEX_RANGE_FIELD = "INDEX_RANGE_FIELD";
 
     public ArgumentBuilder() {
     }
@@ -142,214 +113,6 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withContext(MT_CONTEXT).build();
 
         /*
-         * SharedTableCustomDynamicBuilder
-         */
-        String hashKeyField = "hashKeyField";
-        String rangeKeyField = "rangeKeyField";
-        String indexField2 = "indexField2";
-        String indexRangeField = "indexRangeField";
-        String gsiHkField = "gsiHkField";
-        String gsi2HkField = "gsi2HkField";
-        String gsi2RkField = "gsi2RkField";
-        CreateTableRequestFactory createTableRequestFactory = new CreateTableRequestFactory() {
-            @Override
-            public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
-                final List<CreateTableRequest> physicalTables = getPhysicalTables();
-                final String virtualTableName = virtualTableDescription.getTableName();
-                final CreateTableRequest retvalInnards;
-                final char virtualTableNameLastChar = virtualTableName.charAt(virtualTableName.length() - 1);
-                boolean isDefault = false;
-                switch (virtualTableNameLastChar) {
-                    case '3':
-                        retvalInnards = physicalTables.get(0);
-                        break;
-                    case '4':
-                        retvalInnards = physicalTables.get(1);
-                        break;
-                    case '5':
-                        retvalInnards = physicalTables.get(2);
-                        break;
-                    default:
-                        isDefault = true;
-                        retvalInnards = physicalTables.get(3);
-                }
-
-                final String physicalTableName = retvalInnards.getTableName();
-                Preconditions.checkState(isDefault || physicalTableName.charAt(physicalTableName.length() - 1)
-                    == virtualTableNameLastChar);
-                return Optional.of(retvalInnards);
-            }
-
-            @Override
-            public List<CreateTableRequest> getPhysicalTables() {
-                CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder();
-                baseBuilder.withProvisionedThroughput(1L, 1L);
-                return ImmutableList.of(
-                        baseBuilder
-                                .withTableName("table_3")
-                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
-                                        new AttributeDefinition(rangeKeyField, S),
-                                        new AttributeDefinition(gsiHkField, S),
-                                        new AttributeDefinition(gsi2HkField, S),
-                                        new AttributeDefinition(gsi2RkField, N),
-                                        new AttributeDefinition(indexRangeField, S))
-                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                                        new KeySchemaElement(rangeKeyField, KeyType.RANGE))
-                                .withGlobalSecondaryIndexes(
-                                        new GlobalSecondaryIndex().withIndexName("testgsi")
-                                            .withKeySchema(new KeySchemaElement(gsiHkField, KeyType.HASH))
-                                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                                        new GlobalSecondaryIndex().withIndexName("testgsi2")
-                                            .withKeySchema(new KeySchemaElement(gsi2HkField, KeyType.HASH),
-                                                new KeySchemaElement(gsi2RkField, KeyType.RANGE))
-                                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                                        .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH),
-                                                new KeySchemaElement(indexRangeField, KeyType.RANGE))
-                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                                .withStreamSpecification(new StreamSpecification()
-                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                                        .withStreamEnabled(true))
-                                .build(),
-                        baseBuilder
-                                .withTableName("table_4")
-                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
-                                        new AttributeDefinition(rangeKeyField, N), // unlike table_3
-                                        new AttributeDefinition(gsiHkField, S),
-                                        new AttributeDefinition(gsi2HkField, S),
-                                        new AttributeDefinition(gsi2RkField, N),
-                                        new AttributeDefinition(indexRangeField, S))
-                                .build(),
-                        baseBuilder
-                                .withTableName("table_5")
-                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S),
-                                        new AttributeDefinition(rangeKeyField, S),
-                                        new AttributeDefinition(indexField2, S),
-                                        new AttributeDefinition(indexRangeField, S))
-                                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
-                                        .withIndexName("testgsi_table_rk_as_index_hk")
-                                        .withKeySchema(new KeySchemaElement(indexField2, KeyType.HASH))
-                                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                                .build(),
-                        new CreateTableRequest()
-                                .withTableName("table_default")
-                                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                                .withAttributeDefinitions(new AttributeDefinition(hashKeyField, S))
-                                .withKeySchema(new KeySchemaElement(hashKeyField, KeyType.HASH))
-                                .withStreamSpecification(new StreamSpecification()
-                                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                                        .withStreamEnabled(true))
-                );
-            }
-        };
-
-        AmazonDynamoDB sharedTableCustomDynamic = SharedTableCustomDynamicBuilder.builder()
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT)
-            .withCreateTableRequestFactory(createTableRequestFactory)
-            .withTruncateOnDeleteTable(true).build();
-
-        /*
-         * sharedTableCustomStaticBuilder
-         *
-         * Setting the physical table's hk field to something that other than GSI_HK_FIELD works around a bug
-         * where a client is allowed to pass an item that has a field that matches a physical field name
-         * causing unexpected behavior.  Our tests happen to do this.  TODO: fix this bug.
-         */
-        String sharedTableGsiHkField = GSI_HK_FIELD + "suffix";
-        AmazonDynamoDB sharedTableCustomStaticBuilder = SharedTableCustomStaticBuilder.sharedTableCustomStaticBuilder()
-            .withCreateTableRequests(
-                new CreateTableRequest()
-                    .withTableName(HK_TABLE_NAME)
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S))
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                    .withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true)),
-                new CreateTableRequest()
-                    .withTableName(HK_RK_S_TABLE_NAME)
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
-                        new AttributeDefinition(RANGE_KEY_FIELD, S),
-                        new AttributeDefinition(INDEX_RANGE_FIELD, S),
-                        new AttributeDefinition(sharedTableGsiHkField, S),
-                        new AttributeDefinition(GSI2_HK_FIELD, S),
-                        new AttributeDefinition(GSI2_RK_FIELD, N))
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
-                    .withGlobalSecondaryIndexes(
-                        new GlobalSecondaryIndex().withIndexName("testgsi")
-                            .withKeySchema(new KeySchemaElement(sharedTableGsiHkField, KeyType.HASH))
-                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                        new GlobalSecondaryIndex().withIndexName("testgsi2")
-                            .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
-                                new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
-                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                        .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                            new KeySchemaElement(INDEX_RANGE_FIELD, KeyType.RANGE))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true)),
-                new CreateTableRequest()
-                    .withTableName(HK_RK_N_TABLE_NAME)
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
-                        new AttributeDefinition(RANGE_KEY_FIELD, N),
-                        new AttributeDefinition(INDEX_RANGE_FIELD, S),
-                        new AttributeDefinition(GSI_HK_FIELD, S),
-                        new AttributeDefinition(GSI2_HK_FIELD, S),
-                        new AttributeDefinition(GSI2_RK_FIELD, N))
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
-                    .withGlobalSecondaryIndexes(
-                        new GlobalSecondaryIndex().withIndexName("testgsi")
-                            .withKeySchema(new KeySchemaElement(GSI_HK_FIELD, KeyType.HASH))
-                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                        new GlobalSecondaryIndex().withIndexName("testgsi2")
-                            .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
-                                new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
-                            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                            .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
-                        .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                            new KeySchemaElement(INDEX_RANGE_FIELD, KeyType.RANGE))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                    .withStreamSpecification(new StreamSpecification()
-                        .withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                        .withStreamEnabled(true)))
-            .withTableMapper(virtualTableDescription -> {
-                final String virtualTableName = virtualTableDescription.getTableName();
-                switch (virtualTableName.charAt(virtualTableName.length() - 1)) {
-                    /*
-                     * Virtual TABLE3 and TABLE5 can map to HK_RK_S_TABLE_NAME because the virtual they both have
-                     * GSI's that map to the physical table's 'testgsi' key based on the fact that the data types of
-                     * the indices key.
-                     */
-                    case '3':
-                    case '5':
-                        return HK_RK_S_TABLE_NAME;
-                    case '4':
-                        return HK_RK_N_TABLE_NAME;
-                    default:
-                        return HK_TABLE_NAME;
-                }
-            })
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT)
-            .withTruncateOnDeleteTable(true)
-            .withPollIntervalSeconds(getPollInterval()).build();
-
-        /*
          * bySharedTable
          */
         AmazonDynamoDB sharedTable = SharedTableBuilder.sharedTableBuilder()
@@ -365,8 +128,6 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
              */
             //byAccount,
             byTable,
-            // sharedTableCustomDynamic, // TODO remove this strategy
-            // sharedTableCustomStaticBuilder, // TODO remove this strategy
             sharedTable
         );
     }

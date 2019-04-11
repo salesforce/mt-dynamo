@@ -32,7 +32,7 @@ public class ItemBuilder {
     private final Map<String, AttributeValue> item;
 
     /**
-     * Creates a new sharedTableCustomStaticBuilder.
+     * Creates a new ItemBuilder.
      */
     public static ItemBuilder builder(ScalarAttributeType hashKeyAttrType, String hashKeyValue) {
         final Map<String, AttributeValue> item = new HashMap<>();

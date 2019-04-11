@@ -62,30 +62,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Allows a developer using the mt-dynamo library to provide a custom mapping between tables that clients interact with
- * and the physical tables where the data for those tables are stored.  It support mapping many virtual tables to a
- * single physical table, mapping field names and types, secondary indexes.  It supports for allowing multitenant
- * context to be added to table and index hash key fields.  Throughout this documentation, virtual tables are meant to
- * represent tables as they are understood by the developer using the DynamoDB Java API.  Physical tables represent the
- * tables that store the data in AWS.
+ * Maps virtual tables to a set of 7 physical tables hard-coded into the builder by comparing the types of the elements
+ * of the virtual table's primary key against the corresponding types on the physical tables.  It support mapping many
+ * virtual tables to a single physical table, mapping field names and types, secondary indexes.  It supports for
+ * allowing multitenant context to be added to table and index hash key fields.
  *
- * <p>SharedTableCustomDynamicBuilder provides a series of static methods that providing builders that are
- * preconfigured to support a number of common mappings.  See Javadoc for each provided sharedTableCustomStaticBuilder
- * for details.
- *
- * <p>Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
- *
- * <p>See deleteTableAsync and truncateOnDeleteTable in the SharedTableCustomDynamicBuilder for details on how to
- * control behavior that is specific to deleteTable.
- *
- * <p>** Performing updates via UpdateItemRequest objects withAttributeUpdates and addAttributeUpdateEntry is not
- * supported since they are considered 'legacy parameters' according DynamoDB docs.  Standard update expressions are
- * supported.
- *
- * <p>*** Only EQ, GT, GE, LT, and LE conditions are supported; GT, GE, LT, and LE via KeyConditions only
- *
- * <p>Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield unexpected
- * results.
+ * <p>See {@code SharedTableBuilder} for further details.
  *
  * @author msgroi
  */

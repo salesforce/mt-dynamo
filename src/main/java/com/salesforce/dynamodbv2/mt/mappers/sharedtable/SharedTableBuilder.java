@@ -10,21 +10,26 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
@@ -33,6 +38,9 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
+import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,24 +49,15 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Maps virtual tables to a set of physical tables hard-coded into the builder by comparing the types of the elements
- * of the virtual table's primary key against the corresponding types on the physical tables.  It requires that for
- * any virtual table referenced by a client, there exists a physical table in the list predefined by the builder
- * with a primary key whose elements are compatible.  It also requires that for any secondary index on a virtual
- * table referenced by a client, there must exist a secondary index on the corresponding physical table of the same
- * type (global vs. local) where the primary keys are compatible.
- *
- * <p>See "Table and Secondary Index Primary Key Compatibility" for an explanation of compatibility.
- *
- * <p>The builder requires ...
- *
- * <p>- an {@code AmazonDynamoDB} instance
- * - a multitenant context
- *
- * <p>Optionally ...
- * - a list of {@code CreateTableRequest}s representing physical tables.  Default: See enumerated list of tables below.
- *
- * <p>See {@code SharedTableCustomDynamicBuilder} for optional arguments and limitations.
+ * Maps virtual tables to a set of 7 physical tables hard-coded into the builder by comparing the types of the elements
+ * of the virtual table's primary key against the corresponding types on the physical tables.  It support mapping many
+ * virtual tables to a single physical table, mapping field names and types, secondary indexes.  It supports for
+ * allowing multitenant context to be added to table and index hash key fields.  Throughout this documentation,
+ * virtual tables are meant to represent tables as they are understood by the developer using the DynamoDB Java API
+ * (`AmazonDynamoDB`).  Physical tables represent the tables that store the data in AWS.  The implementation supports
+ * virtual tables with up to 4 GSI's, where no more than one GSI hash/range key on a given virtual table may match
+ * one of the following combinations: S(hk only), S-S, S-N, S-B.  It also supports up to 4 LSI's with the same
+ * limitation.
  *
  * <p>Below is are the physical tables that are created.  Virtual tables with no LSI will be mapped to the *_nolsi
  * tables and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
@@ -85,6 +84,57 @@ import java.util.stream.Collectors;
  * lsi 3 hash   S         S         S
  * lsi 3 range  B         B         B
  *
+ * <p>The builder requires ...
+ *
+ * <p>- an {@code AmazonDynamoDB} instance
+ * - a multitenant context
+ *
+ * <p>Optionally ...
+ *
+ * <p>- {@code DynamoSecondaryIndexMapper}: Allows customization of mapping of virtual to physical
+ *   secondary indexes.  Two implementations are provided, {@code DynamoSecondaryIndexMapperByNameImpl} and
+ *   {@code DynamoSecondaryIndexMapperByTypeImpl}.  See Javadoc there for details.
+ *   Default: {@code DynamoSecondaryIndexMapperByNameImpl}.
+ * - {@code delimiter}: a {@code String} delimiter used to separate the tenant identifier prefix from the hash-key
+ *   value.  Default: '-'.
+ * - {@code tablePrefix}: a {@code String} used to prefix all tables with, independently of multitenant context, to
+ *   provide the ability to support multiple environments within an account.
+ * - {@code MtTableDescriptionRepo}: responsible for storing and retrieving table descriptions.
+ *   Default: {@code MtDynamoDbTableDescriptionRepo}
+ *   which stores table definitions in DynamoDB itself.
+ * - {@code deleteTableAsync}: a {@code boolean} to indicate whether table data deletion may happen asynchronously after
+ *   the table is dropped.  Default: FALSE.
+ * - {@code truncateOnDeleteTable}: a {@code boolean} to indicate whether all of a table's data should be deleted when a
+ *   table is dropped.  Default: FALSE.
+ * - {@code precreateTables}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
+ *   Default: TRUE.
+ * - {@code tableMappingFactory}: the {@code TableMappingFactory} that maps virtual to physical table instances.
+ *   Default: a table mapping factory that implements shared table behavior.
+ * - {@code name}: a {@code String} representing the name of the multitenant AmazonDynamoDB instance.
+ *   Default: "MtAmazonDynamoDbBySharedTable".
+ * - {@code pollIntervalSeconds}: an {@code Integer} representing the interval in seconds between attempts at checking
+ *   the status of the table being created.  Default: 0.
+ *
+ * <p>Limitations ...
+ *
+ * <p>- Supported methods: create|describe|delete* Table, get|put|update** Item, query***, scan***
+ * - Drop Tables: When dropping a table, if you don't explicitly specify `truncateOnDeleteTable=true`, then table
+ * data will be left behind even after the table is dropped.  If a table with the same name is later recreated under
+ * the same tenant identifier, the data will be restored.  Note that undetermined behavior should be expected in the
+ * event that the original table schema is different from the new table schema.
+ * - Adding/removing `GSI`s/`LSI`s:  Adding or removing `GSI`s or `LSI`s on a table that contains data will cause
+ * queries and scans to yield unexpected results.
+ * - Projections in all `query` and `scan` requests default to `ProjectionType.ALL`.
+ * - Deleting and recreating tables without deleting all table data(see truncateOnDeleteTable) may yield
+ * unexpected results.
+ *
+ * <p>* See deleteTableAsync and truncateOnDeleteTable for details on how to
+ * control behavior that is specific to deleteTable.
+ * ** Updates on gsi hash keys are unsupported.  Performing updates via `UpdateItemRequest` objects
+ * `withAttributeUpdates` and `addAttributeUpdateEntry` is not supported since they are considered 'legacy parameters'
+ * according DynamoDB docs.  Standard update expressions are supported.
+ * *** Only EQ, GT, GE, LT, and LE conditions are supported; GT, GE, LT, and LE via KeyConditions only
+ *
  * <p>Design constraints:
  *
  * <p>- In order to support multitenancy, all HKs (table and index-level) must be prefixed with the alphanumeric
@@ -103,18 +153,41 @@ import java.util.stream.Collectors;
  *   all virtual types down to byte arrays and back.  This would necessitate a smaller set of tables, possibly as few
  *   as 3.  However, the mapping layer would also need to be responsible for maintaining consistency with respect to
  *   sorting so it was not implemented.
+ *
  */
-public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implements TableBuilder {
+public class SharedTableBuilder implements TableBuilder {
 
+    private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
 
     private BillingMode billingMode;
     private Boolean streamsEnabled;
+    private String name;
+    private AmazonDynamoDB amazonDynamoDb;
+    private MtAmazonDynamoDbContextProvider mtContext;
+    private Character delimiter;
+    private MtTableDescriptionRepo mtTableDescriptionRepo;
+    private TableMappingFactory tableMappingFactory;
+    private CreateTableRequestFactory createTableRequestFactory;
+    private DynamoSecondaryIndexMapper secondaryIndexMapper;
+    private Boolean deleteTableAsync;
+    private Boolean truncateOnDeleteTable;
+    private Boolean precreateTables;
+    private Integer pollIntervalSeconds;
+    private Optional<String> tablePrefix = empty();
 
     public static SharedTableBuilder sharedTableBuilder() {
         return new SharedTableBuilder();
+    }
+
+    public static SharedTableBuilder builder() {
+        return new SharedTableBuilder();
+    }
+
+    protected static String prefix(Optional<String> tablePrefix, String tableName) {
+        return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
     /**
@@ -149,19 +222,39 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
 
     /**
      * TODO: write Javadoc.
+     *
+     * @return a newly created {@code MtAmazonDynamoDbBySharedTable} based on the contents of the
+     *     {@code SharedTableBuilder}
      */
-    @Override
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
         withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests,
             getTablePrefix()));
         withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
-        return super.build();
+        setDefaults();
+        validate();
+        if (tableMappingFactory == null) {
+            tableMappingFactory = new TableMappingFactory(
+                createTableRequestFactory,
+                mtContext,
+                secondaryIndexMapper,
+                delimiter,
+                amazonDynamoDb,
+                precreateTables,
+                pollIntervalSeconds
+            );
+        }
+        return new MtAmazonDynamoDbBySharedTable(name,
+            mtContext,
+            amazonDynamoDb,
+            tableMappingFactory,
+            mtTableDescriptionRepo,
+            deleteTableAsync,
+            truncateOnDeleteTable);
     }
 
-    @Override
-    protected void setDefaults() {
+    private void setDefaults() {
         if (this.defaultProvisionedThroughput == null) {
             this.defaultProvisionedThroughput = 1L;
         }
@@ -180,8 +273,42 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
                             createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
                     .collect(Collectors.toList());
         }
-        super.withBillingMode(this.billingMode);
-        super.setDefaults();
+        withBillingMode(this.billingMode);
+        if (name == null) {
+            name = "MtAmazonDynamoDbBySharedTable";
+        }
+        if (this.billingMode == null) {
+            this.billingMode = BillingMode.PROVISIONED;
+        }
+        if (secondaryIndexMapper == null) {
+            secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
+        }
+        if (delimiter == null) {
+            delimiter = '.';
+        }
+        if (truncateOnDeleteTable == null) {
+            truncateOnDeleteTable = false;
+        }
+        if (deleteTableAsync == null) {
+            deleteTableAsync = false;
+        }
+        if (precreateTables == null) {
+            precreateTables = true;
+        }
+        if (pollIntervalSeconds == null) {
+            pollIntervalSeconds = 0;
+        }
+        if (mtTableDescriptionRepo == null) {
+            mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
+                .withAmazonDynamoDb(amazonDynamoDb)
+                .withBillingMode(this.billingMode)
+                .withContext(mtContext)
+                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLENAME)
+                .withPollIntervalSeconds(pollIntervalSeconds)
+                .withTablePrefix(tablePrefix).build();
+
+            ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
+        }
     }
 
     private static final String HASH_KEY_FIELD = "hk";
@@ -231,10 +358,9 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
     }
 
     /**
-     * Based on input throughput, billing mode is set accordingly. If billing mode is provisioned, throughput is on
-     * request sharedTableCustomStaticBuilder.
+     * Based on input throughput, billing mode is set accordingly.
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput the throughput to assign to the request sharedTableCustomStaticBuilder.
+     * @param provisionedThroughput the throughput to assign to the request.
      *                              If 0, billing mode is set to PPR.
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
@@ -287,6 +413,78 @@ public class SharedTableBuilder extends SharedTableCustomDynamicBuilder implemen
             indexType,
             primaryKey,
             defaultProvisionedThroughput);
+    }
+
+    public SharedTableBuilder withName(String name) {
+        this.name = name;
+        return this;
+    }
+
+    public SharedTableBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
+        this.amazonDynamoDb = amazonDynamoDb;
+        return this;
+    }
+
+    public SharedTableBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
+        this.mtContext = mtContext;
+        return this;
+    }
+
+    public SharedTableBuilder withDelimiter(char delimiter) {
+        this.delimiter = delimiter;
+        return this;
+    }
+
+    public SharedTableBuilder withTablePrefix(String tablePrefix) {
+        this.tablePrefix = of(tablePrefix);
+        return this;
+    }
+
+    public SharedTableBuilder withCreateTableRequestFactory(
+        CreateTableRequestFactory createTableRequestFactory) {
+        this.createTableRequestFactory = createTableRequestFactory;
+        return this;
+    }
+
+    public SharedTableBuilder withDynamoSecondaryIndexMapper(
+        DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
+        this.secondaryIndexMapper = dynamoSecondaryIndexMapper;
+        return this;
+    }
+
+    public SharedTableBuilder withTableDescriptionRepo(MtTableDescriptionRepo mtTableDescriptionRepo) {
+        this.mtTableDescriptionRepo = mtTableDescriptionRepo;
+        return this;
+    }
+
+    public SharedTableBuilder withDeleteTableAsync(boolean dropAsync) {
+        deleteTableAsync = dropAsync;
+        return this;
+    }
+
+    public SharedTableBuilder withTruncateOnDeleteTable(Boolean truncateOnDrop) {
+        truncateOnDeleteTable = truncateOnDrop;
+        return this;
+    }
+
+    public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
+        this.precreateTables = precreateTables;
+        return this;
+    }
+
+    public SharedTableBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
+        this.pollIntervalSeconds = pollIntervalSeconds;
+        return this;
+    }
+
+    protected Optional<String> getTablePrefix() {
+        return tablePrefix;
+    }
+
+    private void validate() {
+        checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
+        checkNotNull(mtContext, "mtContext is required");
+        checkNotNull(createTableRequestFactory, "createTableRequestFactory is required");
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {

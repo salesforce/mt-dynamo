@@ -40,7 +40,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountM
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableCustomDynamicBuilder;
 import dnl.utils.text.table.TextTable;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -609,7 +608,7 @@ class DocGeneratorRunner {
                         "updateItem"));
     }
 
-    private SharedTableCustomDynamicBuilder getBySharedTableBuilder() {
+    private SharedTableBuilder getBySharedTableBuilder() {
         return SharedTableBuilder.sharedTableBuilder()
                 .withPrecreateTables(false)
                 .withContext(MT_CONTEXT)
