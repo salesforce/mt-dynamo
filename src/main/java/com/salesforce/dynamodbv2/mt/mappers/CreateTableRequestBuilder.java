@@ -228,8 +228,4 @@ public class CreateTableRequestBuilder {
         return keySchemaElements;
     }
 
-    public CreateTableRequest getCreateTableRequest() {
-        return createTableRequest;
-    }
-
 }
