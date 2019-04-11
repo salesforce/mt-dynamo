@@ -332,7 +332,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
                 switch (virtualTableName.charAt(virtualTableName.length() - 1)) {
                     /*
                      * Virtual TABLE3 and TABLE5 can map to HK_RK_S_TABLE_NAME because the virtual they both have
-                     * GSI's that map to the physical table's 'testgsi' key based on the fact that the data types of
+                     * GSIs that map to the physical table's 'testgsi' key based on the fact that the data types of
                      * the indices key.
                      */
                     case '3':
