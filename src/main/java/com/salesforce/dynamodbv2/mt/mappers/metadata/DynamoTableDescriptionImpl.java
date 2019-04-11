@@ -152,7 +152,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     public DynamoSecondaryIndex findSi(String indexName) {
         Optional<DynamoSecondaryIndex> si = getGsi(indexName);
         if (si.isEmpty()) {
-            si = Optional.ofNullable(lsiMap.get(indexName));
+            si = getLsi(indexName);
         }
         if (si.isEmpty()) {
             throw new IllegalArgumentException("secondary index '" + indexName
@@ -219,4 +219,9 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         result = 31 * result + (streamSpecification != null ? streamSpecification.hashCode() : 0);
         return result;
     }
+
+    private Optional<DynamoSecondaryIndex> getLsi(String indexName) {
+        return Optional.ofNullable(lsiMap.get(indexName));
+    }
+
 }
