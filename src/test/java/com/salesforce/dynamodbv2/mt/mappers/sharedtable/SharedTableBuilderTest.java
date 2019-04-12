@@ -167,7 +167,7 @@ class SharedTableBuilderTest {
             .withBillingMode(BillingMode.PAY_PER_REQUEST).build();
 
         // checks billing mode on physical data tables
-        for (String table: getPrefixedTables()) {
+        for (String table : getPrefixedTables()) {
             DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
         }
 
