@@ -10,7 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,7 +51,7 @@ class FieldMapperTest {
         MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         String value = generateValue();
         assertMapper(S,
-            SECONDARYINDEX,
+            SECONDARY_INDEX,
             () -> new AttributeValue().withS(value),
             mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + value,
             mtContext);

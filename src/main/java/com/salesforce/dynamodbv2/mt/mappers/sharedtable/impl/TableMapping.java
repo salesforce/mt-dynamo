@@ -11,7 +11,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.lang.String.format;
 
@@ -224,7 +224,7 @@ class TableMapping {
                         physicalSi.getPrimaryKey().getHashKeyType()),
                     virtualSi.getIndexName(),
                     physicalSi.getIndexName(),
-                    virtualSi.getType() == LSI ? TABLE : SECONDARYINDEX,
+                    virtualSi.getType() == LSI ? TABLE : SECONDARY_INDEX,
                     true));
                 if (virtualSi.getPrimaryKey().getRangeKey().isPresent()) {
                     fieldMappings.add(new FieldMapping(new Field(virtualSi.getPrimaryKey().getRangeKey().get(),
@@ -233,7 +233,7 @@ class TableMapping {
                             physicalSi.getPrimaryKey().getRangeKeyType().orElseThrow()),
                         virtualSi.getIndexName(),
                         physicalSi.getIndexName(),
-                        SECONDARYINDEX,
+                        SECONDARY_INDEX,
                         false));
                 }
                 secondaryIndexFieldMappings.put(virtualSi, fieldMappings);

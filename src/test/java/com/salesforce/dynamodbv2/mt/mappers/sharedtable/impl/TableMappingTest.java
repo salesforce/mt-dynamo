@@ -11,7 +11,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -89,13 +89,13 @@ class TableMappingTest {
                     new Field("physicalgsihk", S),
                     "virtualgsi",
                     "physicalgsi",
-                    SECONDARYINDEX,
+            SECONDARY_INDEX,
                     true)),
             "virtualgsirk", ImmutableList.of(new FieldMapping(new Field("virtualgsirk", N),
                     new Field("physicalgsirk", N),
                     "virtualgsi",
                     "physicalgsi",
-                    SECONDARYINDEX,
+            SECONDARY_INDEX,
                     false)));
 
     @Test

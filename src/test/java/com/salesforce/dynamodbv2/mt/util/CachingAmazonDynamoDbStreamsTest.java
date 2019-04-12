@@ -934,9 +934,9 @@ class CachingAmazonDynamoDbStreamsTest {
      * cached, so we query underlying stream, which throws TrimmedDataAccessException.</li>
      * </ol>
      * </p>
-     * The problem with this sequence is not that a TDAE was thrown. The sequence above is possible without caching in
-     * the picture, since TRIM_HORIZON may advance between receiving some records and going to fetch the next. The
-     * problem is that caching TRIM_HORIZON makes this situation more likely.
+     * The problem with this sequence is not that a TrimmedDataAccessException was thrown. The sequence above is
+     * possible without caching in the picture, since TRIM_HORIZON may advance between receiving some records and going
+     * to fetch the next. The problem is that caching TRIM_HORIZON makes this situation more likely.
      */
     @Test
     @Disabled

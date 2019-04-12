@@ -156,7 +156,7 @@ import java.util.stream.Collectors;
  */
 public class SharedTableBuilder implements TableBuilder {
 
-    private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
+    private static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_tablemetadata";
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
@@ -298,7 +298,7 @@ public class SharedTableBuilder implements TableBuilder {
                 .withAmazonDynamoDb(amazonDynamoDb)
                 .withBillingMode(this.billingMode)
                 .withContext(mtContext)
-                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLENAME)
+                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLE_NAME)
                 .withPollIntervalSeconds(pollIntervalSeconds)
                 .withTablePrefix(tablePrefix).build();
 

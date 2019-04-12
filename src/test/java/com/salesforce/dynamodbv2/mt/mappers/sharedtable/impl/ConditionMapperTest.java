@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -265,7 +265,7 @@ class ConditionMapperTest {
                                         new Field("virtualgsihk", S), new Field("physicalgsihk", S),
                                         "virtualgsi",
                                         "physicalgsi",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#field = :value")
                                 .filterExpression(null).build(),
@@ -358,7 +358,7 @@ class ConditionMapperTest {
                                 .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
                                         "testgsi",
                                         "gsi_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value")
                                 .filterExpression(null).build(),
@@ -396,7 +396,7 @@ class ConditionMapperTest {
                                         new Field("indexField", S), new Field("lsi_s_s_rk", S),
                                         "testlsi",
                                         "lsi_s_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         false))
                                 .primaryExpression("#name = :value and #name2 = :value2")
                                 .filterExpression(null).build(),
@@ -414,7 +414,7 @@ class ConditionMapperTest {
                                 .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
                                         "testgsi",
                                         "gsi_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value and begins_with(#___name___, :___value___)")
                                 .filterExpression(null).build(),
