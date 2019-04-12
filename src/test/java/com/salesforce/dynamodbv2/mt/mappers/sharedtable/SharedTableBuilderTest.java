@@ -34,7 +34,7 @@ class SharedTableBuilderTest {
     private static String tablePrefix;
     private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static final String defaultTableName = "_tablemetadata";
+    private static final String metadataTableName = "_tablemetadata";
 
     @BeforeEach
     void beforeEach() {
@@ -63,7 +63,7 @@ class SharedTableBuilderTest {
                         .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
                 ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
 
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -75,12 +75,12 @@ class SharedTableBuilderTest {
 
         DynamoDbTestUtils.assertProvisionedIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
                 ""), LOCAL_DYNAMO_DB, 1L);
-        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithProvisionedInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -89,12 +89,12 @@ class SharedTableBuilderTest {
                 .build();
 
         DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB,1L);
-        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForDefaultCreateTableRequestsWithNullInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
                 .withPrecreateTables(true)
@@ -102,7 +102,7 @@ class SharedTableBuilderTest {
                 .build();
 
         DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
-        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB, 1L);
+        DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
     @Test
@@ -119,7 +119,7 @@ class SharedTableBuilderTest {
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 );
 
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
@@ -131,12 +131,12 @@ class SharedTableBuilderTest {
 
         DynamoDbTestUtils.assertPayPerRequestIsSet(DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix, tableName,
                 ""), LOCAL_DYNAMO_DB);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB);
     }
 
     @Test
     void testBillingModeIsPayPerRequestForDefaultCreateTableRequestsWithPayPerRequestInputBillingMode() {
-        SharedTableBuilder.sharedTableBuilder()
+        SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
@@ -148,12 +148,31 @@ class SharedTableBuilderTest {
             DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
         }
 
-        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + defaultTableName, LOCAL_DYNAMO_DB);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB);
     }
 
     private List<String> getPrefixedTables() {
         return testTables.stream().map(testTable -> tablePrefix + testTable)
                 .collect(Collectors.toList());
+    }
+
+    @Test
+    void testTableBuilderInterface() {
+        // call to build() triggers physical tables to be created
+        SharedTableBuilder.builder()
+            .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
+            .withTablePrefix(tablePrefix)
+            .withPrecreateTables(true)
+            .withContext(MT_CONTEXT)
+            .withBillingMode(BillingMode.PAY_PER_REQUEST).build();
+
+        // checks billing mode on physical data tables
+        for (String table : getPrefixedTables()) {
+            DynamoDbTestUtils.assertPayPerRequestIsSet(table, LOCAL_DYNAMO_DB);
+        }
+
+        // checks billing mode on physical metadata table
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB);
     }
 
 }

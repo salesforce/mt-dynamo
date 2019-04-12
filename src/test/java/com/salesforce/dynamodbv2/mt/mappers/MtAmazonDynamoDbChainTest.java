@@ -112,7 +112,7 @@ class MtAmazonDynamoDbChainTest {
         AmazonDynamoDB amazonDynamoDbByTable = MtAmazonDynamoDbByTable.builder()
             .withAmazonDynamoDb(amazonDynamoDbLogger)
             .withContext(mtContext).build();
-        AmazonDynamoDB amazonDynamoDbBySharedTable = SharedTableBuilder.sharedTableBuilder()
+        AmazonDynamoDB amazonDynamoDbBySharedTable = SharedTableBuilder.builder()
             .withStreamsEnabled(false)
             .withPrecreateTables(false)
             .withAmazonDynamoDb(amazonDynamoDbByTable)

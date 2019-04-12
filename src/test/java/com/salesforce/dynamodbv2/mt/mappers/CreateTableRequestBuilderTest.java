@@ -6,6 +6,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -87,11 +88,12 @@ class CreateTableRequestBuilderTest {
             expectedCapacityUnits = 1L;
         }
 
-        testBuilder.withBillingMode(expectedBillingMode);
-        testBuilder.addSi(indexName, indexType, primaryKey, expectedCapacityUnits);
-        testBuilder.build();
+        final CreateTableRequest createTableRequest = testBuilder.withBillingMode(expectedBillingMode)
+            .addSi(indexName, indexType, primaryKey, expectedCapacityUnits)
+            .build();
 
         DynamoDbTestUtils.assertExpectedBillingModeIsSet(
-            testBuilder.getCreateTableRequest(), expectedBillingMode, expectedCapacityUnits);
+            createTableRequest, expectedBillingMode, expectedCapacityUnits);
     }
+
 }

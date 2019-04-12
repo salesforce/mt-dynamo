@@ -234,7 +234,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             //     .withContext(MT_CONTEXT).build();
             // }
 
-            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.sharedTableBuilder()
+            MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
                 .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)

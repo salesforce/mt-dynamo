@@ -115,7 +115,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /*
          * bySharedTable
          */
-        AmazonDynamoDB sharedTable = SharedTableBuilder.sharedTableBuilder()
+        AmazonDynamoDB sharedTable = SharedTableBuilder.builder()
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(amazonDynamoDb)
             .withContext(MT_CONTEXT)

@@ -62,7 +62,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testListStreams.";
         String randomTableName = "RandomTable";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
@@ -96,7 +96,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testRecords() {
         String tablePrefix = TABLE_PREFIX + "testRecords.";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
@@ -149,7 +149,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testLimit() {
         String tablePrefix = TABLE_PREFIX + "testLimit.";
 
-        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.sharedTableBuilder()
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)

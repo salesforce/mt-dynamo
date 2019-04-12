@@ -51,6 +51,8 @@ import org.junit.jupiter.api.Test;
 class TableMappingTest {
 
     private static final char DELIMITER = '.';
+    private static final String MULTIPLE_VIRTUAL_SECONDARY_INDEX_MAPPED_TO_A_SINGLE_PHYSICAL_MESSAGE =
+        "More than one virtual secondary index maps to the same physical secondary index";
     private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
             buildDefaultCreateTableRequestBuilderWithGsi().build());
     private final DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
@@ -291,12 +293,14 @@ class TableMappingTest {
 
     @Test
     void multipleVirtualGsisMappedToSinglePhysical() {
-        assertException(() -> testSecondaryIndex(GSI), "Duplicate key virtualsi");
+        assertException(() -> testSecondaryIndex(GSI),
+            MULTIPLE_VIRTUAL_SECONDARY_INDEX_MAPPED_TO_A_SINGLE_PHYSICAL_MESSAGE);
     }
 
     @Test
     void multipleVirtualLsisMappedToSinglePhysical() {
-        assertException(() -> testSecondaryIndex(LSI), "Duplicate key virtualsi");
+        assertException(() -> testSecondaryIndex(LSI),
+            MULTIPLE_VIRTUAL_SECONDARY_INDEX_MAPPED_TO_A_SINGLE_PHYSICAL_MESSAGE);
     }
 
     void testSecondaryIndex(DynamoSecondaryIndexType secondaryIndexType) {

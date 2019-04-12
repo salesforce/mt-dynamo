@@ -177,15 +177,11 @@ public class SharedTableBuilder implements TableBuilder {
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
-    public static SharedTableBuilder sharedTableBuilder() {
-        return new SharedTableBuilder();
-    }
-
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
     }
 
-    protected static String prefix(Optional<String> tablePrefix, String tableName) {
+    private static String prefix(Optional<String> tablePrefix, String tableName) {
         return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
@@ -316,7 +312,8 @@ public class SharedTableBuilder implements TableBuilder {
     /**
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
-    static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput, BillingMode billingMode,
+    private static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
+        BillingMode billingMode,
         boolean streamsEnabled) {
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
@@ -476,7 +473,7 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    protected Optional<String> getTablePrefix() {
+    private Optional<String> getTablePrefix() {
         return tablePrefix;
     }
 
@@ -499,7 +496,7 @@ public class SharedTableBuilder implements TableBuilder {
             return new DynamoTableDescriptionImpl(createTableRequest).getPrimaryKey();
         }
 
-        public CreateTableRequest getCreateTableRequest() {
+        private CreateTableRequest getCreateTableRequest() {
             return createTableRequest;
         }
 
