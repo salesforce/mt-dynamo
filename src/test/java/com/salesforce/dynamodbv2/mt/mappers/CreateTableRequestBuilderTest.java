@@ -88,7 +88,7 @@ class CreateTableRequestBuilderTest {
             expectedCapacityUnits = 1L;
         }
 
-        CreateTableRequest createTableRequest = testBuilder.withBillingMode(expectedBillingMode)
+        final CreateTableRequest createTableRequest = testBuilder.withBillingMode(expectedBillingMode)
             .addSi(indexName, indexType, primaryKey, expectedCapacityUnits)
             .build();
 
