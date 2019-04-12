@@ -393,7 +393,7 @@ class QueryTest {
                 new QueryRequest().withTableName(TABLE3).withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", GSI_HK_FIELD))
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(GSI_HK_FIELD_VALUE)))
-                    .withIndexName("testgsi")).getItems();
+                    .withIndexName("testGsi")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
@@ -413,7 +413,7 @@ class QueryTest {
                             .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
                             .withExpressionAttributeValues(ImmutableMap.of(":value",
                                     createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
-                            .withIndexName("testgsi_table_rk_as_index_hk")).getItems();
+                            .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
@@ -432,7 +432,7 @@ class QueryTest {
                 .withExpressionAttributeValues(ImmutableMap.of(":value", createAttributeValue(
                     testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                     ":value2", createStringAttribute(INDEX_FIELD_VALUE)))
-                .withIndexName("testlsi");
+                .withIndexName("testLsi");
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -456,10 +456,10 @@ class QueryTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryGsiTwoTablesSameIndexName(TestArgument testArgument) {
-        String gsiHkField = "gsihk";
-        String gsiHkFieldValue = "gsihkvalue";
+        String gsiHkField = "gsiHk";
+        String gsiHkFieldValue = "gsiHkValue";
         String tablePrefix = "queryGsiTwoTablesSameIndexNameTable";
-        String gsiName = "testgsi";
+        String gsiName = "testGsi";
         int tableCount = 2;
 
         AmazonDynamoDB amazonDynamoDb = testArgument.getAmazonDynamoDb();

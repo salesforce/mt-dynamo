@@ -19,7 +19,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
  * between each test run, effectively dropping the database.
  *
  * <p>Note that tests that running such tests in the same surefire run as other tests that use the default
- * locally networked DynamoDB typically fail with sqlite related errors.  The workaround is to run with these tests
+ * locally networked DynamoDB typically fail with SQLite related errors.  The workaround is to run with these tests
  * with forkCount=1/reuseForks=false.  There are existing tests set up this way and are annotated with
  * {@code @Tag("isolated-tests")}.  The default surefire configuration excludes tests with this annotation.  There is a
  * separate Maven profile, 'isolated-tests', that runs just these tests.

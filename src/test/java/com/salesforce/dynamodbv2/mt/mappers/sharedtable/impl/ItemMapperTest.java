@@ -32,10 +32,10 @@ class ItemMapperTest {
             new MockFieldMapper(),
             new TableMapping(new DynamoTableDescriptionImpl(
                     CreateTableRequestBuilder.builder()
-                        .withTableKeySchema("virtualhk", S, "virtualrk", S).build()),
+                        .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
                     new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
                             CreateTableRequestBuilder.builder()
-                                    .withTableKeySchema("physicalhk", S, "physicalrk", S).build())
+                                    .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
                             .getCreateTableRequest()),
                     new DynamoSecondaryIndexMapperByTypeImpl(),
                     null,
@@ -45,16 +45,16 @@ class ItemMapperTest {
     @Test
     void applyAndReverse() {
         Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualhk", new AttributeValue().withS("hkvalue"),
-            "virtualrk", new AttributeValue().withS("rkvalue"),
-            "somefield", new AttributeValue().withS("somevalue"));
+            "virtualHk", new AttributeValue().withS("hkValue"),
+            "virtualRk", new AttributeValue().withS("rkValue"),
+            "someField", new AttributeValue().withS("someValue"));
 
         Map<String, AttributeValue> mappedItem = SUT.apply(item);
 
         assertEquals(ImmutableMap.of(
-            "physicalhk", new AttributeValue().withS(PREFIX + "hkvalue"),
-            "physicalrk", new AttributeValue().withS("rkvalue"),
-            "somefield", new AttributeValue().withS("somevalue")), mappedItem);
+            "physicalHk", new AttributeValue().withS(PREFIX + "hkValue"),
+            "physicalRk", new AttributeValue().withS("rkValue"),
+            "someField", new AttributeValue().withS("someValue")), mappedItem);
 
         Map<String, AttributeValue> reversedItem = SUT.reverse(mappedItem);
 

@@ -72,7 +72,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
     }
 
     /**
-     * Translates between virtual and physical stream arns.
+     * Translates between virtual and physical stream ARNs.
      *
      * @param describeStreamRequest Describe stream request.
      * @return Result
@@ -100,7 +100,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
     }
 
     /**
-     * Translates between virtual and physical stream arns.
+     * Translates between virtual and physical stream ARNs.
      *
      * @param getShardIteratorRequest Shard iterator request.
      * @return Mt shard iterator.

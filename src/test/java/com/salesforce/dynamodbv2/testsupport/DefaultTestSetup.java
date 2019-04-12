@@ -151,13 +151,13 @@ public class DefaultTestSetup implements TestSetup {
      */
     private Optional<ScalarAttributeType> getScalarAttributeType(CreateTableRequest createTableRequest,
         KeyType keyType) {
-        Optional<ScalarAttributeType> retval;
+        final Optional<ScalarAttributeType> scalarAttributeTypeOpt;
         final Set<String> setWithKeyAttributeNameIfItExists = createTableRequest.getKeySchema().stream()
             .filter(keySchemaElement -> keyType.equals(KeyType.fromValue(keySchemaElement.getKeyType())))
             .map(KeySchemaElement::getAttributeName)
             .collect(Collectors.toSet());
         if (setWithKeyAttributeNameIfItExists.isEmpty()) {
-            retval = Optional.empty();
+            scalarAttributeTypeOpt = Optional.empty();
         } else {
             Preconditions.checkState(setWithKeyAttributeNameIfItExists.size() == 1,
                 "There should be only 1 " + keyType + " key but there are "
@@ -172,10 +172,10 @@ public class DefaultTestSetup implements TestSetup {
             Preconditions.checkState(setWithKeyAttributeType.size() == 1,
                 "There should be exactly 1 attributeType associated with the " + keyType + " key named "
                     + keyAttributeName + ", but there are " + setWithKeyAttributeType.size());
-            retval = Optional.of(Iterables.getOnlyElement(setWithKeyAttributeType));
+            scalarAttributeTypeOpt = Optional.of(Iterables.getOnlyElement(setWithKeyAttributeType));
         }
 
-        return retval;
+        return scalarAttributeTypeOpt;
     }
 
     private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
@@ -200,17 +200,17 @@ public class DefaultTestSetup implements TestSetup {
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
                 .withGlobalSecondaryIndexes(
-                    new GlobalSecondaryIndex().withIndexName("testgsi")
+                    new GlobalSecondaryIndex().withIndexName("testGsi")
                         .withKeySchema(new KeySchemaElement(GSI_HK_FIELD, KeyType.HASH))
                         .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                    new GlobalSecondaryIndex().withIndexName("testgsi2")
+                    new GlobalSecondaryIndex().withIndexName("testGsi2")
                         .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
                             new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
                         .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 )
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
                     .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(INDEX_FIELD, RANGE))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL))).build(),
@@ -227,7 +227,7 @@ public class DefaultTestSetup implements TestSetup {
                     new AttributeDefinition(RANGE_KEY_FIELD, S))
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi_table_rk_as_index_hk")
+                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi_table_rk_as_index_hk")
                     .withKeySchema(new KeySchemaElement(RANGE_KEY_FIELD, KeyType.HASH))
                     .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                     .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))

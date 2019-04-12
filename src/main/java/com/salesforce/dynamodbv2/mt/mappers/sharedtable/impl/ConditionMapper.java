@@ -75,8 +75,8 @@ class ConditionMapper {
         String primaryExpression, // "#field1 = :value"
         String filterExpression) {
         if (primaryExpression != null) {
-            String virtualAttrName = fieldMapping.getSource().getName(); // "virtualhk"
-            Map<String, String> expressionAttrNames = request.getExpressionAttributeNames(); // "#field1" -> "virtualhk"
+            String virtualAttrName = fieldMapping.getSource().getName(); // "virtualHk"
+            Map<String, String> expressionAttrNames = request.getExpressionAttributeNames(); // "#field1" -> "virtualHk"
             Optional<String> keyFieldName = expressionAttrNames != null ? expressionAttrNames.entrySet().stream()
                 .filter(entry -> entry.getValue().equals(virtualAttrName)).map(Entry::getKey).findAny()
                 : Optional.empty(); // Optional[#field1]
@@ -86,10 +86,10 @@ class ConditionMapper {
                 if (virtualValuePlaceholderOpt.isPresent()) {
                     String virtualValuePlaceholder = virtualValuePlaceholderOpt.get();
                     AttributeValue virtualAttr =
-                            request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkvalue,}
+                            request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkValue,}
                     AttributeValue physicalAttr =
                         fieldMapping.isContextAware()
-                                ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkvalue,}
+                                ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkValue,}
                                 : virtualAttr;
                     request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
                 }

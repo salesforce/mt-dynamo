@@ -105,7 +105,7 @@ import java.util.stream.Collectors;
  *   the table is dropped.  Default: FALSE.
  * - {@code truncateOnDeleteTable}: a {@code boolean} to indicate whether all of a table's data should be deleted when a
  *   table is dropped.  Default: FALSE.
- * - {@code precreateTables}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
+ * - {@code createTablesEagerly}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
  *   Default: TRUE.
  * - {@code tableMappingFactory}: the {@code TableMappingFactory} that maps virtual to physical table instances.
  *   Default: a table mapping factory that implements shared table behavior.
@@ -173,7 +173,7 @@ public class SharedTableBuilder implements TableBuilder {
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
-    private Boolean precreateTables;
+    private Boolean createTablesEagerly;
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
@@ -236,7 +236,7 @@ public class SharedTableBuilder implements TableBuilder {
                 secondaryIndexMapper,
                 delimiter,
                 amazonDynamoDb,
-                precreateTables,
+                createTablesEagerly,
                 pollIntervalSeconds
             );
         }
@@ -287,8 +287,8 @@ public class SharedTableBuilder implements TableBuilder {
         if (deleteTableAsync == null) {
             deleteTableAsync = false;
         }
-        if (precreateTables == null) {
-            precreateTables = true;
+        if (createTablesEagerly == null) {
+            createTablesEagerly = true;
         }
         if (pollIntervalSeconds == null) {
             pollIntervalSeconds = 0;
@@ -463,8 +463,8 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
-        this.precreateTables = precreateTables;
+    public SharedTableBuilder withCreateTablesEagerly(boolean createTablesEagerly) {
+        this.createTablesEagerly = createTablesEagerly;
         return this;
     }
 
@@ -538,8 +538,8 @@ public class SharedTableBuilder implements TableBuilder {
             }
         }
 
-        private boolean isEmpty(List lsis) {
-            return lsis == null || lsis.isEmpty();
+        private boolean isEmpty(List l) {
+            return l == null || l.isEmpty();
         }
 
         @Override

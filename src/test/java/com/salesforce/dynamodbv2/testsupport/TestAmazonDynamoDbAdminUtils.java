@@ -29,9 +29,9 @@ public class TestAmazonDynamoDbAdminUtils extends AmazonDynamoDbAdminUtils {
      */
     public static String getLocalHost() {
         try {
-            String fqname = InetAddress.getLocalHost().getHostName();
-            int firstDot = fqname.indexOf('.');
-            return firstDot == -1 ? fqname : fqname.substring(0, firstDot);
+            String fqName = InetAddress.getLocalHost().getHostName();
+            int firstDot = fqName.indexOf('.');
+            return firstDot == -1 ? fqName : fqName.substring(0, firstDot);
         } catch (UnknownHostException e) {
             throw new RuntimeException("could not get hostname", e);
         }

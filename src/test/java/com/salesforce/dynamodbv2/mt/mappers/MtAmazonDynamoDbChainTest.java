@@ -114,7 +114,7 @@ class MtAmazonDynamoDbChainTest {
             .withContext(mtContext).build();
         AmazonDynamoDB amazonDynamoDbBySharedTable = SharedTableBuilder.builder()
             .withStreamsEnabled(false)
-            .withPrecreateTables(false)
+            .withCreateTablesEagerly(false)
             .withAmazonDynamoDb(amazonDynamoDbByTable)
             .withContext(mtContext)
             .withTruncateOnDeleteTable(true).build();
@@ -184,11 +184,11 @@ class MtAmazonDynamoDbChainTest {
             .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                 new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
             .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi")
                 .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                 .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-            .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+            .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                     new KeySchemaElement(INDEX_FIELD, KeyType.RANGE))
                 .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
@@ -516,7 +516,7 @@ class MtAmazonDynamoDbChainTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#name", INDEX_FIELD))
                 .withExpressionAttributeValues(ImmutableMap.of(":value",
                     createStringAttribute("indexFieldValue")))
-                .withIndexName("testgsi")).getItems();
+                .withIndexName("testGsi")).getItems();
         assertEquals(1, queryItems4.size());
         Map<String, AttributeValue> queryItem4 = queryItems4.get(0);
         assertEquals(table3item3, queryItem4);
@@ -528,7 +528,7 @@ class MtAmazonDynamoDbChainTest {
             .withExpressionAttributeValues(ImmutableMap.of(":value",
                 createAttributeValue(HASH_KEY_ATTR_TYPE, HASH_KEY_VALUE),
                 ":value2", createStringAttribute("indexFieldValue")))
-            .withIndexName("testlsi");
+            .withIndexName("testLsi");
         List<Map<String, AttributeValue>> queryItems5 = amazonDynamoDb.query(queryRequest5).getItems();
         assertEquals(1, queryItems5.size());
         Map<String, AttributeValue> queryItem5 = queryItems5.get(0);
@@ -620,7 +620,7 @@ class MtAmazonDynamoDbChainTest {
     }
 
     private String getPrefix() {
-        return (IS_LOCAL_DYNAMO ? "" : "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "-");
+        return (IS_LOCAL_DYNAMO ? "" : "okToDelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "-");
     }
 
 }
