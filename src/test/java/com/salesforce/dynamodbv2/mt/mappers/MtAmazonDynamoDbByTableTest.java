@@ -27,7 +27,7 @@ class MtAmazonDynamoDbByTableTest {
     private static final MtAmazonDynamoDbContextProvider ctx =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
-    private static final String tablePrefix = "oktodelete-testBillingMode";
+    private static final String tablePrefix = "okToDelete-testBillingMode";
 
     @BeforeEach
     void beforeEach() {

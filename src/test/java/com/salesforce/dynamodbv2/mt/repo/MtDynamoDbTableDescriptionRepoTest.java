@@ -28,7 +28,7 @@ class MtDynamoDbTableDescriptionRepoTest {
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-    private static final Optional<String> tablePrefix = Optional.of("oktodelete-testBillingMode.");
+    private static final Optional<String> tablePrefix = Optional.of("okToDelete-testBillingMode.");
     private MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
 
     @BeforeEach

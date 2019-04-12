@@ -522,10 +522,10 @@ class DocGeneratorRunner {
             String[] columnNamesArr = columnNames.toArray(new String[0]);
             Object[][] dataArr = data.toArray(new Object[0][0]);
             TextTable tt = new TextTable(columnNamesArr, dataArr);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            try (PrintStream ps = new PrintStream(baos, true, UTF_8.name())) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            try (PrintStream ps = new PrintStream(outputStream, true, UTF_8.name())) {
                 tt.printTable(ps, 5);
-                appendToFile(new String(baos.toByteArray()));
+                appendToFile(new String(outputStream.toByteArray()));
             } catch (UnsupportedEncodingException e) {
                 throw new RuntimeException(e);
             }
@@ -610,7 +610,7 @@ class DocGeneratorRunner {
 
     private SharedTableBuilder getBySharedTableBuilder() {
         return SharedTableBuilder.builder()
-                .withPrecreateTables(false)
+                .withCreateTablesEagerly(false)
                 .withContext(MT_CONTEXT)
                 .withTruncateOnDeleteTable(true);
     }
@@ -619,7 +619,7 @@ class DocGeneratorRunner {
         if (IS_LOCAL_DYNAMO) {
             return "";
         }
-        return prefixTableNames ? "oktodelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
+        return prefixTableNames ? "okToDelete-" + TestAmazonDynamoDbAdminUtils.getLocalHost() + "." : "";
     }
 
     private static class TestAccountMapper implements MtAccountMapper, Supplier<Map<String, AmazonDynamoDB>> {

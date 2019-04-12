@@ -49,8 +49,8 @@ import java.util.stream.Collectors;
  */
 public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
-    private static final String TABLEMETADATA_HKFIELD = "table";
-    private static final String TABLEMETADATA_DATAFIELD = "data";
+    private static final String TABLE_METADATA_HK_FIELD = "table";
+    private static final String TABLE_METADATA_DATA_FIELD = "data";
     private static final String DELIMITER = ".";
 
     private static final Gson GSON = new Gson();
@@ -333,10 +333,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         private void setDefaults() {
             if (tableDescriptionTableHashKeyField == null) {
-                tableDescriptionTableHashKeyField = TABLEMETADATA_HKFIELD;
+                tableDescriptionTableHashKeyField = TABLE_METADATA_HK_FIELD;
             }
             if (tableDescriptionTableDataField == null) {
-                tableDescriptionTableDataField = TABLEMETADATA_DATAFIELD;
+                tableDescriptionTableDataField = TABLE_METADATA_DATA_FIELD;
             }
             if (delimiter == null) {
                 delimiter = DELIMITER;

@@ -105,7 +105,7 @@ import java.util.stream.Collectors;
  *   the table is dropped.  Default: FALSE.
  * - {@code truncateOnDeleteTable}: a {@code boolean} to indicate whether all of a table's data should be deleted when a
  *   table is dropped.  Default: FALSE.
- * - {@code precreateTables}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
+ * - {@code createTablesEagerly}: a {@code boolean} to indicate whether the physical tables should be created eagerly.
  *   Default: TRUE.
  * - {@code tableMappingFactory}: the {@code TableMappingFactory} that maps virtual to physical table instances.
  *   Default: a table mapping factory that implements shared table behavior.
@@ -156,7 +156,7 @@ import java.util.stream.Collectors;
  */
 public class SharedTableBuilder implements TableBuilder {
 
-    private static final String DEFAULT_TABLE_DESCRIPTION_TABLENAME = "_tablemetadata";
+    private static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_tablemetadata";
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
@@ -173,7 +173,7 @@ public class SharedTableBuilder implements TableBuilder {
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
-    private Boolean precreateTables;
+    private Boolean createTablesEagerly;
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
 
@@ -236,7 +236,7 @@ public class SharedTableBuilder implements TableBuilder {
                 secondaryIndexMapper,
                 delimiter,
                 amazonDynamoDb,
-                precreateTables,
+                createTablesEagerly,
                 pollIntervalSeconds
             );
         }
@@ -287,8 +287,8 @@ public class SharedTableBuilder implements TableBuilder {
         if (deleteTableAsync == null) {
             deleteTableAsync = false;
         }
-        if (precreateTables == null) {
-            precreateTables = true;
+        if (createTablesEagerly == null) {
+            createTablesEagerly = true;
         }
         if (pollIntervalSeconds == null) {
             pollIntervalSeconds = 0;
@@ -298,7 +298,7 @@ public class SharedTableBuilder implements TableBuilder {
                 .withAmazonDynamoDb(amazonDynamoDb)
                 .withBillingMode(this.billingMode)
                 .withContext(mtContext)
-                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLENAME)
+                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLE_NAME)
                 .withPollIntervalSeconds(pollIntervalSeconds)
                 .withTablePrefix(tablePrefix).build();
 
@@ -463,8 +463,8 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withPrecreateTables(boolean precreateTables) {
-        this.precreateTables = precreateTables;
+    public SharedTableBuilder withCreateTablesEagerly(boolean createTablesEagerly) {
+        this.createTablesEagerly = createTablesEagerly;
         return this;
     }
 
@@ -538,8 +538,8 @@ public class SharedTableBuilder implements TableBuilder {
             }
         }
 
-        private boolean isEmpty(List lsis) {
-            return lsis == null || lsis.isEmpty();
+        private boolean isEmpty(List l) {
+            return l == null || l.isEmpty();
         }
 
         @Override

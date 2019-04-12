@@ -53,7 +53,7 @@ public class TableMappingFactory {
      * @param secondaryIndexMapper maps virtual to physical indexes
      * @param delimiter the string for delimiting values in hash keys
      * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
-     * @param precreateTables a flag indicating whether to create physical tables eagerly at start time
+     * @param createTablesEagerly a flag indicating whether to create physical tables eagerly at start time
      * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
      *     created
      */
@@ -62,7 +62,7 @@ public class TableMappingFactory {
                                DynamoSecondaryIndexMapper secondaryIndexMapper,
                                char delimiter,
                                AmazonDynamoDB amazonDynamoDb,
-                               boolean precreateTables,
+                               boolean createTablesEagerly,
                                int pollIntervalSeconds) {
         this.createTableRequestFactory = createTableRequestFactory;
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -71,8 +71,8 @@ public class TableMappingFactory {
         this.amazonDynamoDb = amazonDynamoDb;
         this.dynamoDbAdminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.pollIntervalSeconds = pollIntervalSeconds;
-        if (precreateTables) {
-            precreateTables(createTableRequestFactory);
+        if (createTablesEagerly) {
+            createTablesEagerly(createTableRequestFactory);
         }
     }
 
@@ -80,7 +80,7 @@ public class TableMappingFactory {
         return createTableRequestFactory;
     }
 
-    private void precreateTables(CreateTableRequestFactory createTableRequestFactory) {
+    private void createTablesEagerly(CreateTableRequestFactory createTableRequestFactory) {
         createTableRequestFactory.getPhysicalTables().forEach(this::createTableIfNotExists);
     }
 
@@ -118,7 +118,7 @@ public class TableMappingFactory {
             return Optional.empty();
         } catch (IllegalStateException e) {
             throw new RuntimeException("Mt context available.  When chaining, you must either set the mt context "
-                + "before building, or set precreateTables=false");
+                + "before building, or set createTablesEagerly=false");
         }
     }
 

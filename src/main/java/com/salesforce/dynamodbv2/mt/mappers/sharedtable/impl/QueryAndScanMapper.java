@@ -169,7 +169,7 @@ class QueryAndScanMapper {
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
-        String hashKeyField) { // TODO look for hashkey in literals
+        String hashKeyField) { // TODO look for hash key in literals
         String conditionExpression = request.getPrimaryExpression();
         if (conditionExpression == null) {
             // no filter criteria

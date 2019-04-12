@@ -66,7 +66,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
-            .withPrecreateTables(true)
+            .withCreateTablesEagerly(true)
             .withContext(() -> BASE_CONTEXT)
             .build();
         try {
@@ -100,7 +100,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
-            .withPrecreateTables(true)
+            .withCreateTablesEagerly(true)
             .withContext(MT_CONTEXT)
             .build();
         try {
@@ -153,7 +153,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
-            .withPrecreateTables(true)
+            .withCreateTablesEagerly(true)
             .withContext(MT_CONTEXT)
             .build();
         try {

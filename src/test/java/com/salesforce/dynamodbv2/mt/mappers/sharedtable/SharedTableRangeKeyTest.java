@@ -30,7 +30,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  */
 class SharedTableRangeKeyTest {
 
-    private static final String TABLENAME_PREFIX = "Table";
+    private static final String TABLE_NAME_PREFIX = "Table";
 
     @ParameterizedTest
     @EnumSource(ScalarAttributeType.class)
@@ -38,7 +38,7 @@ class SharedTableRangeKeyTest {
         AmazonDynamoDB amazonDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
         // table name
-        String tableName = TABLENAME_PREFIX + scalarAttributeType.name();
+        String tableName = TABLE_NAME_PREFIX + scalarAttributeType.name();
 
         // create table with hash key and range key of type string
         new TestAmazonDynamoDbAdminUtils(amazonDynamoDb)

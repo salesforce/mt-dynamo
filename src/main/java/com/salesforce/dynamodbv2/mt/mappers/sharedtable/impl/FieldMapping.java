@@ -26,7 +26,7 @@ class FieldMapping {
     private final boolean isContextAware;
 
     enum IndexType {
-        TABLE, SECONDARYINDEX
+        TABLE, SECONDARY_INDEX
     }
 
     FieldMapping(Field source,

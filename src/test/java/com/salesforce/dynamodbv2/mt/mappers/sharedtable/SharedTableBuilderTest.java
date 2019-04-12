@@ -30,7 +30,7 @@ class SharedTableBuilderTest {
             new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
-    private static final String TABLE_PREFIX_PREFIX = "oktodelete-testBillingMode.";
+    private static final String TABLE_PREFIX_PREFIX = "okToDelete-testBillingMode.";
     private static String tablePrefix;
     private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
@@ -67,7 +67,7 @@ class SharedTableBuilderTest {
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
-                .withPrecreateTables(true)
+                .withCreateTablesEagerly(true)
                 .withTablePrefix(tablePrefix)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withContext(MT_CONTEXT)
@@ -84,7 +84,7 @@ class SharedTableBuilderTest {
                 .withBillingMode(BillingMode.PROVISIONED)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
-                .withPrecreateTables(true)
+                .withCreateTablesEagerly(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
@@ -97,7 +97,7 @@ class SharedTableBuilderTest {
         SharedTableBuilder.builder()
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
-                .withPrecreateTables(true)
+                .withCreateTablesEagerly(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
@@ -123,7 +123,7 @@ class SharedTableBuilderTest {
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withCreateTableRequests(request)
                 .withStreamsEnabled(false)
-                .withPrecreateTables(true)
+                .withCreateTablesEagerly(true)
                 .withTablePrefix(tablePrefix)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withContext(MT_CONTEXT)
@@ -140,7 +140,7 @@ class SharedTableBuilderTest {
                 .withBillingMode(BillingMode.PAY_PER_REQUEST)
                 .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
                 .withTablePrefix(tablePrefix)
-                .withPrecreateTables(true)
+                .withCreateTablesEagerly(true)
                 .withContext(MT_CONTEXT)
                 .build();
 
@@ -162,7 +162,7 @@ class SharedTableBuilderTest {
         SharedTableBuilder.builder()
             .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
             .withTablePrefix(tablePrefix)
-            .withPrecreateTables(true)
+            .withCreateTablesEagerly(true)
             .withContext(MT_CONTEXT)
             .withBillingMode(BillingMode.PAY_PER_REQUEST).build();
 

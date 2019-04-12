@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -241,9 +241,9 @@ class ConditionMapperTest {
                         new KeyConditionTestInputs()
                                 .org("ctx")
                                 .virtualTableName("virtualTable")
-                                .attributeNames("#field1", "virtualhk")
-                                .attributeValues(":value", "hkvalue")
-                                .fieldMapping(new FieldMapping(new Field("virtualhk", S), new Field("physicalhk", S),
+                                .attributeNames("#field1", "virtualHk")
+                                .attributeValues(":value", "hkValue")
+                                .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
                                         "virtualTable",
                                         "null",
                                         TABLE,
@@ -251,27 +251,27 @@ class ConditionMapperTest {
                                 .primaryExpression("#field1 = :value")
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
-                                .attributeNames("#field1", "physicalhk")
-                                .attributeValues(":value", "ctx.virtualTable.hkvalue").build()
+                                .attributeNames("#field1", "physicalHk")
+                                .attributeValues(":value", "ctx.virtualTable.hkValue").build()
                 ),
                 // map gsi hash-key field name and value on a primary expression on a table with hk only
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx")
                                 .virtualTableName("virtualTable")
-                                .attributeNames("#field", "virtualgsihk")
-                                .attributeValues(":value", "hkgsivalue")
+                                .attributeNames("#field", "virtualGsiHk")
+                                .attributeValues(":value", "hkGsiValue")
                                 .fieldMapping(new FieldMapping(
-                                        new Field("virtualgsihk", S), new Field("physicalgsihk", S),
-                                        "virtualgsi",
-                                        "physicalgsi",
-                                        SECONDARYINDEX,
+                                        new Field("virtualGsiHk", S), new Field("physicalGsiHk", S),
+                                        "virtualGsi",
+                                        "physicalGsi",
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#field = :value")
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
-                                .attributeNames("#field", "physicalgsihk")
-                                .attributeValues(":value", "ctx.virtualTable.hkgsivalue").build()
+                                .attributeNames("#field", "physicalGsiHk")
+                                .attributeValues(":value", "ctx.virtualTable.hkGsiValue").build()
                 ),
                 // map table's hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -356,9 +356,9 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "indexField")
                                 .attributeValues(":value", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
-                                        "testgsi",
+                                        "testGsi",
                                         "gsi_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value")
                                 .filterExpression(null).build(),
@@ -375,7 +375,7 @@ class ConditionMapperTest {
                                 .attributeValues(":value", "1", ":value2", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(
                                         new Field("hashKeyField", S), new Field("hk", S),
-                                        "testlsi",
+                                        "testLsi",
                                         "lsi_s_s",
                                         TABLE,
                                         true))
@@ -394,9 +394,9 @@ class ConditionMapperTest {
                                 .attributeValues(":value", "ctx1.Table3.1", ":value2", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(
                                         new Field("indexField", S), new Field("lsi_s_s_rk", S),
-                                        "testlsi",
+                                        "testLsi",
                                         "lsi_s_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         false))
                                 .primaryExpression("#name = :value and #name2 = :value2")
                                 .filterExpression(null).build(),
@@ -412,9 +412,9 @@ class ConditionMapperTest {
                                 .attributeNames("#___name___", "hk", "#name", "indexField")
                                 .attributeValues(":___value___", "ctx1.Table3.", ":value", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
-                                        "testgsi",
+                                        "testGsi",
                                         "gsi_s",
-                                        SECONDARYINDEX,
+                                    SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value and begins_with(#___name___, :___value___)")
                                 .filterExpression(null).build(),
@@ -427,8 +427,8 @@ class ConditionMapperTest {
                     new KeyConditionTestInputs()
                         .org("ctx")
                         .virtualTableName("virtualTable")
-                        .attributeNames("#field1", "virtualhk")
-                        .fieldMapping(new FieldMapping(new Field("virtualhk", S), new Field("physicalhk", S),
+                        .attributeNames("#field1", "virtualHk")
+                        .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
                             "virtualTable",
                             "null",
                             TABLE,
@@ -436,7 +436,7 @@ class ConditionMapperTest {
                         .primaryExpression("attribute_exists(#field1)")
                         .filterExpression(null).build(),
                     new KeyConditionTestExpected()
-                        .attributeNames("#field1", "physicalhk").build()
+                        .attributeNames("#field1", "physicalHk").build()
                 )
         ).stream();
     }
@@ -484,7 +484,7 @@ class ConditionMapperTest {
         assertEquals("#field1", ConditionMapper.getNextFieldPlaceholder(
                 new HashMap<>(), new AtomicInteger(1)));
         assertEquals("#field2", ConditionMapper.getNextFieldPlaceholder(
-                ImmutableMap.of("#field0", "somename0", "#field1", "somename1"),
+                ImmutableMap.of("#field0", "someName0", "#field1", "someName1"),
                 new AtomicInteger(0)));
     }
 

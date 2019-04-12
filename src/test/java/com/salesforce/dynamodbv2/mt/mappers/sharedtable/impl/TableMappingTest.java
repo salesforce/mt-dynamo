@@ -11,7 +11,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -58,10 +58,10 @@ class TableMappingTest {
     private final DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
             .builder()
             .withTableName("physicalTableName")
-            .withTableKeySchema("physicalhk", S, "physicalrk", N)
-            .addSi("physicalgsi",
+            .withTableKeySchema("physicalHk", S, "physicalRk", N)
+            .addSi("physicalGsi",
                     GSI,
-                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
+                    new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N),
                     1L)
             .build());
     private final TableMapping sut = new TableMapping(virtualTable,
@@ -71,31 +71,31 @@ class TableMappingTest {
             DELIMITER
     );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
-            "virtualhk", ImmutableList.of(
-                    new FieldMapping(new Field("virtualhk", S),
-                            new Field("physicalhk", S),
+            "virtualHk", ImmutableList.of(
+                    new FieldMapping(new Field("virtualHk", S),
+                            new Field("physicalHk", S),
                             "virtualTableName",
                             "physicalTableName",
                             TABLE,
                             true)),
-            "virtualrk", ImmutableList.of(
-                    new FieldMapping(new Field("virtualrk", N),
-                            new Field("physicalrk", N),
+            "virtualRk", ImmutableList.of(
+                    new FieldMapping(new Field("virtualRk", N),
+                            new Field("physicalRk", N),
                             "virtualTableName",
                             "physicalTableName",
                             TABLE,
                             false)),
-            "virtualgsihk", ImmutableList.of(new FieldMapping(new Field("virtualgsihk", S),
-                    new Field("physicalgsihk", S),
-                    "virtualgsi",
-                    "physicalgsi",
-                    SECONDARYINDEX,
+            "virtualGsiHk", ImmutableList.of(new FieldMapping(new Field("virtualGsiHk", S),
+                    new Field("physicalGsiHk", S),
+                    "virtualGsi",
+                    "physicalGsi",
+            SECONDARY_INDEX,
                     true)),
-            "virtualgsirk", ImmutableList.of(new FieldMapping(new Field("virtualgsirk", N),
-                    new Field("physicalgsirk", N),
-                    "virtualgsi",
-                    "physicalgsi",
-                    SECONDARYINDEX,
+            "virtualGsiRk", ImmutableList.of(new FieldMapping(new Field("virtualGsiRk", N),
+                    new Field("physicalGsiRk", N),
+                    "virtualGsi",
+                    "physicalGsi",
+            SECONDARY_INDEX,
                     false)));
 
     @Test
@@ -127,22 +127,22 @@ class TableMappingTest {
     void getAllVirtualToPhysicalFieldMappingsDeduped() {
         TableMapping sut = new TableMapping(new DynamoTableDescriptionImpl(
                 buildDefaultCreateTableRequestBuilderWithGsi()
-                .addSi("virtuallsi",
+                .addSi("virtualLsi",
                         LSI,
-                        new PrimaryKey("virtualhk", S, "virtualgsirk", N),
+                        new PrimaryKey("virtualHk", S, "virtualGsiRk", N),
                         1L)
                 .build()),
             new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(CreateTableRequestBuilder
                 .builder()
                 .withTableName("physicalTableName")
-                .withTableKeySchema("physicalhk", S, "physicalrk", N)
-                .addSi("physicalgsi",
+                .withTableKeySchema("physicalHk", S, "physicalRk", N)
+                .addSi("physicalGsi",
                     GSI,
-                    new PrimaryKey("physicalgsihk", S, "physicalgsirk", N),
+                    new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N),
                     1L)
-                .addSi("virtuallsi",
+                .addSi("virtualLsi",
                     LSI,
-                    new PrimaryKey("physicalhk", S, "physicallsirk", N),
+                    new PrimaryKey("physicalHk", S, "physicalLsiRk", N),
                     1L)
                 .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
@@ -150,32 +150,32 @@ class TableMappingTest {
             DELIMITER
         );
         Map<String, List<FieldMapping>> fieldMappings = sut.getAllVirtualToPhysicalFieldMappings();
-        Map<String, Integer> expectedMappingCounts = ImmutableMap.of("virtualhk", 2,
-            "virtualrk", 1,
-            "virtualgsihk", 1,
-            "virtualgsirk", 2);
+        Map<String, Integer> expectedMappingCounts = ImmutableMap.of("virtualHk", 2,
+            "virtualRk", 1,
+            "virtualGsiHk", 1,
+            "virtualGsiRk", 2);
         assertEquals(4, expectedMappingCounts.keySet().size());
         expectedMappingCounts.forEach((key, expectedCount) ->
             assertEquals(expectedCount.intValue(), fieldMappings.get(key).size(), "key=" + key));
         Set<String> expectedMappingCountsDeduped =
-                ImmutableSet.of("virtualhk", "virtualrk", "virtualgsihk", "virtualgsirk");
+                ImmutableSet.of("virtualHk", "virtualRk", "virtualGsiHk", "virtualGsiRk");
         assertEquals(expectedMappingCountsDeduped, sut.getAllVirtualToPhysicalFieldMappingsDeduped().keySet());
     }
 
     @Test
     void getIndexPrimaryKeyFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings.entrySet().stream()
-                        .filter(fieldMappingEntry -> fieldMappingEntry.getKey().contains("gsi"))
+                        .filter(fieldMappingEntry -> fieldMappingEntry.getKey().contains("Gsi"))
                         .flatMap((Function<Entry<String, List<FieldMapping>>, Stream<FieldMapping>>)
                             fieldMappingEntry -> fieldMappingEntry.getValue().stream())
                         .collect(Collectors.toList()),
-                sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualgsi").orElseThrow()));
+                sut.getIndexPrimaryKeyFieldMappings(virtualTable.getGsi("virtualGsi").orElseThrow()));
     }
 
     @Test
     void buildVirtualToPhysicalKeyFieldMappings() {
         assertEquals(virtualToPhysicalFieldMappings.entrySet().stream().filter(entry
-            -> ImmutableSet.of("virtualhk", "virtualrk").contains(entry.getKey()))
+            -> ImmutableSet.of("virtualHk", "virtualRk").contains(entry.getKey()))
                         .collect(Collectors.toMap(Entry::getKey, Entry::getValue)),
                 sut.buildVirtualToPhysicalKeyFieldMappings());
     }
@@ -262,7 +262,7 @@ class TableMappingTest {
                                 CreateTableRequestBuilder
                                         .builder()
                                         .withTableName("physicalTableName")
-                                        .withTableKeySchema("physicalhk", N)
+                                        .withTableKeySchema("physicalHk", N)
                                         .build())),
                 "physical table physicalTableName's primary-key hash key must be type S, encountered type N");
         assertException((TestFunction<IllegalArgumentException>) () ->
@@ -270,24 +270,24 @@ class TableMappingTest {
                                 CreateTableRequestBuilder
                                         .builder()
                                         .withTableName("physicalTableName")
-                                        .withTableKeySchema("physicalhk", S)
-                                        .addSi("physicalgsi",
+                                        .withTableKeySchema("physicalHk", S)
+                                        .addSi("physicalGsi",
                                                 GSI,
-                                                new PrimaryKey("physicalgsihk", N),
+                                                new PrimaryKey("physicalGsiHk", N),
                                                 1L)
                                         .build())),
-                "physical table physicalTableName's GSI physicalgsi's primary-key hash key must be type S, encountered "
+                "physical table physicalTableName's GSI physicalGsi's primary-key hash key must be type S, encountered "
                         + "type N");
         assertException((TestFunction<IllegalArgumentException>) () ->
                         sut.validatePhysicalTable(new DynamoTableDescriptionImpl(
                                 CreateTableRequestBuilder
                                         .builder()
                                         .withTableName("physicalTableName")
-                                        .withTableKeySchema("physicalhk", S)
-                                        .addSi("physicallsi", LSI, new PrimaryKey("physicalgsihk", N),
+                                        .withTableKeySchema("physicalHk", S)
+                                        .addSi("physicalLsi", LSI, new PrimaryKey("physicalGsiHk", N),
                                                 1L)
                                         .build())),
-                "physical table physicalTableName's LSI physicallsi's primary-key hash key must be type S, encountered "
+                "physical table physicalTableName's LSI physicalLsi's primary-key hash key must be type S, encountered "
                         + "type N");
     }
 
@@ -306,13 +306,13 @@ class TableMappingTest {
     void testSecondaryIndex(DynamoSecondaryIndexType secondaryIndexType) {
         sut.validateSecondaryIndexes(
             new DynamoTableDescriptionImpl(buildDefaultCreateTableRequestBuilder()
-                .addSi("virtualsi1",
+                .addSi("virtualLsi1",
                     secondaryIndexType, new PrimaryKey("hk", S, "rk", N), 0L)
-                .addSi("virtualsi2",
+                .addSi("virtualLsi2",
                     secondaryIndexType, new PrimaryKey("hk", S, "rk", N), 0L)
                 .build()),
             new DynamoTableDescriptionImpl(buildDefaultCreateTableRequestBuilder()
-                .addSi("virtualsi",
+                .addSi("virtualLsi",
                     secondaryIndexType, new PrimaryKey("hk", S, "rk", N), 0L)
                 .build()),
             new DynamoSecondaryIndexMapperByTypeImpl()
@@ -335,14 +335,14 @@ class TableMappingTest {
         return CreateTableRequestBuilder
                 .builder()
                 .withTableName("virtualTableName")
-                .withTableKeySchema("virtualhk", S, "virtualrk", N);
+                .withTableKeySchema("virtualHk", S, "virtualRk", N);
     }
 
     private static CreateTableRequestBuilder buildDefaultCreateTableRequestBuilderWithGsi() {
         return buildDefaultCreateTableRequestBuilder()
-                .addSi("virtualgsi",
+                .addSi("virtualGsi",
                         GSI,
-                        new PrimaryKey("virtualgsihk", S, "virtualgsirk", N),
+                        new PrimaryKey("virtualGsiHk", S, "virtualGsiRk", N),
                         1L);
     }
 

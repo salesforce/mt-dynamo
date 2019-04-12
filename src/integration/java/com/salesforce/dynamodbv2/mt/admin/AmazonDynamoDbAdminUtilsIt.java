@@ -40,7 +40,7 @@ class AmazonDynamoDbAdminUtilsIt {
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(REGION).build();
     private static final AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
-    private static final String TABLE_PREFIX = "oktodelete-testBillingMode.";
+    private static final String TABLE_PREFIX = "okToDelete-testBillingMode.";
     private String fullTableName;
     private static final ArrayList<String> testTables = new ArrayList<>();
     private static final Logger LOG = LoggerFactory.getLogger(AmazonDynamoDbAdminUtilsIt.class);
@@ -62,11 +62,11 @@ class AmazonDynamoDbAdminUtilsIt {
                 .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                         new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testgsi")
+                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi")
                         .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
                         .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testlsi")
+                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
                         .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
                                 new KeySchemaElement(INDEX_FIELD, KeyType.RANGE))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));

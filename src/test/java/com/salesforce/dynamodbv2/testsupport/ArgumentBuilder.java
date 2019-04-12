@@ -123,7 +123,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
         return ImmutableList.of(
             /*
-             * Testing byAccount by itself and with byTable succeeds, but sqlite failures occur when it runs
+             * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
              * concurrently with any of the sharedTable* strategies.
              */
             //byAccount,

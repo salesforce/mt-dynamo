@@ -10,7 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARYINDEX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.util.UUID.randomUUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,7 +42,7 @@ class FieldMapperTest {
         assertMapper(S,
             TABLE,
             () -> new AttributeValue().withS(value),
-            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + value,
+            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + value,
             mtContext);
     }
 
@@ -51,9 +51,9 @@ class FieldMapperTest {
         MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         String value = generateValue();
         assertMapper(S,
-            SECONDARYINDEX,
+            SECONDARY_INDEX,
             () -> new AttributeValue().withS(value),
-            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + value,
+            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + value,
             mtContext);
     }
 
@@ -63,7 +63,7 @@ class FieldMapperTest {
         assertMapper(N,
             TABLE,
             () -> new AttributeValue().withN("123"),
-            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + "123",
+            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + "123",
             mtContext);
     }
 
@@ -72,8 +72,8 @@ class FieldMapperTest {
         MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
         assertMapper(B,
             TABLE,
-            () -> new AttributeValue().withB(Charset.defaultCharset().encode("bytebuffer")),
-            mtContext.getContext() + DELIMITER + "virtualtable" + DELIMITER + "bytebuffer",
+            () -> new AttributeValue().withB(Charset.defaultCharset().encode("byte_buffer")),
+            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + "byte_buffer",
             mtContext);
     }
 
@@ -115,10 +115,10 @@ class FieldMapperTest {
 
     private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, IndexType indexType) {
         return new FieldMapping(
-            new Field("sourcefield", sourceFieldType),
-            new Field("targetfield", S),
-            "virtualindex",
-            "physicalindex",
+            new Field("sourceField", sourceFieldType),
+            new Field("targetField", S),
+            "virtualIndex",
+            "physicalIndex",
             indexType,
             true);
     }
@@ -136,7 +136,7 @@ class FieldMapperTest {
 
     private FieldMapper buildFieldMapper(MtAmazonDynamoDbContextProvider mtContext) {
         return new FieldMapper(mtContext,
-            "virtualtable",
+            "virtualTable",
             new FieldPrefixFunction(DELIMITER));
     }
 
