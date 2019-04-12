@@ -289,7 +289,7 @@ class TableMapping {
     void validateSecondaryIndexes(DynamoTableDescription virtualTable,
                                   DynamoTableDescription physicalTable,
                                   DynamoSecondaryIndexMapper secondaryIndexMapper) {
-        List<DynamoSecondaryIndex> secondaryIndexes = virtualTable.getSis();
+        final List<DynamoSecondaryIndex> secondaryIndexes = virtualTable.getSis();
         checkArgument(secondaryIndexes.size() == secondaryIndexes.stream().map(virtualSi -> {
             try {
                 return secondaryIndexMapper.lookupPhysicalSecondaryIndex(virtualSi, physicalTable);

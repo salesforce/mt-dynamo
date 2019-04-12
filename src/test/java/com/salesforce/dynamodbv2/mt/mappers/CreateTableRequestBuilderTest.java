@@ -95,5 +95,5 @@ class CreateTableRequestBuilderTest {
         DynamoDbTestUtils.assertExpectedBillingModeIsSet(
             createTableRequest, expectedBillingMode, expectedCapacityUnits);
     }
-    
+
 }
