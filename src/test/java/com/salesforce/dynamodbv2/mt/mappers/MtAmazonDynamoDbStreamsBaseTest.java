@@ -44,6 +44,9 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -239,6 +242,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)
                 .withContext(MT_CONTEXT)
+                .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
             MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build());

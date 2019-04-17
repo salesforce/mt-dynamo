@@ -1,7 +1,8 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toCollection;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.collect.Iterables.getLast;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -31,10 +32,10 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      * Default constructor.
      *
      * @param dynamoDbStreams underlying streams instance
-     * @param mtDynamoDb corresponding shared table dynamo DB instance
+     * @param mtDynamoDb      corresponding shared table dynamo DB instance
      */
     public MtAmazonDynamoDbStreamsBySharedTable(AmazonDynamoDBStreams dynamoDbStreams,
-        MtAmazonDynamoDbBySharedTable mtDynamoDb) {
+                                                MtAmazonDynamoDbBySharedTable mtDynamoDb) {
         super(dynamoDbStreams, mtDynamoDb);
     }
 
@@ -43,30 +44,110 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         return super.getShardIterator(request);
     }
 
-    // keeps going until it either reaches the end of stream or finds a record. This is so clients
-    // that don't cache shard iterators are guaranteed to make progress eventually.
+    /**
+     * Keeps fetching records until it reaches:
+     * <ol>
+     * <li>limit,</li>
+     * <li>current or absolute end of shard, or</li>
+     * <li>time bound</li>
+     * </ol>
+     * Returns a subtype of {@link GetRecordsResult} that includes the last consumed sequence number from the underlying
+     * stream shard, so that clients can request a new shard iterator where they left off.
+     */
     @Override
-    protected GetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
-        Predicate<MtRecord> recordFilter) {
+    protected MtGetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
+                                            Predicate<MtRecord> recordFilter) {
         Optional.ofNullable(request.getLimit()).ifPresent(limit -> checkArgument(limit > 0 && limit <= MAX_LIMIT));
 
-        List<Record> mtRecords = new ArrayList<>(Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT));
-        String iterator = request.getShardIterator();
+        final int limit = Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT);
+        final long timeLimit = mtDynamoDb.getGetRecordsTimeLimit();
+        final long time = mtDynamoDb.getClock().millis();
 
-        // keep fetching records until we reach the (current) end or find at least one record for this tenant
-        do {
-            GetRecordsResult result = dynamoDbStreams.getRecords(request.clone().withShardIterator(iterator));
-            iterator = result.getNextShardIterator();
-            List<Record> records = result.getRecords();
-            if (records.isEmpty()) {
+        final MtGetRecordsResult result = new MtGetRecordsResult()
+            .withRecords(new ArrayList<>(limit))
+            .withNextShardIterator(request.getShardIterator())
+            .withLastSequenceNumber(null);
+
+        while (result.getRecords().size() < limit
+            && result.getNextShardIterator() != null
+            && (mtDynamoDb.getClock().millis() - time) < timeLimit) {
+            if (!addRecords(result, limit, recordMapper, recordFilter)) {
                 break;
             }
-            records.stream().map(recordMapper).filter(recordFilter).collect(toCollection(() -> mtRecords));
-        } while (mtRecords.isEmpty() && iterator != null);
+        }
 
-        return new GetRecordsResult().withRecords(mtRecords).withNextShardIterator(iterator);
+        return result;
     }
 
+    /**
+     * Fetches more records using the next iterator in the result and adds them to the result records. Returns whether
+     * to keep going or not.
+     */
+    private boolean addRecords(MtGetRecordsResult result,
+                               int limit,
+                               Function<Record, MtRecord> recordMapper,
+                               Predicate<MtRecord> recordFilter) {
+        // retrieve max number of records from underlying stream (and retry below if we got too many)
+        final GetRecordsRequest innerRequest = new GetRecordsRequest().withLimit(MAX_LIMIT)
+            .withShardIterator(result.getNextShardIterator());
+        GetRecordsResult innerResult = dynamoDbStreams.getRecords(innerRequest);
+        result.setNextShardIterator(innerResult.getNextShardIterator());
+        List<Record> records = innerResult.getRecords();
+        // if we did not any records, no point continuing
+        if (records.isEmpty()) {
+            return false;
+        }
+
+        // otherwise, transform records and add those that match the filter
+        final int innerLimit = limit - result.getRecords().size();
+        final List<Record> innerMtRecords = new ArrayList<>(innerLimit);
+        int consumedRecords = addRecords(innerMtRecords, innerLimit, records, recordMapper, recordFilter);
+
+        // If we consumed all records, then we did not exceed the limit, so worth continuing (if we have time)
+        if (consumedRecords == records.size()) {
+            result.getRecords().addAll(innerMtRecords);
+            result.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
+            return true;
+        } else {
+            // If we exceeded limit: retry with lower limit (can't just return a subset of records, because the next
+            // shard iterator would not align with the last returned record)
+            innerResult = dynamoDbStreams.getRecords(innerRequest.withLimit(consumedRecords));
+            result.setNextShardIterator(innerResult.getNextShardIterator());
+            records = innerResult.getRecords();
+            // shouldn't happen, but just to be safe
+            if (!records.isEmpty()) {
+                consumedRecords = addRecords(result.getRecords(), limit, records, recordMapper, recordFilter);
+                checkState(consumedRecords == records.size()); // can't happen unless stream order changes
+                result.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
+            }
+            // either way we'll stop here (even if retrying didn't return sufficient records for some reason)
+            return false;
+        }
+    }
+
+    /**
+     * Transforms and filters {@code records} and adds them to {@code mtRecords} until the limit is reached. Returns
+     * how many records were traversed before limit or end of collection was reached.
+     */
+    private static int addRecords(List<? super MtRecord> mtRecords,
+                                  int limit,
+                                  List<? extends Record> records,
+                                  Function<Record, MtRecord> recordMapper,
+                                  Predicate<MtRecord> recordFilter) {
+        int consumedRecords = 0;
+        for (Record record : records) {
+            MtRecord mtRecord = recordMapper.apply(record);
+            if (recordFilter.test(mtRecord)) {
+                if (mtRecords.size() >= limit) {
+                    break;
+                } else {
+                    mtRecords.add(mtRecord);
+                }
+            }
+            consumedRecords++;
+        }
+        return consumedRecords;
+    }
 
     @Override
     protected Predicate<MtRecord> getRecordFilter(StreamArn arn) {
@@ -88,7 +169,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     private MtRecord mapRecord(Function<Map<String, AttributeValue>, FieldValue> fieldValueFunction,
-        Record record) {
+                               Record record) {
         FieldValue fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
         MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
         // execute in record tenant context to get table mapping

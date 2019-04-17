@@ -50,6 +50,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +84,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
     private final Map<String, CreateTableRequest> mtTables;
+    private final long getRecordsTimeLimit;
+    private final Clock clock;
 
     /**
      * TODO: write Javadoc.
@@ -94,6 +97,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param mtTableDescriptionRepo the {@code MtTableDescriptionRepo} impl
      * @param deleteTableAsync a flag indicating whether to perform delete-table operations async. (as opposed to sync.)
      * @param truncateOnDeleteTable a flag indicating whether to delete all table data when a virtual table is deleted
+     * @param getRecordsTimeLimit soft time limit for getting records out of the shared stream.
+     * @param clock clock instance to use for enforcing time limit (injected for unit tests).
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -101,7 +106,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          TableMappingFactory tableMappingFactory,
                                          MtTableDescriptionRepo mtTableDescriptionRepo,
                                          boolean deleteTableAsync,
-                                         boolean truncateOnDeleteTable) {
+                                         boolean truncateOnDeleteTable,
+                                         long getRecordsTimeLimit,
+                                         Clock clock) {
         super(mtContext, amazonDynamoDb);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
@@ -111,6 +118,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.truncateOnDeleteTable = truncateOnDeleteTable;
         this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
                 .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
+        this.getRecordsTimeLimit = getRecordsTimeLimit;
+        this.clock = clock;
+    }
+
+    long getGetRecordsTimeLimit() {
+        return getRecordsTimeLimit;
+    }
+
+    Clock getClock() {
+        return clock;
     }
 
     @Override
