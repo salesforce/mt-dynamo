@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -231,27 +232,12 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             new GetShardIteratorResult().withShardIterator(mockArn + "|it"));
         when(streams.getRecords(any()))
             .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it2")
-                .withRecords(generateRecords(0, 1000)))
+                .withRecords(mockRecords(0, 1000)))
             .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it3")
-                .withRecords(generateRecords(1000, 1000)));
+                .withRecords(mockRecords(1000, 1000)));
 
         // every 10th record is for tenant (so we would get more records if it weren't for timeout)
-        final MtAmazonDynamoDbBySharedTable mtDynamo = mock(MtAmazonDynamoDbBySharedTable.class);
-        when(mtDynamo.getMtContext()).thenReturn(MT_CONTEXT);
-        when(mtDynamo.getGetRecordsTimeLimit()).thenReturn(1L);
-        when(mtDynamo.getClock()).thenReturn(clock);
-        when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
-            String id = key.get("id").getS();
-            return new FieldValue(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id, id);
-        });
-        final ItemMapper itemMapper = mock(ItemMapper.class);
-        when(itemMapper.reverse(any())).then(returnsFirstArg());
-        final TableMapping tableMapping = mock(TableMapping.class);
-        when(tableMapping.getItemMapper()).thenReturn(itemMapper);
-        final DynamoTableDescription tableDescription = mock(DynamoTableDescription.class);
-        when(tableDescription.getStreamSpecification()).thenReturn(new StreamSpecification().withStreamEnabled(true));
-        when(tableMapping.getVirtualTable()).thenReturn(tableDescription);
-        when(mtDynamo.getTableMapping(any())).thenReturn(tableMapping);
+        final MtAmazonDynamoDbBySharedTable mtDynamo = mockMtAmazonDynamoDb(clock);
 
         // finally create SUT
         final MtAmazonDynamoDbStreamsBySharedTable sharedTableStreams =
@@ -273,7 +259,78 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         assertEquals(mockMtArn + "|it2", result.getNextShardIterator());
     }
 
-    private List<Record> generateRecords(int start, int num) {
+    /**
+     * Verifies that second page of records is retried if the tenant records in it exceed the limit.
+     */
+    @Test
+    void testRetry() {
+        /* ARRANGE (lots of stuff) */
+
+        // fix clock (so that we don't run out of time)
+        final Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
+
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tablename/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenanttablename";
+
+        // two get records calls that return max records (we expect only first call to happen due to timeout)
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        when(streams.getShardIterator(any())).thenReturn(
+            new GetShardIteratorResult().withShardIterator(mockArn + "|it0"));
+        when(streams.getRecords(eq(new GetRecordsRequest().withLimit(1000).withShardIterator(mockArn + "|it0"))))
+            .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it1000")
+                .withRecords(mockRecords(0, 1000)));
+        when(streams.getRecords(eq(new GetRecordsRequest().withLimit(1000).withShardIterator(mockArn + "|it1000"))))
+            .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it2000")
+                .withRecords(mockRecords(1000, 1000)));
+        when(streams.getRecords(eq(new GetRecordsRequest().withLimit(500).withShardIterator(mockArn + "|it1000"))))
+            .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it1500")
+                .withRecords(mockRecords(1000, 500)));
+
+        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
+        final MtAmazonDynamoDbBySharedTable mtDynamo = mockMtAmazonDynamoDb(clock);
+
+        // finally create SUT
+        final MtAmazonDynamoDbStreamsBySharedTable sharedTableStreams =
+            new MtAmazonDynamoDbStreamsBySharedTable(streams, mtDynamo);
+
+        /* ACT */
+        GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            GetShardIteratorResult iteratorResult = sharedTableStreams.getShardIterator(
+                new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
+                    .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1"));
+            return sharedTableStreams.getRecords(
+                new GetRecordsRequest().withLimit(150).withShardIterator(iteratorResult.getShardIterator()));
+        }, null);
+
+        /* ASSERT */
+
+        // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
+        assertEquals(150, result.getRecords().size());
+        assertEquals(mockMtArn + "|it1500", result.getNextShardIterator());
+    }
+
+
+    private static MtAmazonDynamoDbBySharedTable mockMtAmazonDynamoDb(Clock clock) {
+        final MtAmazonDynamoDbBySharedTable mtDynamo = mock(MtAmazonDynamoDbBySharedTable.class);
+        when(mtDynamo.getMtContext()).thenReturn(MT_CONTEXT);
+        when(mtDynamo.getGetRecordsTimeLimit()).thenReturn(1L);
+        when(mtDynamo.getClock()).thenReturn(clock);
+        when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
+            String id = key.get("id").getS();
+            return new FieldValue(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id, id);
+        });
+        final ItemMapper itemMapper = mock(ItemMapper.class);
+        when(itemMapper.reverse(any())).then(returnsFirstArg());
+        final TableMapping tableMapping = mock(TableMapping.class);
+        when(tableMapping.getItemMapper()).thenReturn(itemMapper);
+        final DynamoTableDescription tableDescription = mock(DynamoTableDescription.class);
+        when(tableDescription.getStreamSpecification()).thenReturn(new StreamSpecification().withStreamEnabled(true));
+        when(tableMapping.getVirtualTable()).thenReturn(tableDescription);
+        when(mtDynamo.getTableMapping(any())).thenReturn(tableMapping);
+        return mtDynamo;
+    }
+
+    private static List<Record> mockRecords(int start, int num) {
         List<Record> records = new ArrayList<>(num);
         for (int i = 0; i < num; i++) {
             records.add(new Record().withDynamodb(new StreamRecord()
