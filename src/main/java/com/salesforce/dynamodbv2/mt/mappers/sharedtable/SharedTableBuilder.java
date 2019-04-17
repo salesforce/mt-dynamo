@@ -41,6 +41,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -176,6 +177,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Boolean createTablesEagerly;
     private Integer pollIntervalSeconds;
     private Optional<String> tablePrefix = empty();
+    private Long getRecordsTimeLimit;
+    private Clock clock;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -201,6 +204,16 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withStreamsEnabled(boolean streamsEnabled) {
         this.streamsEnabled = streamsEnabled;
+        return this;
+    }
+
+    public SharedTableBuilder withGetRecordsTimeLimit(long getRecordsTimeLimit) {
+        this.getRecordsTimeLimit = getRecordsTimeLimit;
+        return this;
+    }
+
+    public SharedTableBuilder withClock(Clock clock) {
+        this.clock = clock;
         return this;
     }
 
@@ -246,7 +259,9 @@ public class SharedTableBuilder implements TableBuilder {
             tableMappingFactory,
             mtTableDescriptionRepo,
             deleteTableAsync,
-            truncateOnDeleteTable);
+            truncateOnDeleteTable,
+            getRecordsTimeLimit,
+            clock);
     }
 
     private void setDefaults() {
@@ -303,6 +318,12 @@ public class SharedTableBuilder implements TableBuilder {
                 .withTablePrefix(tablePrefix).build();
 
             ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
+        }
+        if (getRecordsTimeLimit == null) {
+            getRecordsTimeLimit = 5000L;
+        }
+        if (clock == null) {
+            clock = Clock.systemDefaultZone();
         }
     }
 

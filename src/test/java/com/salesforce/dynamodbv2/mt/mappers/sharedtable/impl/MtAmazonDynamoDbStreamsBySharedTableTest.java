@@ -22,6 +22,9 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -68,6 +71,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
             .withContext(() -> BASE_CONTEXT)
+            .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
             .build();
         try {
             TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName));
@@ -134,7 +138,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             });
 
             // once per fetch (since they are all trim horizon)
-            assertEquals(3, dynamoDbStreams.getRecordsCount);
+            assertEquals(6, dynamoDbStreams.getRecordsCount);
             assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
@@ -165,9 +169,9 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             putTestItem(mtDynamoDb, TENANTS[1], i++);
             final MtRecord expected1 = putTestItem(mtDynamoDb, TENANTS[0], i++);
             putTestItem(mtDynamoDb, TENANTS[1], i++);
-            // one record for tenant 1 on page 2 (don't expect to get)
+            // one record for tenant 1 on page 2 (also expect to get that one)
             putTestItem(mtDynamoDb, TENANTS[1], i++);
-            putTestItem(mtDynamoDb, TENANTS[0], i++);
+            final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i++);
             putTestItem(mtDynamoDb, TENANTS[1], i);
 
             // now query change streams
@@ -182,9 +186,10 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 assertNotNull(result.getNextShardIterator());
 
                 // we only expect to see 2 records, since the last page would exceed limit
-                assertEquals(1, result.getRecords().size());
+                assertEquals(2, result.getRecords().size());
                 Iterator<Record> it = result.getRecords().iterator();
                 assertMtRecord(expected1, it.next());
+                assertMtRecord(expected2, it.next());
             });
         } finally {
             deleteMtTables(mtDynamoDb);
