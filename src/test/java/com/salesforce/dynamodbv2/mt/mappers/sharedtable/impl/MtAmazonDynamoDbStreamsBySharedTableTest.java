@@ -1,30 +1,45 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.AdditionalAnswers.returnsFirstArg;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
+import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
+import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.Stream;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -196,4 +211,75 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         }
     }
 
+    /**
+     * Verify that timeout stops iterating over shard even if more records are available.
+     */
+    @Test
+    void testTimeout() {
+        /* ARRANGE (lots of stuff) */
+
+        // second clock tick is higher than limit
+        final Clock clock = mock(Clock.class);
+        when(clock.millis()).thenReturn(1L).thenReturn(3L);
+
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tablename/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenanttablename";
+
+        // two get records calls that return max records (we expect only first call to happen due to timeout)
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        when(streams.getShardIterator(any())).thenReturn(
+            new GetShardIteratorResult().withShardIterator(mockArn + "|it"));
+        when(streams.getRecords(any()))
+            .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it2")
+                .withRecords(generateRecords(0, 1000)))
+            .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it3")
+                .withRecords(generateRecords(1000, 1000)));
+
+        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
+        final MtAmazonDynamoDbBySharedTable mtDynamo = mock(MtAmazonDynamoDbBySharedTable.class);
+        when(mtDynamo.getMtContext()).thenReturn(MT_CONTEXT);
+        when(mtDynamo.getGetRecordsTimeLimit()).thenReturn(1L);
+        when(mtDynamo.getClock()).thenReturn(clock);
+        when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
+            String id = key.get("id").getS();
+            return new FieldValue(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id, id);
+        });
+        final ItemMapper itemMapper = mock(ItemMapper.class);
+        when(itemMapper.reverse(any())).then(returnsFirstArg());
+        final TableMapping tableMapping = mock(TableMapping.class);
+        when(tableMapping.getItemMapper()).thenReturn(itemMapper);
+        final DynamoTableDescription tableDescription = mock(DynamoTableDescription.class);
+        when(tableDescription.getStreamSpecification()).thenReturn(new StreamSpecification().withStreamEnabled(true));
+        when(tableMapping.getVirtualTable()).thenReturn(tableDescription);
+        when(mtDynamo.getTableMapping(any())).thenReturn(tableMapping);
+
+        // finally create SUT
+        final MtAmazonDynamoDbStreamsBySharedTable sharedTableStreams =
+            new MtAmazonDynamoDbStreamsBySharedTable(streams, mtDynamo);
+
+        /* ACT */
+        GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            GetShardIteratorResult iteratorResult = sharedTableStreams.getShardIterator(
+                new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
+                    .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1"));
+            return sharedTableStreams.getRecords(
+                new GetRecordsRequest().withShardIterator(iteratorResult.getShardIterator()));
+        }, null);
+
+        /* ASSERT */
+
+        // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
+        assertEquals(100, result.getRecords().size());
+        assertEquals(mockMtArn + "|it2", result.getNextShardIterator());
+    }
+
+    private List<Record> generateRecords(int start, int num) {
+        List<Record> records = new ArrayList<>(num);
+        for (int i = 0; i < num; i++) {
+            records.add(new Record().withDynamodb(new StreamRecord()
+                .withKeys(ImmutableMap.of("id", new AttributeValue(String.valueOf(i))))
+                .withSequenceNumber(String.valueOf(start + i))));
+        }
+        return records;
+    }
 }
