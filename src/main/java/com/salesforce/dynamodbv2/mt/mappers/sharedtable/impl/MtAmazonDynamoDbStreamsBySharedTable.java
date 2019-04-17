@@ -68,12 +68,10 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             .withNextShardIterator(request.getShardIterator())
             .withLastSequenceNumber(null);
 
-        while (result.getRecords().size() < limit
+        while (addRecords(result, limit, recordMapper, recordFilter)
+            && result.getRecords().size() < limit
             && result.getNextShardIterator() != null
-            && (mtDynamoDb.getClock().millis() - time) < timeLimit) {
-            if (!addRecords(result, limit, recordMapper, recordFilter)) {
-                break;
-            }
+            && (mtDynamoDb.getClock().millis() - time) <= timeLimit) {
         }
 
         return result;
