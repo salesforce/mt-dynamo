@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static java.util.function.Predicate.not;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -14,9 +15,12 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -153,6 +157,18 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
         // perform actual lookup
         GetRecordsResult result = getRecords(request, recordMapper, recordFilter);
+
+        if (!(result instanceof MtGetRecordsResult)) {
+            result = new MtGetRecordsResult()
+                .withRecords(result.getRecords())
+                .withNextShardIterator(result.getNextShardIterator())
+                .withLastSequenceNumber(Optional.ofNullable(result.getRecords())
+                    .filter(not(List::isEmpty))
+                    .map(Iterables::getLast)
+                    .map(Record::getDynamodb)
+                    .map(StreamRecord::getSequenceNumber)
+                    .orElse(null));
+        }
 
         // translate back to tenant-aware iterator
         Optional.ofNullable(result.getNextShardIterator())
