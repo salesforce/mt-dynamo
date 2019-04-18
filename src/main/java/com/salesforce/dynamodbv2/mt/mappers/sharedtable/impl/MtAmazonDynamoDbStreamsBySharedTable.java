@@ -65,8 +65,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
         final MtGetRecordsResult result = new MtGetRecordsResult()
             .withRecords(new ArrayList<>(limit))
-            .withNextShardIterator(request.getShardIterator())
-            .withLastSequenceNumber(null);
+            .withNextShardIterator(request.getShardIterator());
 
         while (addRecords(result, limit, recordMapper, recordFilter)
             && result.getRecords().size() < limit
