@@ -41,6 +41,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.MtGetRecordsResult;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
@@ -210,14 +211,17 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .getS();
 
         Map<String, MtRecord> expectedByKey = expected.stream().collect(toMap(keyFunction, identity()));
-        iterators.forEach(iterator ->
-            streams.getRecords(new GetRecordsRequest().withShardIterator(iterator)).getRecords().forEach(record -> {
+        iterators.forEach(iterator -> {
+            GetRecordsResult result = streams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
+            assertTrue(result instanceof MtGetRecordsResult);
+            assertNotNull(((MtGetRecordsResult) result).getLastSequenceNumber());
+            result.getRecords().forEach(record -> {
                 assertTrue(record instanceof MtRecord);
                 MtRecord expectedRecord = expectedByKey.remove(keyFunction.apply((MtRecord) record));
                 assertNotNull(expectedRecord);
                 assertMtRecord(expectedRecord, record);
-            })
-        );
+            });
+        });
         assertTrue(expectedByKey.isEmpty());
     }
 
