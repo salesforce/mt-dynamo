@@ -167,7 +167,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.1</version>
+                <version>2.22.2</version>
                 <configuration>
                     <!-- Overriding the default pattern is necessary because all of the plugin's default patterns
                          contain 'IT' which is disallowed by our checkstyle. -->
