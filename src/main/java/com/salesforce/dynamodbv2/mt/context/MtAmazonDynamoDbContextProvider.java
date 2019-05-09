@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.context;
 
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -17,7 +18,26 @@ import java.util.function.Function;
 @FunctionalInterface
 public interface MtAmazonDynamoDbContextProvider {
 
-    String getContext();
+    Optional<String> getContextOpt();
+
+    /**
+     * Returns a String representation of the current context that can be used to qualify DynamoDB table names. Also
+     * used by the shared table strategy in stream arns. The String must only containt the following characters:
+     * <ol>
+     * <li>A-Z</li>
+     * <li>a-z</li>
+     * <li>0-9</li>
+     * <li>_ (underscore)</li>
+     * <li>- (hyphen)</li>
+     * <li>. (dot)</li>
+     * </ol>
+     * In addition, combined with the virtual table name and escape characters the value must not exceed 255 characters.
+     *
+     * @return  String representation of currently active context.
+     */
+    default String getContext() {
+        return getContextOpt().orElseThrow(IllegalStateException::new);
+    }
 
     /**
      * Sets the tenant context.
@@ -35,12 +55,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * @param runnable the procedure to run after the context is set
      */
     default void withContext(String tenantId, Runnable runnable) {
-        final String origContext = getContext();
+        final Optional<String> origContext = getContextOpt();
         setContext(tenantId);
         try {
             runnable.run();
         } finally {
-            setContext(origContext);
+            setContext(origContext.orElse(null));
         }
     }
 
@@ -56,12 +76,12 @@ public interface MtAmazonDynamoDbContextProvider {
      * @return         the result of calling {@code function} on {@code t}
      */
     default <T, R> R withContext(String tenantId, Function<T, R> function, T t) {
-        final String origContext = getContext();
+        final Optional<String> origContext = getContextOpt();
         setContext(tenantId);
         try {
             return function.apply(t);
         } finally {
-            setContext(origContext);
+            setContext(origContext.orElse(null));
         }
     }
 }

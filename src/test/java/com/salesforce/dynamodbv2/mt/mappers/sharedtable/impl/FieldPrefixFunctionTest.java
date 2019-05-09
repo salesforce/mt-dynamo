@@ -13,6 +13,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,8 +42,8 @@ class FieldPrefixFunctionTest {
 
         FieldValue applied = SUT.apply(new MtAmazonDynamoDbContextProvider() {
             @Override
-            public String getContext() {
-                return context;
+            public Optional<String> getContextOpt() {
+                return Optional.of(context);
             }
 
             @Override
