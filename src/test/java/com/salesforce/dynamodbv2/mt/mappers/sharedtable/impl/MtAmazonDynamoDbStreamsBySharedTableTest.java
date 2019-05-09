@@ -1,7 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
-import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -86,7 +85,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
-            .withContext(() -> BASE_CONTEXT)
+            .withContext(() -> Optional.empty())
             .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
             .build();
         try {

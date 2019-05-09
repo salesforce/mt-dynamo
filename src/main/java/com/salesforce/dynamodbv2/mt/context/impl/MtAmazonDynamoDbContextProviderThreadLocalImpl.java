@@ -7,9 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.context.impl;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 
 /**
  * TODO: write Javadoc.
@@ -18,28 +19,27 @@ import java.util.Map;
  */
 public class MtAmazonDynamoDbContextProviderThreadLocalImpl implements MtAmazonDynamoDbContextProvider {
 
-    private static final String CONTEXT_KEY = "multitenant-context";
-    public static final String BASE_CONTEXT = "";
-    private static final ThreadLocal<Map<String, String>> CONTEXT_MAP_THREAD_LOCAL = new ThreadLocal<>();
+    private static final ThreadLocal<String> CONTEXT_THREAD_LOCAL = new ThreadLocal<>();
+
+    // TODO enforce length limit?
+    private static boolean isValid(String tenantId) {
+        for (char c : tenantId.toCharArray()) {
+            if (!(Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '-')) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     @Override
     public void setContext(String tenantId) {
-        getContextMap().put(CONTEXT_KEY, tenantId);
+        checkArgument(tenantId == null || isValid(tenantId));
+        CONTEXT_THREAD_LOCAL.set(tenantId);
     }
 
     @Override
-    public String getContext() {
-        final String value = getContextMap().get(CONTEXT_KEY);
-        return value == null || value.trim().isEmpty() ? BASE_CONTEXT : value;
-    }
-
-    private Map<String, String> getContextMap() {
-        Map<String, String> context = CONTEXT_MAP_THREAD_LOCAL.get();
-        if (context == null) {
-            context = new HashMap<>();
-            CONTEXT_MAP_THREAD_LOCAL.set(context);
-        }
-        return context;
+    public Optional<String> getContextOpt() {
+        return Optional.ofNullable(CONTEXT_THREAD_LOCAL.get());
     }
 
 }
