@@ -66,7 +66,7 @@ class ConditionMapperTest {
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
         ConditionMapper sut = new ConditionMapper(tableMapping,
-                new FieldMapper(mtContext, inputs.getVirtualTableName(), new FieldPrefixFunction('.')));
+                new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.applyKeyConditionToField(requestWrapper,
                 inputs.getFieldMapping(),
@@ -252,7 +252,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field1", "physicalHk")
-                                .attributeValues(":value", "ctx.virtualTable.hkValue").build()
+                                .attributeValues(":value", "ctx/virtualTable/hkValue").build()
                 ),
                 // map gsi hash-key field name and value on a primary expression on a table with hk only
                 new KeyConditionTestInvocation(
@@ -271,7 +271,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field", "physicalGsiHk")
-                                .attributeValues(":value", "ctx.virtualTable.hkGsiValue").build()
+                                .attributeValues(":value", "ctx/virtualTable/hkGsiValue").build()
                 ),
                 // map table's hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -289,7 +289,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.1").build()
+                                .attributeValues(":value", "ctx1/Table3/1").build()
                 ),
                 // map table's range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -326,7 +326,7 @@ class ConditionMapperTest {
                                 .filterExpression("#name2 = :value2").build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.hashKeyValue3").build()
+                                .attributeValues(":value", "ctx1/Table3/hashKeyValue3").build()
                 ),
                 // map table's range-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -364,7 +364,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
                 ),
                 // map lsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -383,7 +383,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.1").build()
+                                .attributeValues(":value", "ctx1/Table3/1").build()
                 ),
                 // map lsi range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -391,7 +391,7 @@ class ConditionMapperTest {
                                 .org("ctx1")
                                 .virtualTableName("Table3")
                                 .attributeNames("#name", "hk", "#name2", "indexField")
-                                .attributeValues(":value", "ctx1.Table3.1", ":value2", "indexFieldValue")
+                                .attributeValues(":value", "ctx1/Table3/1", ":value2", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(
                                         new Field("indexField", S), new Field("lsi_s_s_rk", S),
                                         "testLsi",
@@ -420,7 +420,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
                 ),
                 // map attribute_exists expression
                 new KeyConditionTestInvocation(

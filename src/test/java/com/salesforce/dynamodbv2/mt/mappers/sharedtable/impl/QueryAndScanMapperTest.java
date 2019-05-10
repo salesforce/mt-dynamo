@@ -27,12 +27,12 @@ import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTy
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import java.util.HashMap;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentMatchers;
 
 /**
  * TODO: write Javadoc.
@@ -62,8 +62,7 @@ class QueryAndScanMapperTest {
             @Override
             public void withContext(String org, Runnable runnable) {
             }
-        },
-        '.'
+        }
     );
 
     private QueryAndScanMapper getMockQueryMapper() {
@@ -83,7 +82,7 @@ class QueryAndScanMapperTest {
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalHk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx.virtualTable.hkValue"))),
+                                new AttributeValue().withS("ctx/virtualTable/hkValue"))),
                 queryRequest);
     }
 
@@ -106,7 +105,7 @@ class QueryAndScanMapperTest {
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value1",
-                                new AttributeValue().withS("ctx.virtualTable.hkValue"))),
+                                new AttributeValue().withS("ctx/virtualTable/hkValue"))),
                 queryRequest);
     }
 
@@ -122,7 +121,7 @@ class QueryAndScanMapperTest {
                         .withKeyConditionExpression("#field1 = :value")
                         .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value", new
-                                AttributeValue().withS("ctx.virtualTable.hkValue"))),
+                                AttributeValue().withS("ctx/virtualTable/hkValue"))),
                 queryRequest);
     }
 
@@ -141,7 +140,7 @@ class QueryAndScanMapperTest {
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalGsiHk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx.virtualTable.hkGsiValue"))),
+                                new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
                 queryRequest);
     }
 
@@ -187,7 +186,7 @@ class QueryAndScanMapperTest {
                         .withFilterExpression(scanRequest.getFilterExpression())
                         .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalGsiHk"))
                         .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx.virtualTable.hkGsiValue"))),
+                                new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
                 scanRequest);
     }
 
@@ -197,11 +196,8 @@ class QueryAndScanMapperTest {
                 .withExpressionAttributeNames(new HashMap<>())
                 .withExpressionAttributeValues(new HashMap<>());
 
-        FieldPrefixFunction fieldPrefixFunction = mock(FieldPrefixFunction.class);
-        FieldMapper fieldMapper = new FieldMapper(null, null, fieldPrefixFunction);
-        FieldValue fieldValue = mock(FieldValue.class);
-        when(fieldValue.getQualifiedValue()).thenReturn("prefixed");
-        when(fieldPrefixFunction.apply(any(), any(), any())).thenReturn(fieldValue);
+        FieldMapper fieldMapper = mock(FieldMapper.class);
+        when(fieldMapper.apply(any(), any())).thenReturn(new AttributeValue("prefixed"));
         new QueryAndScanMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
 
         assertEquals(new ScanRequest()

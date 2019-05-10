@@ -167,11 +167,11 @@ public class SharedTableBuilder implements TableBuilder {
     private String name;
     private AmazonDynamoDB amazonDynamoDb;
     private MtAmazonDynamoDbContextProvider mtContext;
-    private Character delimiter;
     private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
+    private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
     private Boolean createTablesEagerly;
@@ -228,6 +228,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withBinaryHashKey(boolean binaryHashKey) {
+        this.binaryHashKey = binaryHashKey;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      *
@@ -247,7 +252,6 @@ public class SharedTableBuilder implements TableBuilder {
                 createTableRequestFactory,
                 mtContext,
                 secondaryIndexMapper,
-                delimiter,
                 amazonDynamoDb,
                 createTablesEagerly,
                 pollIntervalSeconds
@@ -271,12 +275,15 @@ public class SharedTableBuilder implements TableBuilder {
         if (this.billingMode == null) {
             this.billingMode = BillingMode.PROVISIONED;
         }
-        if (streamsEnabled == null) {
+        if (this.streamsEnabled == null) {
             streamsEnabled = true;
+        }
+        if (this.binaryHashKey == null) {
+            binaryHashKey = false;
         }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                    this.billingMode, this.streamsEnabled);
+                    this.billingMode, this.streamsEnabled, this.binaryHashKey);
         } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             this.createTableRequests = createTableRequests.stream()
                     .map(createTableRequest ->
@@ -292,9 +299,6 @@ public class SharedTableBuilder implements TableBuilder {
         }
         if (secondaryIndexMapper == null) {
             secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
-        }
-        if (delimiter == null) {
-            delimiter = '.';
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
@@ -334,30 +338,32 @@ public class SharedTableBuilder implements TableBuilder {
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
     private static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
-        BillingMode billingMode,
-        boolean streamsEnabled) {
+        BillingMode billingMode, boolean streamsEnabled, boolean binaryHashKey) {
+
+        ScalarAttributeType hashKeyType = binaryHashKey ? B : S;
+
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_s")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, S);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_s")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSn = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_n")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, N);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_n")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSb = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_b")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, B);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_b")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
         CreateTableRequestBuilder mtSharedTableStaticsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_nolsi")
-            .withTableKeySchema(HASH_KEY_FIELD, S);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_nolsi")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType);
         CreateTableRequestBuilder mtSharedTableStaticSsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_s_nolsi")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, S);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_s_nolsi")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSnNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_n_nolsi")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, N);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_n_nolsi")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSbNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_s_b_nolsi")
-            .withTableKeySchema(HASH_KEY_FIELD, S, RANGE_KEY_FIELD, B);
+            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_b_nolsi")
+            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
 
         return ImmutableList.of(mtSharedTableStaticSs,
             mtSharedTableStaticSn,
@@ -368,7 +374,7 @@ public class SharedTableBuilder implements TableBuilder {
             mtSharedTableStaticSbNoLsi
         ).stream().map(createTableRequestBuilder -> {
             setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
-            addSis(createTableRequestBuilder, provisionedThroughput);
+            addSis(createTableRequestBuilder, hashKeyType, provisionedThroughput);
             addStreamSpecification(createTableRequestBuilder, streamsEnabled);
             return createTableRequestBuilder.build();
         }).collect(Collectors.toList());
@@ -391,15 +397,16 @@ public class SharedTableBuilder implements TableBuilder {
         }
     }
 
-    private static void addSis(CreateTableRequestBuilder createTableRequestBuilder, long defaultProvisionedThroughput) {
-        addSi(createTableRequestBuilder, GSI, S, empty(), defaultProvisionedThroughput);
-        addSi(createTableRequestBuilder, GSI, S, of(S), defaultProvisionedThroughput);
-        addSi(createTableRequestBuilder, GSI, S, of(N), defaultProvisionedThroughput);
-        addSi(createTableRequestBuilder, GSI, S, of(B), defaultProvisionedThroughput);
+    private static void addSis(CreateTableRequestBuilder createTableRequestBuilder, ScalarAttributeType hashKeyType,
+                               long defaultProvisionedThroughput) {
+        addSi(createTableRequestBuilder, GSI, hashKeyType, empty(), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, hashKeyType, of(S), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, hashKeyType, of(N), defaultProvisionedThroughput);
+        addSi(createTableRequestBuilder, GSI, hashKeyType, of(B), defaultProvisionedThroughput);
         if (!createTableRequestBuilder.getTableName().toLowerCase().endsWith("nolsi")) {
-            addSi(createTableRequestBuilder, LSI, S, of(S), defaultProvisionedThroughput);
-            addSi(createTableRequestBuilder, LSI, S, of(N), defaultProvisionedThroughput);
-            addSi(createTableRequestBuilder, LSI, S, of(B), defaultProvisionedThroughput);
+            addSi(createTableRequestBuilder, LSI, hashKeyType, of(S), defaultProvisionedThroughput);
+            addSi(createTableRequestBuilder, LSI, hashKeyType, of(N), defaultProvisionedThroughput);
+            addSi(createTableRequestBuilder, LSI, hashKeyType, of(B), defaultProvisionedThroughput);
         }
     }
 
@@ -444,11 +451,6 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
         this.mtContext = mtContext;
-        return this;
-    }
-
-    public SharedTableBuilder withDelimiter(char delimiter) {
-        this.delimiter = delimiter;
         return this;
     }
 

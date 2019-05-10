@@ -21,8 +21,8 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
-
-import java.nio.charset.Charset;
+import java.nio.ByteBuffer;
+import java.util.Base64;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
  */
 class FieldMapperTest {
 
-    private static final char DELIMITER = '.';
+    private static final char DELIMITER = '/';
 
     @Test
     void applyTableIndex() {
@@ -71,10 +71,12 @@ class FieldMapperTest {
     @Test
     void applyTableIndexByteArray() {
         MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
+        final byte[] bytes = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
         assertMapper(B,
             TABLE,
-            () -> new AttributeValue().withB(Charset.defaultCharset().encode("byte_buffer")),
-            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + "byte_buffer",
+            () -> new AttributeValue().withB(ByteBuffer.wrap(bytes)),
+            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER
+                + Base64.getEncoder().encodeToString(bytes),
             mtContext);
     }
 
@@ -136,9 +138,8 @@ class FieldMapperTest {
     }
 
     private FieldMapper buildFieldMapper(MtAmazonDynamoDbContextProvider mtContext) {
-        return new FieldMapper(mtContext,
-            "virtualTable",
-            new FieldPrefixFunction(DELIMITER));
+        return new StringFieldMapper(mtContext,
+            "virtualTable");
     }
 
     private static String random() {

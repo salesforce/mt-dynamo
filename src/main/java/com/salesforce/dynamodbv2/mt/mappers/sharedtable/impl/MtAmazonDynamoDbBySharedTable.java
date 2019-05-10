@@ -47,7 +47,6 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.time.Clock;
@@ -135,7 +134,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return mtTables.containsKey(tableName);
     }
 
-    Function<Map<String, AttributeValue>, FieldValue> getFieldValueFunction(String sharedTableName) {
+    Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
         CreateTableRequest table = mtTables.get(sharedTableName);
         checkArgument(table != null);
         // TODO consider representing physical tables as DynamoTableDescription
@@ -143,7 +142,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .filter(elem -> HASH.toString().equals(elem.getKeyType()))
                 .map(KeySchemaElement::getAttributeName)
                 .findFirst().orElseThrow(IllegalStateException::new);
-        FieldPrefixFunction fpf = new FieldPrefixFunction('.');
+        FieldPrefixFunction fpf = new StringFieldPrefixFunction();
         // TODO support non-string physical table hash key
         return key -> fpf.reverse(key.get(hashKeyName).getS());
     }
