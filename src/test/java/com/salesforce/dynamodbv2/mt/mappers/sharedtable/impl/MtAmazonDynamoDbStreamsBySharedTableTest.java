@@ -80,7 +80,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String randomTableName = "RandomTable";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, false))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -88,7 +88,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
             .build();
         try {
-            TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName));
+            TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName, false));
 
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
@@ -115,7 +115,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testRecords.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -168,7 +168,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testLimit.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)

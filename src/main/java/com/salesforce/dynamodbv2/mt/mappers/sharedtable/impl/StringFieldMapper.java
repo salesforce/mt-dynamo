@@ -24,8 +24,6 @@ import java.util.Base64;
  */
 class StringFieldMapper implements FieldMapper {
 
-    private static final FieldPrefixFunction<String> fieldPrefixFunction = new StringFieldPrefixFunction();
-
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
 
@@ -40,13 +38,13 @@ class StringFieldMapper implements FieldMapper {
         checkArgument(fieldMapping.getTarget().getType() == S);
         String stringValue = convertToStringNotNull(fieldMapping.getSource().getType(), unqualifiedAttribute);
         FieldValue<String> fieldValue = new FieldValue<>(mtContext.getContext(), virtualTableName, stringValue);
-        return new AttributeValue(fieldPrefixFunction.apply(fieldValue));
+        return new AttributeValue(StringFieldPrefixFunction.INSTANCE.apply(fieldValue));
     }
 
     @Override
     public AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
         checkArgument(fieldMapping.getSource().getType() == S);
-        FieldValue<String> fieldValue = fieldPrefixFunction.reverse(qualifiedAttribute.getS());
+        FieldValue<String> fieldValue = StringFieldPrefixFunction.INSTANCE.reverse(qualifiedAttribute.getS());
         return convertFromString(fieldMapping.getTarget().getType(), fieldValue.getValue());
     }
 

@@ -12,6 +12,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
@@ -32,6 +33,7 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
@@ -142,9 +144,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .filter(elem -> HASH.toString().equals(elem.getKeyType()))
                 .map(KeySchemaElement::getAttributeName)
                 .findFirst().orElseThrow(IllegalStateException::new);
-        FieldPrefixFunction fpf = new StringFieldPrefixFunction();
-        // TODO support non-string physical table hash key
-        return key -> fpf.reverse(key.get(hashKeyName).getS());
+        ScalarAttributeType hashKeyType = table.getAttributeDefinitions().stream()
+            .filter(attr -> hashKeyName.equals(attr.getAttributeName()))
+            .map(AttributeDefinition::getAttributeType)
+            .map(ScalarAttributeType::valueOf)
+            .findFirst().orElseThrow(IllegalStateException::new);
+        switch (hashKeyType) {
+            case S:
+                return key -> StringFieldPrefixFunction.INSTANCE.reverse(key.get(hashKeyName).getS());
+            case B:
+                return key -> BinaryFieldPrefixFunction.INSTANCE.reverse(key.get(hashKeyName).getB());
+            default:
+                throw new IllegalStateException("Unsupported physical table hash key type " + hashKeyType);
+        }
     }
 
     @Override

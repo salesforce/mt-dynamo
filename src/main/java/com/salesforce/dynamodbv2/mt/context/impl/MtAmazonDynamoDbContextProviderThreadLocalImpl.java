@@ -24,7 +24,8 @@ public class MtAmazonDynamoDbContextProviderThreadLocalImpl implements MtAmazonD
     // TODO enforce length limit?
     private static boolean isValid(String tenantId) {
         for (char c : tenantId.toCharArray()) {
-            if (!(Character.isLetterOrDigit(c) || c == '_' || c == '.' || c == '-')) {
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                || c == '_' || c == '.' || c == '-')) {
                 return false;
             }
         }

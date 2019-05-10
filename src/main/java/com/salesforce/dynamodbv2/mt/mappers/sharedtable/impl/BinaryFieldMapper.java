@@ -14,8 +14,6 @@ import java.nio.ByteBuffer;
 
 class BinaryFieldMapper implements FieldMapper {
 
-    private static final FieldPrefixFunction<ByteBuffer> fieldPrefixFunction = new BinaryFieldPrefixFunction();
-
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
 
@@ -30,13 +28,13 @@ class BinaryFieldMapper implements FieldMapper {
         checkArgument(fieldMapping.getTarget().getType() == B);
         ByteBuffer binaryValue = convertToBinary(fieldMapping.getSource().getType(), unqualifiedAttribute);
         FieldValue<ByteBuffer> fieldValue = new FieldValue<>(mtContext.getContext(), virtualTableName, binaryValue);
-        return new AttributeValue().withB(fieldPrefixFunction.apply(fieldValue));
+        return new AttributeValue().withB(BinaryFieldPrefixFunction.INSTANCE.apply(fieldValue));
     }
 
     @Override
     public AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
         checkArgument(fieldMapping.getSource().getType() == B);
-        FieldValue<ByteBuffer> fieldValue = fieldPrefixFunction.reverse(qualifiedAttribute.getB());
+        FieldValue<ByteBuffer> fieldValue = BinaryFieldPrefixFunction.INSTANCE.reverse(qualifiedAttribute.getB());
         return convertFromBinary(fieldMapping.getTarget().getType(), fieldValue.getValue());
     }
 
