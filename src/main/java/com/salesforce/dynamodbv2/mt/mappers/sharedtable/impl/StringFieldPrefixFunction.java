@@ -35,12 +35,12 @@ class StringFieldPrefixFunction implements FieldPrefixFunction<String> {
     public FieldValue<String> reverse(String qualifiedValue) {
         int idx = qualifiedValue.indexOf(DELIMITER);
         checkArgument(idx != -1);
-        String context = qualifiedValue.substring(0, idx);
+        final String context = qualifiedValue.substring(0, idx);
 
         idx++;
         int idx2 = qualifiedValue.indexOf(DELIMITER, idx);
         checkArgument(idx2 != -1);
-        String tableName = qualifiedValue.substring(idx, idx2);
+        final String tableName = qualifiedValue.substring(idx, idx2);
 
         idx2++;
         String value = qualifiedValue.substring(idx2);
