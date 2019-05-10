@@ -7,6 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -56,8 +57,7 @@ class TableMapping {
     TableMapping(DynamoTableDescription virtualTable,
                  CreateTableRequestFactory createTableRequestFactory,
                  DynamoSecondaryIndexMapper secondaryIndexMapper,
-                 MtAmazonDynamoDbContextProvider mtContext,
-                 char delimiter) {
+                 MtAmazonDynamoDbContextProvider mtContext) {
         physicalTable = lookupPhysicalTable(virtualTable, createTableRequestFactory);
         validatePhysicalTable(physicalTable);
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -66,9 +66,10 @@ class TableMapping {
             buildIndexPrimaryKeyFieldMappings(virtualTable, physicalTable, secondaryIndexMapper);
         this.virtualToPhysicalMappings = buildAllVirtualToPhysicalFieldMappings(virtualTable);
         validateMapping();
-        FieldMapper fieldMapper = new FieldMapper(mtContext,
-            virtualTable.getTableName(),
-            new FieldPrefixFunction(delimiter));
+        FieldMapper fieldMapper = physicalTable.getPrimaryKey().getHashKeyType() == S
+            ? new StringFieldMapper(mtContext, virtualTable.getTableName())
+            : new BinaryFieldMapper(mtContext, virtualTable.getTableName());
+
         itemMapper = new ItemMapper(
                 fieldMapper,
                 virtualToPhysicalMappings
@@ -311,7 +312,8 @@ class TableMapping {
         throws IllegalArgumentException, NullPointerException {
         checkNotNull(virtualPrimaryKey.getHashKey(), "hash key is required on virtual table");
         checkNotNull(physicalPrimaryKey.getHashKey(), "hash key is required on physical table");
-        checkArgument(physicalPrimaryKey.getHashKeyType() == S, "hash key must be of type S");
+        checkArgument(physicalPrimaryKey.getHashKeyType() == S || physicalPrimaryKey.getHashKeyType() == B,
+            "hash key must be of type S or B");
         if (virtualPrimaryKey.getRangeKey().isPresent()) {
             checkArgument(physicalPrimaryKey.getRangeKey().isPresent(),
                           "rangeKey exists on virtual primary key but not on physical");
@@ -337,7 +339,7 @@ class TableMapping {
     }
 
     private void validatePrimaryKey(PrimaryKey primaryKey, String msgPrefix) {
-        checkArgument(primaryKey.getHashKeyType() == S,
+        checkArgument(primaryKey.getHashKeyType() == S || primaryKey.getHashKeyType() == B,
             msgPrefix + " primary-key hash key must be type S, encountered type "
                 + primaryKey.getHashKeyType());
     }

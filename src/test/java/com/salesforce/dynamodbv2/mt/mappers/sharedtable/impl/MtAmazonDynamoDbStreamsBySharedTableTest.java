@@ -33,7 +33,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.time.Clock;
@@ -316,7 +315,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         when(mtDynamo.getClock()).thenReturn(clock);
         when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
             String id = key.get("id").getS();
-            return new FieldValue(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id, id);
+            return new FieldValue<>(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id);
         });
         final ItemMapper itemMapper = mock(ItemMapper.class);
         when(itemMapper.reverse(any())).then(returnsFirstArg());

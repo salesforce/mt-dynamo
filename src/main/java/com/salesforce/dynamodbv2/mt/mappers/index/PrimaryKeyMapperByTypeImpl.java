@@ -67,6 +67,16 @@ public class PrimaryKeyMapperByTypeImpl implements PrimaryKeyMapper {
                 primaryKeys);
             if (primaryKeysFound.isPresent()) {
                 return primaryKeysFound.get();
+            } else {
+                primaryKeysFound = mapPrimaryKeyExactMatch(
+                    new PrimaryKey(primaryKeyToFind.getHashKey(),
+                        B,
+                        rangeKeyType.map((Function<ScalarAttributeType, String>) Enum::name),
+                        rangeKeyType),
+                    primaryKeys);
+                if (primaryKeysFound.isPresent()) {
+                    return primaryKeysFound.get();
+                }
             }
         }
         throw new MappingException("no key schema compatible with " + primaryKeyToFind

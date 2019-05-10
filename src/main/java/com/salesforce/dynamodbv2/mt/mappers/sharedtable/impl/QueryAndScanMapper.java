@@ -113,13 +113,12 @@ class QueryAndScanMapper {
              * the expression does not contain the table or index key that's being used in the
              * query, add begins_with clause
              */
-            String physicalHashKey = fieldMappings.stream()
+            Field physicalHashKey = fieldMappings.stream()
                 .filter(fieldMapping -> fieldMapping.getSource().getName().equals(virtualHashKey))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                     "field mapping not found hash-key field " + virtualHashKey))
-                .getTarget()
-                .getName();
+                .getTarget();
 
             FieldMapping fieldMapping = fieldMappings.stream()
                 .filter(fieldMapping1 -> fieldMapping1.getSource().getName().equals(virtualHashKey))
@@ -137,20 +136,20 @@ class QueryAndScanMapper {
             tableMapping.getConditionMapper().applyKeyConditionToField(request, targetFieldMapping));
     }
 
-    private void addBeginsWith(RequestWrapper request, String hashKey, FieldMapping fieldMapping) {
+    private void addBeginsWith(RequestWrapper request, Field hashKey, FieldMapping fieldMapping) {
         /*
          * TODO make sure it properly identifies that it doesn't need to add this ... make sure it's an equals
          * condition and that the equals condition can't be hacked ... make sure you can't negate the begins_with
          * by adding an OR condition
          */
         FieldMapping fieldMappingForPrefix = new FieldMapping(new Field(null, S),
-            null,
+            new Field(null, hashKey.getType()),
             fieldMapping.getVirtualIndexName(),
             fieldMapping.getPhysicalIndexName(),
             fieldMapping.getIndexType(),
             fieldMapping.isContextAware());
         AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
-        request.putExpressionAttributeName(NAME_PLACEHOLDER, hashKey);
+        request.putExpressionAttributeName(NAME_PLACEHOLDER, hashKey.getName());
         request.putExpressionAttributeValue(VALUE_PLACEHOLDER, physicalValuePrefixAttribute);
         request.setPrimaryExpression(
             (request.getPrimaryExpression() != null ? request.getPrimaryExpression() + " and " : "")

@@ -50,7 +50,6 @@ import org.junit.jupiter.api.Test;
  */
 class TableMappingTest {
 
-    private static final char DELIMITER = '.';
     private static final String MULTIPLE_VIRTUAL_SECONDARY_INDEX_MAPPED_TO_A_SINGLE_PHYSICAL_MESSAGE =
         "More than one virtual secondary index maps to the same physical secondary index";
     private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
@@ -67,8 +66,7 @@ class TableMappingTest {
     private final TableMapping sut = new TableMapping(virtualTable,
             new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
-            null,
-            DELIMITER
+            null
     );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
             "virtualHk", ImmutableList.of(
@@ -146,8 +144,7 @@ class TableMappingTest {
                     1L)
                 .build()).getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
-            null,
-            DELIMITER
+            null
         );
         Map<String, List<FieldMapping>> fieldMappings = sut.getAllVirtualToPhysicalFieldMappings();
         Map<String, Integer> expectedMappingCounts = ImmutableMap.of("virtualHk", 2,
@@ -231,8 +228,7 @@ class TableMappingTest {
         TableMapping tableMapping = new TableMapping(virtualTable,
                 new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                 spyIndexMapper,
-                null,
-                DELIMITER
+                null
         );
         when(spyIndexMapper.lookupPhysicalSecondaryIndex(virtualTable.getSis().get(0), physicalTable))
                 .thenThrow(new IllegalArgumentException("index mapping exception"));
