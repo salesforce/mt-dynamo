@@ -7,7 +7,13 @@ import java.nio.ByteBuffer;
 
 public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer> {
 
+    static final BinaryFieldPrefixFunction INSTANCE = new BinaryFieldPrefixFunction();
+
     private static final byte DELIMITER = 0x00;
+
+    private BinaryFieldPrefixFunction() {
+        super();
+    }
 
     @Override
     public ByteBuffer apply(FieldValue<ByteBuffer> fieldValue) {

@@ -16,9 +16,12 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 class StringFieldPrefixFunction implements FieldPrefixFunction<String> {
 
+    static final StringFieldPrefixFunction INSTANCE = new StringFieldPrefixFunction();
+
     private static final char DELIMITER = '/';
 
-    StringFieldPrefixFunction() {
+    private StringFieldPrefixFunction() {
+        super();
     }
 
     @Override
@@ -29,7 +32,7 @@ class StringFieldPrefixFunction implements FieldPrefixFunction<String> {
     }
 
     @Override
-    public FieldValue reverse(String qualifiedValue) {
+    public FieldValue<String> reverse(String qualifiedValue) {
         int idx = qualifiedValue.indexOf(DELIMITER);
         checkArgument(idx != -1);
         String context = qualifiedValue.substring(0, idx);

@@ -23,12 +23,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class FieldPrefixFunctionTest {
 
-    private static final StringFieldPrefixFunction SUT_S = new StringFieldPrefixFunction();
-    private static final BinaryFieldPrefixFunction SUT_B = new BinaryFieldPrefixFunction();
-
     private static Object[] binaryData(String context, String table, String value) {
         return new Object[] {
-            SUT_B, context, table, UTF_8.encode(value), ByteBuffer
+            BinaryFieldPrefixFunction.INSTANCE, context, table, UTF_8.encode(value), ByteBuffer
             .allocate(context.length() + table.length() + value.length() + 2)
             .put(UTF_8.encode(context)).put((byte) 0x00)
             .put(UTF_8.encode(table)).put((byte) 0x00)
@@ -39,9 +36,12 @@ class FieldPrefixFunctionTest {
 
     static Stream<Object[]> data() {
         return Arrays.stream(new Object[][] {
-            { SUT_S, "ctx", "table", "value", "ctx/table/value" },
-            { SUT_S, "ctx2", "com.salesforce.zero.someObject", "value2", "ctx2/com.salesforce.zero.someObject/value2" },
-            { SUT_S, "ctx_3", "My-Object", "prefix/suffix", "ctx_3/My-Object/prefix/suffix" },
+            { StringFieldPrefixFunction.INSTANCE, "ctx", "table", "value",
+                "ctx/table/value" },
+            { StringFieldPrefixFunction.INSTANCE, "ctx2", "com.salesforce.zero.someObject", "value2",
+                "ctx2/com.salesforce.zero.someObject/value2" },
+            { StringFieldPrefixFunction.INSTANCE, "ctx_3", "My-Object", "prefix/suffix",
+                "ctx_3/My-Object/prefix/suffix" },
             binaryData("ctx", "table", "value"),
             binaryData("ctx", "table", "val\u0000ue"),
         });
