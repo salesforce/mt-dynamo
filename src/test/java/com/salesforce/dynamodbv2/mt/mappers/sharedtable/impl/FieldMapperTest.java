@@ -12,7 +12,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
-import static java.util.UUID.randomUUID;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -22,10 +22,12 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
-import java.util.function.Supplier;
-import org.junit.jupiter.api.Test;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * TODO: write Javadoc.
@@ -35,97 +37,103 @@ import org.junit.jupiter.api.Test;
 class FieldMapperTest {
 
     private static final char DELIMITER = '/';
+    private static final String CONTEXT = "context";
+    private static final String TABLE_NAME = "table";
+    private static final String PREFIX = CONTEXT + DELIMITER + TABLE_NAME + DELIMITER;
+    private static final MtAmazonDynamoDbContextProvider CONTEXT_PROVIDER = () -> Optional.of(CONTEXT);
+    private static final FieldMapper SFM = new StringFieldMapper(CONTEXT_PROVIDER, TABLE_NAME);
+    private static final FieldMapper BFM = new BinaryFieldMapper(CONTEXT_PROVIDER, TABLE_NAME);
+    private static final byte[] TEST_BYTES = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
-    @Test
-    void applyTableIndex() {
-        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
-        String value = generateValue();
-        assertMapper(S,
-            TABLE,
-            () -> new AttributeValue().withS(value),
-            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + value,
-            mtContext);
+    private static ByteBuffer prefix(int valueLength) {
+        return ByteBuffer.allocate(CONTEXT.length() + TABLE_NAME.length() + 2 + valueLength)
+            .put(UTF_8.encode(CONTEXT)).put((byte) 0x00).put(UTF_8.encode(TABLE_NAME)).put((byte) 0x00);
     }
 
-    @Test
-    void applySecondaryIndex() {
-        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
-        String value = generateValue();
-        assertMapper(S,
-            SECONDARY_INDEX,
-            () -> new AttributeValue().withS(value),
-            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + value,
-            mtContext);
+    static Stream<Object[]> data() {
+        return Arrays.stream(new Object[][] {
+            { SFM, S, S, TABLE, new AttributeValue("value"), new AttributeValue(PREFIX + "value") },
+            { SFM, S, S, SECONDARY_INDEX, new AttributeValue("a/b"), new AttributeValue(PREFIX + "a/b") },
+            { SFM, N, S, TABLE, new AttributeValue().withN("123"), new AttributeValue(PREFIX + "123") },
+            { SFM, B, S, TABLE, new AttributeValue().withB(ByteBuffer.wrap(TEST_BYTES)),
+                new AttributeValue(PREFIX + Base64.getEncoder().encodeToString(TEST_BYTES)) },
+            { BFM, S, B, TABLE, new AttributeValue("value"), new AttributeValue()
+                .withB(prefix(5).put(UTF_8.encode("value")).flip()) },
+            { BFM, S, B, SECONDARY_INDEX, new AttributeValue("a\u0000b"), new AttributeValue()
+                .withB(prefix(3).put(UTF_8.encode("a\u0000b")).flip()) },
+            { BFM, N, B, TABLE, new AttributeValue().withN("1.1"), new AttributeValue().withB(
+                prefix(5).put(ByteBuffer.allocate(5).putInt(1).put((byte) 11).array()).flip()) },
+            { BFM, B, B, TABLE, new AttributeValue().withB(ByteBuffer.wrap(TEST_BYTES)),
+                new AttributeValue().withB(prefix(TEST_BYTES.length).put(TEST_BYTES).flip())}
+        });
     }
 
-    @Test
-    void applyTableIndexNumber() {
-        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
-        assertMapper(N,
-            TABLE,
-            () -> new AttributeValue().withN("123"),
-            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER + "123",
-            mtContext);
+    @ParameterizedTest
+    @MethodSource("data")
+    void test(FieldMapper fieldMapper,
+              ScalarAttributeType virtualFieldType,
+              ScalarAttributeType physicalFieldType,
+              IndexType indexType,
+              AttributeValue attributeValue,
+              AttributeValue qualifiedAttributeValue) {
+        FieldMapping fieldMapping = buildFieldMapping(virtualFieldType, physicalFieldType, indexType);
+
+        AttributeValue actualQualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue);
+
+        assertEquals(qualifiedAttributeValue, actualQualifiedAttributeValue);
     }
 
-    @Test
-    void applyTableIndexByteArray() {
-        MtAmazonDynamoDbContextProvider mtContext = buildMtContext();
-        final byte[] bytes = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-        assertMapper(B,
-            TABLE,
-            () -> new AttributeValue().withB(ByteBuffer.wrap(bytes)),
-            mtContext.getContext() + DELIMITER + "virtualTable" + DELIMITER
-                + Base64.getEncoder().encodeToString(bytes),
-            mtContext);
+    @ParameterizedTest
+    @MethodSource("data")
+    void testReverse(FieldMapper fieldMapper,
+                     ScalarAttributeType virtualFieldType,
+                     ScalarAttributeType physicalFieldType,
+                     IndexType indexType,
+                     AttributeValue attributeValue,
+                     AttributeValue qualifiedAttributeValue) {
+        FieldMapping fieldMapping = reverseFieldMapping(buildFieldMapping(virtualFieldType, physicalFieldType,
+            indexType));
+
+        AttributeValue actualAttributeValue = fieldMapper.reverse(fieldMapping, qualifiedAttributeValue);
+
+        assertEquals(attributeValue, actualAttributeValue);
     }
 
-    @Test
-    void applyValueNotFound() {
+    static Stream<Object[]> invalidData() {
+        return Arrays.stream(new Object[][] {
+            { SFM, N, S, new NullPointerException("attributeValue={S: value,} of type=N could not be converted") },
+            { SFM, null, S, new NullPointerException("null attribute type") },
+            { BFM, N, B, new NullPointerException()},
+            { BFM, null, B, new NullPointerException("null attribute type") },
+        });
+    }
+
+    @ParameterizedTest
+    @MethodSource("invalidData")
+    void testException(FieldMapper fieldMapper,
+                       ScalarAttributeType virtualFieldType,
+                       ScalarAttributeType physicalFieldType,
+                       Exception expected) {
+        FieldMapping fieldMapping = buildFieldMapping(virtualFieldType, physicalFieldType, TABLE);
         try {
-            buildFieldMapper(buildMtContext()).apply(buildFieldMapping(N, TABLE), new AttributeValue().withS("value"));
-        } catch (NullPointerException e) {
-            // expected
-            assertEquals("attributeValue={S: value,} of type=N could not be converted", e.getMessage());
+            fieldMapper.apply(fieldMapping, new AttributeValue().withS("value"));
+            fail("Expected exception not thrown");
+        } catch (Exception e) {
+            assertEquals(expected.getClass(), e.getClass());
+            assertEquals(expected.getMessage(), e.getMessage());
         }
     }
 
-    @Test
-    void invalidType() {
-        try {
-            buildFieldMapper(buildMtContext())
-                    .apply(buildFieldMapping(null, TABLE), new AttributeValue().withS(generateValue()));
-            fail("Expected NullPointerException not thrown");
-        } catch (NullPointerException e) {
-            // expected
-            assertEquals("null attribute type", e.getMessage());
-        }
-    }
-
-    private void assertMapper(ScalarAttributeType fieldType,
-                              IndexType indexType,
-                              Supplier<AttributeValue> attributeValue,
-                              String expectedStringValue,
-                              MtAmazonDynamoDbContextProvider mtContext) {
-        FieldMapping fieldMapping = buildFieldMapping(fieldType, indexType);
-        FieldMapper fieldMapper = buildFieldMapper(mtContext);
-        AttributeValue qualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue.get());
-        assertEquals(expectedStringValue, qualifiedAttributeValue.getS());
-        AttributeValue actualAttributeValue = fieldMapper
-                .reverse(reverseFieldMapping(fieldMapping), qualifiedAttributeValue);
-        assertEquals(attributeValue.get(), actualAttributeValue);
-    }
-
-    private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, IndexType indexType) {
+    private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, ScalarAttributeType targetFieldType,
+                                           IndexType indexType) {
         return new FieldMapping(
             new Field("sourceField", sourceFieldType),
-            new Field("targetField", S),
-            "virtualIndex",
+            new Field("targetField", targetFieldType),
+            TABLE_NAME,
             "physicalIndex",
             indexType,
             true);
     }
-
 
     private FieldMapping reverseFieldMapping(FieldMapping fieldMapping) {
         return new FieldMapping(
@@ -135,34 +143,6 @@ class FieldMapperTest {
             fieldMapping.getPhysicalIndexName(),
             fieldMapping.getIndexType(),
             fieldMapping.isContextAware());
-    }
-
-    private FieldMapper buildFieldMapper(MtAmazonDynamoDbContextProvider mtContext) {
-        return new StringFieldMapper(mtContext,
-            "virtualTable");
-    }
-
-    private static String random() {
-        return randomUUID().toString();
-    }
-
-    private MtAmazonDynamoDbContextProvider buildMtContext() {
-        return new MtAmazonDynamoDbContextProvider() {
-            final String context = random();
-
-            @Override
-            public Optional<String> getContextOpt() {
-                return Optional.of(this.context);
-            }
-
-            @Override
-            public void withContext(String org, Runnable runnable) {
-            }
-        };
-    }
-
-    private String generateValue() {
-        return random();
     }
 
 }
