@@ -19,14 +19,13 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
     public ByteBuffer apply(FieldValue<ByteBuffer> fieldValue) {
         final byte[] context = fieldValue.getContext().getBytes(UTF_8);
         final byte[] tableName = fieldValue.getTableName().getBytes(UTF_8);
-        final ByteBuffer value = fieldValue.getValue();
+        final ByteBuffer value = fieldValue.getValue().asReadOnlyBuffer();
         ByteBuffer qualifiedValue = ByteBuffer.allocate(context.length + tableName.length + value.remaining() + 2);
         qualifiedValue.put(context);
         qualifiedValue.put(DELIMITER);
         qualifiedValue.put(tableName);
         qualifiedValue.put(DELIMITER);
         qualifiedValue.put(value);
-        value.flip();
         qualifiedValue.flip();
         return qualifiedValue;
     }
