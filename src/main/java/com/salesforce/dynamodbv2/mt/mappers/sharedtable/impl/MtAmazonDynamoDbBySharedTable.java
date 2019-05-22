@@ -204,7 +204,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         final BatchGetItemResult qualifiedBatchGetItemResult = getAmazonDynamoDb()
             .batchGetItem(qualifiedBatchGetItemRequest);
         Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = qualifiedBatchGetItemResult
-            .getResponses();
+                .getResponses();
 
         // map result
         final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
