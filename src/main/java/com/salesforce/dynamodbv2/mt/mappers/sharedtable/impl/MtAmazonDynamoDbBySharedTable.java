@@ -169,6 +169,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
+        // validate
+        unqualifiedBatchGetItemRequest.getRequestItems().values().forEach(keysAndAttributes -> {
+            checkArgument(keysAndAttributes.getAttributesToGet() == null,
+                "attributesToGet are not supported on BatchGetItemRequest's");
+            checkArgument(keysAndAttributes.getProjectionExpression() == null,
+                "projectionExpression is not supported on BatchGetItemRequest's");
+            checkArgument(keysAndAttributes.getExpressionAttributeNames() == null,
+                "expressionAttributeNames are not supported on BatchGetItemRequest's");
+        });
+
         // clone request and clear items
         Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
         BatchGetItemRequest qualifiedBatchGetItemRequest = unqualifiedBatchGetItemRequest.clone();
@@ -194,7 +204,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         final BatchGetItemResult qualifiedBatchGetItemResult = getAmazonDynamoDb()
             .batchGetItem(qualifiedBatchGetItemRequest);
         Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = qualifiedBatchGetItemResult
-                .getResponses();
+            .getResponses();
 
         // map result
         final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
@@ -205,6 +215,22 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 tableMapping.getVirtualTable().getTableName(),
                 qualifiedItems.stream().map(keysAndAttributes ->
                     tableMapping.getItemMapper().reverse(keysAndAttributes)).collect(Collectors.toList()));
+            // map unprocessedkeys
+            if (!qualifiedBatchGetItemResult.getUnprocessedKeys().isEmpty()) {
+                unqualifiedBatchGetItemResult.clearUnprocessedKeysEntries();
+                qualifiedBatchGetItemResult.getUnprocessedKeys()
+                    .forEach((qualifiedTableNameUk, qualifiedUkKeysAndAttributes) -> {
+                        TableMapping tableMappingUk = tableMappingByPhysicalTableName.get(qualifiedTableNameUk);
+                        unqualifiedBatchGetItemResult.addUnprocessedKeysEntry(
+                            tableMappingUk.getVirtualTable().getTableName(),
+                            new KeysAndAttributes()
+                                .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
+                                .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
+                                .map(keysAndAttributes ->
+                                    tableMapping.getKeyMapper().reverse(keysAndAttributes))
+                                    .collect(Collectors.toList())));
+                    });
+            }
         });
 
         return unqualifiedBatchGetItemResult;

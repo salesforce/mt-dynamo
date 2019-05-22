@@ -90,7 +90,7 @@ public class TestSupport {
         final KeysAndAttributes keysAndAttributes = new KeysAndAttributes();
         keysAndAttributes.setKeys(keys);
         Map<String, KeysAndAttributes> requestItems = ImmutableMap.of(tableName, keysAndAttributes);
-        Map<String, KeysAndAttributes> unprocessedKeys = ImmutableMap.of();
+        Map<String, KeysAndAttributes> unprocessedKeys;
         final Set<Map<String, AttributeValue>> resultItems = new HashSet<>();
         do {
             final BatchGetItemRequest batchGetItemRequest = new BatchGetItemRequest().withRequestItems(requestItems);
@@ -100,7 +100,8 @@ public class TestSupport {
             assertEquals(1, tablesInResult.size());
             assertEquals(tableName, Iterables.getOnlyElement(tablesInResult));
             resultItems.addAll(batchGetItemResult.getResponses().get(tableName));
-            requestItems = batchGetItemResult.getUnprocessedKeys();
+            unprocessedKeys = batchGetItemResult.getUnprocessedKeys();
+            requestItems = unprocessedKeys;
         } while (!unprocessedKeys.isEmpty());
         assertEquals(originalKeys, resultItems.stream()
             .map(TestSupport::stripItemToPk)
