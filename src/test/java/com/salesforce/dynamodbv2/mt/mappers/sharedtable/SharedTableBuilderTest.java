@@ -175,4 +175,19 @@ class SharedTableBuilderTest {
         DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB);
     }
 
+    @Test
+    void testTableDescriptionTableName() {
+        final String tableDescriptionTableName = "CustomTableDescriptionTableName";
+
+        SharedTableBuilder.builder()
+            .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
+            .withTablePrefix(tablePrefix)
+            .withCreateTablesEagerly(true)
+            .withContext(MT_CONTEXT)
+            .withBillingMode(BillingMode.PAY_PER_REQUEST)
+            .withTableDescriptionTableName(tableDescriptionTableName)
+            .build();
+
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + tableDescriptionTableName, LOCAL_DYNAMO_DB);
+    }
 }
