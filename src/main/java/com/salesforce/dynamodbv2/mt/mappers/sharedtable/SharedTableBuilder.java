@@ -179,6 +179,7 @@ public class SharedTableBuilder implements TableBuilder {
     private Optional<String> tablePrefix = empty();
     private Long getRecordsTimeLimit;
     private Clock clock;
+    private String tableDescriptionTableName;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -230,6 +231,11 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withBinaryHashKey(boolean binaryHashKey) {
         this.binaryHashKey = binaryHashKey;
+        return this;
+    }
+
+    public SharedTableBuilder withTableDescriptionTableName(String tableDescriptionTableName) {
+        this.tableDescriptionTableName = tableDescriptionTableName;
         return this;
     }
 
@@ -312,12 +318,15 @@ public class SharedTableBuilder implements TableBuilder {
         if (pollIntervalSeconds == null) {
             pollIntervalSeconds = 0;
         }
+        if (tableDescriptionTableName == null) {
+            tableDescriptionTableName = DEFAULT_TABLE_DESCRIPTION_TABLE_NAME;
+        }
         if (mtTableDescriptionRepo == null) {
             mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
                 .withBillingMode(this.billingMode)
                 .withContext(mtContext)
-                .withTableDescriptionTableName(DEFAULT_TABLE_DESCRIPTION_TABLE_NAME)
+                .withTableDescriptionTableName(tableDescriptionTableName)
                 .withPollIntervalSeconds(pollIntervalSeconds)
                 .withTablePrefix(tablePrefix).build();
 
