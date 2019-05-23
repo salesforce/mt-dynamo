@@ -13,6 +13,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 * Add support for mapping to table with purely binary types
 * Make metaddata table description configurable
+* Add context validation
 
 ## 0.9.34 (April 9, 2019)
 
