@@ -56,7 +56,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             LOG.debug("listStreams request={}", listStreamsRequest);
         }
 
-        checkArgument(mtDynamoDb.getMtContext().getContext().isEmpty(),
+        checkArgument(mtDynamoDb.getMtContext().getContextOpt().isEmpty(),
             "listStreams currently does not support calling any tenant context except the empty context");
         checkArgument(listStreamsRequest.getTableName() == null,
             "listStreams currently does not support filtering by table name");
@@ -197,7 +197,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
     private StreamArn parse(String arn) {
         StreamArn parsedArn = StreamArn.fromString(arn);
-        checkArgument(parsedArn.getContext().equals(mtDynamoDb.getMtContext().getContext()),
+        checkArgument(parsedArn.getContext().equals(mtDynamoDb.getMtContext().getContextOpt()),
             "Current context does not match ARN context");
         return parsedArn;
     }

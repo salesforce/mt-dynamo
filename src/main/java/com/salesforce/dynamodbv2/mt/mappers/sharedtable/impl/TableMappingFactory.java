@@ -19,7 +19,6 @@ import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
-
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,6 @@ public class TableMappingFactory {
     private final CreateTableRequestFactory createTableRequestFactory;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private final char delimiter;
     private final AmazonDynamoDB amazonDynamoDb;
     private final int pollIntervalSeconds;
 
@@ -51,7 +49,6 @@ public class TableMappingFactory {
      * @param createTableRequestFactory maps virtual to physical table instances
      * @param mtContext the multitenant context provider
      * @param secondaryIndexMapper maps virtual to physical indexes
-     * @param delimiter the string for delimiting values in hash keys
      * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
      * @param createTablesEagerly a flag indicating whether to create physical tables eagerly at start time
      * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
@@ -60,14 +57,12 @@ public class TableMappingFactory {
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,
                                DynamoSecondaryIndexMapper secondaryIndexMapper,
-                               char delimiter,
                                AmazonDynamoDB amazonDynamoDb,
                                boolean createTablesEagerly,
                                int pollIntervalSeconds) {
         this.createTableRequestFactory = createTableRequestFactory;
         this.secondaryIndexMapper = secondaryIndexMapper;
         this.mtContext = mtContext;
-        this.delimiter = delimiter;
         this.amazonDynamoDb = amazonDynamoDb;
         this.dynamoDbAdminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.pollIntervalSeconds = pollIntervalSeconds;
@@ -93,8 +88,7 @@ public class TableMappingFactory {
         TableMapping tableMapping = new TableMapping(virtualTableDescription,
             createTableRequestFactory,
             secondaryIndexMapper,
-            mtContext,
-            delimiter);
+            mtContext);
         tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
         LOG.info("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;

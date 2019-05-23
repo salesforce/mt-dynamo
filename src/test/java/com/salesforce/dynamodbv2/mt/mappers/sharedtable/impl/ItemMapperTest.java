@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 class ItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
-    private static final char DELIMITER = '.';
     private static final ItemMapper SUT = new ItemMapper(
             new MockFieldMapper(),
             new TableMapping(new DynamoTableDescriptionImpl(
@@ -38,8 +37,7 @@ class ItemMapperTest {
                                     .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
                             .getCreateTableRequest()),
                     new DynamoSecondaryIndexMapperByTypeImpl(),
-                    null,
-                    DELIMITER
+                    null
             ).getAllVirtualToPhysicalFieldMappings());
 
     @Test
@@ -66,14 +64,14 @@ class ItemMapperTest {
         assertNull(SUT.reverse(null));
     }
 
-    private static class MockFieldMapper extends FieldMapper {
+    private static class MockFieldMapper implements FieldMapper {
 
         MockFieldMapper() {
-            super(null, null, null);
+            super();
         }
 
         @Override
-        AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
+        public AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
             if (unqualifiedAttribute.getS() != null) {
                 return new AttributeValue().withS(PREFIX + unqualifiedAttribute.getS());
             }
@@ -84,7 +82,7 @@ class ItemMapperTest {
         }
 
         @Override
-        AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
+        public AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
             return new AttributeValue().withS(qualifiedAttribute.getS().substring(7));
         }
     }

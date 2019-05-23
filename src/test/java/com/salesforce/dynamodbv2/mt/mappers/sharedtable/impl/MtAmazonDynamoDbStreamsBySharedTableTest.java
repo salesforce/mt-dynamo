@@ -1,7 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
-import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,7 +33,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.time.Clock;
@@ -82,15 +80,15 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String randomTableName = "RandomTable";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, false))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
-            .withContext(() -> BASE_CONTEXT)
+            .withContext(() -> Optional.empty())
             .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
             .build();
         try {
-            TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName));
+            TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName, false));
 
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
@@ -117,7 +115,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testRecords.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -170,7 +168,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testLimit.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -317,7 +315,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         when(mtDynamo.getClock()).thenReturn(clock);
         when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
             String id = key.get("id").getS();
-            return new FieldValue(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id, id);
+            return new FieldValue<>(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id);
         });
         final ItemMapper itemMapper = mock(ItemMapper.class);
         when(itemMapper.reverse(any())).then(returnsFirstArg());
