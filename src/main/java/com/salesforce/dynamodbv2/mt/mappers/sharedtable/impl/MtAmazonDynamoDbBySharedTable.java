@@ -170,14 +170,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
         // validate
-        unqualifiedBatchGetItemRequest.getRequestItems().values().forEach(keysAndAttributes -> {
-            checkArgument(keysAndAttributes.getAttributesToGet() == null,
-                "attributesToGet are not supported on BatchGetItemRequest calls");
-            checkArgument(keysAndAttributes.getProjectionExpression() == null,
-                "projectionExpression is not supported on BatchGetItemRequest calls");
-            checkArgument(keysAndAttributes.getExpressionAttributeNames() == null,
-                "expressionAttributeNames are not supported on BatchGetItemRequest calls");
-        });
+        unqualifiedBatchGetItemRequest.getRequestItems().values().forEach(this::validateGetItemKeysAndAttribute);
 
         // clone request and clear items
         Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
@@ -224,7 +217,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                         unqualifiedBatchGetItemResult.addUnprocessedKeysEntry(
                             tableMappingUk.getVirtualTable().getTableName(),
                             new KeysAndAttributes()
-                                .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
                                 .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
                                 .map(keysAndAttributes ->
                                     tableMapping.getKeyMapper().reverse(keysAndAttributes))
@@ -234,6 +226,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         });
 
         return unqualifiedBatchGetItemResult;
+    }
+
+    private void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
+        checkArgument(keysAndAttributes.getConsistentRead() == null,
+            "setting consistentRead is not supported on BatchGetItemRequest calls");
+        checkArgument(keysAndAttributes.getAttributesToGet() == null,
+            "attributesToGet are not supported on BatchGetItemRequest calls");
+        checkArgument(keysAndAttributes.getProjectionExpression() == null,
+            "projectionExpression is not supported on BatchGetItemRequest calls");
+        checkArgument(keysAndAttributes.getExpressionAttributeNames() == null,
+            "expressionAttributeNames are not supported on BatchGetItemRequest calls");
     }
 
     /**
@@ -304,6 +307,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
+        // validate
+        checkArgument(getItemRequest.getConsistentRead() == null,
+            "setting consistentRead is not supported on GetItemRequest calls");
+        checkArgument(getItemRequest.getAttributesToGet() == null,
+            "attributesToGet are not supported on GetItemRequest calls");
+        checkArgument(getItemRequest.getProjectionExpression() == null,
+            "projectionExpression is not supported on GetItemRequest calls");
+        checkArgument(getItemRequest.getExpressionAttributeNames() == null,
+            "expressionAttributeNames are not supported on GetItemRequest calls");
+
         // map table name
         getItemRequest = getItemRequest.clone();
         TableMapping tableMapping = getTableMapping(getItemRequest.getTableName());

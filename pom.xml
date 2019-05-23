@@ -161,7 +161,7 @@
                     <skipTests>${skip.surefire.tests}</skipTests>
                     <!-- This is necessary to trigger BatchGetTest to happen after ScanTest
                          until such time that ScanTest's performance doesn't depend on the size
-                         of data insert by BatchGetTest -->
+                         of data inserted by BatchGetTest -->
                     <runOrder>reversealphabetical</runOrder>
                     <properties>
                         <excludeTags>isolated-tests</excludeTags>
