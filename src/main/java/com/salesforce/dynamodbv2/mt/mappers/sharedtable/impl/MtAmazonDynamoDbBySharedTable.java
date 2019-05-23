@@ -172,11 +172,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // validate
         unqualifiedBatchGetItemRequest.getRequestItems().values().forEach(keysAndAttributes -> {
             checkArgument(keysAndAttributes.getAttributesToGet() == null,
-                "attributesToGet are not supported on BatchGetItemRequest's");
+                "attributesToGet are not supported on BatchGetItemRequest calls");
             checkArgument(keysAndAttributes.getProjectionExpression() == null,
-                "projectionExpression is not supported on BatchGetItemRequest's");
+                "projectionExpression is not supported on BatchGetItemRequest calls");
             checkArgument(keysAndAttributes.getExpressionAttributeNames() == null,
-                "expressionAttributeNames are not supported on BatchGetItemRequest's");
+                "expressionAttributeNames are not supported on BatchGetItemRequest calls");
         });
 
         // clone request and clear items
@@ -215,7 +215,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 tableMapping.getVirtualTable().getTableName(),
                 qualifiedItems.stream().map(keysAndAttributes ->
                     tableMapping.getItemMapper().reverse(keysAndAttributes)).collect(Collectors.toList()));
-            // map unprocessedkeys
+            // map unprocessedKeys
             if (!qualifiedBatchGetItemResult.getUnprocessedKeys().isEmpty()) {
                 unqualifiedBatchGetItemResult.clearUnprocessedKeysEntries();
                 qualifiedBatchGetItemResult.getUnprocessedKeys()

@@ -64,8 +64,8 @@ class BatchGetTest {
      * {@code BatchGetItemOutcome} will contain a map of the UnprocessedKeys.  Partial results will be returned if
      * the response size limit is exceeded, the table's provisioned throughput is exceeded, or an internal processing
      * failure has occurred.  This test triggers partial results by exceeding the 16MB response size limit.  It does
-     * this by POSTing 100 records that are ~300KB in size(~20MB in total).  It then attempts to retrieve them in a
-     * single batch GET call.  Partial results are returned because retrieving all 100 records in a single batch get
+     * this by POSTing 100 records that are ~300KB in size (~20MB in total).  It then attempts to retrieve them in a
+     * single batch GET call.  Partial results are returned because retrieving all 100 records in a single batch GET
      * exceeds the 16MB response size limit.
      *
      * <p>For more info, see https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html.
