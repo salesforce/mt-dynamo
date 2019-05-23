@@ -22,7 +22,7 @@ public interface MtAmazonDynamoDbContextProvider {
 
     /**
      * Returns a String representation of the current context that can be used to qualify DynamoDB table names. Also
-     * used by the shared table strategy in stream arns. The String must only containt the following characters:
+     * used by the shared table strategy in stream ARNs. The String must contain only the following characters:
      * <ol>
      * <li>A-Z</li>
      * <li>a-z</li>
@@ -31,7 +31,8 @@ public interface MtAmazonDynamoDbContextProvider {
      * <li>- (hyphen)</li>
      * <li>. (dot)</li>
      * </ol>
-     * In addition, combined with the virtual table name and escape characters the value must not exceed 255 characters.
+     * In addition, combined with the virtual table name and escape characters the String must not exceed 255
+     * characters.
      *
      * @return  String representation of currently active context.
      */
