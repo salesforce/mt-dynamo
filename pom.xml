@@ -159,6 +159,10 @@
                     <!-- Allows for running failsafe tests while skipping surefire tests.
                          See https://stackoverflow.com/questions/6612344/prevent-unit-tests-but-allow-integration-tests-in-maven -->
                     <skipTests>${skip.surefire.tests}</skipTests>
+                    <!-- This is necessary to trigger BatchGetTest to happen after ScanTest
+                         until such time that ScanTest's performance doesn't depend on the size
+                         of data insert by BatchGetTest -->
+                    <runOrder>reversealphabetical</runOrder>
                     <properties>
                         <excludeTags>isolated-tests</excludeTags>
                     </properties>
