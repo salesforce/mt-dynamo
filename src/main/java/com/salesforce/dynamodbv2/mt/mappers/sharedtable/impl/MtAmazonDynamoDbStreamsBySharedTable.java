@@ -15,7 +15,6 @@ import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction.FieldValue;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.ArrayList;
 import java.util.List;
@@ -160,19 +159,19 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
     @Override
     protected Function<Record, MtRecord> getRecordMapper(StreamArn arn) {
-        Function<Map<String, AttributeValue>, FieldValue> fieldValueFunction =
+        Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
             mtDynamoDb.getFieldValueFunction(arn.getTableName());
         return record -> mapRecord(fieldValueFunction, record);
     }
 
-    private MtRecord mapRecord(Function<Map<String, AttributeValue>, FieldValue> fieldValueFunction,
+    private MtRecord mapRecord(Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction,
                                Record record) {
-        FieldValue fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
+        FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
         MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
         // execute in record tenant context to get table mapping
 
-        TableMapping tableMapping = mtContext.withContext(fieldValue.getMtContext(),
-            mtDynamoDb::getTableMapping, fieldValue.getTableIndex());
+        TableMapping tableMapping = mtContext.withContext(fieldValue.getContext(),
+            mtDynamoDb::getTableMapping, fieldValue.getTableName());
         ItemMapper itemMapper = tableMapping.getItemMapper();
         StreamRecord streamRecord = record.getDynamodb();
         return new MtRecord()
@@ -181,8 +180,8 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             .withEventName(record.getEventName())
             .withEventSource(record.getEventSource())
             .withEventVersion(record.getEventVersion())
-            .withContext(fieldValue.getMtContext())
-            .withTableName(fieldValue.getTableIndex())
+            .withContext(fieldValue.getContext())
+            .withTableName(fieldValue.getTableName())
             .withDynamodb(new StreamRecord()
                 .withKeys(itemMapper.reverse(streamRecord.getKeys()))
                 .withNewImage(itemMapper.reverse(streamRecord.getNewImage()))

@@ -11,7 +11,7 @@
 
     <groupId>com.salesforce.dynamodb</groupId>
     <artifactId>mt-dynamodb</artifactId>
-    <version>0.9.36-SNAPSHOT</version>
+    <version>0.9.37-SNAPSHOT</version>
     <name>mt-dynamodb</name>
     <description>Multitenant support for the AWS Java SDK for Amazon DynamoDB</description>
 
@@ -159,6 +159,10 @@
                     <!-- Allows for running failsafe tests while skipping surefire tests.
                          See https://stackoverflow.com/questions/6612344/prevent-unit-tests-but-allow-integration-tests-in-maven -->
                     <skipTests>${skip.surefire.tests}</skipTests>
+                    <!-- This is necessary to trigger BatchGetTest to happen after ScanTest
+                         until such time that ScanTest's performance doesn't depend on the size
+                         of data inserted by BatchGetTest -->
+                    <runOrder>reversealphabetical</runOrder>
                     <properties>
                         <excludeTags>isolated-tests</excludeTags>
                     </properties>
