@@ -170,7 +170,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
         // validate
-        unqualifiedBatchGetItemRequest.getRequestItems().values().forEach(this::validateGetItemKeysAndAttribute);
+        unqualifiedBatchGetItemRequest.getRequestItems().values()
+            .forEach(MtAmazonDynamoDbBySharedTable::validateGetItemKeysAndAttribute);
 
         // clone request and clear items
         Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
@@ -228,7 +229,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return unqualifiedBatchGetItemResult;
     }
 
-    private void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
+    private static void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
         checkArgument(keysAndAttributes.getConsistentRead() == null,
             "setting consistentRead is not supported on BatchGetItemRequest calls");
         checkArgument(keysAndAttributes.getAttributesToGet() == null,
