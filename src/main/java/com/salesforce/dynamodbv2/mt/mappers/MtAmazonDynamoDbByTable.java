@@ -40,7 +40,9 @@ import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Allows for dividing tenants into their own tables by prefixing table names
@@ -109,6 +111,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
                     batchGetItemResult.getResponses().get(qualifiedTableName));
         }
         batchGetItemResult.clearResponsesEntries();
+        batchGetItemResult.setUnprocessedKeys(batchGetItemResult.getUnprocessedKeys().entrySet().stream().collect(
+            Collectors.toMap(entry -> stripTableNamePrefix(entry.getKey()), Entry::getValue)));
         responsesWithUnprefixedTableNames.forEach(batchGetItemResult::addResponsesEntry);
         return batchGetItemResult;
     }
