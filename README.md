@@ -16,7 +16,14 @@ See details below on each of the 3 tenant storage schemes.  Further details are 
 Note: Not all `AmazonDynamoDB` methods are currently supported.  See Javadoc for details.
 
 ## Usage
-
+Importing
+```xml
+        <dependency>
+            <groupId>com.salesforce.dynamodb</groupId>
+            <artifactId>mt-dynamodb</artifactId>
+            <version>${mt-dynamodb-version}</version>
+        </dependency>
+```
 ### Multitenant Context
 
 `MtAmazonDynamoDbContextProvider`
@@ -70,7 +77,7 @@ Allows for storing all tenant data in a set of shared tables, dividing tenants b
 To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLEMETADATA`.  Data will be stored in tables starting with the name `mt_sharedtablestatic_`.
 
 ```java
-MtAmazonDynamoDbBySharedTableBuilders.SharedTable.builder()
+SharedTableBuilder.builder()
     .withAmazonDynamoDb(AmazonDynamoDBClientBuilder.standard().build())
     .withContext(mtContext)
     .build();
