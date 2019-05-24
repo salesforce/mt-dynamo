@@ -77,19 +77,17 @@ class ScanTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanWithScanFilter(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org -> {
-            assertEquals(
-                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                    .build(),
-                testArgument.getAmazonDynamoDb().scan(new ScanRequest()
-                    .withTableName(TABLE1)
-                    .withScanFilter(ImmutableMap.of(
-                        HASH_KEY_FIELD,
-                        new Condition().withComparisonOperator(EQ)
-                            .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
-                                HASH_KEY_VALUE))))).getItems().get(0));
-        });
+        testArgument.forEachOrgContext(org -> assertEquals(
+            ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
+            testArgument.getAmazonDynamoDb().scan(new ScanRequest()
+                .withTableName(TABLE1)
+                .withScanFilter(ImmutableMap.of(
+                    HASH_KEY_FIELD,
+                    new Condition().withComparisonOperator(EQ)
+                        .withAttributeValueList(createAttributeValue(testArgument.getHashKeyAttrType(),
+                            HASH_KEY_VALUE))))).getItems().get(0)));
     }
 
     @ParameterizedTest(name = "{arguments}")
@@ -133,21 +131,19 @@ class ScanTest {
                     .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
                     .build();
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
-            assertEquals(expectedSet, new HashSet(items));
+            assertEquals(expectedSet, new HashSet<>(items));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanWithPaging(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org -> {
-            scanAndAssertItemKeys(
-                scanTestSetup.orgItemKeys.get(org),
-                exclusiveStartKey -> testArgument.getAmazonDynamoDb().scan(new ScanRequest(TABLE1)
-                    .withLimit(10).withExclusiveStartKey(exclusiveStartKey)),
-                testArgument.getHashKeyAttrType()
-            );
-        });
+        testArgument.forEachOrgContext(org -> scanAndAssertItemKeys(
+            scanTestSetup.orgItemKeys.get(org),
+            exclusiveStartKey -> testArgument.getAmazonDynamoDb().scan(new ScanRequest(TABLE1)
+                .withLimit(10).withExclusiveStartKey(exclusiveStartKey)),
+            testArgument.getHashKeyAttrType()
+        ));
     }
 
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,

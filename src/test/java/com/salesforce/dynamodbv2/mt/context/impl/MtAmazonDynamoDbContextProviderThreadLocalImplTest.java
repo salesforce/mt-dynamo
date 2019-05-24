@@ -52,9 +52,7 @@ class MtAmazonDynamoDbContextProviderThreadLocalImplTest {
     @Test
     void testWith() {
         final String ctx = "1";
-        sut.withContext(ctx, () -> {
-            assertEquals(ctx, sut.getContext());
-        });
+        sut.withContext(ctx, () -> assertEquals(ctx, sut.getContext()));
     }
 
     @Test
