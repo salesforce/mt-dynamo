@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.39 (May 24, 2019)
 
-* Fixed bug [Batch get that exceeds provisionedthroughput or size limit results in `table metadata entry for 'SHARED.mt_sharedtablestatic_s_nolsi' does not exist in SHARED._tablemetadata` error](https://github.com/salesforce/mt-dynamo/issues/386)
+* Fixed bug [Batch get that exceeds provisioned throughput or size limit results in `table metadata entry for 'SHARED.mt_sharedtablestatic_s_nolsi' does not exist in SHARED._tablemetadata` error](https://github.com/salesforce/mt-dynamo/issues/386)
 
 ## 0.9.36 (May 23, 2019)
 

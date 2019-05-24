@@ -3,7 +3,6 @@ package com.salesforce.dynamodbv2.mt.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
-import java.io.UnsupportedEncodingException;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -11,7 +10,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class StreamArnTest {
 
-    private static Stream<Arguments> args() throws UnsupportedEncodingException {
+    private static Stream<Arguments> args() {
         String qualifier = "aws:dynamodb:us-east-1:123456789012:";
         String tableName = "mt_sharedtablestatic_s_s";
         String streamLabel = "2015-05-11T21:21:33.291";
