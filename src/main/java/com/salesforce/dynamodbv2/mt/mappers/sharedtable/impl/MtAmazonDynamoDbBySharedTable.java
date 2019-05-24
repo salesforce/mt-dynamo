@@ -309,8 +309,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         // validate
-        checkArgument(getItemRequest.getConsistentRead() == null,
-            "setting consistentRead is not supported on GetItemRequest calls");
         checkArgument(getItemRequest.getAttributesToGet() == null,
             "attributesToGet are not supported on GetItemRequest calls");
         checkArgument(getItemRequest.getProjectionExpression() == null,
