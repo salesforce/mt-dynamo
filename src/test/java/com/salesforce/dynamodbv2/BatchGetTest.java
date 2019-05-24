@@ -79,11 +79,10 @@ class BatchGetTest {
                 final int itemCount = 100;
 
                 // write records
-                IntStream.rangeClosed(1, itemCount).forEach(i -> {
-                    testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE1).withItem(
+                IntStream.rangeClosed(1, itemCount).forEach(i -> testArgument.getAmazonDynamoDb()
+                    .putItem(new PutItemRequest().withTableName(TABLE1).withItem(
                         ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_OTHER_VALUE + i)
-                            .someField(S, "x".repeat(targetRecordLength)).build()));
-                });
+                            .someField(S, "x".repeat(targetRecordLength)).build())));
 
                 // read records in batch
                 batchGetItem(testArgument.getHashKeyAttrType(),
