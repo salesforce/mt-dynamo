@@ -5,11 +5,7 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
-## 0.9.38 (May 23, 2019)
-
-* Re-enabled consistent read flag in GET
-
-## 0.9.37 (May 23, 2019)
+## 0.9.39 (May 24, 2019)
 
 * Fixed bug [Batch get that exceeds provisionedthroughput or size limit results in `table metadata entry for 'SHARED.mt_sharedtablestatic_s_nolsi' does not exist in SHARED._tablemetadata` error](https://github.com/salesforce/mt-dynamo/issues/386)
 
