@@ -154,12 +154,10 @@ class ScanTest {
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,
                                        Function<Map<String, AttributeValue>, ScanResult> scanExecutor,
                                        ScalarAttributeType hashKeyAttrType) {
-        Map<String, AttributeValue> exclusiveStartKey = null;
         List<Map<String, AttributeValue>> items = executeScan(scanExecutor);
 
         if (items.isEmpty()) {
             assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
-            assertNull(exclusiveStartKey);
         } else {
             assertTrue(items.stream()
                 .map(i -> i.get(HASH_KEY_FIELD))
