@@ -14,7 +14,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -150,12 +149,10 @@ class ScanTest {
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,
                                        Function<Map<String, AttributeValue>, ScanResult> scanExecutor,
                                        ScalarAttributeType hashKeyAttrType) {
-        Map<String, AttributeValue> exclusiveStartKey = null;
         List<Map<String, AttributeValue>> items = executeScan(scanExecutor);
 
         if (items.isEmpty()) {
             assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
-            assertNull(exclusiveStartKey);
         } else {
             assertTrue(items.stream()
                 .map(i -> i.get(HASH_KEY_FIELD))
