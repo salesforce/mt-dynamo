@@ -132,7 +132,7 @@ class ScanTest {
                     .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
                     .build();
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
-            assertEquals(expectedSet, new HashSet(items));
+            assertEquals(expectedSet, new HashSet<>(items));
         });
     }
 

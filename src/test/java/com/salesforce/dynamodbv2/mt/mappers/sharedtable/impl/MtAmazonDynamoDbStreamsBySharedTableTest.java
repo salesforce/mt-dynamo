@@ -221,8 +221,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         final Clock clock = mock(Clock.class);
         when(clock.millis()).thenReturn(1L).thenReturn(3L);
 
-        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tablename/stream/label";
-        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenanttablename";
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tableName/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
 
         // two get records calls that return max records (we expect only first call to happen due to timeout)
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
@@ -267,8 +267,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         // fix clock (so that we don't run out of time)
         final Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
 
-        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tablename/stream/label";
-        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenanttablename";
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tableName/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
 
         // two get records calls that return max records (we expect only first call to happen due to timeout)
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
@@ -315,7 +315,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         when(mtDynamo.getClock()).thenReturn(clock);
         when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
             String id = key.get("id").getS();
-            return new FieldValue<>(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenanttablename", id);
+            return new FieldValue<>(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenantTableName", id);
         });
         final ItemMapper itemMapper = mock(ItemMapper.class);
         when(itemMapper.reverse(any())).then(returnsFirstArg());
