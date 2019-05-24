@@ -43,9 +43,9 @@ class SharedTableBuilderTest {
     }
 
     private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
-        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
-        "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-        "mt_sharedtablestatic_s_b_nolsi");
+        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_no_lsi",
+        "mt_sharedtablestatic_s_s_no_lsi", "mt_sharedtablestatic_s_n_no_lsi",
+        "mt_sharedtablestatic_s_b_no_lsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
