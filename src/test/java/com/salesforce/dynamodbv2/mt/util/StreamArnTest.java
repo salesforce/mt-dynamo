@@ -3,7 +3,6 @@ package com.salesforce.dynamodbv2.mt.util;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
-import java.io.UnsupportedEncodingException;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
