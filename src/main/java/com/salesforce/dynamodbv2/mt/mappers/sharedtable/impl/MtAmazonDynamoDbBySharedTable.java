@@ -218,6 +218,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                         unqualifiedBatchGetItemResult.addUnprocessedKeysEntry(
                             tableMappingUk.getVirtualTable().getTableName(),
                             new KeysAndAttributes()
+                                .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
                                 .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
                                 .map(keysAndAttributes ->
                                     tableMapping.getKeyMapper().reverse(keysAndAttributes))
@@ -230,8 +231,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private static void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
-        checkArgument(keysAndAttributes.getConsistentRead() == null,
-            "setting consistentRead is not supported on BatchGetItemRequest calls");
         checkArgument(keysAndAttributes.getAttributesToGet() == null,
             "attributesToGet are not supported on BatchGetItemRequest calls");
         checkArgument(keysAndAttributes.getProjectionExpression() == null,
