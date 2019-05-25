@@ -7,7 +7,7 @@ TEST: bySharedTableByTable
      | ctx1.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
      | ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
-     ctx1.mt_sharedtablestatic_s_no_lsi
+     ctx1.mt_shared_table_static_s_no_lsi
      __________________________
      | hk           | someField|
      |=========================|
@@ -22,7 +22,7 @@ TEST: bySharedTableByTable
      |=========================================================================================================================================================================================================================================================|
      | ctx2.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
-     ctx2.mt_sharedtablestatic_s_no_lsi
+     ctx2.mt_shared_table_static_s_no_lsi
      __________________________
      | hk           | someField|
      |=========================|

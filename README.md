@@ -74,7 +74,7 @@ See Javadoc for `MtAmazonDynamoDbByTable` for more details.  See `MtAmazonDynamo
 
 Allows for storing all tenant data in a set of shared tables, dividing tenants by prefixing the table's `HASH` key field with the tenant identifier.  [bySharedTable](docs/bySharedTable) shows an example of how data looks in its persisted state.
 
-To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLE_METADATA`.  Data will be stored in tables starting with the name `mt_sharedtablestatic_`.
+To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLE_METADATA`.  Data will be stored in tables starting with the name `mt_shared_table_static_`.
 
 ```java
 SharedTableBuilder.builder()

@@ -321,7 +321,7 @@ class DocGeneratorRunner {
                 .put("_table_metadata", ImmutableList.of("table", "data"))
                 .put("table1", ImmutableList.of("hashKeyField", "someField"))
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
-                .put("mt_sharedtablestatic_s_no_lsi", ImmutableList.of("hk", "someField")).build();
+                .put("mt_shared_table_static_s_no_lsi", ImmutableList.of("hk", "someField")).build();
 
         private final String test;
         private final Path outputFile;

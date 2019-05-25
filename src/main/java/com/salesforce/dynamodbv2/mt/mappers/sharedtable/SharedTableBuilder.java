@@ -63,7 +63,7 @@ import java.util.stream.Collectors;
  * tables and won't be subject to the 10GB table size limit.  Otherwise, virtual tables are mapped to their physical
  * counterpart based on the rules described in {@code PrimaryKeyMapperByTypeImpl}.
  *
- * <p>All table names are prefixed with 'mt_sharedtablestatic_'.
+ * <p>All table names are prefixed with 'mt_shared_table_static_'.
  *
  * <p>TABLE NAME   s_s       s_n       s_b       s_no_lsi   s_s_no_lsi s_n_no_lsi s_b_no_lsi
  * -----------  --------- --------- --------- --------- --------- --------- ---------
@@ -353,25 +353,25 @@ public class SharedTableBuilder implements TableBuilder {
 
 
         CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_s")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSn = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_n")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSb = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_b")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
         CreateTableRequestBuilder mtSharedTableStaticsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_no_lsi")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_no_lsi")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType);
         CreateTableRequestBuilder mtSharedTableStaticSsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_s_no_lsi")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s_no_lsi")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
         CreateTableRequestBuilder mtSharedTableStaticSnNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_n_no_lsi")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n_no_lsi")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
         CreateTableRequestBuilder mtSharedTableStaticSbNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_sharedtablestatic_" + hashKeyType.name().toLowerCase() + "_b_no_lsi")
+            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b_no_lsi")
             .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
 
         return ImmutableList.of(mtSharedTableStaticSs,

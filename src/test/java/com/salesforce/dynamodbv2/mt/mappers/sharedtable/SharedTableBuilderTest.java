@@ -42,10 +42,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
-        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_no_lsi",
-        "mt_sharedtablestatic_s_s_no_lsi", "mt_sharedtablestatic_s_n_no_lsi",
-        "mt_sharedtablestatic_s_b_no_lsi");
+    private static final List<String> testTables = ImmutableList.of("mt_shared_table_static_s_s",
+        "mt_shared_table_static_s_n", "mt_shared_table_static_s_b", "mt_shared_table_static_s_no_lsi",
+        "mt_shared_table_static_s_s_no_lsi", "mt_shared_table_static_s_n_no_lsi",
+        "mt_shared_table_static_s_b_no_lsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
