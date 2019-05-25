@@ -34,7 +34,7 @@ class SharedTableBuilderTest {
     private static String tablePrefix;
     private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static final String metadataTableName = "_tablemetadata";
+    private static final String metadataTableName = "_table_metadata";
 
     @BeforeEach
     void beforeEach() {
@@ -42,10 +42,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
-        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
-        "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-        "mt_sharedtablestatic_s_b_nolsi");
+    private static final List<String> testTables = ImmutableList.of("mt_shared_table_static_s_s",
+        "mt_shared_table_static_s_n", "mt_shared_table_static_s_b", "mt_shared_table_static_s_no_lsi",
+        "mt_shared_table_static_s_s_no_lsi", "mt_shared_table_static_s_n_no_lsi",
+        "mt_shared_table_static_s_b_no_lsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {

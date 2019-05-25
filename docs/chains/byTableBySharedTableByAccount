@@ -2,14 +2,14 @@ TEST: byTableBySharedTableByAccount
 
 account: ctx1
 
-     _tablemetadata
+     _table_metadata
      ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
      | table           | data                                                                                                                                                                                                                                            |
      |===================================================================================================================================================================================================================================================================|
      | ctx1.ctx1.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx1.table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
      | ctx1.ctx1.table2| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx1.table2","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
-     mt_sharedtablestatic_s_nolsi
+     mt_shared_table_static_s_no_lsi
      __________________________
      | hk           | someField|
      |=========================|
@@ -20,13 +20,13 @@ account: ctx1
 
 account: ctx2
 
-     _tablemetadata
+     _table_metadata
      ____________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________________
      | table           | data                                                                                                                                                                                                                                            |
      |===================================================================================================================================================================================================================================================================|
      | ctx2.ctx2.table1| {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"ctx2.table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}}|
 
-     mt_sharedtablestatic_s_nolsi
+     mt_shared_table_static_s_no_lsi
      __________________________
      | hk           | someField|
      |=========================|

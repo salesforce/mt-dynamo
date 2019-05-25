@@ -282,7 +282,7 @@ class ConditionMapperTest {
                                 .attributeValues(":value2", "rangeKeyValue", ":value", "1")
                                 .fieldMapping(new FieldMapping(new Field("hashKeyField", S), new Field("hk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
@@ -300,7 +300,7 @@ class ConditionMapperTest {
                                 .attributeValues(":value2", "rangeKeyValue", ":value", "1")
                                 .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         false))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
@@ -319,7 +319,7 @@ class ConditionMapperTest {
                                 .fieldMapping(new FieldMapping(
                                         new Field("hashKeyField", S), new Field("hk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value")
@@ -339,7 +339,7 @@ class ConditionMapperTest {
                                         ":newValue", "someValueTable3Org-51Updated")
                                 .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         false))
                                 .primaryExpression("set #someField = :newValue")

@@ -12,7 +12,7 @@ class StreamArnTest {
 
     private static Stream<Arguments> args() {
         String qualifier = "aws:dynamodb:us-east-1:123456789012:";
-        String tableName = "mt_sharedtablestatic_s_s";
+        String tableName = "mt_shared_table_static_s_s";
         String streamLabel = "2015-05-11T21:21:33.291";
         String context = "tenant1";
         String virtualTableName = "books_table";

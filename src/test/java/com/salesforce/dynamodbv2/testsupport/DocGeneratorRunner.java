@@ -68,13 +68,13 @@ import org.junit.jupiter.api.Test;
  *
  * <p>account
  * table
- * sharedtable
+ * shared_table
  * table -> account
- * sharedtable -> account
- * table -> sharedtable
- * sharedtable -> table
- * table -> sharedtable -> account
- * sharedtable -> table -> account
+ * shared_table -> account
+ * table -> shared_table
+ * shared_table -> table
+ * table -> shared_table -> account
+ * shared_table -> table -> account
  *
  * <p>MtAmazonDynamoDbByAccount does not support delegating to a mapper and therefore must always be at the end of the
  * chain when it is used.
@@ -153,7 +153,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * sharedtable -> logger
+     * shared_table -> logger
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -197,7 +197,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * sharedtable -> logger -> account
+     * shared_table -> logger -> account
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -222,7 +222,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * table -> sharedtable -> logger
+     * table -> shared_table -> logger
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -243,7 +243,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * sharedtable -> table -> logger
+     * shared_table -> table -> logger
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -264,7 +264,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * table -> sharedtable -> logger -> account
+     * table -> shared_table -> logger -> account
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -290,7 +290,7 @@ class DocGeneratorRunner {
     }
 
     /*
-     * sharedtable -> table -> logger -> account
+     * shared_table -> table -> logger -> account
      */
     // Suppresses "'lambda arguments' has incorrect indentation level" warning.
     @SuppressWarnings("checkstyle:Indentation")
@@ -318,10 +318,10 @@ class DocGeneratorRunner {
     class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
-                .put("_tablemetadata", ImmutableList.of("table", "data"))
+                .put("_table_metadata", ImmutableList.of("table", "data"))
                 .put("table1", ImmutableList.of("hashKeyField", "someField"))
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
-                .put("mt_sharedtablestatic_s_nolsi", ImmutableList.of("hk", "someField")).build();
+                .put("mt_shared_table_static_s_no_lsi", ImmutableList.of("hk", "someField")).build();
 
         private final String test;
         private final Path outputFile;
