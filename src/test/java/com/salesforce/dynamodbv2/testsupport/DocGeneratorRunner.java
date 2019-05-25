@@ -318,7 +318,7 @@ class DocGeneratorRunner {
     class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
-                .put("_tablemetadata", ImmutableList.of("table", "data"))
+                .put("_table_metadata", ImmutableList.of("table", "data"))
                 .put("table1", ImmutableList.of("hashKeyField", "someField"))
                 .put("table2", ImmutableList.of("hashKeyField", "someField"))
                 .put("mt_sharedtablestatic_s_no_lsi", ImmutableList.of("hk", "someField")).build();

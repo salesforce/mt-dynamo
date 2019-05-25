@@ -32,11 +32,11 @@ method=putItem(), table=ctx1.mt_sharedtablestatic_s_s, item={hk={S: ctx1.Table3.
 method=putItem(), table=ctx1.mt_sharedtablestatic_s_s, item={hk={S: ctx1.Table3.hashKeyValue3,}, rk={S: rangeKeyValue3b,}, someField={S: someValue3b,}}
 method=getItem(), table=ctx1.mt_sharedtablestatic_s_s, key={hk={S: ctx1.Table3.hashKeyValue3,}, rk={S: rangeKeyValue3a,}}
 method=scan(), table=ctx1.mt_sharedtablestatic_s_no_lsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx1.Table1.,}}
-method=deleteItem(), table=ctx1._tablemetadata, key={table={S: ctx1.Table1,}}
-method=getItem(), table=ctx1._tablemetadata, key={table={S: ctx1.Table1,}}
-method=getItem(), table=ctx1._tablemetadata, key={table={S: ctx1.Table1,}}
-method=putItem(), table=ctx1._tablemetadata, item={data={S: {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"Table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}},}, table={S: ctx1.Table1,}}
-method=getItem(), table=ctx1._tablemetadata, key={table={S: ctx1.Table1,}}
+method=deleteItem(), table=ctx1._table_metadata, key={table={S: ctx1.Table1,}}
+method=getItem(), table=ctx1._table_metadata, key={table={S: ctx1.Table1,}}
+method=getItem(), table=ctx1._table_metadata, key={table={S: ctx1.Table1,}}
+method=putItem(), table=ctx1._table_metadata, item={data={S: {"attributeDefinitions":[{"attributeName":"hashKeyField","attributeType":"S"}],"tableName":"Table1","keySchema":[{"attributeName":"hashKeyField","keyType":"HASH"}],"provisionedThroughput":{"readCapacityUnits":1,"writeCapacityUnits":1}},}, table={S: ctx1.Table1,}}
+method=getItem(), table=ctx1._table_metadata, key={table={S: ctx1.Table1,}}
 method=scan(), table=ctx1.mt_sharedtablestatic_s_no_lsi, filterExpression=begins_with(#___name___, :___value___), names={#___name___=hk}, values={:___value___={S: ctx1.Table1.,}}
 method=putItem(), table=ctx1.mt_sharedtablestatic_s_s, item={hk={S: ctx1.Table3.1,}, gsi_s_hk={S: ctx1.Table3.indexFieldValue,}, rk={S: rangeKeyValue,}, lsi_s_s_rk={S: indexFieldValue,}}
 method=query(), table=ctx1.mt_sharedtablestatic_s_s, keyConditionExpression=#name = :value AND #name2 = :value2, names={#name2=rk, #name=hk}, values={:value2={S: rangeKeyValue,}, :value={S: ctx1.Table3.1,}}

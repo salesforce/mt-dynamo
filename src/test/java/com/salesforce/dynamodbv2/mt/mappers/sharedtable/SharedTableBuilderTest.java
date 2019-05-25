@@ -34,7 +34,7 @@ class SharedTableBuilderTest {
     private static String tablePrefix;
     private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static final String metadataTableName = "_tablemetadata";
+    private static final String metadataTableName = "_table_metadata";
 
     @BeforeEach
     void beforeEach() {
