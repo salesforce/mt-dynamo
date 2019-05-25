@@ -98,11 +98,11 @@ For example, you may want to split your tenants across 2 AWS accounts.  Within t
 Below is a list of supported chaining sequences, each with a link to an example of how data looks in its persisted state for the configured chaining sequence.
 
  * [table &rarr; account](docs/chains/byTableByAccount)
- * [sharedtable &rarr; account](docs/chains/bySharedTableByAccount)
- * [table &rarr; sharedtable](docs/chains/byTableBySharedTable)
- * [sharedtable &rarr; table](docs/chains/bySharedTableByTable)
- * [table &rarr; sharedtable &rarr; account](docs/chains/byTableBySharedTableByAccount)
- * [sharedtable &rarr; table &rarr; account](docs/chains/bySharedTableByTableByAccount)
+ * [shared_table &rarr; account](docs/chains/bySharedTableByAccount)
+ * [table &rarr; shared_table](docs/chains/byTableBySharedTable)
+ * [shared_table &rarr; table](docs/chains/bySharedTableByTable)
+ * [table &rarr; shared_table &rarr; account](docs/chains/byTableBySharedTableByAccount)
+ * [shared_table &rarr; table &rarr; account](docs/chains/bySharedTableByTableByAccount)
 
 See `DocGeneratorRunner` for examples of how to configure builders for each of the chain sequences.
 
