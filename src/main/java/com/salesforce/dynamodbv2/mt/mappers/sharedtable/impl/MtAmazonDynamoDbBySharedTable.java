@@ -39,6 +39,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -346,43 +347,50 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
-        TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
-        PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
-            : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
+        if (getMtContext().getContext().isEmpty()) {
+            // if we're here, we're doing a multi tenant scan across all tenants.
+            Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()));
+            return getAmazonDynamoDb().scan(scanRequest);
+        } else {
 
-        // Projection must include primary key, since we use it for paging.
-        // (We could add key fields into projection and filter result in the future)
-        checkArgument(projectionContainsKey(scanRequest, key),
-            "Multitenant scans must include key in projection expression");
+            TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
+            PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
+                : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
 
-        // map table name
-        ScanRequest clonedScanRequest = scanRequest.clone();
-        clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
+            // Projection must include primary key, since we use it for paging.
+            // (We could add key fields into projection and filter result in the future)
+            checkArgument(projectionContainsKey(scanRequest, key),
+                "Multitenant scans must include key in projection expression");
 
-        // map scan request
-        clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
-        clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
-        tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
+            // map table name
+            ScanRequest clonedScanRequest = scanRequest.clone();
+            clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
-        // keep moving forward pages until we find at least one record for current tenant or reach end
-        ScanResult scanResult;
-        while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
-            && scanResult.getLastEvaluatedKey() != null) {
-            clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
-        }
+            // map scan request
+            clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
+                .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
+            clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
+                .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
+            tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
 
-        // map result
-        List<Map<String, AttributeValue>> items = scanResult.getItems();
-        if (!items.isEmpty()) {
-            scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
-            if (scanResult.getLastEvaluatedKey() != null) {
-                scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
+            // keep moving forward pages until we find at least one record for current tenant or reach end
+            ScanResult scanResult;
+            while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
+                && scanResult.getLastEvaluatedKey() != null) {
+                clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
             }
-        } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
 
-        return scanResult;
+            // map result
+            List<Map<String, AttributeValue>> items = scanResult.getItems();
+            if (!items.isEmpty()) {
+                scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
+                if (scanResult.getLastEvaluatedKey() != null) {
+                    scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
+                }
+            } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
+
+            return scanResult;
+        }
     }
 
     @VisibleForTesting
