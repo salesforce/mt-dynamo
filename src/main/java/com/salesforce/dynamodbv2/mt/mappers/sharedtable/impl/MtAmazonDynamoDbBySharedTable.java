@@ -32,8 +32,10 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
@@ -43,6 +45,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
@@ -52,6 +55,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldPrefixFunction
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -348,49 +352,67 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContext().isEmpty()) {
-            // if we're here, we're doing a multi tenant scan across all tenants.
+            // if we're here, we're doing a multi tenant scan on a shared table
             Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()));
-            return getAmazonDynamoDb().scan(scanRequest);
-        } else {
 
-            TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
-            PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
-                : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
 
-            // Projection must include primary key, since we use it for paging.
-            // (We could add key fields into projection and filter result in the future)
-            checkArgument(projectionContainsKey(scanRequest, key),
-                "Multitenant scans must include key in projection expression");
+            ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
 
-            // map table name
-            ScanRequest clonedScanRequest = scanRequest.clone();
-            clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-            // map scan request
-            clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-                .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
-            clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-                .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
-            tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
-
-            // keep moving forward pages until we find at least one record for current tenant or reach end
-            ScanResult scanResult;
-            while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
-                && scanResult.getLastEvaluatedKey() != null) {
-                clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
+            //given the shared table we're working with, get the function to map the primary key back to (tenant, virtual table name, and primary attributes)
+            Function<Map<String, AttributeValue>, FieldValue> fieldMapperFunction = getFieldValueFunction(scanRequest.getTableName());
+            List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
+            List<String> tenants = new ArrayList<>(scanResult.getItems().size());
+            List<String> virtualTables = new ArrayList<>(scanResult.getItems().size());
+            ScanResult ret = new MtScanResult(scanResult, tenants, virtualTables);
+            for (Map<String, AttributeValue> item : scanResult.getItems()) {
+                // go through each row in the scan, and pull out the tenant and table information from the primary key to separate attributes in each items map
+                FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
+                TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getMtContext(), tableName ->getTableMapping(tableName), virtualFieldKeys.getTableIndex());
+                Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
+                tenants.add(virtualFieldKeys.getMtContext());
+                virtualTables.add(virtualFieldKeys.getTableIndex());
+                unpackedItems.add(unpackedVirtualItem);
             }
-
-            // map result
-            List<Map<String, AttributeValue>> items = scanResult.getItems();
-            if (!items.isEmpty()) {
-                scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
-                if (scanResult.getLastEvaluatedKey() != null) {
-                    scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
-                }
-            } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
-
-            return scanResult;
+            ret.withItems(unpackedItems);
+            return ret.withItems(unpackedItems);
         }
+        TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
+        PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
+            : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
+
+        // Projection must include primary key, since we use it for paging.
+        // (We could add key fields into projection and filter result in the future)
+        checkArgument(projectionContainsKey(scanRequest, key),
+            "Multitenant scans must include key in projection expression");
+
+        // map table name
+        ScanRequest clonedScanRequest = scanRequest.clone();
+        clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
+
+        // map scan request
+        clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
+            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
+        clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
+            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
+        tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
+
+        // keep moving forward pages until we find at least one record for current tenant or reach end
+        ScanResult scanResult;
+        while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
+            && scanResult.getLastEvaluatedKey() != null) {
+            clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
+        }
+
+        // map result
+        List<Map<String, AttributeValue>> items = scanResult.getItems();
+        if (!items.isEmpty()) {
+            scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
+            if (scanResult.getLastEvaluatedKey() != null) {
+                scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
+            }
+        } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
+
+        return scanResult;
     }
 
     @VisibleForTesting
