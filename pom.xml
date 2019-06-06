@@ -21,7 +21,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.4.2</junit.version>
-        <aws.sdk.version>1.11.565</aws.sdk.version>
+        <aws.sdk.version>1.11.566</aws.sdk.version>
         <skipITs>true</skipITs>
     </properties>
 
