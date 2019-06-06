@@ -8,6 +8,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
@@ -66,13 +67,13 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     @Override
     public List<TestArgument> get() {
-        return getAmazonDynamoDbStrategies().stream().flatMap(
-            (Function<AmazonDynamoDB, Stream<TestArgument>>) amazonDynamoDB ->
-                getHashKeyAttrTypes().stream().flatMap(
-                    (Function<ScalarAttributeType, Stream<TestArgument>>) scalarAttributeType ->
-                        Stream.of(new TestArgument(amazonDynamoDB,
-                            getOrgs(),
-                            scalarAttributeType)))).collect(Collectors.toList());
+        List<TestArgument> ret = Lists.newArrayList();
+        for (AmazonDynamoDB mtStrategy : getAmazonDynamoDbStrategies()) {
+            for (ScalarAttributeType hashKeyAttributes : getHashKeyAttrTypes()) {
+                ret.add(new TestArgument(mtStrategy, getOrgs(), hashKeyAttributes));
+            }
+        }
+        return ret;
     }
 
     /*

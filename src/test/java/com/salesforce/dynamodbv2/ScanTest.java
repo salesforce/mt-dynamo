@@ -15,7 +15,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -29,7 +28,8 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtScanResult;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -139,12 +140,30 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
-        String tableName =  (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbByTable) ? testArgument.getOrgs().get(0) + "." + TABLE1:  "mt_sharedtablestatic_s_nolsi";
-        Set<Map<String, AttributeValue>> items = new HashSet<>(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName)).getItems());
-        assertFalse(items.isEmpty());
+        List<String> tableNames = testArgument.getAmazonDynamoDb().listTables().getTableNames();
+
+        //filter scan to just tables this mt dymamo strategy manages
+        tableNames = tableNames.stream()
+            .filter(t->((MtAmazonDynamoDbBase)testArgument.getAmazonDynamoDb()).isMtTable(t))
+            .collect(Collectors.toList());
+        assertTrue(tableNames.size() > 0, "No managed tables found to scan");
+        // go through every table, and issue at least one successful scan request.
+        // validate at least one table is populated
+        boolean isFound = false;
+        for (String tableName: tableNames) {
+            ScanResult scanResult = testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName));
+            assertTrue(scanResult instanceof MtScanResult);
+            List<Map<String, AttributeValue>> items = scanResult.getItems();
+            if (items != null && !items.isEmpty()) {
+                isFound = true;
+                assertEquals(((MtScanResult)scanResult).getTenants().size(), items.size());
+                assertEquals(((MtScanResult)scanResult).getVirtualTables().size(), items.size());
+            }
+        }
+        assertTrue(isFound, "all scans found no items... that's not right");
     }
 
     @ParameterizedTest(name = "{arguments}")
@@ -196,6 +215,7 @@ class ScanTest {
         final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
+
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
             CreateTableRequest createTableRequest) {
@@ -224,5 +244,4 @@ class ScanTest {
         }
 
     }
-
 }

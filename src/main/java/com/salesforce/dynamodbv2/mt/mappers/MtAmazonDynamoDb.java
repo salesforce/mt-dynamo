@@ -112,6 +112,7 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
             this.withScannedCount(scanResult.getScannedCount());
             this.setSdkHttpMetadata(scanResult.getSdkHttpMetadata());
             this.setSdkResponseMetadata(scanResult.getSdkResponseMetadata());
+            this.withItems(scanResult.getItems());
             this.tenants = tenants;
             this.virtualTables = virtualTables;
         }

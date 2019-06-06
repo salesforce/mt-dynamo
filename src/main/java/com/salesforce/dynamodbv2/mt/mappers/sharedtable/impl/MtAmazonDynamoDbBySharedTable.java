@@ -134,7 +134,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    protected boolean isMtTable(String tableName) {
+    public boolean isMtTable(String tableName) {
         return mtTables.containsKey(tableName);
     }
 
@@ -402,7 +402,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
             // if we're here, we're doing a multi tenant scan on a shared table
-            Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()));
+            Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
 
 
             ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
