@@ -41,6 +41,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -52,6 +53,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -390,10 +392,44 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Execute a scan meeting the specs of @{link AmazonDynamoDB}, but scoped to single tenants within a shared table.
+     * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
+     *
+     * Scans scoped to single tenants is not a performant operation. Multi tenant scans are as bad as scans on any other dynamo
+     * table, ie: not great.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
+        if (getMtContext().getContextOpt().isEmpty()) {
+            // if we're here, we're doing a multi tenant scan on a shared table
+            Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()));
+
+
+            ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
+
+            // given the shared table we're working with,
+            // get the function to map the primary key back to
+            // tuple (tenant, virtual table name, and primary attributes)
+            Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
+                getFieldValueFunction(scanRequest.getTableName());
+            List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
+            List<String> tenants = new ArrayList<>(scanResult.getItems().size());
+            List<String> virtualTables = new ArrayList<>(scanResult.getItems().size());
+            ScanResult ret = new MtScanResult(scanResult, tenants, virtualTables);
+            for (Map<String, AttributeValue> item : scanResult.getItems()) {
+                // go through each row in the scan, and pull out the tenant and table information from the primary key
+                // to separate attributes in each items map
+                FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
+                TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
+                    tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
+                Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
+                tenants.add(virtualFieldKeys.getContext());
+                virtualTables.add(virtualFieldKeys.getTableName());
+                unpackedItems.add(unpackedVirtualItem);
+            }
+            ret.withItems(unpackedItems);
+            return ret.withItems(unpackedItems);
+        }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
             : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();

@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
@@ -14,6 +15,7 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -27,6 +29,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
@@ -133,6 +136,15 @@ class ScanTest {
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
             assertEquals(expectedSet, new HashSet<>(items));
         });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void scanAllTenants(TestArgument testArgument) {
+        MT_CONTEXT.setContext(null);
+        String tableName =  (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbByTable) ? testArgument.getOrgs().get(0) + "." + TABLE1:  "mt_sharedtablestatic_s_nolsi";
+        Set<Map<String, AttributeValue>> items = new HashSet<>(testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName)).getItems());
+        assertFalse(items.isEmpty());
     }
 
     @ParameterizedTest(name = "{arguments}")
