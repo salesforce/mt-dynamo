@@ -1,5 +1,5 @@
 build:
-	mvn test-compile -DskipTests=true -B -V
+	mvn spotless:check test-compile -DskipTests=true -B -V
 
 test:
 	mvn test -B jacoco:report
