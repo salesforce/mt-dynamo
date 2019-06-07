@@ -329,7 +329,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        throw new UnsupportedOperationException();
+        return getAmazonDynamoDb().listTables(exclusiveStartTableName);
     }
 
     @Override

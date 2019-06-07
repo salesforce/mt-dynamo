@@ -140,16 +140,25 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(ScanTestArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
-        List<String> tableNames = testArgument.getAmazonDynamoDb().listTables().getTableNames();
+        String startTableName = null;
+        List<String> tableNames;
+        int maxPages = 5;
+        int attemptCount = 0;
+        do {
+            List<String> allTableNames = testArgument.getAmazonDynamoDb().listTables(startTableName).getTableNames();
 
-        //filter scan to just tables this mt dymamo strategy manages
-        tableNames = tableNames.stream()
-            .filter(t->((MtAmazonDynamoDbBase)testArgument.getAmazonDynamoDb()).isMtTable(t))
-            .collect(Collectors.toList());
-        assertTrue(tableNames.size() > 0, "No managed tables found to scan");
+            //filter scan to just tables this mt dymamo strategy manages
+            tableNames = allTableNames.stream()
+                .filter(t -> ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).isMtTable(t))
+                .collect(Collectors.toList());
+            startTableName = allTableNames.get(allTableNames.size() - 1);
+            attemptCount++;
+        } while (tableNames.size() == 0 && attemptCount < maxPages);
+
+        assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
         // go through every table, and issue at least one successful scan request.
         // validate at least one table is populated
         boolean isFound = false;

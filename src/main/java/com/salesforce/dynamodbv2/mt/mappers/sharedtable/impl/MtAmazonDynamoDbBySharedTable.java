@@ -394,41 +394,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * Execute a scan meeting the specs of @{link AmazonDynamoDB}, but scoped to single tenants within a shared table.
      * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
-     *
-     * Scans scoped to single tenants is not a performant operation. Multi tenant scans are as bad as scans on any other dynamo
-     * table, ie: not great.
+     * Scans scoped to single tenants is not a performant operation.
+     * Multi tenant scans are as bad as scans on any other dynamo table, ie: not great.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
             // if we're here, we're doing a multi tenant scan on a shared table
-            Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
-
-
-            ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
-
-            // given the shared table we're working with,
-            // get the function to map the primary key back to
-            // tuple (tenant, virtual table name, and primary attributes)
-            Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
-                getFieldValueFunction(scanRequest.getTableName());
-            List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
-            List<String> tenants = new ArrayList<>(scanResult.getItems().size());
-            List<String> virtualTables = new ArrayList<>(scanResult.getItems().size());
-            ScanResult ret = new MtScanResult(scanResult, tenants, virtualTables);
-            for (Map<String, AttributeValue> item : scanResult.getItems()) {
-                // go through each row in the scan, and pull out the tenant and table information from the primary key
-                // to separate attributes in each items map
-                FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
-                TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
-                    tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
-                Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
-                tenants.add(virtualFieldKeys.getContext());
-                virtualTables.add(virtualFieldKeys.getTableName());
-                unpackedItems.add(unpackedVirtualItem);
-            }
-            ret.withItems(unpackedItems);
-            return ret.withItems(unpackedItems);
+            return multiTenantScan(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
@@ -467,6 +440,34 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
 
         return scanResult;
+    }
+
+    private ScanResult multiTenantScan(ScanRequest scanRequest) {
+        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
+        ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
+
+        // given the shared table we're working with,
+        // get the function to map the primary key back to
+        // tuple (tenant, virtual table name, and primary attributes)
+        Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
+            getFieldValueFunction(scanRequest.getTableName());
+        List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
+        List<String> tenants = new ArrayList<>(scanResult.getItems().size());
+        List<String> virtualTables = new ArrayList<>(scanResult.getItems().size());
+        ScanResult ret = new MtScanResult(scanResult, tenants, virtualTables);
+        for (Map<String, AttributeValue> item : scanResult.getItems()) {
+            // go through each row in the scan, and pull out the tenant and table information from the primary key
+            // to separate attributes in each items map
+            FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
+            TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
+                tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
+            Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
+            tenants.add(virtualFieldKeys.getContext());
+            virtualTables.add(virtualFieldKeys.getTableName());
+            unpackedItems.add(unpackedVirtualItem);
+        }
+        ret.withItems(unpackedItems);
+        return ret.withItems(unpackedItems);
     }
 
     @VisibleForTesting
@@ -525,6 +526,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
     }
+
 
     /**
      * See class level Javadoc for explanation of why the use of addAttributeUpdateEntry and withAttributeUpdates is

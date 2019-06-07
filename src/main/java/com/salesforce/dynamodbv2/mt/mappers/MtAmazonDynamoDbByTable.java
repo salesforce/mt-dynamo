@@ -34,7 +34,6 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
@@ -221,7 +220,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
             ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
-            List<String> tenants =new ArrayList(result.getCount());
+            List<String> tenants = new ArrayList(result.getCount());
             List<String> tables = new ArrayList(result.getCount());
             for (int i = 0; i < result.getCount(); i++) {
                 tenants.add(tenantTable[0]);
