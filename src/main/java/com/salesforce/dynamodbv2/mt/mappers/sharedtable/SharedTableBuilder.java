@@ -16,6 +16,8 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -171,6 +173,7 @@ public class SharedTableBuilder implements TableBuilder {
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
+    private BackupGenerator backupGenerator;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
@@ -210,6 +213,11 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withGetRecordsTimeLimit(long getRecordsTimeLimit) {
         this.getRecordsTimeLimit = getRecordsTimeLimit;
+        return this;
+    }
+
+    public SharedTableBuilder withBackupSupport(AWSCredentialsProvider credentials, String region, String backupS3BucketName) {
+        this.backupGenerator = new BackupGeneratorImpl(credentials, region, backupS3BucketName);
         return this;
     }
 

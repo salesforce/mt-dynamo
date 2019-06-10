@@ -5,6 +5,7 @@
 .idea/**/shelf
 .idea/compiler.xml
 .idea/encodings.xml
+.idea/misc.xml
 
 # Generated files
 .idea/**/contentModel.xml
