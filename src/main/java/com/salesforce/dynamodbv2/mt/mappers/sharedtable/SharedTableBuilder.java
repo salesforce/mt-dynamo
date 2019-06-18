@@ -22,6 +22,8 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
@@ -180,6 +182,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
+    private Cache tableMappingCache;
+    private Cache tableDescriptionCache;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -271,7 +275,8 @@ public class SharedTableBuilder implements TableBuilder {
             deleteTableAsync,
             truncateOnDeleteTable,
             getRecordsTimeLimit,
-            clock);
+            clock,
+            tableMappingCache);
     }
 
     private void setDefaults() {
@@ -321,6 +326,12 @@ public class SharedTableBuilder implements TableBuilder {
         if (tableDescriptionTableName == null) {
             tableDescriptionTableName = DEFAULT_TABLE_DESCRIPTION_TABLE_NAME;
         }
+        if (tableDescriptionCache == null) {
+            tableDescriptionCache = CacheBuilder.newBuilder().build();
+        }
+        if (tableMappingCache == null) {
+            tableMappingCache = CacheBuilder.newBuilder().build();
+        }
         if (mtTableDescriptionRepo == null) {
             mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
@@ -328,7 +339,9 @@ public class SharedTableBuilder implements TableBuilder {
                 .withContext(mtContext)
                 .withTableDescriptionTableName(tableDescriptionTableName)
                 .withPollIntervalSeconds(pollIntervalSeconds)
-                .withTablePrefix(tablePrefix).build();
+                .withTablePrefix(tablePrefix)
+                .withTableDescriptionCache(tableDescriptionCache)
+                .build();
 
             ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
         }
@@ -502,6 +515,16 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
         this.pollIntervalSeconds = pollIntervalSeconds;
+        return this;
+    }
+
+    public SharedTableBuilder withTableMappingCache(Cache tableMappingCache) {
+        this.tableMappingCache = tableMappingCache;
+        return this;
+    }
+
+    public SharedTableBuilder withTableDescriptionCache(Cache tableDescriptionCache) {
+        this.tableDescriptionCache = tableDescriptionCache;
         return this;
     }
 

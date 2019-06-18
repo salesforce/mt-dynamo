@@ -25,6 +25,8 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
@@ -73,7 +75,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
-                                           int pollIntervalSeconds) {
+                                           int pollIntervalSeconds,
+                                           Cache tableDescriptionCache) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.billingMode = billingMode;
         this.mtContext = mtContext;
@@ -83,7 +86,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
-        cache = new MtCache<>(mtContext);
+        cache = new MtCache<>(mtContext, tableDescriptionCache);
     }
 
     @Override
@@ -256,6 +259,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private Integer pollIntervalSeconds;
         private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
+        private Cache tableDescriptionCache;
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -304,6 +308,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache tableDescriptionCache) {
+            this.tableDescriptionCache = tableDescriptionCache;
+            return this;
+        }
+
         /**
          * TODO: write Javadoc.
          *
@@ -322,7 +331,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 tableDescriptionTableHashKeyField,
                 tableDescriptionTableDataField,
                 delimiter,
-                pollIntervalSeconds);
+                pollIntervalSeconds,
+                tableDescriptionCache);
         }
 
         private void validate() {
@@ -343,6 +353,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             }
             if (pollIntervalSeconds == null) {
                 pollIntervalSeconds = 5;
+            }
+            if (tableDescriptionCache == null) {
+                tableDescriptionCache = CacheBuilder.newBuilder().build();
             }
         }
 

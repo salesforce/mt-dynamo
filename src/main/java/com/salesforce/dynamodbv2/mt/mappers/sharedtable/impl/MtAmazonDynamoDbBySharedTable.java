@@ -100,6 +100,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param truncateOnDeleteTable a flag indicating whether to delete all table data when a virtual table is deleted
      * @param getRecordsTimeLimit soft time limit for getting records out of the shared stream.
      * @param clock clock instance to use for enforcing time limit (injected for unit tests).
+     * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -109,11 +110,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean deleteTableAsync,
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
-                                         Clock clock) {
+                                         Clock clock,
+                                         Cache tableMappingCache) {
         super(mtContext, amazonDynamoDb);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
-        this.tableMappingCache = new MtCache<>(mtContext);
+        this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
