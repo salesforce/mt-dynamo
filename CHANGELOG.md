@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.40 (June 18, 2019)
 
-* Exposed the ability to provide table description and table mapping cache implementations to `SharedTableBuilder`s.
+* Exposed the ability to provide implementations of table-description and table-mapping caches to `SharedTableBuilder`s.
 
 ## 0.9.39 (May 24, 2019)
 
