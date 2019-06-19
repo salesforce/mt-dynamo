@@ -103,7 +103,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         if (consumedRecords == records.size()) {
             result.getRecords().addAll(innerMtRecords);
             result.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
-            return true;
+            return records.size() == MAX_LIMIT;
         } else {
             // If we exceeded limit: retry with lower limit (can't just return a subset of records, because the next
             // shard iterator would not align with the last returned record)
