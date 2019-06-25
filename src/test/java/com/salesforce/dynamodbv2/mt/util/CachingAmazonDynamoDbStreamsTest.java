@@ -37,14 +37,12 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
-import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
@@ -54,6 +52,7 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
+import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -257,25 +256,8 @@ class CachingAmazonDynamoDbStreamsTest {
     private static final String shardId = "shard1";
     private static final List<Record> records = IntStream.range(0, 10)
         .map(i -> i * 10) // multiples of 10 to simulate non-contiguous nature
-        .mapToObj(CachingAmazonDynamoDbStreamsTest::mockRecord)
+        .mapToObj(StreamsTestUtil::mockRecord)
         .collect(toList());
-
-    private static String formatSequenceNumber(int sequenceNumber) {
-        return String.format("%021d", sequenceNumber);
-    }
-
-    private static Record mockRecord(int sequenceNumber) {
-        return new Record()
-            .withEventID(UUID.randomUUID().toString())
-            .withEventSource("aws:dynamodb")
-            .withEventName(OperationType.INSERT)
-            .withEventVersion("1.1")
-            .withAwsRegion("ddblocal")
-            .withDynamodb(new StreamRecord()
-                .withSequenceNumber(formatSequenceNumber(sequenceNumber))
-                .withSizeBytes(1L)
-            );
-    }
 
     private static String getMockRecordSequenceNumber(int idx) {
         return records.get(idx).getDynamodb().getSequenceNumber();

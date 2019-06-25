@@ -1,10 +1,13 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.ImmutableList.copyOf;
 import static com.google.common.collect.Iterables.getLast;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,20 +17,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Nonnull;
 
-class RecordsCache {
+class StreamsCache {
 
     /**
      * A cached segment of a stream shard. Begins with {@link #start} (inclusive) and ends with {@link #end} exclusive.
      * The {@link #records} collection is sorted by record sequence number and may be empty. All sequence numbers in the
      * collection fall into the segment sequence number range.
      */
-    private static final class Segment {
+    @VisibleForTesting
+    static final class Segment {
 
         @Nonnull
         private final SequenceNumber start;
@@ -46,7 +51,7 @@ class RecordsCache {
             assert start.compareTo(end) <= 0;
             this.start = checkNotNull(start);
             this.end = checkNotNull(end);
-            this.records = Collections.unmodifiableList(checkNotNull(records));
+            this.records = copyOf(checkNotNull(records));
             this.byteSize = records.stream().map(Record::getDynamodb).mapToLong(StreamRecord::getSizeBytes).sum();
         }
 
@@ -90,13 +95,23 @@ class RecordsCache {
 
         Segment subSegment(Segment previousSegment, Segment nextSegment) {
             return subSegment(
-                previousSegment == null ? null : previousSegment.getEnd().next(),
+                previousSegment == null ? null : previousSegment.getEnd(),
                 nextSegment == null ? null : nextSegment.getStart()
             );
         }
 
+        /**
+         * Returns a new segment that starts at the larger of {@link #start} or {@param from} and ends at the smaller of
+         * {@link #end} or {@param to}. Both {@param from} and {@param to} may be null. If both are null, this segment
+         * is returned. If both are not null, {@param from} must be less than or equal to {@param to}. The set of
+         * records in the returned sub-segment are the sub-set of records that fall into the range of the new segment.
+         *
+         * @param from  Starting offset of the new segment, may be null.
+         * @param to Ending offset of the new segment, may be null.
+         * @return Sub-segment
+         */
         Segment subSegment(SequenceNumber from, SequenceNumber to) {
-            assert from == null || to == null || from.compareTo(to) < 0;
+            assert from == null || to == null || from.compareTo(to) <= 0;
 
             int cf = from == null ? 1 : start.compareTo(from);
             int cl = to == null ? -1 : end.compareTo(to);
@@ -108,18 +123,18 @@ class RecordsCache {
                     return this;
                 } else {
                     // last sequence number of this segment is after to: end with to
-                    final List<Record> newRecords = new ArrayList<>(records.subList(0, getIndex(to)));
+                    final List<Record> newRecords = copyOf(records.subList(0, getIndex(to)));
                     return new Segment(start, to, newRecords);
                 }
             } else {
                 // first sequence number of this segment if before from: start with from
                 if (cl <= 0) {
                     // last sequence number of this segment is before to: end with last
-                    final List<Record> newRecords = new ArrayList<>(records.subList(getIndex(from), records.size()));
+                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), records.size()));
                     return new Segment(from, end, newRecords);
                 } else {
                     // last sequence number of this segment is after to: end with to
-                    final List<Record> newRecords = new ArrayList<>(records.subList(getIndex(from), getIndex(to)));
+                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), getIndex(to)));
                     return new Segment(from, to, newRecords);
                 }
             }
@@ -131,6 +146,33 @@ class RecordsCache {
 
         boolean isEmpty() {
             return start.equals(end);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Segment segment = (Segment) o;
+            return start.equals(segment.start) && end.equals(segment.end) && records.equals(segment.records);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(start, end, records);
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("start", start)
+                .add("end", end)
+                .add("records", records)
+                .add("byteSize", byteSize)
+                .toString();
         }
     }
 
@@ -146,7 +188,7 @@ class RecordsCache {
     // size of cache >= 0
     private long recordsByteSize;
 
-    RecordsCache(long maxRecordsByteSize) {
+    StreamsCache(long maxRecordsByteSize) {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new HashMap<>();
         this.insertionOrder = new LinkedList<>();
@@ -191,15 +233,16 @@ class RecordsCache {
             addAll(records, segment.getRecords(sequenceNumber), limit);
 
             // keep going through adjacent segments (if present), until limit is reached
+            Segment next = segment;
             while (records.size() < limit) {
-                final Segment next = shardCache.get(segment.getEnd().next());
+                next = shardCache.get(next.getEnd());
                 if (next == null) {
                     break;
                 }
                 addAll(records, next.getRecords(), limit);
             }
 
-            return records;
+            return Collections.unmodifiableList(records);
         } finally {
             readLock.unlock();
         }
