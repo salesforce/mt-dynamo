@@ -464,7 +464,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     // locks to sequence access to shards
     private final Striped<Lock> shardLocks;
-    private final RecordsCache recordCache;
+    private final StreamsCache recordCache;
 
     // iterator cache
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
@@ -481,7 +481,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
 
         this.shardLocks = Striped.lazyWeakLock(1000);
-        this.recordCache = new RecordsCache(maxRecordsByteSize);
+        this.recordCache = new StreamsCache(maxRecordsByteSize);
 
         this.iteratorCache = CacheBuilder
             .newBuilder()
