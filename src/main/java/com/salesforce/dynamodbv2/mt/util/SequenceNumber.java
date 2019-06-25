@@ -5,8 +5,20 @@ import com.google.common.base.MoreObjects;
 import java.math.BigInteger;
 import java.util.Objects;
 
+/**
+ * Representation of a sequence number in a DynamoDB Stream. Similar to KCL's
+ * <a href="https://github.com/awslabs/amazon-kinesis-client/blob/6c64055d9b81b51480ab844be1769a3637c2c29c/amazon-kinesis-client/src/main/java/software/amazon/kinesis/retrieval/kpl/ExtendedSequenceNumber.java">ExtendedSequenceNumber</a>
+ * but without <code>subSequenceNumber</code>, since DynamoDB does not have those, and parses sequence numbers eagerly,
+ * since
+ */
 final class SequenceNumber implements Comparable<SequenceNumber> {
 
+    /**
+     * Parses a sequence number from a DynamoDB Stream String representation.
+     *
+     * @param sequenceNumber Raw value.
+     * @return Parsed SequenceNumber.
+     */
     static SequenceNumber fromRawValue(String sequenceNumber) {
         try {
             return new SequenceNumber(new BigInteger(sequenceNumber));
@@ -15,12 +27,14 @@ final class SequenceNumber implements Comparable<SequenceNumber> {
         }
     }
 
+    /**
+     * Parses a sequence number contained in the given DynamoDB Stream Record for convenience.
+     *
+     * @param record DynamoDB record containing a sequence number.
+     * @return Parsed SequenceNumber.
+     */
     static SequenceNumber fromRecord(Record record) {
         return fromRawValue(record.getDynamodb().getSequenceNumber());
-    }
-
-    static SequenceNumber fromInt(int value) {
-        return new SequenceNumber(BigInteger.valueOf(value));
     }
 
     private final BigInteger value;
@@ -29,14 +43,22 @@ final class SequenceNumber implements Comparable<SequenceNumber> {
         this.value = value;
     }
 
-    boolean precedes(SequenceNumber other) {
-        return compareTo(other) <= 0;
-    }
-
+    /**
+     * Returns the next sequence number in the stream.
+     *
+     * @return Next sequence number.
+     */
     SequenceNumber next() {
         return new SequenceNumber(value.add(BigInteger.ONE));
     }
 
+    /**
+     * Comparse this sequence number to the given one in terms of their relative position in the stream.
+     *
+     * @param o Other sequence number.
+     * @return A negative integer, zero, or a positive integer as this sequence number precedes, equals, or succeeds the
+     *     specified sequence number in the stream.
+     */
     @Override
     public int compareTo(SequenceNumber o) {
         return value.compareTo(o.value);
@@ -65,4 +87,5 @@ final class SequenceNumber implements Comparable<SequenceNumber> {
             .add("value", value)
             .toString();
     }
+
 }

@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2.mt.util;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Objects;
+import javax.annotation.Nonnull;
 
 /**
  * A shard location is a pointer to a sequence number within a stream shard that uniquely identifies the position of a
@@ -10,7 +11,9 @@ import java.util.Objects;
  */
 final class ShardLocation {
 
+    @Nonnull
     private final ShardId shardId;
+    @Nonnull
     private final SequenceNumber sequenceNumber;
 
     ShardLocation(ShardId shardId, SequenceNumber sequenceNumber) {
