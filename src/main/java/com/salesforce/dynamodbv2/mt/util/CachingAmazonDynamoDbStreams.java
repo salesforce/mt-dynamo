@@ -414,6 +414,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
+    /**
+     * Internal result class so that we can return a {@link CachingShardIterator} instead of a String.
+     */
     private static class CachingGetRecordsResult {
         private final List<Record> records;
         private final CachingShardIterator nextShardIterator;
@@ -547,13 +550,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         try {
             if (!lock.tryLock(5000, TimeUnit.SECONDS)) {
                 if (LOG.isWarnEnabled()) {
-                    LOG.warn("getRecords failed to acquire lock for shard ", shardId);
+                    LOG.warn("getRecords failed to acquire lock for shard {}", shardId);
                 }
                 throw new LimitExceededException("Failed to acquire shard lock within max time.");
             }
         } catch (InterruptedException e) {
             if (LOG.isWarnEnabled()) {
-                LOG.warn("getRecords interrupted trying to acquire lock for shard ", shardId);
+                LOG.warn("getRecords interrupted trying to acquire lock for shard {}", shardId);
             }
             Thread.currentThread().interrupt();
         }
