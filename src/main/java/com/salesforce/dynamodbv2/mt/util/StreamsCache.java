@@ -18,12 +18,22 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.annotation.Nonnull;
 
+/**
+ * A cache for DynamoDB Streams Record. Optimizes for scanning adjacent stream records by splitting shards into segments
+ * with relative offsets. Each segment is cached under its starting sequence number and contains its end point as well
+ * as the set of records contained in the segment in the underlying shard. A single cache instance can cache records for
+ * multiple streams and shards, and eviction is managed by configuring the maximum number of record bytes to cache. Note
+ * that this number corresponds to actual byte size in the underlying stream; in-memory size of the objects is likely
+ * larger (by a constant factor) due to JVM overhead. Eviction is managed in FIFO order at the granularity of segments,
+ * i.e., if the size of the cache is exceeded, the oldest segments are removed. Note that age of segments m
+ */
 class StreamsCache {
 
     /**
@@ -43,10 +53,25 @@ class StreamsCache {
         @Nonnull
         private final long byteSize;
 
+        /**
+         * Convenience constructor that initializes {@link #end} to the sequence number following that of the last
+         * record.
+         *
+         * @param start   Starting point of this segment.
+         * @param records Collection of records contained in this segment.
+         */
         Segment(SequenceNumber start, List<Record> records) {
             this(start, SequenceNumber.fromRecord(getLast(records)).next(), records);
         }
 
+        /**
+         * Creates a new cache segment from {@link #start} inclusive to {@link #end} exclusive containing the given set
+         * of records.
+         *
+         * @param start   Starting point of this segment (inclusive).
+         * @param end     Ending point of this segment (exclusive).
+         * @param records Set of records contained in the stream for the given range.
+         */
         Segment(SequenceNumber start, SequenceNumber end, List<Record> records) {
             assert start.compareTo(end) <= 0;
             this.start = checkNotNull(start);
@@ -55,23 +80,45 @@ class StreamsCache {
             this.byteSize = records.stream().map(Record::getDynamodb).mapToLong(StreamRecord::getSizeBytes).sum();
         }
 
+        /**
+         * Returns the sequence number at which this segment starts (inclusive).
+         *
+         * @return Starting point of this segment.
+         */
         @Nonnull
-        public SequenceNumber getStart() {
+        SequenceNumber getStart() {
             return start;
         }
 
+        /**
+         * Returns the sequence number at which this segment ends (exclusive).
+         *
+         * @return Ending point of this segment.
+         */
         @Nonnull
-        public SequenceNumber getEnd() {
+        SequenceNumber getEnd() {
             return end;
         }
 
+        /**
+         * Set of records contained this segment in the underlying stream shard.
+         *
+         * @return Streams records.
+         */
         @Nonnull
-        public List<Record> getRecords() {
+        List<Record> getRecords() {
             return records;
         }
 
+        /**
+         * Returns the stream records in this segment that have sequence numbers higher than {@param from}.
+         *
+         * @param from Sequence number from which to retrieve records in this segment. Must greater than or equal to
+         *             {@link #start} and less than {@link #end}.
+         * @return Set of records in this segment that have sequence numbers higher than {@param from}.
+         */
         List<Record> getRecords(SequenceNumber from) {
-            assert start.compareTo(from) <= 0 && end.compareTo(from) >= 0;
+            assert start.compareTo(from) <= 0 && end.compareTo(from) > 0;
 
             if (records.isEmpty()) {
                 return records;
@@ -84,6 +131,57 @@ class StreamsCache {
             return records.subList(getIndex(from), records.size());
         }
 
+        /**
+         * Returns a new segment that starts at the larger of {@link #start} or {@param from} and ends at the smaller of
+         * {@link #end} or {@param to}. Both {@param from} and {@param to} may be null. If both are null, this segment
+         * is returned. If both are not null, {@param from} must be less than or equal to {@param to}. The set of
+         * records in the returned sub-segment are the sub-set of records that fall into the range of the new segment.
+         *
+         * @param from Starting offset of the new segment, may be null.
+         * @param to   Ending offset of the new segment, may be null.
+         * @return Sub-segment
+         */
+        Segment subSegment(SequenceNumber from, SequenceNumber to) {
+            assert from == null || to == null || from.compareTo(to) <= 0;
+
+            if (from == null && to == null) {
+                return this;
+            }
+
+            int cf = from == null ? 1 : start.compareTo(from);
+            int cl = to == null ? -1 : end.compareTo(to);
+
+            if (cf >= 0) {
+                // "start" sequence number of this segment is after "from": start with "start"
+                if (cl <= 0) {
+                    // "end" sequence number of this segment is before "to": end with "end"
+                    return this;
+                } else {
+                    // "end" sequence number of this segment is after "to": end with "to"
+                    final List<Record> newRecords = copyOf(records.subList(0, getIndex(to)));
+                    return new Segment(start, to, newRecords);
+                }
+            } else {
+                // "start" sequence number of this segment if before "from": start with "from"
+                if (cl <= 0) {
+                    // "end" sequence number of this segment is before "to": end with "end"
+                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), records.size()));
+                    return new Segment(from, end, newRecords);
+                } else {
+                    // "end" sequence number of this segment is after "to": end with "to"
+                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), getIndex(to)));
+                    return new Segment(from, to, newRecords);
+                }
+            }
+        }
+
+        /**
+         * Internal helper method to efficiently find the index of the given sequence number in the list of records.
+         *
+         * @param sequenceNumber Sequence number to find index of.
+         * @return Index in the list, such that all records in the list after the index have sequence numbers that are
+         * greater or equal to the given sequence number. If no such records exist, the size of the list is returned.
+         */
         private int getIndex(SequenceNumber sequenceNumber) {
             final List<SequenceNumber> sequenceNumbers = Lists.transform(records, SequenceNumber::fromRecord);
             int index = Collections.binarySearch(sequenceNumbers, sequenceNumber);
@@ -93,57 +191,22 @@ class StreamsCache {
             return index;
         }
 
-        Segment subSegment(Segment previousSegment, Segment nextSegment) {
-            return subSegment(
-                previousSegment == null ? null : previousSegment.getEnd(),
-                nextSegment == null ? null : nextSegment.getStart()
-            );
-        }
-
         /**
-         * Returns a new segment that starts at the larger of {@link #start} or {@param from} and ends at the smaller of
-         * {@link #end} or {@param to}. Both {@param from} and {@param to} may be null. If both are null, this segment
-         * is returned. If both are not null, {@param from} must be less than or equal to {@param to}. The set of
-         * records in the returned sub-segment are the sub-set of records that fall into the range of the new segment.
+         * Returns the byte size (in the stream) of all records in this segment.
          *
-         * @param from  Starting offset of the new segment, may be null.
-         * @param to Ending offset of the new segment, may be null.
-         * @return Sub-segment
+         * @return Byte size of all records in this segment.
          */
-        Segment subSegment(SequenceNumber from, SequenceNumber to) {
-            assert from == null || to == null || from.compareTo(to) <= 0;
-
-            int cf = from == null ? 1 : start.compareTo(from);
-            int cl = to == null ? -1 : end.compareTo(to);
-
-            if (cf >= 0) {
-                // first sequence number of this segment is after from: start with first
-                if (cl <= 0) {
-                    // last sequence number of this segment is before to: end with last
-                    return this;
-                } else {
-                    // last sequence number of this segment is after to: end with to
-                    final List<Record> newRecords = copyOf(records.subList(0, getIndex(to)));
-                    return new Segment(start, to, newRecords);
-                }
-            } else {
-                // first sequence number of this segment if before from: start with from
-                if (cl <= 0) {
-                    // last sequence number of this segment is before to: end with last
-                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), records.size()));
-                    return new Segment(from, end, newRecords);
-                } else {
-                    // last sequence number of this segment is after to: end with to
-                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), getIndex(to)));
-                    return new Segment(from, to, newRecords);
-                }
-            }
-        }
-
         long getByteSize() {
             return byteSize;
         }
 
+        /**
+         * Returns whether this segment is empty. Note that non-empty segments may still have an empty records
+         * collections if the corresponding segment in the underlying stream contains no records for the sequence number
+         * range.
+         *
+         * @return True if this segment is empty, i.e., if {@link #start} is equal to {@link #end}. False, otherwise.
+         */
         boolean isEmpty() {
             return start.equals(end);
         }
@@ -223,8 +286,9 @@ class StreamsCache {
             }
 
             final Segment segment = entry.getValue();
-            if (segment.getEnd().precedes(sequenceNumber)) {
-                // preceding segment does not include requested sequence number
+            if (segment.getEnd().compareTo(sequenceNumber) <= 0) {
+                // preceding segment does not include requested sequence number (which means records for the requested
+                // sequence number not yet cached, since otherwise floorEntry above would have returned that entry)
                 return Collections.emptyList();
             }
 
@@ -259,18 +323,17 @@ class StreamsCache {
             final SequenceNumber sequenceNumber = shardLocation.getSequenceNumber();
 
             // lookup segments that immediately precede and succeed new segment to drop overlapping records
-            final Segment previousSegment;
-            final Segment nextSegment;
+            Segment segment = new Segment(sequenceNumber, records);
+
+            // adjust segment if there is overlap with existing
             final NavigableMap<SequenceNumber, Segment> shardCache = segments.get(shardId);
-            if (shardCache == null) {
-                previousSegment = null;
-                nextSegment = null;
-            } else {
-                previousSegment = getValue(shardCache.floorEntry(sequenceNumber));
-                nextSegment = getValue(shardCache.higherEntry(sequenceNumber));
+            if (shardCache != null) {
+                segment = segment.subSegment(
+                    Optional.ofNullable(floorValue(shardCache, sequenceNumber)).map(Segment::getEnd).orElse(null),
+                    Optional.ofNullable(higherValue(shardCache, sequenceNumber)).map(Segment::getStart).orElse(null)
+                );
             }
 
-            final Segment segment = new Segment(sequenceNumber, records).subSegment(previousSegment, nextSegment);
             if (!segment.isEmpty()) {
                 addSegment(new ShardLocation(shardId, segment.getStart()), segment);
             }
@@ -313,7 +376,13 @@ class StreamsCache {
         }
     }
 
-    private static <T> T getValue(Entry<?, T> entry) {
+    private static <K, V> V floorValue(NavigableMap<K, V> map, K key) {
+        final Entry<K, V> entry = map.floorEntry(key);
+        return entry == null ? null : entry.getValue();
+    }
+
+    private static <K, V> V higherValue(NavigableMap<K, V> map, K key) {
+        final Entry<K, V> entry = map.higherEntry(key);
         return entry == null ? null : entry.getValue();
     }
 }
