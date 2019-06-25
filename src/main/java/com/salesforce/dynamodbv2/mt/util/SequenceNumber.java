@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.google.common.base.MoreObjects;
 import java.math.BigInteger;
 import java.util.Objects;
 
@@ -16,6 +17,10 @@ final class SequenceNumber implements Comparable<SequenceNumber> {
 
     static SequenceNumber fromRecord(Record record) {
         return fromRawValue(record.getDynamodb().getSequenceNumber());
+    }
+
+    static SequenceNumber fromInt(int value) {
+        return new SequenceNumber(BigInteger.valueOf(value));
     }
 
     private final BigInteger value;
@@ -52,5 +57,12 @@ final class SequenceNumber implements Comparable<SequenceNumber> {
     @Override
     public int hashCode() {
         return Objects.hash(value);
+    }
+
+    @Override
+    public String toString() {
+        return MoreObjects.toStringHelper(this)
+            .add("value", value)
+            .toString();
     }
 }
