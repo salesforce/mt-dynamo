@@ -22,6 +22,7 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
@@ -40,6 +41,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
@@ -182,8 +184,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
-    private Cache tableMappingCache;
-    private Cache tableDescriptionCache;
+    private Cache<String, TableMapping> tableMappingCache;
+    private Cache<String, TableDescription> tableDescriptionCache;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -518,12 +520,12 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTableMappingCache(Cache tableMappingCache) {
+    public SharedTableBuilder withTableMappingCache(Cache<String, TableMapping> tableMappingCache) {
         this.tableMappingCache = tableMappingCache;
         return this;
     }
 
-    public SharedTableBuilder withTableDescriptionCache(Cache tableDescriptionCache) {
+    public SharedTableBuilder withTableDescriptionCache(Cache<String, TableDescription> tableDescriptionCache) {
         this.tableDescriptionCache = tableDescriptionCache;
         return this;
     }

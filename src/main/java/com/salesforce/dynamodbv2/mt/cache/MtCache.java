@@ -31,7 +31,7 @@ public class MtCache<V> implements Cache<String, V> {
     private final MtAmazonDynamoDbContextProvider contextProvider;
     private final Cache<String, V> cache;
 
-    public MtCache(MtAmazonDynamoDbContextProvider contextProvider, Cache cache) {
+    public MtCache(MtAmazonDynamoDbContextProvider contextProvider, Cache<String, V> cache) {
         this.contextProvider = contextProvider;
         this.cache = cache;
     }
