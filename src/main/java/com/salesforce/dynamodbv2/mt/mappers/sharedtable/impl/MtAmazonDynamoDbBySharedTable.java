@@ -111,7 +111,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
                                          Clock clock,
-                                         Cache tableMappingCache) {
+                                         Cache<String, TableMapping> tableMappingCache) {
         super(mtContext, amazonDynamoDb);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;

@@ -76,17 +76,17 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds,
-                                           Cache tableDescriptionCache) {
+                                           Cache<String, TableDescription> tableDescriptionCache) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.billingMode = billingMode;
         this.mtContext = mtContext;
-        adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
+        this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
-        cache = new MtCache<>(mtContext, tableDescriptionCache);
+        this.cache = new MtCache<>(mtContext, tableDescriptionCache);
     }
 
     @Override
@@ -259,7 +259,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private Integer pollIntervalSeconds;
         private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
-        private Cache tableDescriptionCache;
+        private Cache<String, TableDescription> tableDescriptionCache;
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -308,7 +308,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache tableDescriptionCache) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache<String, TableDescription>
+                                                                                   tableDescriptionCache) {
             this.tableDescriptionCache = tableDescriptionCache;
             return this;
         }
