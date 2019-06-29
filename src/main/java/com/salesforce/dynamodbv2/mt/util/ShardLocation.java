@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.math.BigInteger;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 
@@ -14,9 +15,9 @@ final class ShardLocation {
     @Nonnull
     private final ShardId shardId;
     @Nonnull
-    private final SequenceNumber sequenceNumber;
+    private final BigInteger sequenceNumber;
 
-    ShardLocation(ShardId shardId, SequenceNumber sequenceNumber) {
+    ShardLocation(ShardId shardId, BigInteger sequenceNumber) {
         this.shardId = checkNotNull(shardId);
         this.sequenceNumber = checkNotNull(sequenceNumber);
     }
@@ -25,7 +26,7 @@ final class ShardLocation {
         return shardId;
     }
 
-    SequenceNumber getSequenceNumber() {
+    BigInteger getSequenceNumber() {
         return sequenceNumber;
     }
 

@@ -9,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -45,9 +46,9 @@ class StreamsCache {
     static final class Segment {
 
         @Nonnull
-        private final SequenceNumber start;
+        private final BigInteger start;
         @Nonnull
-        private final SequenceNumber end;
+        private final BigInteger end;
         @Nonnull
         private final List<Record> records;
         @Nonnull
@@ -60,8 +61,9 @@ class StreamsCache {
          * @param start   Starting point of this segment.
          * @param records Collection of records contained in this segment.
          */
-        Segment(SequenceNumber start, List<Record> records) {
-            this(start, SequenceNumber.fromRecord(getLast(records)).next(), records);
+        Segment(BigInteger start, List<Record> records) {
+            this(start, new BigInteger(getLast(records).getDynamodb().getSequenceNumber()).add(BigInteger.ONE),
+                records);
         }
 
         /**
@@ -72,7 +74,7 @@ class StreamsCache {
          * @param end     Ending point of this segment (exclusive).
          * @param records Set of records contained in the stream for the given range.
          */
-        Segment(SequenceNumber start, SequenceNumber end, List<Record> records) {
+        Segment(BigInteger start, BigInteger end, List<Record> records) {
             assert start.compareTo(end) <= 0;
             this.start = checkNotNull(start);
             this.end = checkNotNull(end);
@@ -86,7 +88,7 @@ class StreamsCache {
          * @return Starting point of this segment.
          */
         @Nonnull
-        SequenceNumber getStart() {
+        BigInteger getStart() {
             return start;
         }
 
@@ -96,7 +98,7 @@ class StreamsCache {
          * @return Ending point of this segment.
          */
         @Nonnull
-        SequenceNumber getEnd() {
+        BigInteger getEnd() {
             return end;
         }
 
@@ -117,7 +119,7 @@ class StreamsCache {
          *             {@link #start} and less than {@link #end}.
          * @return Set of records in this segment that have sequence numbers higher than {@param from}.
          */
-        List<Record> getRecords(SequenceNumber from) {
+        List<Record> getRecords(BigInteger from) {
             assert start.compareTo(from) <= 0 && end.compareTo(from) > 0;
 
             if (records.isEmpty()) {
@@ -141,7 +143,7 @@ class StreamsCache {
          * @param to   Ending offset of the new segment, may be null.
          * @return Sub-segment
          */
-        Segment subSegment(SequenceNumber from, SequenceNumber to) {
+        Segment subSegment(BigInteger from, BigInteger to) {
             assert from == null || to == null || from.compareTo(to) <= 0;
 
             if (from == null && to == null) {
@@ -180,10 +182,12 @@ class StreamsCache {
          *
          * @param sequenceNumber Sequence number to find index of.
          * @return Index in the list, such that all records in the list after the index have sequence numbers that are
-         * greater or equal to the given sequence number. If no such records exist, the size of the list is returned.
+         *     greater or equal to the given sequence number. If no such records exist, the size of the list is
+         *     returned.
          */
-        private int getIndex(SequenceNumber sequenceNumber) {
-            final List<SequenceNumber> sequenceNumbers = Lists.transform(records, SequenceNumber::fromRecord);
+        private int getIndex(BigInteger sequenceNumber) {
+            final List<BigInteger> sequenceNumbers = Lists.transform(records,
+                r -> new BigInteger(r.getDynamodb().getSequenceNumber()));
             int index = Collections.binarySearch(sequenceNumbers, sequenceNumber);
             if (index < 0) {
                 index = (-index) - 1;
@@ -243,7 +247,7 @@ class StreamsCache {
     private final long maxRecordsByteSize;
 
     // cached record segments sorted by sequence number within each shard
-    private final Map<ShardId, NavigableMap<SequenceNumber, Segment>> segments;
+    private final Map<ShardId, NavigableMap<BigInteger, Segment>> segments;
     // Insertion order of cache segments for eviction purposes
     private final LinkedList<ShardLocation> insertionOrder;
     // looks for mutating lock
@@ -272,14 +276,14 @@ class StreamsCache {
         readLock.lock();
         try {
             final ShardId shardId = shardLocation.getShardId();
-            final NavigableMap<SequenceNumber, Segment> shardCache = segments.get(shardId);
+            final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
             if (shardCache == null) {
                 // nothing cached for the requested shard
                 return Collections.emptyList();
             }
 
-            final SequenceNumber sequenceNumber = shardLocation.getSequenceNumber();
-            final Entry<SequenceNumber, Segment> entry = shardCache.floorEntry(sequenceNumber);
+            final BigInteger sequenceNumber = shardLocation.getSequenceNumber();
+            final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
             if (entry == null) {
                 // no segment with requested or smaller sequence number
                 return Collections.emptyList();
@@ -320,13 +324,13 @@ class StreamsCache {
         writeLock.lock();
         try {
             final ShardId shardId = shardLocation.getShardId();
-            final SequenceNumber sequenceNumber = shardLocation.getSequenceNumber();
+            final BigInteger sequenceNumber = shardLocation.getSequenceNumber();
 
             // lookup segments that immediately precede and succeed new segment to drop overlapping records
             Segment segment = new Segment(sequenceNumber, records);
 
             // adjust segment if there is overlap with existing
-            final NavigableMap<SequenceNumber, Segment> shardCache = segments.get(shardId);
+            final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
             if (shardCache != null) {
                 segment = segment.subSegment(
                     Optional.ofNullable(floorValue(shardCache, sequenceNumber)).map(Segment::getEnd).orElse(null),
@@ -343,7 +347,7 @@ class StreamsCache {
     }
 
     private void addSegment(ShardLocation shardLocation, Segment segment) {
-        final NavigableMap<SequenceNumber, Segment> shardCache = segments.computeIfAbsent(shardLocation.getShardId(),
+        final NavigableMap<BigInteger, Segment> shardCache = segments.computeIfAbsent(shardLocation.getShardId(),
             k -> new TreeMap<>());
         final Segment previous = shardCache.put(shardLocation.getSequenceNumber(), segment);
         assert previous == null;
@@ -355,7 +359,7 @@ class StreamsCache {
     }
 
     private void removeSegment(ShardLocation shardLocation) {
-        final NavigableMap<SequenceNumber, Segment> shardCache = segments.get(shardLocation.getShardId());
+        final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardLocation.getShardId());
         assert !shardCache.isEmpty();
         final Segment segment = shardCache.remove(shardLocation.getSequenceNumber());
         assert segment != null;
