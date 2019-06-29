@@ -23,7 +23,6 @@ import com.google.common.base.Throwables;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import com.google.common.util.concurrent.Striped;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import java.util.ArrayList;
@@ -31,8 +30,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -466,7 +463,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final long getRecordsLimitExceededBackoffInMillis;
 
     // locks to sequence access to shards
-    private final Striped<Lock> shardLocks;
     private final StreamsCache recordCache;
 
     // iterator cache
@@ -483,7 +479,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
 
-        this.shardLocks = Striped.lazyWeakLock(1000);
         this.recordCache = new StreamsCache(maxRecordsByteSize);
 
         this.iteratorCache = CacheBuilder
@@ -542,70 +537,51 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         // parse iterator
         final CachingShardIterator iterator = CachingShardIterator.fromExternalString(request.getShardIterator());
 
-        // Lock the shard to avoid (1) exceeding streams reader limit (See
-        // https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-dynamodb-streams)
-        // and (2) concurrent readers from fetching overlapping segments unnecessarily
-        final ShardId shardId = iterator.getShardUid();
-        final Lock lock = shardLocks.get(shardId);
-        try {
-            if (!lock.tryLock(5000, TimeUnit.SECONDS)) {
-                if (LOG.isWarnEnabled()) {
-                    LOG.warn("getRecords failed to acquire lock for shard {}", shardId);
-                }
-                throw new LimitExceededException("Failed to acquire shard lock within max time.");
-            }
-        } catch (InterruptedException e) {
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("getRecords interrupted trying to acquire lock for shard {}", shardId);
-            }
-            Thread.currentThread().interrupt();
-        }
-
-        final List<Record> records = new ArrayList<>(limit);
         final CachingShardIterator nextIterator;
-        try {
-            // fetch records from cache
-            iterator.resolveLocation()
-                .map(location -> recordCache.getRecords(location, limit))
-                .ifPresent(records::addAll);
+        final List<Record> records = new ArrayList<>(limit);
 
-            // check if we got enough
-            if (records.size() < limit) {
-                // not enough cached records: read segment from underlying shard
-                final CachingShardIterator cachedNextIterator = iterator.nextShardIterator(records);
-                final CachingGetRecordsResult loadedResult = getRecords(cachedNextIterator);
+        // fetch records from cache
+        iterator.resolveLocation()
+            .map(location -> recordCache.getRecords(location, limit))
+            .ifPresent(records::addAll);
 
-                final List<Record> loadedRecords = loadedResult.getRecords();
-                final CachingShardIterator loadedNextIterator = loadedResult.getNextShardIterator();
+        // check if we got enough
+        if (records.size() < limit) {
+            // not enough cached records: read segment from underlying shard
+            final CachingShardIterator cachedNextIterator = iterator.nextShardIterator(records);
+            final CachingGetRecordsResult loadedResult = getRecords(cachedNextIterator);
 
-                if (loadedRecords.isEmpty()) {
-                    // no records loaded: update iterator
-                    nextIterator = records.isEmpty() ? loadedNextIterator : cachedNextIterator;
-                } else {
-                    // some records loaded: update record cache and result
+            final List<Record> loadedRecords = loadedResult.getRecords();
+            final CachingShardIterator loadedNextIterator = loadedResult.getNextShardIterator();
 
-                    // update cache
-                    final ShardLocation location = cachedNextIterator.resolveLocation()
-                        .orElseGet(() -> new ShardLocation(shardId, SequenceNumber.fromRecord(loadedRecords.get(0))));
-                    recordCache.putRecords(location, loadedRecords);
-
-                    // update result records and next iterator
-                    final int remaining = limit - records.size();
-                    if (loadedRecords.size() > remaining) {
-                        // more records loaded than needed
-                        records.addAll(loadedRecords.subList(0, remaining));
-                        nextIterator = iterator.nextShardIterator(records);
-                    } else {
-                        records.addAll(loadedRecords);
-                        nextIterator = loadedNextIterator;
-                    }
-                }
+            if (loadedRecords.isEmpty()) {
+                // no records loaded: update iterator
+                nextIterator = records.isEmpty() ? loadedNextIterator : cachedNextIterator;
             } else {
-                // full cache hit: simply return cached records and next (lazy) iterator
-                nextIterator = iterator.nextShardIterator(records);
+                // some records loaded: update record cache and result
+
+                // update cache
+                final ShardLocation location = cachedNextIterator.resolveLocation()
+                    .orElseGet(() -> new ShardLocation(
+                        iterator.getShardUid(),
+                        SequenceNumber.fromRecord(loadedRecords.get(0))
+                    ));
+                recordCache.putRecords(location, loadedRecords);
+
+                // update result records and next iterator
+                final int remaining = limit - records.size();
+                if (loadedRecords.size() > remaining) {
+                    // more records loaded than needed
+                    records.addAll(loadedRecords.subList(0, remaining));
+                    nextIterator = iterator.nextShardIterator(records);
+                } else {
+                    records.addAll(loadedRecords);
+                    nextIterator = loadedNextIterator;
+                }
             }
-        } finally {
-            lock.unlock();
+        } else {
+            // full cache hit: simply return cached records and next (lazy) iterator
+            nextIterator = iterator.nextShardIterator(records);
         }
 
         final GetRecordsResult result = new GetRecordsResult()
