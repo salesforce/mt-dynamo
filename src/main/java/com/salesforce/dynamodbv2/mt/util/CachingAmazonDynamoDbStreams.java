@@ -25,6 +25,7 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -263,7 +264,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private final String dynamoDbIterator;
 
         // derived cached state
-        private final SequenceNumber parsedSequenceNumber;
+        private final BigInteger parsedSequenceNumber;
 
         private CachingShardIterator(
             @Nonnull String streamArn,
@@ -289,7 +290,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     checkArgument(sequenceNumber != null);
                     checkArgument(dynamoDbIterator == null);
                     this.sequenceNumber = sequenceNumber;
-                    this.parsedSequenceNumber = SequenceNumber.fromRawValue(sequenceNumber);
+                    this.parsedSequenceNumber = new BigInteger(sequenceNumber);
                     this.dynamoDbIterator = null;
                     break;
                 default:
@@ -309,7 +310,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 case AT_SEQUENCE_NUMBER:
                     return Optional.of(new ShardLocation(getShardUid(), parsedSequenceNumber));
                 case AFTER_SEQUENCE_NUMBER:
-                    return Optional.of(new ShardLocation(getShardUid(), parsedSequenceNumber.next()));
+                    return Optional.of(new ShardLocation(getShardUid(), parsedSequenceNumber.add(BigInteger.ONE)));
                 default:
                     throw new RuntimeException("Unhandled switch case");
             }
@@ -401,13 +402,12 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 && Objects.equals(shardId, that.shardId)
                 && type == that.type
                 && Objects.equals(sequenceNumber, that.sequenceNumber)
-                && Objects.equals(dynamoDbIterator, that.dynamoDbIterator)
-                && Objects.equals(parsedSequenceNumber, that.parsedSequenceNumber);
+                && Objects.equals(dynamoDbIterator, that.dynamoDbIterator);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(streamArn, shardId, type, sequenceNumber, dynamoDbIterator, parsedSequenceNumber);
+            return Objects.hash(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
         }
     }
 
@@ -564,7 +564,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 final ShardLocation location = cachedNextIterator.resolveLocation()
                     .orElseGet(() -> new ShardLocation(
                         iterator.getShardUid(),
-                        SequenceNumber.fromRecord(loadedRecords.get(0))
+                        new BigInteger(loadedRecords.get(0).getDynamodb().getSequenceNumber())
                     ));
                 recordCache.putRecords(location, loadedRecords);
 
