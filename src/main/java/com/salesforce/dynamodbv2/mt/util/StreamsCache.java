@@ -62,8 +62,7 @@ class StreamsCache {
          * @param records Collection of records contained in this segment.
          */
         Segment(BigInteger start, List<Record> records) {
-            this(start, new BigInteger(getLast(records).getDynamodb().getSequenceNumber()).add(BigInteger.ONE),
-                records);
+            this(start, ShardIteratorPosition.after(getLast(records)), records);
         }
 
         /**
@@ -186,8 +185,7 @@ class StreamsCache {
          *     returned.
          */
         private int getIndex(BigInteger sequenceNumber) {
-            final List<BigInteger> sequenceNumbers = Lists.transform(records,
-                r -> new BigInteger(r.getDynamodb().getSequenceNumber()));
+            final List<BigInteger> sequenceNumbers = Lists.transform(records, ShardIteratorPosition::at);
             int index = Collections.binarySearch(sequenceNumbers, sequenceNumber);
             if (index < 0) {
                 index = (-index) - 1;
@@ -249,7 +247,7 @@ class StreamsCache {
     // cached record segments sorted by sequence number within each shard
     private final Map<ShardId, NavigableMap<BigInteger, Segment>> segments;
     // Insertion order of cache segments for eviction purposes
-    private final LinkedList<ShardLocation> insertionOrder;
+    private final LinkedList<ShardIteratorPosition> insertionOrder;
     // looks for mutating lock
     private final ReadWriteLock lock;
     // size of cache >= 0
@@ -266,23 +264,23 @@ class StreamsCache {
     /**
      * Returns the cached segment that contains the given shard location. If no such segment exists, returns empty.
      *
-     * @param shardLocation Shard location for which to return the cached segment that contains it.
+     * @param shardIteratorPosition Shard location for which to return the cached segment that contains it.
      * @return Segment that contains the given location or empty.
      */
-    List<Record> getRecords(ShardLocation shardLocation, int limit) {
-        assert shardLocation != null && limit > 0;
+    List<Record> getRecords(ShardIteratorPosition shardIteratorPosition, int limit) {
+        assert shardIteratorPosition != null && limit > 0;
 
         final Lock readLock = lock.readLock();
         readLock.lock();
         try {
-            final ShardId shardId = shardLocation.getShardId();
+            final ShardId shardId = shardIteratorPosition.getShardId();
             final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
             if (shardCache == null) {
                 // nothing cached for the requested shard
                 return Collections.emptyList();
             }
 
-            final BigInteger sequenceNumber = shardLocation.getSequenceNumber();
+            final BigInteger sequenceNumber = shardIteratorPosition.getSequenceNumber();
             final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
             if (entry == null) {
                 // no segment with requested or smaller sequence number
@@ -317,14 +315,14 @@ class StreamsCache {
     }
 
     // Should we bring back segment merging to avoid cache fragmentation?
-    void putRecords(ShardLocation shardLocation, List<Record> records) {
-        assert shardLocation != null && records != null && !records.isEmpty();
+    void putRecords(ShardIteratorPosition shardIteratorPosition, List<Record> records) {
+        assert shardIteratorPosition != null && records != null && !records.isEmpty();
 
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
-            final ShardId shardId = shardLocation.getShardId();
-            final BigInteger sequenceNumber = shardLocation.getSequenceNumber();
+            final ShardId shardId = shardIteratorPosition.getShardId();
+            final BigInteger sequenceNumber = shardIteratorPosition.getSequenceNumber();
 
             // lookup segments that immediately precede and succeed new segment to drop overlapping records
             Segment segment = new Segment(sequenceNumber, records);
@@ -339,32 +337,32 @@ class StreamsCache {
             }
 
             if (!segment.isEmpty()) {
-                addSegment(new ShardLocation(shardId, segment.getStart()), segment);
+                addSegment(new ShardIteratorPosition(shardId, segment.getStart()), segment);
             }
         } finally {
             writeLock.unlock();
         }
     }
 
-    private void addSegment(ShardLocation shardLocation, Segment segment) {
-        final NavigableMap<BigInteger, Segment> shardCache = segments.computeIfAbsent(shardLocation.getShardId(),
+    private void addSegment(ShardIteratorPosition shardIteratorPosition, Segment segment) {
+        final NavigableMap<BigInteger, Segment> shardCache = segments.computeIfAbsent(shardIteratorPosition.getShardId(),
             k -> new TreeMap<>());
-        final Segment previous = shardCache.put(shardLocation.getSequenceNumber(), segment);
+        final Segment previous = shardCache.put(shardIteratorPosition.getSequenceNumber(), segment);
         assert previous == null;
-        insertionOrder.add(shardLocation);
+        insertionOrder.add(shardIteratorPosition);
         recordsByteSize += segment.getByteSize();
         while (recordsByteSize > maxRecordsByteSize) {
             removeSegment(insertionOrder.removeFirst());
         }
     }
 
-    private void removeSegment(ShardLocation shardLocation) {
-        final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardLocation.getShardId());
+    private void removeSegment(ShardIteratorPosition shardIteratorPosition) {
+        final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardIteratorPosition.getShardId());
         assert !shardCache.isEmpty();
-        final Segment segment = shardCache.remove(shardLocation.getSequenceNumber());
+        final Segment segment = shardCache.remove(shardIteratorPosition.getSequenceNumber());
         assert segment != null;
         if (shardCache.isEmpty()) {
-            segments.remove(shardLocation.getShardId());
+            segments.remove(shardIteratorPosition.getShardId());
         }
         recordsByteSize -= segment.getByteSize();
         assert recordsByteSize >= 0;
