@@ -345,12 +345,27 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * Returns a new virtual shard iterator that starts at the sequence number immediately after the last record in
          * the given records list.
          *
-         * @param records Records list.
+         * @param records Records list. Must not be empty.
          * @return New shard iterator that starts after the last record in the list.
          */
         CachingShardIterator nextShardIterator(List<Record> records) {
-            return records.isEmpty() ? this : new CachingShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
+            assert !records.isEmpty();
+            return new CachingShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
                 getLast(records).getDynamodb().getSequenceNumber(), null);
+        }
+
+        /**
+         * Returns a result object for the given records that starts with a next iterator positioned after the last
+         * record.
+         *
+         * @param records Record list. Must not be empty.
+         * @return GetRecordsResult.
+         */
+        GetRecordsResult nextResult(List<Record> records) {
+            assert !records.isEmpty();
+            return new GetRecordsResult()
+                .withRecords(records)
+                .withNextShardIterator(nextShardIterator(records).toExternalString());
         }
 
         /**
@@ -414,27 +429,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         @Override
         public int hashCode() {
             return Objects.hash(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
-        }
-    }
-
-    /**
-     * Internal result class so that we can return a {@link CachingShardIterator} instead of a String.
-     */
-    private static class CachingGetRecordsResult {
-        private final List<Record> records;
-        private final CachingShardIterator nextShardIterator;
-
-        CachingGetRecordsResult(List<Record> records, CachingShardIterator nextShardIterator) {
-            this.records = records;
-            this.nextShardIterator = nextShardIterator;
-        }
-
-        List<Record> getRecords() {
-            return records;
-        }
-
-        CachingShardIterator getNextShardIterator() {
-            return nextShardIterator;
         }
     }
 
@@ -515,6 +509,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         switch (ShardIteratorType.fromValue(request.getShardIteratorType())) {
             case TRIM_HORIZON:
             case LATEST:
+                // TODO metrics: count iterator lookups
                 dynamoDbIterator = dynamoDbStreams.getShardIterator(request).getShardIterator();
                 break;
             case AT_SEQUENCE_NUMBER:
@@ -542,54 +537,33 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         // parse iterator
         final CachingShardIterator iterator = CachingShardIterator.fromExternalString(request.getShardIterator());
-
-        final CachingShardIterator nextIterator;
-        final List<Record> records = new ArrayList<>(limit);
-
-        // fetch records from cache
-        iterator.resolvePosition()
-            .map(location -> recordCache.getRecords(location, limit))
-            .ifPresent(records::addAll);
-
-        // check if we got enough
-        if (records.size() < limit) {
-            // not enough cached records: read segment from underlying shard
-            final CachingShardIterator cachedNextIterator = iterator.nextShardIterator(records);
-            final CachingGetRecordsResult loadedResult = getRecords(cachedNextIterator);
-
-            final List<Record> loadedRecords = loadedResult.getRecords();
-            final CachingShardIterator loadedNextIterator = loadedResult.getNextShardIterator();
-
-            if (loadedRecords.isEmpty()) {
-                // no records loaded: update iterator
-                nextIterator = records.isEmpty() ? loadedNextIterator : cachedNextIterator;
+        final Optional<ShardIteratorPosition> positionOpt = iterator.resolvePosition();
+        final GetRecordsResult result;
+        if (positionOpt.isPresent()) {
+            final ShardIteratorPosition position = positionOpt.get();
+            final List<Record> cachedRecords = recordCache.getRecords(position, limit);
+            if (cachedRecords.size() == limit) {
+                // TODO metrics: count full cache hit
+                result = iterator.nextResult(cachedRecords);
+            } else if (cachedRecords.isEmpty()) {
+                // TODO metrics: count cache miss
+                result = getRecords(iterator, limit);
             } else {
-                // some records loaded: update record cache and result
-
-                // update cache
-                final ShardIteratorPosition location = cachedNextIterator.resolvePosition()
-                    .orElseGet(() -> iterator.resolvePosition(loadedRecords.get(0)));
-                recordCache.putRecords(location, loadedRecords);
-
-                // update result records and next iterator
-                final int remaining = limit - records.size();
-                if (loadedRecords.size() > remaining) {
-                    // more records loaded than needed
-                    records.addAll(loadedRecords.subList(0, remaining));
-                    nextIterator = iterator.nextShardIterator(records);
-                } else {
-                    records.addAll(loadedRecords);
-                    nextIterator = loadedNextIterator;
-                }
+                // TODO metrics: count partial cache hit (incl number of records)
+                // TODO should we really fetch records or just return the partial result? (Client will call back anyway)
+                final int remaining = limit - cachedRecords.size();
+                final CachingShardIterator nextIterator = iterator.nextShardIterator(cachedRecords);
+                final GetRecordsResult loadedResult = getRecords(nextIterator, remaining);
+                final List<Record> loadedRecords = loadedResult.getRecords();
+                final List<Record> resultRecords = new ArrayList<>(cachedRecords.size() + loadedRecords.size());
+                resultRecords.addAll(cachedRecords);
+                resultRecords.addAll(loadedRecords);
+                result = loadedResult.withRecords(resultRecords);
             }
         } else {
-            // full cache hit: simply return cached records and next (lazy) iterator
-            nextIterator = iterator.nextShardIterator(records);
+            // TODO metrics: count direct stream access without cache (typically for TRIM_HORIZON)
+            result = getRecords(iterator, limit);
         }
-
-        final GetRecordsResult result = new GetRecordsResult()
-            .withRecords(records)
-            .withNextShardIterator(nextIterator == null ? null : nextIterator.toExternalString());
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("getRecords result={}", toShortString(result));
@@ -604,12 +578,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      * @param iterator Position in the a given stream shard for which to retrieve records
      * @return Results loaded from the cache or underlying stream
      */
-    private CachingGetRecordsResult getRecords(CachingShardIterator iterator) {
+    private GetRecordsResult getRecords(CachingShardIterator iterator, int limit) {
         int getRecordsRetries = 0;
         while (getRecordsRetries < maxGetRecordsRetries) {
             // first get the physical DynamoDB iterator
             final String dynamoDbIterator = iterator.getDynamoDbIterator()
                 .orElseGet(() -> {
+                    // TODO metrics: iterator cache hits and misses
                     try {
                         return iteratorCache.getUnchecked(iterator);
                     } catch (UncheckedExecutionException e) {
@@ -618,12 +593,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     }
                 });
 
-            // next load records from stream
+            // next load records from stream (always load MAX to minimize calls via cache; apply limit after)
             final GetRecordsRequest request = new GetRecordsRequest().withShardIterator(dynamoDbIterator);
             final GetRecordsResult result;
             try {
                 result = dynamoDbStreams.getRecords(request);
             } catch (LimitExceededException e) {
+                // TODO metrics: count limit exceeded exceptions
                 long backoff = (getRecordsRetries + 1) * getRecordsLimitExceededBackoffInMillis;
                 if (LOG.isWarnEnabled()) {
                     LOG.warn("getRecords limit exceeded: iterator={}, retry attempt={}, backoff={}.", iterator,
@@ -633,6 +609,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 getRecordsRetries++;
                 continue;
             } catch (ExpiredIteratorException e) {
+                // TODO metrics: count expired iterators
                 // if we loaded the iterator from our cache, reload it
                 if (iterator.getDynamoDbIterator().isEmpty()) {
                     if (LOG.isInfoEnabled()) {
@@ -645,28 +622,55 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 throw e;
             }
 
+            // TODO metrics: getRecords call time
+            // TODO metrics: number of records loaded
             if (LOG.isDebugEnabled()) {
                 LOG.debug("getRecords loaded records: result={}, iterator={}", toShortString(result), iterator);
             }
 
-            // compute next iterator
             final String loadedNextIterator = result.getNextShardIterator();
-            final List<Record> records = result.getRecords();
+            final List<Record> loadedRecords = result.getRecords();
+
+            // compute next iterator and update iterator and records caches
             final CachingShardIterator nextIterator;
-            if (loadedNextIterator == null) {
-                nextIterator = null;
-            } else {
-                if (records.isEmpty() && iterator.getDynamoDbIterator().isPresent()) {
-                    nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
+            if (loadedRecords.isEmpty()) {
+                // update iterator cache
+                if (loadedNextIterator == null) {
+                    nextIterator = null;
                 } else {
-                    nextIterator = iterator.nextShardIterator(records);
+                    if (iterator.getDynamoDbIterator().isEmpty()) {
+                        // update cache with new physical iterator to increase chances of making progress
+                        nextIterator = iterator;
+                        iteratorCache.put(nextIterator, loadedNextIterator);
+                    } else {
+                        // use new physical iterator next time to continue to progress
+                        nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
+                    }
+                }
+            } else {
+                // update iterator cache
+                if (loadedNextIterator == null) {
+                    nextIterator = null;
+                } else {
+                    nextIterator = iterator.nextShardIterator(loadedRecords);
                     iteratorCache.put(nextIterator, loadedNextIterator);
                 }
+
+                // update records cache (either under iterator position or first record sequence number)
+                final ShardIteratorPosition location = iterator.resolvePosition()
+                    .orElseGet(() -> iterator.resolvePosition(loadedRecords.get(0)));
+                recordCache.putRecords(location, loadedRecords);
             }
 
-            return new CachingGetRecordsResult(records, nextIterator);
+            // compute result
+            return loadedRecords.size() > limit
+                ? iterator.nextResult(loadedRecords.subList(0, limit))
+                : new GetRecordsResult()
+                .withRecords(loadedRecords)
+                .withNextShardIterator(nextIterator == null ? null : nextIterator.toExternalString());
         }
 
+        // TODO metrics: count max retries exceeded
         if (LOG.isWarnEnabled()) {
             LOG.warn("GetRecords exceeded maximum number of retries");
         }
