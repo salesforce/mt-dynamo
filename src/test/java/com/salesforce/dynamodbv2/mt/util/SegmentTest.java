@@ -4,7 +4,7 @@ import static com.salesforce.dynamodbv2.testsupport.StreamsTestUtil.mockRecord;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.salesforce.dynamodbv2.mt.util.StreamsCache.Segment;
+import com.salesforce.dynamodbv2.mt.util.StreamsRecordCache.Segment;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
