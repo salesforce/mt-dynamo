@@ -38,7 +38,7 @@ import javax.annotation.Nonnull;
  * larger (by a constant factor) due to JVM overhead. Eviction is managed in FIFO order at the granularity of segments,
  * i.e., if the size of the cache is exceeded, the oldest segments are removed. Note that age of segments m
  */
-class StreamsCache {
+class StreamsRecordCache {
 
     /**
      * A cached segment of a stream shard. Begins with {@link #start} (inclusive) and ends with {@link #end} exclusive.
@@ -254,7 +254,7 @@ class StreamsCache {
     // size of cache >= 0
     private final AtomicLong recordsByteSize;
 
-    StreamsCache(long maxRecordsByteSize) {
+    StreamsRecordCache(long maxRecordsByteSize) {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new ConcurrentHashMap<>();
         this.insertionOrder = new ConcurrentLinkedQueue<>();

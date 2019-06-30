@@ -4,7 +4,7 @@ import static com.salesforce.dynamodbv2.testsupport.StreamsTestUtil.mockRecords;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.salesforce.dynamodbv2.mt.util.StreamsCache.Segment;
+import com.salesforce.dynamodbv2.mt.util.StreamsRecordCache.Segment;
 import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class StreamsCacheTest {
+public class StreamsRecordCacheTest {
 
     static List<Arguments> subSegmentArgs() {
         final List<Arguments> args = new ArrayList<>();
@@ -36,7 +36,7 @@ public class StreamsCacheTest {
 
     @Test
     void testPutPreviousOverlap() {
-        final StreamsCache sut = new StreamsCache(Long.MAX_VALUE);
+        final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
         final List<Record> records = Arrays.asList(
             StreamsTestUtil.mockRecord(1),
