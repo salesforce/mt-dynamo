@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.mt.util;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.copyOf;
 import static com.google.common.collect.Iterables.getLast;
@@ -269,51 +270,58 @@ class StreamsRecordCache {
      * @return Segment that contains the given location or empty.
      */
     List<Record> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
-        assert iteratorPosition != null && limit > 0;
+        checkArgument(iteratorPosition != null && limit > 0);
 
+        final List<Record> records;
         final ShardId shardId = iteratorPosition.getShardId();
         final ReadWriteLock lock = shardLocks.get(shardId);
         final Lock readLock = lock.readLock();
         readLock.lock();
         try {
-            final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
-            if (shardCache == null) {
-                // nothing cached for the requested shard
-                return Collections.emptyList();
-            }
-
-            final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
-            final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
-            if (entry == null) {
-                // no segment with requested or smaller sequence number
-                return Collections.emptyList();
-            }
-
-            final Segment segment = entry.getValue();
-            if (segment.getEnd().compareTo(sequenceNumber) <= 0) {
-                // preceding segment does not include requested sequence number (which means records for the requested
-                // sequence number not yet cached, since otherwise floorEntry above would have returned that entry)
-                return Collections.emptyList();
-            }
-
-            // preceding segment contains (some) records for the requested sequence number
-            final List<Record> records = new ArrayList<>(limit);
-            addAll(records, segment.getRecords(sequenceNumber), limit);
-
-            // keep going through adjacent segments (if present), until limit is reached
-            Segment next = segment;
-            while (records.size() < limit) {
-                next = shardCache.get(next.getEnd());
-                if (next == null) {
-                    break;
-                }
-                addAll(records, next.getRecords(), limit);
-            }
-
-            return Collections.unmodifiableList(records);
+            records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
         } finally {
             readLock.unlock();
         }
+        // TODO metrics: number of records returned (~ cache hit rate) without lock held
+        // TODO metrics: duration of call and lock wait time
+        return records;
+    }
+
+    // inner helper method must be called with lock held
+    private List<Record> innerGetRecords(ShardId shardId, BigInteger sequenceNumber, int limit) {
+        final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
+        if (shardCache == null) {
+            // nothing cached for the requested shard
+            return Collections.emptyList();
+        }
+        final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
+        if (entry == null) {
+            // no segment with requested or smaller sequence number exists
+            return Collections.emptyList();
+        }
+        final Segment segment = entry.getValue();
+        if (segment.getEnd().compareTo(sequenceNumber) <= 0) {
+            // preceding segment does not contain requested sequence number (which means there are no records cached yet
+            // for the requested sequence number, since otherwise floorEntry would have returned the next higher entry)
+            return Collections.emptyList();
+        }
+
+        // preceding segment contains (some) records for the requested sequence number
+        final List<Record> innerRecords = new ArrayList<>(limit);
+        addAll(innerRecords, segment.getRecords(sequenceNumber), limit);
+
+        // keep going through adjacent segments (if present), until limit is reached
+        Segment next = segment;
+        while (innerRecords.size() < limit) {
+            // note: each lookup takes O(log n); could consider linking or merging segments together to avoid this
+            next = shardCache.get(next.getEnd());
+            if (next == null) {
+                break;
+            }
+            addAll(innerRecords, next.getRecords(), limit);
+        }
+
+        return Collections.unmodifiableList(innerRecords);
     }
 
     private static <T> void addAll(List<T> list, List<T> toAdd, int limit) {
@@ -328,7 +336,11 @@ class StreamsRecordCache {
 
     // Should we bring back segment merging to avoid cache fragmentation?
     void putRecords(ShardIteratorPosition iteratorPosition, List<Record> records) {
-        assert iteratorPosition != null && records != null && !records.isEmpty();
+        checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
+
+        final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
+        final Segment segment = new Segment(sequenceNumber, records);
+        final Segment cacheSegment;
 
         final ShardId shardId = iteratorPosition.getShardId();
         final ReadWriteLock lock = shardLocks.get(shardId);
@@ -338,32 +350,40 @@ class StreamsRecordCache {
             final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(shardId, k -> new TreeMap<>());
 
             // lookup segments that immediately precede and succeed new segment to drop overlapping records
-            final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
-            final Segment segment = new Segment(sequenceNumber, records)
-                .subSegment(
-                    getValue(shard::floorEntry, sequenceNumber).map(Segment::getEnd).orElse(null),
-                    getValue(shard::higherEntry, sequenceNumber).map(Segment::getStart).orElse(null)
-                );
+            cacheSegment = segment.subSegment(
+                getValue(shard::floorEntry, sequenceNumber).map(Segment::getEnd).orElse(null),
+                getValue(shard::higherEntry, sequenceNumber).map(Segment::getStart).orElse(null)
+            );
 
             // add new segment to the cache, unless it is empty
-            if (!segment.isEmpty()) {
-                shard.put(segment.getStart(), segment); // check and log warning if previous element not null?
+            if (!cacheSegment.isEmpty()) {
+                shard.put(cacheSegment.getStart(), cacheSegment); // check and log warning if previous element not null?
                 insertionOrder.add(iteratorPosition);
-                recordsByteSize.addAndGet(segment.getByteSize());
+                recordsByteSize.addAndGet(cacheSegment.getByteSize());
             }
         } finally {
             writeLock.unlock();
         }
 
         // could do asynchronously in the future
-        evictIfNecessary();
+        evict();
+
+        // TODO metrics: number of input records and number of records cached
+        // TODO metrics: number of segments evicted
+        // TODO metrics: durations (waiting for lock, adding to cache, eviction, etc.)
     }
 
     private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
         return Optional.ofNullable(f.apply(key)).map(Entry::getValue);
     }
 
-    private void evictIfNecessary() {
+    /**
+     * Evicts segments until the cache size is below the max. Returns the number of segments evicted.
+     *
+     * @return Number of segments removed from the cache.
+     */
+    private int evict() {
+        int numEvicted = 0;
         while (recordsByteSize.get() > maxRecordsByteSize) {
             final ShardIteratorPosition oldest = insertionOrder.poll();
             // note: it's possible that the oldest position is null here, since multiple threads may be trying to evict
@@ -393,6 +413,7 @@ class StreamsRecordCache {
                 }
             }
         }
+        return numEvicted;
     }
 
 }
