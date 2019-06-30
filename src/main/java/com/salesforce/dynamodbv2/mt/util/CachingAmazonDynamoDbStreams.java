@@ -469,7 +469,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final long getRecordsLimitExceededBackoffInMillis;
 
     // locks to sequence access to shards
-    private final StreamsCache recordCache;
+    private final StreamsRecordCache recordCache;
 
     // iterator cache
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
@@ -485,7 +485,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
 
-        this.recordCache = new StreamsCache(maxRecordsByteSize);
+        this.recordCache = new StreamsRecordCache(maxRecordsByteSize);
 
         this.iteratorCache = CacheBuilder
             .newBuilder()
