@@ -25,7 +25,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -263,9 +262,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         @Nullable
         private final String dynamoDbIterator;
 
-        // derived cached state
-        private final BigInteger parsedSequenceNumber;
-
         private CachingShardIterator(
             @Nonnull String streamArn,
             @Nonnull String shardId,
@@ -282,7 +278,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     checkArgument(sequenceNumber == null);
                     checkArgument(dynamoDbIterator != null);
                     this.sequenceNumber = null;
-                    this.parsedSequenceNumber = null;
                     this.dynamoDbIterator = dynamoDbIterator;
                     break;
                 case AT_SEQUENCE_NUMBER:
@@ -290,7 +285,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     checkArgument(sequenceNumber != null);
                     checkArgument(dynamoDbIterator == null);
                     this.sequenceNumber = sequenceNumber;
-                    this.parsedSequenceNumber = new BigInteger(sequenceNumber);
                     this.dynamoDbIterator = null;
                     break;
                 default:
@@ -298,22 +292,22 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
         }
 
-        ShardId getShardUid() {
-            return new ShardId(streamArn, shardId);
-        }
-
-        Optional<ShardLocation> resolveLocation() {
+        Optional<ShardIteratorPosition> resolveLocation() {
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
                     return Optional.empty();
                 case AT_SEQUENCE_NUMBER:
-                    return Optional.of(new ShardLocation(getShardUid(), parsedSequenceNumber));
+                    return Optional.of(ShardIteratorPosition.at(streamArn, shardId, sequenceNumber));
                 case AFTER_SEQUENCE_NUMBER:
-                    return Optional.of(new ShardLocation(getShardUid(), parsedSequenceNumber.add(BigInteger.ONE)));
+                    return Optional.of(ShardIteratorPosition.after(streamArn, shardId, sequenceNumber));
                 default:
                     throw new RuntimeException("Unhandled switch case");
             }
+        }
+
+        ShardIteratorPosition resolveLocation(Record record) {
+            return ShardIteratorPosition.at(streamArn, shardId, record);
         }
 
         /**
@@ -561,11 +555,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 // some records loaded: update record cache and result
 
                 // update cache
-                final ShardLocation location = cachedNextIterator.resolveLocation()
-                    .orElseGet(() -> new ShardLocation(
-                        iterator.getShardUid(),
-                        new BigInteger(loadedRecords.get(0).getDynamodb().getSequenceNumber())
-                    ));
+                final ShardIteratorPosition location = cachedNextIterator.resolveLocation()
+                    .orElseGet(() -> iterator.resolveLocation(loadedRecords.get(0)));
                 recordCache.putRecords(location, loadedRecords);
 
                 // update result records and next iterator
