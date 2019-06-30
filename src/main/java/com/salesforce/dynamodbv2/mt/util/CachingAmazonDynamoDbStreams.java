@@ -292,7 +292,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
         }
 
-        Optional<ShardIteratorPosition> resolveLocation() {
+        /**
+         * Resolves the absolute position of this iterator. Only non-empty if iterator is immutable, i.e., refers to
+         * fixed sequence number in the stream shard.
+         *
+         * @return Absolute position of this iterator or empty if this iterator does not have a fixed position.
+         */
+        Optional<ShardIteratorPosition> resolvePosition() {
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
@@ -306,7 +312,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
         }
 
-        ShardIteratorPosition resolveLocation(Record record) {
+        /**
+         * Resolves the position of an iterator that starts at the given record.
+         *
+         * @param record Record for which to resolve the position.
+         * @return Position of record.
+         */
+        ShardIteratorPosition resolvePosition(Record record) {
             return ShardIteratorPosition.at(streamArn, shardId, record);
         }
 
@@ -535,7 +547,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         final List<Record> records = new ArrayList<>(limit);
 
         // fetch records from cache
-        iterator.resolveLocation()
+        iterator.resolvePosition()
             .map(location -> recordCache.getRecords(location, limit))
             .ifPresent(records::addAll);
 
@@ -555,8 +567,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 // some records loaded: update record cache and result
 
                 // update cache
-                final ShardIteratorPosition location = cachedNextIterator.resolveLocation()
-                    .orElseGet(() -> iterator.resolveLocation(loadedRecords.get(0)));
+                final ShardIteratorPosition location = cachedNextIterator.resolvePosition()
+                    .orElseGet(() -> iterator.resolvePosition(loadedRecords.get(0)));
                 recordCache.putRecords(location, loadedRecords);
 
                 // update result records and next iterator

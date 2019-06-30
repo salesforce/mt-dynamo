@@ -46,14 +46,13 @@ public class StreamsCacheTest {
             StreamsTestUtil.mockRecord(11)
         );
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition location1 = new ShardIteratorPosition(shardId, new BigInteger("0"));
+        final ShardIteratorPosition location1 = ShardIteratorPosition.at("stream1", "shard1", "0");
         final List<Record> records1 = records.subList(0, 3);
         sut.putRecords(location1, records1);
 
         assertEquals(records1, sut.getRecords(location1, 10));
 
-        final ShardIteratorPosition location2 = new ShardIteratorPosition(shardId, new BigInteger("4"));
+        final ShardIteratorPosition location2 = ShardIteratorPosition.at("stream1", "shard1", "4");
         final List<Record> records2 = records.subList(2, 5);
         sut.putRecords(location2, records2);
 
