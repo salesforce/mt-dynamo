@@ -70,6 +70,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             && result.getRecords().size() < limit
             && result.getNextShardIterator() != null
             && (mtDynamoDb.getClock().millis() - time) <= timeLimit) {
+            // TODO metrics: counter for iterations
         }
 
         return result;
@@ -98,6 +99,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         final int innerLimit = limit - result.getRecords().size();
         final List<Record> innerMtRecords = new ArrayList<>(innerLimit);
         int consumedRecords = addRecords(innerMtRecords, innerLimit, records, recordMapper, recordFilter);
+        // TODO metrics: counter for records retrieved vs records for tenant
 
         // If we consumed all records, then we did not exceed the limit, so worth continuing (if we have time)
         if (consumedRecords == records.size()) {
