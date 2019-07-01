@@ -18,18 +18,18 @@ public class StreamsTestUtil {
      */
     public static Record mockRecord(int sequenceNumber) {
         return new Record()
-            .withEventID(UUID.randomUUID().toString())
+            .withEventID(String.valueOf(sequenceNumber))
             .withEventSource("aws:dynamodb")
             .withEventName(OperationType.INSERT)
             .withEventVersion("1.1")
             .withAwsRegion("ddblocal")
             .withDynamodb(new StreamRecord()
-                .withSequenceNumber(formatSequenceNumber(sequenceNumber))
+                .withSequenceNumber(mockSequenceNumber(sequenceNumber))
                 .withSizeBytes(1L)
             );
     }
 
-    private static String formatSequenceNumber(int sequenceNumber) {
+    public static String mockSequenceNumber(int sequenceNumber) {
         return String.format("%021d", sequenceNumber);
     }
 
