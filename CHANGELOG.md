@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.41 (July 1, 2019)
 
-* Streams caching performance improvements.
+* Performance improvements for streams caching.
 * Parameterized raw cache types.
 
 ## 0.9.40 (June 18, 2019)
