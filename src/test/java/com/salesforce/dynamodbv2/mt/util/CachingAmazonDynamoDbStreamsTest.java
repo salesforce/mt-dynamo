@@ -3,7 +3,6 @@ package com.salesforce.dynamodbv2.mt.util;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_IMAGE;
-import static com.google.common.collect.Iterables.getLast;
 import static com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.GET_RECORDS_LIMIT;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;

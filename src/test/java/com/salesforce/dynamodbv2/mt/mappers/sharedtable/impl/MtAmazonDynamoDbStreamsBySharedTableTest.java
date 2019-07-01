@@ -152,7 +152,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             });
 
             // once per fetch (since they are all trim horizon)
-            assertEquals(6, dynamoDbStreams.getRecordsCount);
+            assertEquals(3, dynamoDbStreams.getRecordsCount);
             assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
