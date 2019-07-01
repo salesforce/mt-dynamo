@@ -250,6 +250,7 @@ class StreamsRecordCache {
     private final Striped<ReadWriteLock> shardLocks;
     // size of cache >= 0
     private final AtomicLong recordsByteSize;
+    // TODO metrics: gauge of cache size (both bytes and number of segments)
 
     StreamsRecordCache(long maxRecordsByteSize) {
         this.maxRecordsByteSize = maxRecordsByteSize;
@@ -274,13 +275,13 @@ class StreamsRecordCache {
         final Lock readLock = lock.readLock();
         readLock.lock();
         try {
+            // TODO metrics: timer of lock wait
             records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
         } finally {
             readLock.unlock();
         }
-        // TODO metrics: counter of records returned (~ cache hit rate) without lock held
-        // TODO metrics: counter of segments iterated
-        // TODO metrics: timer (whole method, lock wait time)
+        // TODO metrics: counter of records returned (~ cache hit rate)
+        // TODO metrics: timer method
         return records;
     }
 
@@ -317,6 +318,7 @@ class StreamsRecordCache {
             }
             addAll(innerRecords, next.getRecords(), limit);
         }
+        // TODO metrics: counter of segments iterated (emitted outside of critical section)
 
         return Collections.unmodifiableList(innerRecords);
     }
@@ -344,6 +346,7 @@ class StreamsRecordCache {
         final Lock writeLock = lock.writeLock();
         writeLock.lock();
         try {
+            // TODO timer of lock wait time (emitted outside of critical section)
             final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(shardId, k -> new TreeMap<>());
 
             // lookup segments that immediately precede and succeed new segment to drop overlapping records
@@ -358,6 +361,7 @@ class StreamsRecordCache {
                 insertionOrder.add(iteratorPosition);
                 recordsByteSize.addAndGet(cacheSegment.getByteSize());
             }
+            // TODO metrics: counter of records received vs records cached (emitted outside of critical section)
         } finally {
             writeLock.unlock();
         }
@@ -365,9 +369,7 @@ class StreamsRecordCache {
         // could do asynchronously in the future
         evict();
 
-        // TODO metrics: counter of input records and number of records cached
-        // TODO metrics: counter of segments evicted
-        // TODO metrics: timer (whole method, lock wait time, eviction, etc.)
+        // TODO metrics: timer for method
     }
 
     private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
@@ -379,7 +381,7 @@ class StreamsRecordCache {
      *
      * @return Number of segments removed from the cache.
      */
-    private int evict() {
+    private void evict() {
         int numEvicted = 0;
         while (recordsByteSize.get() > maxRecordsByteSize) {
             final ShardIteratorPosition oldest = insertionOrder.poll();
@@ -399,6 +401,7 @@ class StreamsRecordCache {
                         final Segment evicted = shard.remove(oldest.getSequenceNumber());
                         // Could log a warning if there is no segment
                         if (evicted != null) {
+                            numEvicted++;
                             recordsByteSize.addAndGet(-evicted.getByteSize());
                             if (shard.isEmpty()) {
                                 segments.remove(shardId);
@@ -410,7 +413,8 @@ class StreamsRecordCache {
                 }
             }
         }
-        return numEvicted;
+        // TODO counter of segments evicted
+        // TODO timer of method call
     }
 
 }
