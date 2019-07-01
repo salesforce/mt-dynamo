@@ -124,10 +124,6 @@ class StreamsRecordCache {
         List<Record> getRecords(BigInteger from) {
             assert start.compareTo(from) <= 0 && end.compareTo(from) > 0;
 
-            if (records.isEmpty()) {
-                return records;
-            }
-
             if (start.equals(from)) {
                 return records;
             }
@@ -184,7 +180,7 @@ class StreamsRecordCache {
          *
          * @param sequenceNumber Sequence number to find index of.
          * @return Index in the list, such that all records in the list after the index have sequence numbers that are
-         * greater or equal to the given sequence number. If no such records exist, returns the size of the list.
+         *     greater or equal to the given sequence number. If no such records exist, returns the size of the list.
          */
         private int getIndex(BigInteger sequenceNumber) {
             final List<BigInteger> sequenceNumbers = Lists.transform(records, ShardIteratorPosition::at);
@@ -282,8 +278,9 @@ class StreamsRecordCache {
         } finally {
             readLock.unlock();
         }
-        // TODO metrics: number of records returned (~ cache hit rate) without lock held
-        // TODO metrics: duration of call and lock wait time
+        // TODO metrics: counter of records returned (~ cache hit rate) without lock held
+        // TODO metrics: counter of segments iterated
+        // TODO metrics: timer (whole method, lock wait time)
         return records;
     }
 
@@ -368,9 +365,9 @@ class StreamsRecordCache {
         // could do asynchronously in the future
         evict();
 
-        // TODO metrics: number of input records and number of records cached
-        // TODO metrics: number of segments evicted
-        // TODO metrics: durations (waiting for lock, adding to cache, eviction, etc.)
+        // TODO metrics: counter of input records and number of records cached
+        // TODO metrics: counter of segments evicted
+        // TODO metrics: timer (whole method, lock wait time, eviction, etc.)
     }
 
     private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
