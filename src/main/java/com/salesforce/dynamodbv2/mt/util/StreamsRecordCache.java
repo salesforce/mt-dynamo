@@ -11,6 +11,10 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Striped;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,6 +28,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -177,10 +182,11 @@ class StreamsRecordCache {
 
         /**
          * Internal helper method to efficiently find the index of the given sequence number in the list of records.
+         * Computes the index in the list, such that all records in the list after the index have sequence numbers that
+         * are greater or equal to the given sequence number. If no such records exist, returns the size of the list.
          *
          * @param sequenceNumber Sequence number to find index of.
-         * @return Index in the list, such that all records in the list after the index have sequence numbers that are
-         *     greater or equal to the given sequence number. If no such records exist, returns the size of the list.
+         * @return Index in list for given sequence number.
          */
         private int getIndex(BigInteger sequenceNumber) {
             final List<BigInteger> sequenceNumbers = Lists.transform(records, ShardIteratorPosition::at);
@@ -248,16 +254,45 @@ class StreamsRecordCache {
     private final Queue<ShardIteratorPosition> insertionOrder;
     // locks for accessing shard caches
     private final Striped<ReadWriteLock> shardLocks;
-    // size of cache >= 0
-    private final AtomicLong recordsByteSize;
-    // TODO metrics: gauge of cache size (both bytes and number of segments)
+    // size of cache in terms of number of records
+    private final AtomicLong size;
+    // size of cache in terms of number of record bytes
+    private final AtomicLong byteSize;
+    // meters for observability
+    private final Timer getRecordsTimer;
+    private final Timer getRecordsWaitTimer;
+    private final Counter getRecordsCounter;
+    private final Timer putRecordsTimer;
+    private final Timer putRecordsWaitTimer;
+    private final Counter putRecordsCounter;
+    private final Counter putRecordsDiscardedCounter;
+    private final Timer evictRecordsTimer;
+    private final Counter evictRecordsCount;
 
     StreamsRecordCache(long maxRecordsByteSize) {
+        this(new CompositeMeterRegistry(), maxRecordsByteSize);
+    }
+
+    StreamsRecordCache(MeterRegistry meterRegistry, long maxRecordsByteSize) {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new ConcurrentHashMap<>();
         this.insertionOrder = new ConcurrentLinkedQueue<>();
         this.shardLocks = Striped.lazyWeakReadWriteLock(1000);
-        this.recordsByteSize = new AtomicLong(0L);
+        this.size = new AtomicLong(0L);
+        this.byteSize = new AtomicLong(0L);
+
+        final String className = StreamsRecordCache.class.getName();
+        this.getRecordsTimer = meterRegistry.timer(className + ".GetRecords.Timer");
+        this.getRecordsWaitTimer = meterRegistry.timer(className + ".GetRecords.Wait.Timer");
+        this.getRecordsCounter = meterRegistry.counter(className + ".GetRecords.Counter");
+        this.putRecordsTimer = meterRegistry.timer(className + ".PutRecords.Timer");
+        this.putRecordsWaitTimer = meterRegistry.timer(className + ".PutRecords.Wait.Timer");
+        this.putRecordsCounter = meterRegistry.counter(className + ".PutRecords.Counter");
+        this.putRecordsDiscardedCounter = meterRegistry.counter(className + ".PutRecords.Discarded.Counter");
+        this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Timer");
+        this.evictRecordsCount = meterRegistry.counter(className + ".EvictRecords.Counter");
+        meterRegistry.gauge(className + ".size", size);
+        meterRegistry.gauge(className + ".byteSize", byteSize);
     }
 
     /**
@@ -267,22 +302,26 @@ class StreamsRecordCache {
      * @return Segment that contains the given location or empty.
      */
     List<Record> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
-        checkArgument(iteratorPosition != null && limit > 0);
+        return getRecordsTimer.record(() -> {
+            checkArgument(iteratorPosition != null && limit > 0);
 
-        final List<Record> records;
-        final ShardId shardId = iteratorPosition.getShardId();
-        final ReadWriteLock lock = shardLocks.get(shardId);
-        final Lock readLock = lock.readLock();
-        readLock.lock();
-        try {
-            // TODO metrics: timer of lock wait
-            records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
-        } finally {
-            readLock.unlock();
-        }
-        // TODO metrics: counter of records returned (~ cache hit rate)
-        // TODO metrics: timer method
-        return records;
+            final List<Record> records;
+            final ShardId shardId = iteratorPosition.getShardId();
+            final ReadWriteLock lock = shardLocks.get(shardId);
+
+            final Lock readLock = lock.readLock();
+            final long waitTime = time(readLock::lock); // timing manually to avoid calling record in critical section
+            try {
+                records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
+            } finally {
+                readLock.unlock();
+                getRecordsWaitTimer.record(waitTime, TimeUnit.NANOSECONDS);
+            }
+
+            getRecordsCounter.increment(records.size());
+
+            return records;
+        });
     }
 
     // inner helper method must be called with lock held
@@ -318,11 +357,99 @@ class StreamsRecordCache {
             }
             addAll(innerRecords, next.getRecords(), limit);
         }
-        // TODO metrics: counter of segments iterated (emitted outside of critical section)
 
         return Collections.unmodifiableList(innerRecords);
     }
 
+    // Should we bring back segment merging to avoid cache fragmentation?
+    void putRecords(ShardIteratorPosition iteratorPosition, List<Record> records) {
+        putRecordsTimer.record(() -> {
+            checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
+
+            final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
+            final Segment segment = new Segment(sequenceNumber, records);
+            final Segment cacheSegment;
+
+            final ShardId shardId = iteratorPosition.getShardId();
+            final ReadWriteLock lock = shardLocks.get(shardId);
+            final Lock writeLock = lock.writeLock();
+            final long waitTime = time(writeLock::lock);
+            try {
+                final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(shardId, k -> new TreeMap<>());
+
+                // lookup segments that immediately precede and succeed new segment to drop overlapping records
+                cacheSegment = segment.subSegment(
+                    getValue(shard::floorEntry, sequenceNumber).map(Segment::getEnd).orElse(null),
+                    getValue(shard::higherEntry, sequenceNumber).map(Segment::getStart).orElse(null)
+                );
+
+                // add new segment to the cache, unless it is empty
+                if (!cacheSegment.isEmpty()) {
+                    shard.put(cacheSegment.getStart(), cacheSegment); // log warning if previous element not null?
+                    insertionOrder.add(iteratorPosition);
+                    size.addAndGet(cacheSegment.getRecords().size());
+                    byteSize.addAndGet(cacheSegment.getByteSize());
+                }
+            } finally {
+                writeLock.unlock();
+                putRecordsWaitTimer.record(waitTime, TimeUnit.NANOSECONDS);
+            }
+
+            putRecordsCounter.increment(cacheSegment.getRecords().size());
+            putRecordsDiscardedCounter.increment(segment.getRecords().size() - cacheSegment.getRecords().size());
+
+            // could do asynchronously in the future
+            evictRecords();
+        });
+    }
+
+    /**
+     * Evicts records until the cache size is below the max.
+     */
+    private void evictRecords() {
+        evictRecordsTimer.record(() -> {
+            int numEvicted = 0;
+            while (byteSize.get() > maxRecordsByteSize) {
+                final ShardIteratorPosition oldest = insertionOrder.poll();
+                // note: it's possible that the oldest position is null, since multiple threads may be trying to evict
+                // segments concurrently and checking the size and pulling the oldest record are not atomic operations.
+                if (oldest != null) {
+                    // if we did get a record, we should be able to expect that the shard cache is in a consistent
+                    // state, since we lock it for every modification, but null-checks added to be defensive.
+                    final ShardId shardId = oldest.getShardId();
+                    final ReadWriteLock lock = shardLocks.get(shardId);
+                    final Lock writeLock = lock.writeLock();
+                    writeLock.lock();
+                    try {
+                        final NavigableMap<BigInteger, Segment> shard = segments.get(shardId);
+                        // Could log a warning if there is no shard cache
+                        if (shard != null) {
+                            final Segment evicted = shard.remove(oldest.getSequenceNumber());
+                            // Could log a warning if there is no segment
+                            if (evicted != null) {
+                                numEvicted += evicted.getRecords().size();
+                                size.addAndGet(-evicted.getRecords().size());
+                                byteSize.addAndGet(-evicted.getByteSize());
+                                if (shard.isEmpty()) {
+                                    segments.remove(shardId);
+                                }
+                            }
+                        }
+                    } finally {
+                        writeLock.unlock();
+                    }
+                }
+            }
+            evictRecordsCount.increment(numEvicted);
+        });
+    }
+
+    // helper for getting nullable value from map entry
+    private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
+        return Optional.ofNullable(f.apply(key)).map(Entry::getValue);
+    }
+
+    // helper for adding to list up to specified limit
     private static <T> void addAll(List<T> list, List<T> toAdd, int limit) {
         assert list.size() <= limit;
         final int remaining = limit - list.size();
@@ -333,88 +460,11 @@ class StreamsRecordCache {
         }
     }
 
-    // Should we bring back segment merging to avoid cache fragmentation?
-    void putRecords(ShardIteratorPosition iteratorPosition, List<Record> records) {
-        checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
-
-        final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
-        final Segment segment = new Segment(sequenceNumber, records);
-        final Segment cacheSegment;
-
-        final ShardId shardId = iteratorPosition.getShardId();
-        final ReadWriteLock lock = shardLocks.get(shardId);
-        final Lock writeLock = lock.writeLock();
-        writeLock.lock();
-        try {
-            // TODO timer of lock wait time (emitted outside of critical section)
-            final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(shardId, k -> new TreeMap<>());
-
-            // lookup segments that immediately precede and succeed new segment to drop overlapping records
-            cacheSegment = segment.subSegment(
-                getValue(shard::floorEntry, sequenceNumber).map(Segment::getEnd).orElse(null),
-                getValue(shard::higherEntry, sequenceNumber).map(Segment::getStart).orElse(null)
-            );
-
-            // add new segment to the cache, unless it is empty
-            if (!cacheSegment.isEmpty()) {
-                shard.put(cacheSegment.getStart(), cacheSegment); // check and log warning if previous element not null?
-                insertionOrder.add(iteratorPosition);
-                recordsByteSize.addAndGet(cacheSegment.getByteSize());
-            }
-            // TODO metrics: counter of records received vs records cached (emitted outside of critical section)
-        } finally {
-            writeLock.unlock();
-        }
-
-        // could do asynchronously in the future
-        evict();
-
-        // TODO metrics: timer for method
-    }
-
-    private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
-        return Optional.ofNullable(f.apply(key)).map(Entry::getValue);
-    }
-
-    /**
-     * Evicts segments until the cache size is below the max. Returns the number of segments evicted.
-     *
-     * @return Number of segments removed from the cache.
-     */
-    private void evict() {
-        int numEvicted = 0;
-        while (recordsByteSize.get() > maxRecordsByteSize) {
-            final ShardIteratorPosition oldest = insertionOrder.poll();
-            // note: it's possible that the oldest position is null here, since multiple threads may be trying to evict
-            // segments concurrently and checking the size and pulling the oldest record are not atomic operations.
-            if (oldest != null) {
-                // if we did get a record, we should be able to expect that the shard cache is in a consistent state,
-                // since we lock it for every modification, but null-checks added to be defensive.
-                final ShardId shardId = oldest.getShardId();
-                final ReadWriteLock lock = shardLocks.get(shardId);
-                final Lock writeLock = lock.writeLock();
-                writeLock.lock();
-                try {
-                    final NavigableMap<BigInteger, Segment> shard = segments.get(shardId);
-                    // Could log a warning if there is no shard cache
-                    if (shard != null) {
-                        final Segment evicted = shard.remove(oldest.getSequenceNumber());
-                        // Could log a warning if there is no segment
-                        if (evicted != null) {
-                            numEvicted++;
-                            recordsByteSize.addAndGet(-evicted.getByteSize());
-                            if (shard.isEmpty()) {
-                                segments.remove(shardId);
-                            }
-                        }
-                    }
-                } finally {
-                    writeLock.unlock();
-                }
-            }
-        }
-        // TODO counter of segments evicted
-        // TODO timer of method call
+    // helper for timing a runnable
+    private static long time(Runnable runnable) {
+        final long before = System.nanoTime();
+        runnable.run();
+        return System.nanoTime() - before;
     }
 
 }
