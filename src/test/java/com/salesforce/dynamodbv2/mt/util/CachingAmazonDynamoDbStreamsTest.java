@@ -53,6 +53,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -976,6 +977,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMaxIteratorCacheSize(0)
+            .withMeterRegistry(new CompositeMeterRegistry())
             .build();
 
         doAnswer(invocation -> {
