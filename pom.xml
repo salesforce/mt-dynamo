@@ -68,6 +68,11 @@
             <artifactId>jsr305</artifactId>
             <version>3.0.2</version>
         </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.2.0</version>
+        </dependency>
 
         <!-- test scope -->
         <dependency>
