@@ -12,18 +12,18 @@ import javax.annotation.Nonnull;
  * position of a shard iterator. The sequence number may not be used by any record in the stream shard, but rather refer
  * to a logical offset within the shard.
  */
-final class ShardIteratorPosition {
+final class StreamShardPosition {
 
-    static ShardIteratorPosition at(String streamArn, String shardId, Record record) {
+    static StreamShardPosition at(String streamArn, String shardId, Record record) {
         return at(streamArn, shardId, record.getDynamodb().getSequenceNumber());
     }
 
-    static ShardIteratorPosition at(String streamArn, String shardId, String sequenceNumber) {
-        return at(new ShardId(streamArn, shardId), sequenceNumber);
+    static StreamShardPosition at(String streamArn, String shardId, String sequenceNumber) {
+        return at(new StreamShardId(streamArn, shardId), sequenceNumber);
     }
 
-    static ShardIteratorPosition at(ShardId shardId, String sequenceNumber) {
-        return new ShardIteratorPosition(shardId, at(sequenceNumber));
+    static StreamShardPosition at(StreamShardId streamShardId, String sequenceNumber) {
+        return new StreamShardPosition(streamShardId, at(sequenceNumber));
     }
 
     static BigInteger at(Record record) {
@@ -34,12 +34,12 @@ final class ShardIteratorPosition {
         return new BigInteger(sequenceNumber);
     }
 
-    static ShardIteratorPosition after(String streamArn, String shardId, String sequenceNumber) {
-        return after(new ShardId(streamArn, shardId), sequenceNumber);
+    static StreamShardPosition after(String streamArn, String shardId, String sequenceNumber) {
+        return after(new StreamShardId(streamArn, shardId), sequenceNumber);
     }
 
-    static ShardIteratorPosition after(ShardId shardId, String sequenceNumber) {
-        return new ShardIteratorPosition(shardId, after(sequenceNumber));
+    static StreamShardPosition after(StreamShardId streamShardId, String sequenceNumber) {
+        return new StreamShardPosition(streamShardId, after(sequenceNumber));
     }
 
     static BigInteger after(Record record) {
@@ -51,17 +51,17 @@ final class ShardIteratorPosition {
     }
 
     @Nonnull
-    private final ShardId shardId;
+    private final StreamShardId streamShardId;
     @Nonnull
     private final BigInteger sequenceNumber;
 
-    ShardIteratorPosition(ShardId shardId, BigInteger sequenceNumber) {
-        this.shardId = checkNotNull(shardId);
+    StreamShardPosition(StreamShardId streamShardId, BigInteger sequenceNumber) {
+        this.streamShardId = checkNotNull(streamShardId);
         this.sequenceNumber = checkNotNull(sequenceNumber);
     }
 
-    ShardId getShardId() {
-        return shardId;
+    StreamShardId getStreamShardId() {
+        return streamShardId;
     }
 
     BigInteger getSequenceNumber() {
@@ -76,14 +76,14 @@ final class ShardIteratorPosition {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ShardIteratorPosition that = (ShardIteratorPosition) o;
-        return Objects.equals(shardId, that.shardId)
+        StreamShardPosition that = (StreamShardPosition) o;
+        return Objects.equals(streamShardId, that.streamShardId)
             && Objects.equals(sequenceNumber, that.sequenceNumber);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(shardId, sequenceNumber);
+        return Objects.hash(streamShardId, sequenceNumber);
     }
 
 }

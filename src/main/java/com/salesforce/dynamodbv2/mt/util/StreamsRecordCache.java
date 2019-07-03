@@ -70,7 +70,7 @@ class StreamsRecordCache {
          * @param records Collection of records contained in this segment.
          */
         Segment(BigInteger start, List<Record> records) {
-            this(start, ShardIteratorPosition.after(getLast(records)), records);
+            this(start, StreamShardPosition.after(getLast(records)), records);
         }
 
         /**
@@ -189,7 +189,7 @@ class StreamsRecordCache {
          * @return Index in list for given sequence number.
          */
         private int getIndex(BigInteger sequenceNumber) {
-            final List<BigInteger> sequenceNumbers = Lists.transform(records, ShardIteratorPosition::at);
+            final List<BigInteger> sequenceNumbers = Lists.transform(records, StreamShardPosition::at);
             int index = Collections.binarySearch(sequenceNumbers, sequenceNumber);
             if (index < 0) {
                 index = (-index) - 1;
@@ -249,9 +249,9 @@ class StreamsRecordCache {
     private final long maxRecordsByteSize;
 
     // cached record segments sorted by sequence number within each shard
-    private final ConcurrentMap<ShardId, NavigableMap<BigInteger, Segment>> segments;
+    private final ConcurrentMap<StreamShardId, NavigableMap<BigInteger, Segment>> segments;
     // Insertion order of cache segments for eviction purposes
-    private final Queue<ShardIteratorPosition> insertionOrder;
+    private final Queue<StreamShardPosition> insertionOrder;
     // locks for accessing shard caches
     private final Striped<ReadWriteLock> shardLocks;
     // size of cache in terms of number of records
@@ -301,18 +301,18 @@ class StreamsRecordCache {
      * @param iteratorPosition Shard location for which to return the cached segment that contains it.
      * @return Segment that contains the given location or empty.
      */
-    List<Record> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
+    List<Record> getRecords(StreamShardPosition iteratorPosition, int limit) {
         return getRecordsTimer.record(() -> {
             checkArgument(iteratorPosition != null && limit > 0);
 
             final List<Record> records;
-            final ShardId shardId = iteratorPosition.getShardId();
-            final ReadWriteLock lock = shardLocks.get(shardId);
+            final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
+            final ReadWriteLock lock = shardLocks.get(streamShardId);
 
             final Lock readLock = lock.readLock();
             final long waitTime = time(readLock::lock); // timing manually to avoid calling record in critical section
             try {
-                records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
+                records = innerGetRecords(streamShardId, iteratorPosition.getSequenceNumber(), limit);
             } finally {
                 readLock.unlock();
                 getRecordsWaitTimer.record(waitTime, TimeUnit.NANOSECONDS);
@@ -325,8 +325,8 @@ class StreamsRecordCache {
     }
 
     // inner helper method must be called with lock held
-    private List<Record> innerGetRecords(ShardId shardId, BigInteger sequenceNumber, int limit) {
-        final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
+    private List<Record> innerGetRecords(StreamShardId streamShardId, BigInteger sequenceNumber, int limit) {
+        final NavigableMap<BigInteger, Segment> shardCache = segments.get(streamShardId);
         if (shardCache == null) {
             // nothing cached for the requested shard
             return Collections.emptyList();
@@ -362,7 +362,7 @@ class StreamsRecordCache {
     }
 
     // Should we bring back segment merging to avoid cache fragmentation?
-    void putRecords(ShardIteratorPosition iteratorPosition, List<Record> records) {
+    void putRecords(StreamShardPosition iteratorPosition, List<Record> records) {
         putRecordsTimer.record(() -> {
             checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
 
@@ -370,12 +370,12 @@ class StreamsRecordCache {
             final Segment segment = new Segment(sequenceNumber, records);
             final Segment cacheSegment;
 
-            final ShardId shardId = iteratorPosition.getShardId();
-            final ReadWriteLock lock = shardLocks.get(shardId);
+            final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
+            final ReadWriteLock lock = shardLocks.get(streamShardId);
             final Lock writeLock = lock.writeLock();
             final long waitTime = time(writeLock::lock);
             try {
-                final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(shardId, k -> new TreeMap<>());
+                final NavigableMap<BigInteger, Segment> shard = segments.computeIfAbsent(streamShardId, k -> new TreeMap<>());
 
                 // lookup segments that immediately precede and succeed new segment to drop overlapping records
                 cacheSegment = segment.subSegment(
@@ -410,18 +410,18 @@ class StreamsRecordCache {
         evictRecordsTimer.record(() -> {
             int numEvicted = 0;
             while (byteSize.get() > maxRecordsByteSize) {
-                final ShardIteratorPosition oldest = insertionOrder.poll();
+                final StreamShardPosition oldest = insertionOrder.poll();
                 // note: it's possible that the oldest position is null, since multiple threads may be trying to evict
                 // segments concurrently and checking the size and pulling the oldest record are not atomic operations.
                 if (oldest != null) {
                     // if we did get a record, we should be able to expect that the shard cache is in a consistent
                     // state, since we lock it for every modification, but null-checks added to be defensive.
-                    final ShardId shardId = oldest.getShardId();
-                    final ReadWriteLock lock = shardLocks.get(shardId);
+                    final StreamShardId streamShardId = oldest.getStreamShardId();
+                    final ReadWriteLock lock = shardLocks.get(streamShardId);
                     final Lock writeLock = lock.writeLock();
                     writeLock.lock();
                     try {
-                        final NavigableMap<BigInteger, Segment> shard = segments.get(shardId);
+                        final NavigableMap<BigInteger, Segment> shard = segments.get(streamShardId);
                         // Could log a warning if there is no shard cache
                         if (shard != null) {
                             final Segment evicted = shard.remove(oldest.getSequenceNumber());
@@ -431,7 +431,7 @@ class StreamsRecordCache {
                                 size.addAndGet(-evicted.getRecords().size());
                                 byteSize.addAndGet(-evicted.getByteSize());
                                 if (shard.isEmpty()) {
-                                    segments.remove(shardId);
+                                    segments.remove(streamShardId);
                                 }
                             }
                         }
