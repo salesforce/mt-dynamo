@@ -584,22 +584,31 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             final GetRecordsResult result;
             if (positionOpt.isPresent()) {
                 final ShardIteratorPosition position = positionOpt.get();
-                final List<Record> cachedRecords = recordCache.getRecords(position, limit);
-                if (cachedRecords.size() == limit) {
-                    result = iterator.nextResult(cachedRecords);
-                } else if (cachedRecords.isEmpty()) {
-                    result = loadRecords(iterator, limit);
-                } else {
-                    final int remaining = limit - cachedRecords.size();
-                    final CachingShardIterator nextIterator = iterator.nextShardIterator(cachedRecords);
-                    final GetRecordsResult loadedResult = loadRecords(nextIterator, remaining);
-                    final List<Record> loadedRecords = loadedResult.getRecords();
-                    final List<Record> resultRecords = new ArrayList<>(cachedRecords.size() + loadedRecords.size());
-                    resultRecords.addAll(cachedRecords);
-                    resultRecords.addAll(loadedRecords);
-                    result = loadedResult.withRecords(resultRecords);
-                }
+                result = recordCache.getRecords(position, limit)
+                    .map(cachedRecords -> {
+                        if (cachedRecords.size() < limit) {
+                            // partial cache hit: fetch more records from stream
+                            final int remaining = limit - cachedRecords.size();
+                            final CachingShardIterator nextIterator = iterator.nextShardIterator(cachedRecords);
+                            final GetRecordsResult loadedResult = loadRecords(nextIterator, remaining);
+                            final List<Record> loadedRecords = loadedResult.getRecords();
+                            final List<Record> resultRecords = new ArrayList<>(
+                                cachedRecords.size() + loadedRecords.size());
+                            resultRecords.addAll(cachedRecords);
+                            resultRecords.addAll(loadedRecords);
+                            return loadedResult.withRecords(resultRecords);
+                        } else {
+                            // full cache hit: return cached records fetching more from stream
+                            assert cachedRecords.size() == limit;
+                            return iterator.nextResult(cachedRecords);
+                        }
+                    })
+                    .orElseGet(() ->
+                        // cache miss: fetch records from stream
+                        loadRecords(iterator, limit)
+                    );
             } else {
+                // not currently caching iterators without fixed position: fetch records
                 result = loadRecords(iterator, limit);
                 getRecordsUncached.increment();
             }
