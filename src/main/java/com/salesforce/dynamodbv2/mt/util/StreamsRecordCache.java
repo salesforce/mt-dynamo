@@ -281,7 +281,7 @@ class StreamsRecordCache {
         this.size = new AtomicLong(0L);
         this.byteSize = new AtomicLong(0L);
 
-        final String className = StreamsRecordCache.class.getName();
+        final String className = StreamsRecordCache.class.getSimpleName();
         this.getRecordsTimer = meterRegistry.timer(className + ".GetRecords.Timer");
         this.getRecordsWaitTimer = meterRegistry.timer(className + ".GetRecords.Wait.Timer");
         this.getRecordsCounter = meterRegistry.counter(className + ".GetRecords.Counter");
