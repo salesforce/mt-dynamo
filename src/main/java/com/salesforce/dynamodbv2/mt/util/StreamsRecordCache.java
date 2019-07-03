@@ -262,7 +262,7 @@ class StreamsRecordCache {
     // meters for observability
     private final Timer getRecordsTime;
     private final Timer getRecordsWaitTime;
-    private final DistributionSummary getRecordsSize;
+    private final DistributionSummary getRecordsHitSize;
     private final Timer putRecordsTime;
     private final Timer putRecordsWaitTime;
     private final DistributionSummary putRecordsSize;
@@ -285,7 +285,7 @@ class StreamsRecordCache {
         final String className = StreamsRecordCache.class.getSimpleName();
         this.getRecordsTime = meterRegistry.timer(className + ".GetRecords.Time");
         this.getRecordsWaitTime = meterRegistry.timer(className + ".GetRecords.Wait.Time");
-        this.getRecordsSize = meterRegistry.summary(className + ".GetRecords.Size");
+        this.getRecordsHitSize = meterRegistry.summary(className + ".GetRecords.Hit.Size");
         this.putRecordsTime = meterRegistry.timer(className + ".PutRecords.Time");
         this.putRecordsWaitTime = meterRegistry.timer(className + ".PutRecords.Wait.Time");
         this.putRecordsSize = meterRegistry.summary(className + ".PutRecords.Size");
@@ -302,11 +302,11 @@ class StreamsRecordCache {
      * @param iteratorPosition Shard location for which to return the cached segment that contains it.
      * @return Segment that contains the given location or empty.
      */
-    List<Record> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
+    Optional<List<Record>> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
         return getRecordsTime.record(() -> {
             checkArgument(iteratorPosition != null && limit > 0);
 
-            final List<Record> records;
+            final Optional<List<Record>> records;
             final ShardId shardId = iteratorPosition.getShardId();
             final ReadWriteLock lock = shardLocks.get(shardId);
 
@@ -319,29 +319,30 @@ class StreamsRecordCache {
                 getRecordsWaitTime.record(waitTime, TimeUnit.NANOSECONDS);
             }
 
-            getRecordsSize.record(records.size());
+            // record cache hit, including size
+            records.map(List::size).ifPresent(getRecordsHitSize::record);
 
             return records;
         });
     }
 
     // inner helper method must be called with lock held
-    private List<Record> innerGetRecords(ShardId shardId, BigInteger sequenceNumber, int limit) {
+    private Optional<List<Record>> innerGetRecords(ShardId shardId, BigInteger sequenceNumber, int limit) {
         final NavigableMap<BigInteger, Segment> shardCache = segments.get(shardId);
         if (shardCache == null) {
             // nothing cached for the requested shard
-            return Collections.emptyList();
+            return Optional.empty();
         }
         final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
         if (entry == null) {
             // no segment with requested or smaller sequence number exists
-            return Collections.emptyList();
+            return Optional.empty();
         }
         final Segment segment = entry.getValue();
         if (segment.getEnd().compareTo(sequenceNumber) <= 0) {
             // preceding segment does not contain requested sequence number (which means there are no records cached yet
             // for the requested sequence number, since otherwise floorEntry would have returned the next higher entry)
-            return Collections.emptyList();
+            return Optional.empty();
         }
 
         // preceding segment contains (some) records for the requested sequence number
@@ -359,7 +360,7 @@ class StreamsRecordCache {
             addAll(innerRecords, next.getRecords(), limit);
         }
 
-        return Collections.unmodifiableList(innerRecords);
+        return Optional.of(Collections.unmodifiableList(innerRecords));
     }
 
     // Should we bring back segment merging to avoid cache fragmentation?
