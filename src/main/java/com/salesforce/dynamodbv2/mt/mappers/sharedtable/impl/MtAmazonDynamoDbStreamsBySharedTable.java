@@ -16,7 +16,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
-import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.util.ArrayList;
@@ -30,9 +30,9 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
     private static final int MAX_LIMIT = 1000;
 
-    private final Timer getRecordsTimer;
-    private final Counter getRecordsCounter;
-    private final Counter getRecordsLoadedCounter;
+    private final Timer getRecordsTime;
+    private final DistributionSummary getRecordsSize;
+    private final DistributionSummary getRecordsLoadedCounter;
 
     /**
      * Default constructor.
@@ -45,9 +45,9 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         super(dynamoDbStreams, mtDynamoDb);
         final MeterRegistry meterRegistry = mtDynamoDb.getMeterRegistry();
         final String name = MtAmazonDynamoDbStreamsBySharedTable.class.getSimpleName();
-        getRecordsTimer = meterRegistry.timer(name + ".GetRecords.Timer");
-        getRecordsCounter = meterRegistry.counter(name + ".GetRecords.Counter");
-        getRecordsLoadedCounter = meterRegistry.counter(name + ".GetRecords.Loaded.Counter");
+        getRecordsTime = meterRegistry.timer(name + ".GetRecords.Time");
+        getRecordsSize = meterRegistry.summary(name + ".GetRecords.Size");
+        getRecordsLoadedCounter = meterRegistry.summary(name + ".GetRecords.Loaded.Size");
     }
 
     @Override
@@ -68,7 +68,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
                                             Predicate<MtRecord> recordFilter) {
-        return getRecordsTimer.record(() -> {
+        return getRecordsTime.record(() -> {
             Optional.ofNullable(request.getLimit()).ifPresent(limit -> checkArgument(limit > 0 && limit <= MAX_LIMIT));
 
             final int limit = Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT);
@@ -88,8 +88,8 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 && (mtDynamoDb.getClock().millis() - time) <= timeLimit // and have not exceeded the soft time limit
             );
 
-            getRecordsCounter.increment(result.getRecords().size());
-            getRecordsLoadedCounter.increment(recordsLoaded);
+            getRecordsSize.record(result.getRecords().size());
+            getRecordsLoadedCounter.record(recordsLoaded);
 
             return result;
         });

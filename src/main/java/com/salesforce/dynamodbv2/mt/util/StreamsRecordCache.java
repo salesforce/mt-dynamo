@@ -12,6 +12,7 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Striped;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -259,15 +260,15 @@ class StreamsRecordCache {
     // size of cache in terms of number of record bytes
     private final AtomicLong byteSize;
     // meters for observability
-    private final Timer getRecordsTimer;
-    private final Timer getRecordsWaitTimer;
-    private final Counter getRecordsCounter;
-    private final Timer putRecordsTimer;
-    private final Timer putRecordsWaitTimer;
-    private final Counter putRecordsCounter;
-    private final Counter putRecordsDiscardedCounter;
+    private final Timer getRecordsTime;
+    private final Timer getRecordsWaitTime;
+    private final DistributionSummary getRecordsSize;
+    private final Timer putRecordsTime;
+    private final Timer putRecordsWaitTime;
+    private final DistributionSummary putRecordsSize;
+    private final DistributionSummary putRecordsDiscardedSize;
     private final Timer evictRecordsTimer;
-    private final Counter evictRecordsCount;
+    private final Counter evictRecordsSize;
 
     StreamsRecordCache(long maxRecordsByteSize) {
         this(new CompositeMeterRegistry(), maxRecordsByteSize);
@@ -282,15 +283,15 @@ class StreamsRecordCache {
         this.byteSize = new AtomicLong(0L);
 
         final String className = StreamsRecordCache.class.getSimpleName();
-        this.getRecordsTimer = meterRegistry.timer(className + ".GetRecords.Timer");
-        this.getRecordsWaitTimer = meterRegistry.timer(className + ".GetRecords.Wait.Timer");
-        this.getRecordsCounter = meterRegistry.counter(className + ".GetRecords.Counter");
-        this.putRecordsTimer = meterRegistry.timer(className + ".PutRecords.Timer");
-        this.putRecordsWaitTimer = meterRegistry.timer(className + ".PutRecords.Wait.Timer");
-        this.putRecordsCounter = meterRegistry.counter(className + ".PutRecords.Counter");
-        this.putRecordsDiscardedCounter = meterRegistry.counter(className + ".PutRecords.Discarded.Counter");
-        this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Timer");
-        this.evictRecordsCount = meterRegistry.counter(className + ".EvictRecords.Counter");
+        this.getRecordsTime = meterRegistry.timer(className + ".GetRecords.Time");
+        this.getRecordsWaitTime = meterRegistry.timer(className + ".GetRecords.Wait.Time");
+        this.getRecordsSize = meterRegistry.summary(className + ".GetRecords.Size");
+        this.putRecordsTime = meterRegistry.timer(className + ".PutRecords.Time");
+        this.putRecordsWaitTime = meterRegistry.timer(className + ".PutRecords.Wait.Time");
+        this.putRecordsSize = meterRegistry.summary(className + ".PutRecords.Size");
+        this.putRecordsDiscardedSize = meterRegistry.summary(className + ".PutRecords.Discarded.Size");
+        this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Time");
+        this.evictRecordsSize = meterRegistry.counter(className + ".EvictRecords.Size");
         meterRegistry.gauge(className + ".size", size);
         meterRegistry.gauge(className + ".byteSize", byteSize);
     }
@@ -302,7 +303,7 @@ class StreamsRecordCache {
      * @return Segment that contains the given location or empty.
      */
     List<Record> getRecords(ShardIteratorPosition iteratorPosition, int limit) {
-        return getRecordsTimer.record(() -> {
+        return getRecordsTime.record(() -> {
             checkArgument(iteratorPosition != null && limit > 0);
 
             final List<Record> records;
@@ -315,10 +316,10 @@ class StreamsRecordCache {
                 records = innerGetRecords(shardId, iteratorPosition.getSequenceNumber(), limit);
             } finally {
                 readLock.unlock();
-                getRecordsWaitTimer.record(waitTime, TimeUnit.NANOSECONDS);
+                getRecordsWaitTime.record(waitTime, TimeUnit.NANOSECONDS);
             }
 
-            getRecordsCounter.increment(records.size());
+            getRecordsSize.record(records.size());
 
             return records;
         });
@@ -363,7 +364,7 @@ class StreamsRecordCache {
 
     // Should we bring back segment merging to avoid cache fragmentation?
     void putRecords(ShardIteratorPosition iteratorPosition, List<Record> records) {
-        putRecordsTimer.record(() -> {
+        putRecordsTime.record(() -> {
             checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
 
             final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
@@ -392,11 +393,11 @@ class StreamsRecordCache {
                 }
             } finally {
                 writeLock.unlock();
-                putRecordsWaitTimer.record(waitTime, TimeUnit.NANOSECONDS);
+                putRecordsWaitTime.record(waitTime, TimeUnit.NANOSECONDS);
             }
 
-            putRecordsCounter.increment(cacheSegment.getRecords().size());
-            putRecordsDiscardedCounter.increment(segment.getRecords().size() - cacheSegment.getRecords().size());
+            putRecordsSize.record(cacheSegment.getRecords().size());
+            putRecordsDiscardedSize.record(segment.getRecords().size() - cacheSegment.getRecords().size());
 
             // could do asynchronously in the future
             evictRecords();
@@ -440,7 +441,7 @@ class StreamsRecordCache {
                     }
                 }
             }
-            evictRecordsCount.increment(numEvicted);
+            evictRecordsSize.increment(numEvicted);
         });
     }
 

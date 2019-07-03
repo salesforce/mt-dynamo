@@ -26,6 +26,7 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.binder.cache.GuavaCacheMetrics;
@@ -487,16 +488,16 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
 
     // meters for observability
-    private final Timer getRecordsTimer;
-    private final Counter getRecordsCounter;
-    private final Timer getRecordsLoadTimer;
-    private final Counter getRecordsLoadCounter;
-    private final Counter getRecordsLoadLimitCounter;
-    private final Counter getRecordsLoadMaxRetryCounter;
-    private final Counter getRecordsLoadExpiredCounter;
-    private final Counter getRecordsUncachedCounter;
-    private final Timer getShardIteratorLoadTimer;
-    private final Counter getShardIteratorUncachedCounter;
+    private final Timer getRecordsTime;
+    private final DistributionSummary getRecordsSize;
+    private final Timer getRecordsLoadTime;
+    private final DistributionSummary getRecordsLoadSize;
+    private final DistributionSummary getRecordsLoadRetries;
+    private final Counter getRecordsLoadMaxRetries;
+    private final Counter getRecordsLoadExpiredIterator;
+    private final Counter getRecordsUncached;
+    private final Timer getShardIteratorLoadTime;
+    private final Counter getShardIteratorUncached;
 
     private CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
                                          MeterRegistry meterRegistry,
@@ -515,16 +516,16 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             .build(CacheLoader.from(this::loadShardIterator));
 
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
-        this.getRecordsTimer = meterRegistry.timer(cn + ".GetRecords.Timer");
-        this.getRecordsCounter = meterRegistry.counter(cn + ".GetRecords.Counter");
-        this.getRecordsLoadTimer = meterRegistry.timer(cn + ".GetRecords.Load.Timer");
-        this.getRecordsLoadCounter = meterRegistry.counter(cn + ".GetRecords.Load.Counter");
-        this.getRecordsLoadLimitCounter = meterRegistry.counter(cn + ".GetRecords.Load.LimitExceeded.Counter");
-        this.getRecordsLoadMaxRetryCounter = meterRegistry.counter(cn + ".GetRecords.Load.MaxRetryExceeded.Counter");
-        this.getRecordsLoadExpiredCounter = meterRegistry.counter(cn + ".GetRecords.Load.ExpiredIterator.Counter");
-        this.getRecordsUncachedCounter = meterRegistry.counter(cn + ".GetRecords.Uncached.Counter");
-        this.getShardIteratorLoadTimer = meterRegistry.timer(cn + ".GetShardIterator.Load.Timer");
-        this.getShardIteratorUncachedCounter = meterRegistry.counter(cn + ".GetShardIterator.Uncached.Counter");
+        this.getRecordsTime = meterRegistry.timer(cn + ".GetRecords.Time");
+        this.getRecordsSize = meterRegistry.summary(cn + ".GetRecords.Size");
+        this.getRecordsLoadTime = meterRegistry.timer(cn + ".GetRecords.Load.Time");
+        this.getRecordsLoadSize = meterRegistry.summary(cn + ".GetRecords.Load.Size");
+        this.getRecordsLoadRetries = meterRegistry.summary(cn + ".GetRecords.Load.Retries");
+        this.getRecordsLoadMaxRetries = meterRegistry.counter(cn + ".GetRecords.Load.MaxRetries");
+        this.getRecordsLoadExpiredIterator = meterRegistry.counter(cn + ".GetRecords.Load.ExpiredIterator");
+        this.getRecordsUncached = meterRegistry.counter(cn + ".GetRecords.Uncached");
+        this.getShardIteratorLoadTime = meterRegistry.timer(cn + ".GetShardIterator.Load.Time");
+        this.getShardIteratorUncached = meterRegistry.counter(cn + ".GetShardIterator.Uncached");
         GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, cn + ".GetShardIterator");
     }
 
@@ -544,7 +545,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             case TRIM_HORIZON:
             case LATEST:
                 dynamoDbIterator = loadShardIterator(request);
-                getShardIteratorUncachedCounter.increment();
+                getShardIteratorUncached.increment();
                 break;
             case AT_SEQUENCE_NUMBER:
             case AFTER_SEQUENCE_NUMBER:
@@ -558,7 +559,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     }
 
     private String loadShardIterator(GetShardIteratorRequest request) {
-        return getShardIteratorLoadTimer.record(() -> dynamoDbStreams.getShardIterator(request)).getShardIterator();
+        return getShardIteratorLoadTime.record(() -> dynamoDbStreams.getShardIterator(request)).getShardIterator();
     }
 
     private String loadShardIterator(CachingShardIterator iterator) {
@@ -567,7 +568,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     @Override
     public GetRecordsResult getRecords(GetRecordsRequest request) {
-        return getRecordsTimer.record(() -> {
+        return getRecordsTime.record(() -> {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("getRecords request={}", request);
             }
@@ -600,10 +601,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 }
             } else {
                 result = loadRecords(iterator, limit);
-                getRecordsUncachedCounter.increment();
+                getRecordsUncached.increment();
             }
 
-            getRecordsCounter.increment(result.getRecords().size());
+            getRecordsSize.record(result.getRecords().size());
 
             if (LOG.isDebugEnabled()) {
                 LOG.debug("getRecords result={}", toShortString(result));
@@ -637,9 +638,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             final GetRecordsRequest request = new GetRecordsRequest().withShardIterator(dynamoDbIterator);
             final GetRecordsResult result;
             try {
-                result = getRecordsLoadTimer.record(() -> dynamoDbStreams.getRecords(request));
+                result = getRecordsLoadTime.record(() -> dynamoDbStreams.getRecords(request));
             } catch (LimitExceededException e) {
-                getRecordsLoadLimitCounter.increment();
                 long backoff = (getRecordsRetries + 1) * getRecordsLimitExceededBackoffInMillis;
                 if (LOG.isWarnEnabled()) {
                     LOG.warn("loadRecords limit exceeded: iterator={}, retry attempt={}, backoff={}.", iterator,
@@ -651,7 +651,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             } catch (ExpiredIteratorException e) {
                 // if we loaded the iterator from our cache, reload it
                 if (iterator.getDynamoDbIterator().isEmpty()) {
-                    getRecordsLoadExpiredCounter.increment();
+                    getRecordsLoadExpiredIterator.increment();
                     if (LOG.isInfoEnabled()) {
                         LOG.info("Cached iterator expired: iterator={}, expired={}.", iterator, dynamoDbIterator);
                     }
@@ -669,7 +669,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             final String loadedNextIterator = result.getNextShardIterator();
             final List<Record> loadedRecords = result.getRecords();
 
-            getRecordsLoadCounter.increment(loadedRecords.size());
+            getRecordsLoadSize.record(loadedRecords.size());
 
             // compute next iterator and update iterator and records caches
             final CachingShardIterator nextIterator;
@@ -702,6 +702,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 recordCache.putRecords(location, loadedRecords);
             }
 
+            getRecordsLoadRetries.record(getRecordsRetries);
             // compute result
             return loadedRecords.size() > limit
                 ? iterator.nextResult(loadedRecords.subList(0, limit))
@@ -710,7 +711,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 .withNextShardIterator(nextIterator == null ? null : nextIterator.toExternalString());
         }
 
-        getRecordsLoadMaxRetryCounter.increment();
+        getRecordsLoadRetries.record(getRecordsRetries);
+        getRecordsLoadMaxRetries.increment();
         if (LOG.isWarnEnabled()) {
             LOG.warn("GetRecords exceeded maximum number of retries");
         }
