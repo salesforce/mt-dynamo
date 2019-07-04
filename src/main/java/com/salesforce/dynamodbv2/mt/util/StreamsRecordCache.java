@@ -9,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Striped;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -33,7 +34,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 
 /**
@@ -190,9 +190,7 @@ class StreamsRecordCache {
          * @return Index in list for given sequence number.
          */
         private int getIndex(BigInteger sequenceNumber) {
-            final List<BigInteger> sequenceNumbers = records.stream()
-                .map(StreamShardPosition::at)
-                .collect(Collectors.toUnmodifiableList());
+            final List<BigInteger> sequenceNumbers = Lists.transform(records, StreamShardPosition::at);
             int index = Collections.binarySearch(sequenceNumbers, sequenceNumber);
             if (index < 0) {
                 index = (-index) - 1;
