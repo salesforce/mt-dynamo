@@ -22,7 +22,7 @@ package com.salesforce.dynamodbv2.mt.sharedtable
  * style continuous backups, offering a time window of available restore points (versus choosing from N snapshots)
  */
 interface MtBackupManager {
-    fun createMtBackup(id: String): MtBackupMetadata
+    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata
 
     fun getBackup(id: String): MtBackupMetadata
 
@@ -30,7 +30,7 @@ interface MtBackupManager {
 
     fun getTenantTableBackup(id: String): TenantTableBackupMetadata
 
-    fun restoreTenantTableBackup(id: String, newTenantId: String, newTenantTableName: String): TenantRestoreMetadata
+    fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest): TenantRestoreMetadata
 
     fun listMtBackups(): List<MtBackupMetadata>
 }
@@ -40,6 +40,10 @@ data class MtBackupMetadata(val mtBackupId: String, val status: Status, val tena
 data class TenantTableBackupMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
+
+
+data class CreateMtBackupRequest(val backupId: String)
+data class RestoreMtBackupRequest(val backupId: String, val tenantId: String, val newTenantId: String)
 
 enum class Status {
     IN_PROGRESS,

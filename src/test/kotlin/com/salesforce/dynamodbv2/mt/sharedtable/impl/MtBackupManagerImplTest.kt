@@ -7,8 +7,12 @@ package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
+import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.sharedtable.Status
 import org.junit.jupiter.api.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 
@@ -32,8 +36,11 @@ internal class MtBackupManagerImplTest {
 
         val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
 
-
-        backupManager.createMtBackup("test-backup")
-        assertNotNull(backupManager.getBackup("test-backup"))
+        val backupId = "test-backup"
+        backupManager.createMtBackup(CreateMtBackupRequest(backupId))
+        val mtBackupMetadata = backupManager.getBackup(backupId)
+        assertNotNull(mtBackupMetadata)
+        assertEquals(backupId, mtBackupMetadata.mtBackupId)
+        assertEquals(Status.COMPLETE, mtBackupMetadata.status)
     }
 }

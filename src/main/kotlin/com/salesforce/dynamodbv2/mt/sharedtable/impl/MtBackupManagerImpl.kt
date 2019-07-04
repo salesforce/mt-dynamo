@@ -12,6 +12,8 @@ import java.nio.charset.Charset
 
 
 class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
+
+
     val s3 : AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
     val gson: Gson = Gson()
     val charset = Charset.forName("utf-8")
@@ -20,7 +22,7 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
         TODO("not implemented")
     }
 
-    override fun restoreTenantTableBackup(id: String, newTenantId: String, newTenantTableName: String): TenantRestoreMetadata {
+    override fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest): TenantRestoreMetadata {
         TODO("not implemented")
     }
 
@@ -29,7 +31,7 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
     }
 
     override fun getBackup(id: String): MtBackupMetadata {
-        val backupFile : S3Object = s3.getObject(s3BucketName, getBackupFile(id))
+        val backupFile : S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
         return gson.fromJson<MtBackupMetadata>(backupFile.objectContent.bufferedReader(), MtBackupMetadata::class.java)
     }
 
@@ -42,16 +44,17 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
      *
      * The next step is scanning the shared table, and writing backup files per tenant table.
      */
-    override fun createMtBackup(id: String): MtBackupMetadata {
-        val backupMetadata = MtBackupMetadata(id, Status.COMPLETE, ImmutableSet.of())
+    override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata {
+        val backupMetadata = MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE, ImmutableSet.of())
         val backupMetadataBytes = gson.toJson(backupMetadata).toByteArray(charset)
         val objectMetadata = ObjectMetadata()
         objectMetadata.contentLength = backupMetadataBytes.size.toLong()
         objectMetadata.contentType = "application/json"
-        val putObjectReq = PutObjectRequest(s3BucketName, getBackupFile(id), gson.toJson(backupMetadata).byteInputStream(charset), objectMetadata)
+        val putObjectReq = PutObjectRequest(s3BucketName, getBackupMetadataFile(createMtBackupRequest.backupId),
+                gson.toJson(backupMetadata).byteInputStream(charset), objectMetadata)
         s3.putObject(putObjectReq)
         return backupMetadata
     }
 
-    private fun getBackupFile(id: String) = id + "/metadata.json"
+    private fun getBackupMetadataFile(id: String) = id + "/metadata.json"
 }
