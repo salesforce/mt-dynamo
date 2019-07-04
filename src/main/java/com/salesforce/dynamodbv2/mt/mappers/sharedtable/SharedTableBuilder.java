@@ -179,7 +179,7 @@ public class SharedTableBuilder implements TableBuilder {
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private MtBackupManager backupGenerator;
+    private MtBackupManager backupManager;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
@@ -226,7 +226,7 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     public SharedTableBuilder withBackupSupport(String region, String backupS3BucketName) {
-        this.backupGenerator = new MtBackupManagerImpl(region, backupS3BucketName);
+        this.backupManager = new MtBackupManagerImpl(region, backupS3BucketName);
         return this;
     }
 
@@ -295,7 +295,8 @@ public class SharedTableBuilder implements TableBuilder {
             getRecordsTimeLimit,
             clock,
             tableMappingCache,
-            meterRegistry);
+            meterRegistry,
+            Optional.ofNullable(backupManager));
     }
 
     private void setDefaults() {

@@ -5,6 +5,8 @@
  */
 package com.salesforce.dynamodbv2.mt.sharedtable
 
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
+
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
  *
@@ -22,7 +24,7 @@ package com.salesforce.dynamodbv2.mt.sharedtable
  * style continuous backups, offering a time window of available restore points (versus choosing from N snapshots)
  */
 interface MtBackupManager {
-    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata
+    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBase): MtBackupMetadata
 
     fun getBackup(id: String): MtBackupMetadata
 
@@ -41,7 +43,7 @@ data class TenantTableBackupMetadata(val backupId: String, val status: Status, v
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
-data class CreateMtBackupRequest(val backupId: String)
+data class CreateMtBackupRequest(val backupId: String, val sharedTableName: String)
 data class RestoreMtBackupRequest(val backupId: String, val tenantId: String, val newTenantId: String)
 
 enum class Status {

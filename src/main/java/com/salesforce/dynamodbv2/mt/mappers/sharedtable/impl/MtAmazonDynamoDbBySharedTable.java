@@ -17,22 +17,29 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.CreateBackupResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
@@ -51,6 +58,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -91,6 +99,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Map<String, CreateTableRequest> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
+    private final Optional<MtBackupManager> backupManager;
 
     /**
      * TODO: write Javadoc.
@@ -117,7 +126,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          long getRecordsTimeLimit,
                                          Clock clock,
                                          Cache<String, TableMapping> tableMappingCache,
-                                         MeterRegistry meterRegistry) {
+                                         MeterRegistry meterRegistry,
+                                         Optional<MtBackupManager> backupManager) {
         super(mtContext, amazonDynamoDb);
         this.name = name;
         this.meterRegistry = meterRegistry;
@@ -130,6 +140,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
+        this.backupManager = backupManager;
     }
 
     long getGetRecordsTimeLimit() {
@@ -538,7 +549,26 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().updateItem(updateItemRequest);
     }
 
+    @Override
+    public RestoreTableFromBackupResult restoreTableFromBackup(
+        RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
+        throw new UnsupportedOperationException();
+    }
 
+    @Override
+    public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ListTablesResult listTables() {
+        return new ListTablesResult().withTableNames(mtTables.keySet());
+    }
     /**
      * See class level Javadoc for explanation of why the use of addAttributeUpdateEntry and withAttributeUpdates is
      * not supported.

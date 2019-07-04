@@ -5,16 +5,32 @@
  */
 package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
+import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
+import com.amazonaws.services.dynamodbv2.model.KeyType
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
+import com.google.common.collect.ImmutableMap
+import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
+import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
 import com.salesforce.dynamodbv2.mt.sharedtable.Status
+import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
 
 internal class MtBackupManagerImplTest {
+    val REGION = "us-east-1"
+    val MT_CONTEXT: MtAmazonDynamoDbContextProvider = MtAmazonDynamoDbContextProviderThreadLocalImpl()
 
     @Test
     fun testBasicBackupCreate() {
@@ -24,21 +40,52 @@ internal class MtBackupManagerImplTest {
         assertNotNull(System.getenv("AWS_ACCESS_KEY_ID"))
 
         // first create test bucket if one does not exist
-        val s3 = AmazonS3ClientBuilder.standard().withRegion("us-east-1").build()
-
+        val s3 = AmazonS3ClientBuilder.standard().withRegion(REGION).build()
+        val dynamo = AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         val bucket = "test-basic-backup-create"
+
+        /*
+         * bySharedTable w/ binary hash key
+         */
+        val sharedTableBinaryHashKey = SharedTableBuilder.builder()
+                .withAmazonDynamoDb(dynamo)
+                .withContext(MT_CONTEXT)
+                .withBackupSupport(REGION, bucket)
+                .withTruncateOnDeleteTable(true)
+                .withBinaryHashKey(true)
+                .build()
 
         // Create bucket
         val createBucketRequest = CreateBucketRequest(bucket)
         s3.createBucket(createBucketRequest)
 
-        val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
+        MT_CONTEXT.withContext("org1") {
+            val tableName = "dummy-table"
 
-        val backupId = "test-backup"
-        backupManager.createMtBackup(CreateMtBackupRequest(backupId))
-        val mtBackupMetadata = backupManager.getBackup(backupId)
-        assertNotNull(mtBackupMetadata)
-        assertEquals(backupId, mtBackupMetadata.mtBackupId)
-        assertEquals(Status.COMPLETE, mtBackupMetadata.status)
+            sharedTableBinaryHashKey.createTable(CreateTableRequestBuilder.builder()
+                    .withTableName(tableName)
+                    .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                    .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                    .withProvisionedThroughput(1L, 1L).build())
+            sharedTableBinaryHashKey.putItem(PutItemRequest(tableName,
+                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"), "value", AttributeValue("1"))))
+            sharedTableBinaryHashKey.putItem(PutItemRequest(tableName,
+                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
+        }
+        MT_CONTEXT.withContext(null) {
+            val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
+
+            val backupId = "test-backup"
+
+            // TODO: Don't hardcode the shared table here..
+            val table = "mt_shared_table_static_b_no_lsi"
+            backupManager.createMtBackup(CreateMtBackupRequest(backupId, table), sharedTableBinaryHashKey)
+
+            val mtBackupMetadata = backupManager.getBackup(backupId)
+            assertNotNull(mtBackupMetadata)
+            assertEquals(backupId, mtBackupMetadata.mtBackupId)
+            assertEquals(Status.COMPLETE, mtBackupMetadata.status)
+            assertTrue(mtBackupMetadata.tenantTables.size > 0)
+        }
     }
 }
