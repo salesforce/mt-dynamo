@@ -35,6 +35,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -152,7 +153,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             });
 
             // once per fetch (since they are all trim horizon)
-            assertEquals(6, dynamoDbStreams.getRecordsCount);
+            assertEquals(3, dynamoDbStreams.getRecordsCount);
             assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
             deleteMtTables(mtDynamoDb);
@@ -325,6 +326,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         when(tableDescription.getStreamSpecification()).thenReturn(new StreamSpecification().withStreamEnabled(true));
         when(tableMapping.getVirtualTable()).thenReturn(tableDescription);
         when(mtDynamo.getTableMapping(any())).thenReturn(tableMapping);
+        when(mtDynamo.getMeterRegistry()).thenReturn(new CompositeMeterRegistry());
         return mtDynamo;
     }
 

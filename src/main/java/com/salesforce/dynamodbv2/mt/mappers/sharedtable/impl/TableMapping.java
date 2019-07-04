@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-class TableMapping {
+public class TableMapping {
 
     private final DynamoTableDescription virtualTable;
     private DynamoTableDescription physicalTable;

@@ -51,6 +51,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -79,6 +80,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private final String name;
 
+    private final MeterRegistry meterRegistry;
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<String, TableMapping> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
@@ -100,6 +102,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param truncateOnDeleteTable a flag indicating whether to delete all table data when a virtual table is deleted
      * @param getRecordsTimeLimit soft time limit for getting records out of the shared stream.
      * @param clock clock instance to use for enforcing time limit (injected for unit tests).
+     * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
+     * @param meterRegistry MeterRegistry for reporting metrics.
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -109,11 +113,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean deleteTableAsync,
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
-                                         Clock clock) {
+                                         Clock clock,
+                                         Cache<String, TableMapping> tableMappingCache,
+                                         MeterRegistry meterRegistry) {
         super(mtContext, amazonDynamoDb);
         this.name = name;
+        this.meterRegistry = meterRegistry;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
-        this.tableMappingCache = new MtCache<>(mtContext);
+        this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
@@ -129,6 +136,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     Clock getClock() {
         return clock;
+    }
+
+    public MeterRegistry getMeterRegistry() {
+        return meterRegistry;
     }
 
     @Override
