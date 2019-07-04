@@ -8,6 +8,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 ## 0.9.42 (July 3, 2019)
 
 * Stream metrics refinements.
+* Introduced Micrometer metrics instrumentation.
 
 ## 0.9.41 (July 1, 2019)
 
