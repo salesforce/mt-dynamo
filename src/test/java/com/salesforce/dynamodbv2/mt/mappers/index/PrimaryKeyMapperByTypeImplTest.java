@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 

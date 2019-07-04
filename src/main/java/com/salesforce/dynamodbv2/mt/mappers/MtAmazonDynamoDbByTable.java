@@ -314,7 +314,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         Preconditions.checkArgument(idx > 0);
         String tenant = qualifiedTableName.substring(start, idx);
         String name = qualifiedTableName.substring(idx + delimiter.length());
-        return new String[]{tenant, name};
+        return new String[] { tenant, name };
     }
 
 }

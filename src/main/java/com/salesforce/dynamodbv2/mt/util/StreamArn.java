@@ -53,7 +53,7 @@ public class StreamArn {
             if (!super.equals(o)) {
                 return false;
             }
-            MtStreamArn that = (MtStreamArn) o;
+            final MtStreamArn that = (MtStreamArn) o;
             return Objects.equals(context, that.context) && Objects.equals(tenantTableName, that.tenantTableName);
         }
 
@@ -220,7 +220,7 @@ public class StreamArn {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StreamArn that = (StreamArn) o;
+        final StreamArn that = (StreamArn) o;
         return Objects.equals(qualifier, that.qualifier)
             && Objects.equals(tableName, that.tableName)
             && Objects.equals(streamLabel, that.streamLabel);

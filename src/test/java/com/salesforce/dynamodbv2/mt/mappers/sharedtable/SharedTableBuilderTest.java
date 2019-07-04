@@ -60,8 +60,8 @@ class SharedTableBuilderTest {
                         .withIndexName("index")
                         .withKeySchema(new KeySchemaElement(INDEX_ID_ATTR_NAME, HASH))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
-                ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                ).withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
 
         SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
@@ -88,7 +88,7 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB,1L);
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
         DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB, 1L);
     }
 

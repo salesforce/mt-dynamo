@@ -443,14 +443,14 @@ class ConditionMapperTest {
 
     private static Map<String, String> toAttributeNames(String... attributeNames) {
         return IntStream.range(0, attributeNames.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m,i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
+                .collect(HashMap::new, (m, i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
     }
 
     private static Map<String, AttributeValue> toAttributeValues(String... attributeValues) {
         return attributeValues == null
             ? new HashMap<>()
             : IntStream.range(0, attributeValues.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m,i) -> m.put(attributeValues[i],
+                .collect(HashMap::new, (m, i) -> m.put(attributeValues[i],
                         new AttributeValue().withS(attributeValues[i + 1])), Map::putAll);
     }
 
