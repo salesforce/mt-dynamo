@@ -129,7 +129,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
      * @param tableName Name of the table.
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
-    protected boolean isMtTable(String tableName) {
+    public boolean isMtTable(String tableName) {
         return true;
     }
 
@@ -329,7 +329,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        throw new UnsupportedOperationException();
+        return getAmazonDynamoDb().listTables(exclusiveStartTableName);
     }
 
     @Override

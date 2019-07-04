@@ -37,6 +37,7 @@ import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
     @Override
-    protected boolean isMtTable(String tableName) {
+    public boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
         return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }
@@ -215,9 +216,22 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
-        scanRequest = scanRequest.clone();
-        scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
-        return getAmazonDynamoDb().scan(scanRequest);
+        if (getMtContext().getContextOpt().isEmpty()) {
+            Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
+            ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
+            String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
+            List<String> tenants = new ArrayList(result.getCount());
+            List<String> tables = new ArrayList(result.getCount());
+            for (int i = 0; i < result.getCount(); i++) {
+                tenants.add(tenantTable[0]);
+                tables.add(tenantTable[1]);
+            }
+            return new MtScanResult(result, tenants, tables);
+        } else {
+            scanRequest = scanRequest.clone();
+            scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
+            return getAmazonDynamoDb().scan(scanRequest);
+        }
     }
 
     /**
