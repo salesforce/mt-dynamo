@@ -10,6 +10,9 @@ import static com.google.common.collect.Iterables.getLast;
 import static com.salesforce.dynamodbv2.mt.util.ShardIterator.ITERATOR_SEPARATOR;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
+import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.ExpiredIteratorException;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
@@ -17,11 +20,16 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
+import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
+import com.google.common.cache.CacheLoader.InvalidCacheLoadException;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
@@ -30,6 +38,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
@@ -75,12 +85,15 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
         private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
+        private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 1;
+
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private Sleeper sleeper;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int maxGetRecordsRetries = DEFAULT_MAX_GET_RECORDS_RETRIES;
+        private long describeStreamCacheTtl = DEFAULT_DESCRIBE_STREAM_CACHE_TTL;
         private long getRecordsLimitExceededBackoffInMillis =
             DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
 
@@ -151,6 +164,18 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Time to live for describe stream cache entries.
+         *
+         * @param describeStreamCacheTtl Duration to wait before refreshing describe stream cache on writes.
+         *                               Duration has seconds as the unit when the cache is created.
+         * @return this Builder.
+         */
+        public Builder withDescribeStreamCacheTtl(long describeStreamCacheTtl) {
+            this.describeStreamCacheTtl = describeStreamCacheTtl;
+            return this;
+        }
+
+        /**
          * Build instance using the configured properties.
          *
          * @return a newly created {@code CachingAmazonDynamoDbStreams} based on the contents of the {@code Builder}
@@ -172,7 +197,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 maxRecordsByteSize,
                 maxGetRecordsRetries,
                 getRecordsLimitExceededBackoffInMillis,
-                maxIteratorCacheSize);
+                maxIteratorCacheSize,
+                describeStreamCacheTtl);
         }
     }
 
@@ -468,16 +494,29 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     // iterator cache
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
 
+    private Cache<String, DescribeStreamResult> describeStreamCache;
+
+    @VisibleForTesting
+    public Cache<String, DescribeStreamResult> getDescribeStreamCache() {
+        return describeStreamCache;
+    }
+
     private CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
                                          Sleeper sleeper,
                                          long maxRecordsByteSize,
                                          int maxGetRecordsRetries,
                                          long getRecordsLimitExceededBackoffInMillis,
-                                         int maxIteratorCacheSize) {
+                                         int maxIteratorCacheSize,
+                                         long describeStreamCacheTtl) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
+
+        this.describeStreamCache = CacheBuilder
+            .newBuilder()
+            .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
+            .build();
 
         this.recordCache = new StreamsRecordCache(maxRecordsByteSize);
 
@@ -485,6 +524,96 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             .newBuilder()
             .maximumSize(maxIteratorCacheSize)
             .build(CacheLoader.from(this::loadShardIterator));
+    }
+
+    /**
+     * Gets the {@code DescribeStreamResult} from cache or from DescribeStream API.
+     *
+     * @return Stream details for the given request (streamArn).
+     */
+    private DescribeStreamResult lookupDescribeStreamResult(DescribeStreamRequest request)
+        throws AmazonDynamoDBException {
+
+        String key = request.getStreamArn();
+        try {
+            DescribeStreamResult result = describeStreamCache.get(key,
+                () -> this.loadStreamDescriptionForAllShards(request));
+            return result;
+        } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
+            // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
+            // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
+            LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
+                + "Retrying describeStream call.");
+            e.printStackTrace();
+            return this.loadStreamDescriptionForAllShards(request);
+        }
+    }
+
+    /**
+     * Gets the {@code DescribeStreamResult} from the DescribeStream API.
+     *
+     * @return Stream details for the given request with all the shards currently available.
+     */
+    protected DescribeStreamResult loadStreamDescriptionForAllShards(DescribeStreamRequest request)
+        throws AmazonDynamoDBException {
+
+        List<Shard> allShards = new ArrayList<>();
+        String streamArn = request.getStreamArn();
+        String lastShardId = request.getExclusiveStartShardId();
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("cache miss in describe stream cache for key: {}", streamArn);
+        }
+        // TODO metrics: count cache miss
+
+        DescribeStreamResult result = null;
+        DescribeStreamResult previousResult;
+        do {
+            request = new DescribeStreamRequest().withStreamArn(streamArn).withExclusiveStartShardId(lastShardId);
+            previousResult = result;
+            result = super.describeStream(request);
+
+            if (result != null && result.getStreamDescription().getShards() != null) {
+                List<Shard> shards = result.getStreamDescription().getShards();
+                allShards.addAll(shards);
+                lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
+            } else {
+                // since the request was null, update lastShardId to null since we can't get the next request
+                // from a null response
+                lastShardId = null;
+            }
+        } while (lastShardId != null);
+
+        if (result != null) {
+            StreamDescription streamDescription = result.getStreamDescription();
+            streamDescription.setShards(allShards);
+            result.setStreamDescription(streamDescription);
+        } else if (previousResult != null) {
+            StreamDescription streamDescription = previousResult.getStreamDescription();
+            streamDescription.setShards(allShards);
+            result = previousResult;
+            result.setStreamDescription(streamDescription);
+        } else {
+            result = new DescribeStreamResult().withStreamDescription(new StreamDescription().withStreamArn(streamArn)
+                .withShards(allShards));
+        }
+
+        return result;
+    }
+
+    /**
+     * Gets {@code DescribeStreamResult} for request from cache or describeStream API.
+     *
+     * @param describeStreamRequest Describe stream request.
+     * @return {@code DescribeStreamResult}.
+     */
+    @Override
+    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("describeStream request={}", describeStreamRequest);
+        }
+        DescribeStreamResult result = lookupDescribeStreamResult(describeStreamRequest);
+        return result;
     }
 
     private String loadShardIterator(CachingShardIterator iterator) {

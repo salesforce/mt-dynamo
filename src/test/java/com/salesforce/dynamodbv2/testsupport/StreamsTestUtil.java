@@ -1,11 +1,16 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.google.common.cache.Cache;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class StreamsTestUtil {
@@ -35,6 +40,31 @@ public class StreamsTestUtil {
 
     public static List<Record> mockRecords(int... sequenceNumbers) {
         return Arrays.stream(sequenceNumbers).mapToObj(StreamsTestUtil::mockRecord).collect(Collectors.toList());
+    }
+
+    /**
+     * Verifies a cache miss/hit occurs on a describeStreamCache lookup.
+     */
+    public static DescribeStreamResult verifyDescribeStreamCacheResult(Cache describeStreamCache, String key,
+                                                                       boolean expectedCacheHit,
+                                                                       DescribeStreamResult expectedResult) {
+        DescribeStreamResult cacheLookupResult = (DescribeStreamResult) describeStreamCache.getIfPresent(key);
+
+        if (!expectedCacheHit) {
+            assertNull(cacheLookupResult);
+        } else {
+            assertNotNull(cacheLookupResult);
+
+            assertTrue(cacheLookupResult.getStreamDescription().getStreamArn()
+                .equals(expectedResult.getStreamDescription().getStreamArn()));
+
+            if (expectedResult.getStreamDescription().getShards() != null) {
+                assertTrue(cacheLookupResult.getStreamDescription().getShards().equals(
+                    expectedResult.getStreamDescription().getShards()));
+            }
+        }
+
+        return cacheLookupResult;
     }
 
 }
