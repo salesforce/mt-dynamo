@@ -1,6 +1,9 @@
-package com.salesforce.dynamodbv2.mt.sharedtable.impl
-
-import com.amazonaws.auth.AWSCredentialsProvider
+/* Copyright (c) 2019, Salesforce.com, Inc.
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause.
+ * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
+ */
+package com.salesforce.dynamodbv2.mt.sharedtable
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -19,7 +22,7 @@ import com.amazonaws.auth.AWSCredentialsProvider
  * style continuous backups, offering a time window of available restore points (versus choosing from N snapshots)
  */
 interface MtBackupManager {
-    fun createMtBackup(): MtBackupMetadata
+    fun createMtBackup(id: String): MtBackupMetadata
 
     fun getBackup(id: String): MtBackupMetadata
 
@@ -30,35 +33,6 @@ interface MtBackupManager {
     fun restoreTenantTableBackup(id: String, newTenantId: String, newTenantTableName: String): TenantRestoreMetadata
 
     fun listMtBackups(): List<MtBackupMetadata>
-}
-
-
-class MtBackupManagerImpl(awsCreds: AWSCredentialsProvider, region: String, s3BucketName: String) : MtBackupManager {
-    override fun getTenantTableBackup(id: String): TenantTableBackupMetadata {
-        TODO("not implemented")
-    }
-
-    override fun restoreTenantTableBackup(id: String, newTenantId: String, newTenantTableName: String): TenantRestoreMetadata {
-        TODO("not implemented")
-    }
-
-    override fun listMtBackups(): List<MtBackupMetadata> {
-        TODO("not implemented")
-    }
-
-    override fun getBackup(id: String): MtBackupMetadata {
-        TODO("not implemented")
-    }
-
-    override fun terminateBackup(id: String): MtBackupMetadata {
-        TODO("not implemented")
-    }
-
-    override fun createMtBackup(): MtBackupMetadata {
-        TODO("not implemented")
-    }
-
-
 }
 
 data class MtBackupMetadata(val mtBackupId: String, val status: Status, val tenantTables: Set<TenantTableBackupMetadata>)

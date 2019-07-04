@@ -15,8 +15,6 @@ import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.Dy
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-
-import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
@@ -47,6 +45,8 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.sharedtable.impl.MtBackupManagerImpl;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
@@ -179,7 +179,7 @@ public class SharedTableBuilder implements TableBuilder {
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private BackupGenerator backupGenerator;
+    private MtBackupManager backupGenerator;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
@@ -225,8 +225,8 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withBackupSupport(AWSCredentialsProvider credentials, String region, String backupS3BucketName) {
-        this.backupGenerator = new BackupGeneratorImpl(credentials, region, backupS3BucketName);
+    public SharedTableBuilder withBackupSupport(String region, String backupS3BucketName) {
+        this.backupGenerator = new MtBackupManagerImpl(region, backupS3BucketName);
         return this;
     }
 
