@@ -11,7 +11,7 @@
 
     <groupId>com.salesforce.dynamodb</groupId>
     <artifactId>mt-dynamodb</artifactId>
-    <version>0.9.41-SNAPSHOT</version>
+    <version>0.9.42-SNAPSHOT</version>
     <name>mt-dynamodb</name>
     <description>Multitenant support for the AWS Java SDK for Amazon DynamoDB</description>
 
@@ -21,7 +21,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.4.2</junit.version>
-        <aws.sdk.version>1.11.583</aws.sdk.version>
+        <aws.sdk.version>1.11.586</aws.sdk.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -67,6 +67,11 @@
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
             <version>3.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.2.0</version>
         </dependency>
 
         <!-- test scope -->

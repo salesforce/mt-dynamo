@@ -45,6 +45,8 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -186,6 +188,7 @@ public class SharedTableBuilder implements TableBuilder {
     private String tableDescriptionTableName;
     private Cache<String, TableMapping> tableMappingCache;
     private Cache<String, TableDescription> tableDescriptionCache;
+    private MeterRegistry meterRegistry;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -245,6 +248,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      *
@@ -278,7 +286,8 @@ public class SharedTableBuilder implements TableBuilder {
             truncateOnDeleteTable,
             getRecordsTimeLimit,
             clock,
-            tableMappingCache);
+            tableMappingCache,
+            meterRegistry);
     }
 
     private void setDefaults() {
@@ -352,6 +361,9 @@ public class SharedTableBuilder implements TableBuilder {
         }
         if (clock == null) {
             clock = Clock.systemDefaultZone();
+        }
+        if (meterRegistry == null) {
+            meterRegistry = new CompositeMeterRegistry();
         }
     }
 

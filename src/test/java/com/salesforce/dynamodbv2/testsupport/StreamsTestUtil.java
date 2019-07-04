@@ -53,6 +53,7 @@ public class StreamsTestUtil {
         if (!expectedCacheHit) {
             assertNull(cacheLookupResult);
         } else {
+            System.out.println("cache lookup result: " + cacheLookupResult);
             assertNotNull(cacheLookupResult);
 
             assertTrue(cacheLookupResult.getStreamDescription().getStreamArn()
