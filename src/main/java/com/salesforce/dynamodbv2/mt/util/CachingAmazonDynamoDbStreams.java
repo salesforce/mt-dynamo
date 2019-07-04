@@ -764,7 +764,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             // first get the physical DynamoDB iterator
             final String dynamoDbIterator = iterator.getDynamoDbIterator()
                 .orElseGet(() -> {
-                    // TODO metrics: iterator cache hits and misses
                     try {
                         return iteratorCache.getUnchecked(iterator);
                     } catch (UncheckedExecutionException e) {
@@ -779,7 +778,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             try {
                 result = getRecordsLoadTime.record(() -> dynamoDbStreams.getRecords(request));
             } catch (LimitExceededException e) {
-                // TODO metrics: count limit exceeded exceptions
                 long backoff = (getRecordsRetries + 1) * getRecordsLimitExceededBackoffInMillis;
                 if (LOG.isWarnEnabled()) {
                     LOG.warn("loadRecords limit exceeded: iterator={}, retry attempt={}, backoff={}.", iterator,
@@ -789,7 +787,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 getRecordsRetries++;
                 continue;
             } catch (ExpiredIteratorException e) {
-                // TODO metrics: count expired iterators
                 // if we loaded the iterator from our cache, reload it
                 if (iterator.getDynamoDbIterator().isEmpty()) {
                     getRecordsLoadExpiredIterator.increment();
@@ -803,8 +800,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 throw e;
             }
 
-            // TODO metrics: getRecords call time
-            // TODO metrics: number of records loaded
             if (LOG.isDebugEnabled()) {
                 LOG.debug("loadRecords: result={}, iterator={}", toShortString(result), iterator);
             }
