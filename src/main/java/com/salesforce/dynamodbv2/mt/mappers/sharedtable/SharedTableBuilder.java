@@ -22,6 +22,9 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
+import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
@@ -38,9 +41,12 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -180,6 +186,9 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
+    private Cache<String, TableMapping> tableMappingCache;
+    private Cache<String, TableDescription> tableDescriptionCache;
+    private MeterRegistry meterRegistry;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -239,6 +248,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      *
@@ -271,7 +285,9 @@ public class SharedTableBuilder implements TableBuilder {
             deleteTableAsync,
             truncateOnDeleteTable,
             getRecordsTimeLimit,
-            clock);
+            clock,
+            tableMappingCache,
+            meterRegistry);
     }
 
     private void setDefaults() {
@@ -321,6 +337,12 @@ public class SharedTableBuilder implements TableBuilder {
         if (tableDescriptionTableName == null) {
             tableDescriptionTableName = DEFAULT_TABLE_DESCRIPTION_TABLE_NAME;
         }
+        if (tableDescriptionCache == null) {
+            tableDescriptionCache = CacheBuilder.newBuilder().build();
+        }
+        if (tableMappingCache == null) {
+            tableMappingCache = CacheBuilder.newBuilder().build();
+        }
         if (mtTableDescriptionRepo == null) {
             mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
@@ -328,7 +350,9 @@ public class SharedTableBuilder implements TableBuilder {
                 .withContext(mtContext)
                 .withTableDescriptionTableName(tableDescriptionTableName)
                 .withPollIntervalSeconds(pollIntervalSeconds)
-                .withTablePrefix(tablePrefix).build();
+                .withTablePrefix(tablePrefix)
+                .withTableDescriptionCache(tableDescriptionCache)
+                .build();
 
             ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
         }
@@ -337,6 +361,9 @@ public class SharedTableBuilder implements TableBuilder {
         }
         if (clock == null) {
             clock = Clock.systemDefaultZone();
+        }
+        if (meterRegistry == null) {
+            meterRegistry = new CompositeMeterRegistry();
         }
     }
 
@@ -502,6 +529,16 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withPollIntervalSeconds(Integer pollIntervalSeconds) {
         this.pollIntervalSeconds = pollIntervalSeconds;
+        return this;
+    }
+
+    public SharedTableBuilder withTableMappingCache(Cache<String, TableMapping> tableMappingCache) {
+        this.tableMappingCache = tableMappingCache;
+        return this;
+    }
+
+    public SharedTableBuilder withTableDescriptionCache(Cache<String, TableDescription> tableDescriptionCache) {
+        this.tableDescriptionCache = tableDescriptionCache;
         return this;
     }
 

@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.cache;
 
 import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
@@ -32,9 +31,9 @@ public class MtCache<V> implements Cache<String, V> {
     private final MtAmazonDynamoDbContextProvider contextProvider;
     private final Cache<String, V> cache;
 
-    public MtCache(MtAmazonDynamoDbContextProvider contextProvider) {
+    public MtCache(MtAmazonDynamoDbContextProvider contextProvider, Cache<String, V> cache) {
         this.contextProvider = contextProvider;
-        this.cache = CacheBuilder.newBuilder().build();
+        this.cache = cache;
     }
 
     private String getKey(Object key) {

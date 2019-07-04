@@ -11,7 +11,7 @@
 
     <groupId>com.salesforce.dynamodb</groupId>
     <artifactId>mt-dynamodb</artifactId>
-    <version>0.9.40-SNAPSHOT</version>
+    <version>0.9.43-SNAPSHOT</version>
     <name>mt-dynamodb</name>
     <description>Multitenant support for the AWS Java SDK for Amazon DynamoDB</description>
 
@@ -21,7 +21,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.4.2</junit.version>
-        <aws.sdk.version>1.11.567</aws.sdk.version>
+        <aws.sdk.version>1.11.586</aws.sdk.version>
         <skipITs>true</skipITs>
     </properties>
 
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>27.1-jre</version>
+            <version>28.0-jre</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -67,6 +67,11 @@
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
             <version>3.0.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-core</artifactId>
+            <version>1.2.0</version>
         </dependency>
 
         <!-- test scope -->
@@ -263,7 +268,7 @@
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>8.21</version>
+                        <version>8.22</version>
                     </dependency>
                 </dependencies>
                 <executions>
