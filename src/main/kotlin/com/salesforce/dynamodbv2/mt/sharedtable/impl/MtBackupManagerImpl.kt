@@ -1,3 +1,8 @@
+/* Copyright (c) 2019, Salesforce.com, Inc.
+ * All rights reserved.
+ * SPDX-License-Identifier: BSD-3-Clause.
+ * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
+ */
 package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
 import com.amazonaws.services.s3.AmazonS3
@@ -7,14 +12,18 @@ import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
 import com.google.common.collect.ImmutableSet
 import com.google.gson.Gson
-import com.salesforce.dynamodbv2.mt.sharedtable.*
+import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.sharedtable.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.sharedtable.Status
+import com.salesforce.dynamodbv2.mt.sharedtable.TenantRestoreMetadata
+import com.salesforce.dynamodbv2.mt.sharedtable.TenantTableBackupMetadata
 import java.nio.charset.Charset
-
 
 class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
 
-
-    val s3 : AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
+    val s3: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
     val gson: Gson = Gson()
     val charset = Charset.forName("utf-8")
 
@@ -31,7 +40,7 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
     }
 
     override fun getBackup(id: String): MtBackupMetadata {
-        val backupFile : S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
+        val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
         return gson.fromJson<MtBackupMetadata>(backupFile.objectContent.bufferedReader(), MtBackupMetadata::class.java)
     }
 

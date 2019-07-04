@@ -9,12 +9,10 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
-import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.sharedtable.Status
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
-
 
 internal class MtBackupManagerImplTest {
 
@@ -25,7 +23,7 @@ internal class MtBackupManagerImplTest {
         assertNotNull(System.getenv("AWS_SECRET_ACCESS_KEY"), "Please specify AWS credentials to access bucket, or implement mock s3 for this test")
         assertNotNull(System.getenv("AWS_ACCESS_KEY_ID"))
 
-        //first create test bucket if one does not exist
+        // first create test bucket if one does not exist
         val s3 = AmazonS3ClientBuilder.standard().withRegion("us-east-1").build()
 
         val bucket = "test-basic-backup-create"

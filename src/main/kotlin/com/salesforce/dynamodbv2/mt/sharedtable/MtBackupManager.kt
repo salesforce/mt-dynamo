@@ -41,7 +41,6 @@ data class TenantTableBackupMetadata(val backupId: String, val status: Status, v
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
-
 data class CreateMtBackupRequest(val backupId: String)
 data class RestoreMtBackupRequest(val backupId: String, val tenantId: String, val newTenantId: String)
 
