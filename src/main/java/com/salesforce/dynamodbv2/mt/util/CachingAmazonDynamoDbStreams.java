@@ -317,15 +317,15 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          *
          * @return Absolute position of this iterator or empty if this iterator does not have a fixed position.
          */
-        Optional<ShardIteratorPosition> resolvePosition() {
+        Optional<StreamShardPosition> resolvePosition() {
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
                     return Optional.empty();
                 case AT_SEQUENCE_NUMBER:
-                    return Optional.of(ShardIteratorPosition.at(streamArn, shardId, sequenceNumber));
+                    return Optional.of(StreamShardPosition.at(streamArn, shardId, sequenceNumber));
                 case AFTER_SEQUENCE_NUMBER:
-                    return Optional.of(ShardIteratorPosition.after(streamArn, shardId, sequenceNumber));
+                    return Optional.of(StreamShardPosition.after(streamArn, shardId, sequenceNumber));
                 default:
                     throw new RuntimeException("Unhandled switch case");
             }
@@ -337,8 +337,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param record Record for which to resolve the position.
          * @return Position of record.
          */
-        ShardIteratorPosition resolvePosition(Record record) {
-            return ShardIteratorPosition.at(streamArn, shardId, record);
+        StreamShardPosition resolvePosition(Record record) {
+            return StreamShardPosition.at(streamArn, shardId, record);
         }
 
         /**
@@ -580,10 +580,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
             // parse iterator
             final CachingShardIterator iterator = CachingShardIterator.fromExternalString(request.getShardIterator());
-            final Optional<ShardIteratorPosition> positionOpt = iterator.resolvePosition();
+            final Optional<StreamShardPosition> positionOpt = iterator.resolvePosition();
             final GetRecordsResult result;
             if (positionOpt.isPresent()) {
-                final ShardIteratorPosition position = positionOpt.get();
+                final StreamShardPosition position = positionOpt.get();
                 result = recordCache.getRecords(position, limit)
                     .map(cachedRecords -> {
                         if (cachedRecords.size() < limit) {
@@ -706,7 +706,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 }
 
                 // update records cache (either under iterator position or first record sequence number)
-                final ShardIteratorPosition location = iterator.resolvePosition()
+                final StreamShardPosition location = iterator.resolvePosition()
                     .orElseGet(() -> iterator.resolvePosition(loadedRecords.get(0)));
                 recordCache.putRecords(location, loadedRecords);
             }
