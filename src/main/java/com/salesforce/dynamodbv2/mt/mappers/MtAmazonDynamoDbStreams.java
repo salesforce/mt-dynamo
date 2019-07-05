@@ -65,7 +65,7 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
             if (!super.equals(o)) {
                 return false;
             }
-            MtGetRecordsResult that = (MtGetRecordsResult) o;
+            final MtGetRecordsResult that = (MtGetRecordsResult) o;
             return Objects.equals(lastSequenceNumber, that.lastSequenceNumber);
         }
 

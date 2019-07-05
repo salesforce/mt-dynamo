@@ -71,7 +71,7 @@ public class ShardIterator {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ShardIterator that = (ShardIterator) o;
+        final ShardIterator that = (ShardIterator) o;
         return local == that.local && Objects.equals(arn, that.arn) && Objects.equals(rest, that.rest);
     }
 

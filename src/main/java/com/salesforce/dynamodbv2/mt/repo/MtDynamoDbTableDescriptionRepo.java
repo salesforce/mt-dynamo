@@ -34,7 +34,6 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;

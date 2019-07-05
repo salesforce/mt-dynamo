@@ -226,7 +226,7 @@ class StreamsRecordCache {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Segment segment = (Segment) o;
+            final Segment segment = (Segment) o;
             return start.equals(segment.start) && end.equals(segment.end) && records.equals(segment.records);
         }
 

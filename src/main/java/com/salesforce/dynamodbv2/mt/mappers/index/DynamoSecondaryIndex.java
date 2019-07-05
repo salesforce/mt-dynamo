@@ -15,7 +15,6 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -111,7 +110,7 @@ public class DynamoSecondaryIndex implements HasPrimaryKey {
             return false;
         }
 
-        DynamoSecondaryIndex that = (DynamoSecondaryIndex) o;
+        final DynamoSecondaryIndex that = (DynamoSecondaryIndex) o;
 
         return indexName.equals(that.indexName)
                 && primaryKey.equals(that.primaryKey)
