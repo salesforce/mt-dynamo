@@ -7,6 +7,7 @@ package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
@@ -25,6 +26,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.sharedtable.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.Status
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Test
@@ -64,8 +66,10 @@ internal class MtBackupManagerImplTest {
         val createBucketRequest = CreateBucketRequest(bucket)
         s3.createBucket(createBucketRequest)
 
-        MT_CONTEXT.withContext("org1") {
-            val tableName = "dummy-table"
+        val tenant = "org1"
+        val tableName = "dummy-table"
+
+        MT_CONTEXT.withContext(tenant) {
 
             sharedTableBinaryHashKey.createTable(CreateTableRequestBuilder.builder()
                     .withTableName(tableName)
@@ -77,25 +81,36 @@ internal class MtBackupManagerImplTest {
             sharedTableBinaryHashKey.putItem(PutItemRequest(tableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
         }
+        val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
+        val backupId = "test-backup"
+
+        // TODO: Don't hardcode the shared table here..
+        val table = "mt_shared_table_static_b_no_lsi"
         MT_CONTEXT.withContext(null) {
-            val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
-
-            val backupId = "test-backup"
-
-            // TODO: Don't hardcode the shared table here..
-            val table = "mt_shared_table_static_b_no_lsi"
             backupManager.createMtBackup(CreateMtBackupRequest(backupId, table), sharedTableBinaryHashKey)
-
             val mtBackupMetadata = backupManager.getBackup(backupId)
             assertNotNull(mtBackupMetadata)
             assertEquals(backupId, mtBackupMetadata.mtBackupId)
             assertEquals(Status.COMPLETE, mtBackupMetadata.status)
             assertTrue(mtBackupMetadata.tenantTables.size > 0)
-
-            backupManager.deleteBackup(backupId)
-            assertNull(backupManager.getBackup(backupId))
         }
 
+        val newRestoreTableName = tableName + "-copy"
+        val restoreResult = backupManager.restoreTenantTableBackup(RestoreMtBackupRequest(backupId,
+                TenantTable(tenantName = tenant, virtualTable = tableName),
+                TenantTable(tenantName = tenant, virtualTable = newRestoreTableName)),
+                sharedTableBinaryHashKey,
+                MT_CONTEXT)
+
+        assertEquals(Status.COMPLETE, restoreResult.status)
+
+        MT_CONTEXT.withContext(tenant) {
+            val clonedRow = sharedTableBinaryHashKey.getItem(GetItemRequest(newRestoreTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
+            assertNotNull(clonedRow)
+        }
+
+        backupManager.deleteBackup(backupId)
+        assertNull(backupManager.getBackup(backupId))
 
     }
 

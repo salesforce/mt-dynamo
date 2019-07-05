@@ -5,7 +5,9 @@
  */
 package com.salesforce.dynamodbv2.mt.sharedtable
 
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
+import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -32,19 +34,25 @@ interface MtBackupManager {
 
     fun getTenantTableBackup(id: String): TenantTableBackupMetadata
 
-    fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest): TenantRestoreMetadata
+    fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest,
+                                 mtDynamo: MtAmazonDynamoDbBase,
+                                 mtContext: MtAmazonDynamoDbContextProvider): TenantRestoreMetadata
 
     fun listMtBackups(): List<MtBackupMetadata>
 }
 
 data class MtBackupMetadata(val mtBackupId: String, val status: Status, val tenantTables: Set<TenantTableBackupMetadata>)
 
-data class TenantTableBackupMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
+data class TenantTableBackupMetadata(val backupId: String,
+                                     val status: Status,
+                                     val tenantId: String,
+                                     val virtualTableName: String,
+                                     val backupKeys: Set<String>)
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
 data class CreateMtBackupRequest(val backupId: String, val sharedTableName: String)
-data class RestoreMtBackupRequest(val backupId: String, val tenantId: String, val newTenantId: String)
+data class RestoreMtBackupRequest(val backupId: String, val tenantTableBackup: TenantTable, val newTenantTable: TenantTable)
 
 enum class Status {
     IN_PROGRESS,

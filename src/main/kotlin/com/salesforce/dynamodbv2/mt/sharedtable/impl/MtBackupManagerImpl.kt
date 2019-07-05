@@ -6,6 +6,7 @@
 package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
@@ -17,11 +18,14 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
+import com.google.common.collect.ImmutableMap
 import com.google.common.collect.Lists
 import com.google.common.collect.Multimap
 import com.google.common.collect.MultimapBuilder
 import com.google.common.collect.Sets
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtScanResult
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
@@ -48,8 +52,43 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         TODO("not implemented")
     }
 
-    override fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest): TenantRestoreMetadata {
-        TODO("not implemented")
+    override fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest,
+                                          mtDynamo: MtAmazonDynamoDbBase,
+                                          mtContext: MtAmazonDynamoDbContextProvider): TenantRestoreMetadata {
+
+        val backupFileKeys = getBackupFileKeys(restoreMtBackupRequest.backupId, restoreMtBackupRequest.tenantTableBackup)
+        for (fileName in backupFileKeys) {
+            val backupFile: S3Object = s3.getObject(s3BucketName, fileName)
+            val rowsToInsert : List<TenantTableRow> = gson.fromJson(backupFile.objectContent.bufferedReader(),
+                    object : TypeToken<List<TenantTableRow>>() { }.type)
+            for (row in rowsToInsert) {
+                mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
+                    mtDynamo.putItem(restoreMtBackupRequest.newTenantTable.virtualTable, row.attributeMap)
+                }
+            }
+
+        }
+        return TenantRestoreMetadata(restoreMtBackupRequest.backupId,
+                Status.COMPLETE,
+                restoreMtBackupRequest.newTenantTable.tenantName,
+                restoreMtBackupRequest.newTenantTable.virtualTable)
+    }
+
+    private fun getBackupFileKeys(backupId: String, tenantTable: TenantTable) : Set<String> {
+        val ret = Sets.newHashSet<String>()
+        var continuationToken: String? = null
+        do {
+            val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
+                    ListObjectsV2Request()
+                            .withBucketName(s3BucketName)
+                            .withContinuationToken(continuationToken)
+                            .withPrefix("$backupDir/${backupId}/${tenantTable.tenantName}/${tenantTable.virtualTable}"))
+            continuationToken = listBucketResult.continuationToken
+            for (o in listBucketResult.objectSummaries) {
+                ret.add(o.key)
+            }
+        } while (listBucketResult.isTruncated)
+        return ret
     }
 
     override fun listMtBackups(): List<MtBackupMetadata> {
@@ -91,7 +130,6 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         do {
             val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
                     ListObjectsV2Request()
-                            //.withDelimiter("/")
                             .withBucketName(s3BucketName)
                             .withContinuationToken(continuationToken)
                             .withPrefix("$backupDir/${id}/"))
@@ -173,7 +211,8 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         val tenantTableBackupMetadatas = tenantTables
                 .stream()
                 .map { TenantTableBackupMetadata(createMtBackupRequest.backupId,
-                        Status.COMPLETE, it.tenantName, it.virtualTable) }
+                        Status.COMPLETE, it.tenantName, it.virtualTable,
+                        getBackupFileKeys(createMtBackupRequest.backupId, it)) }
                 .collect(Collectors.toSet())
         return MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE,
                 tenantTableBackupMetadatas)
