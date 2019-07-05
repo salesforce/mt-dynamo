@@ -14,13 +14,16 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
 import com.google.common.collect.ImmutableMap
+import com.google.common.collect.ImmutableSet
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
+import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.sharedtable.Status
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Test
@@ -87,5 +90,40 @@ internal class MtBackupManagerImplTest {
             assertEquals(Status.COMPLETE, mtBackupMetadata.status)
             assertTrue(mtBackupMetadata.tenantTables.size > 0)
         }
+    }
+
+    @Test
+    fun testListBackups() {
+        // first create test bucket if one does not exist
+        val s3 = AmazonS3ClientBuilder.standard().withRegion(REGION).build()
+        val dynamo = AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
+        val bucket = "test-basic-backup-create"
+
+        /*
+         * bySharedTable w/ binary hash key
+         */
+        val sharedTableBinaryHashKey = SharedTableBuilder.builder()
+                .withAmazonDynamoDb(dynamo)
+                .withContext(MT_CONTEXT)
+                .withBackupSupport(REGION, bucket)
+                .withTruncateOnDeleteTable(true)
+                .withBinaryHashKey(true)
+                .build()
+        val backupManager: MtBackupManager = object : MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket) {
+            override fun createBackupData(
+                createMtBackupRequest: CreateMtBackupRequest,
+                mtDynamo: MtAmazonDynamoDbBase
+            ): MtBackupMetadata {
+                return MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE, ImmutableSet.of())
+            }
+        }
+        for (i in 1..10) {
+            backupManager.createMtBackup(
+                    CreateMtBackupRequest("testListBackup-$i", "mt_shared_table_static_b_no_lsi"),
+                    sharedTableBinaryHashKey)
+        }
+
+        val allBackups: List<MtBackupMetadata> = backupManager.listMtBackups()
+        assertTrue(allBackups.size >= 10)
     }
 }

@@ -9,9 +9,12 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.ListObjectsV2Request
+import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
+import com.google.common.collect.Lists
 import com.google.common.collect.Multimap
 import com.google.common.collect.MultimapBuilder
 import com.google.common.collect.Sets
@@ -28,7 +31,11 @@ import com.salesforce.dynamodbv2.mt.sharedtable.TenantTableBackupMetadata
 import java.nio.charset.Charset
 import java.util.stream.Collectors
 
-class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
+/**
+ * Take an mt-dynamo set of tables, and using relatively naive scans across each table, build a set of backups
+ * per tenant.
+ */
+open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
 
     val s3: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
     val gson: Gson = Gson()
@@ -43,7 +50,22 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
     }
 
     override fun listMtBackups(): List<MtBackupMetadata> {
-        TODO("not implemented")
+        val ret = Lists.newArrayList<MtBackupMetadata>()
+        var continuationToken: String? = null
+        do {
+            val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
+                    ListObjectsV2Request()
+                            .withDelimiter("/")
+                            .withBucketName(s3BucketName)
+                            .withContinuationToken(continuationToken)
+                            .withPrefix(backupMetadataDir + "/"))
+            continuationToken = listBucketResult.continuationToken
+            for (o in listBucketResult.objectSummaries) {
+                val backup = getBackup(getBackupIdFromKey(o.key))
+                ret.add(backup)
+            }
+        } while (listBucketResult.isTruncated)
+        return ret
     }
 
     override fun getBackup(id: String): MtBackupMetadata {
@@ -71,6 +93,24 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
      * operation providing full row dumps to insert|restore back into dynamo under a different tenant-table space.
      */
     override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBase): MtBackupMetadata {
+        // write out actual backup data
+        val backupMetadata = createBackupData(createMtBackupRequest, mtDynamo)
+        commitBackupMetadata(backupMetadata)
+        return backupMetadata
+    }
+
+    protected fun commitBackupMetadata(backupMetadata: MtBackupMetadata) {
+        // write out metadata of what was backed up
+        val backupMetadataBytes = gson.toJson(backupMetadata).toByteArray(charset)
+        val objectMetadata = ObjectMetadata()
+        objectMetadata.contentLength = backupMetadataBytes.size.toLong()
+        objectMetadata.contentType = "application/json"
+        val putObjectReq = PutObjectRequest(s3BucketName, getBackupMetadataFile(backupMetadata.mtBackupId),
+                gson.toJson(backupMetadata).byteInputStream(charset), objectMetadata)
+        s3.putObject(putObjectReq)
+    }
+
+    protected open fun createBackupData(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBase): MtBackupMetadata {
         val sharedTable = createMtBackupRequest.sharedTableName
         var lastRow: TenantTableRow? = null
         val tenantTables = Sets.newHashSet<TenantTable>()
@@ -95,27 +135,23 @@ class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupMa
             tenantTables.addAll(rowsPerTenant.keySet())
             flushScanResult(createMtBackupRequest.backupId, numPasses, rowsPerTenant)
         } while (scanResult.count > 0 && ++numPasses > 1)
-        // write metadata
         val tenantTableBackupMetadatas = tenantTables
                 .stream()
                 .map { TenantTableBackupMetadata(createMtBackupRequest.backupId,
                         Status.COMPLETE, it.tenantName, it.virtualTable) }
                 .collect(Collectors.toSet())
-        val backupMetadata = MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE,
+        return MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE,
                 tenantTableBackupMetadatas)
-        val backupMetadataBytes = gson.toJson(backupMetadata).toByteArray(charset)
-        val objectMetadata = ObjectMetadata()
-        objectMetadata.contentLength = backupMetadataBytes.size.toLong()
-        objectMetadata.contentType = "application/json"
-        val putObjectReq = PutObjectRequest(s3BucketName, getBackupMetadataFile(createMtBackupRequest.backupId),
-                gson.toJson(backupMetadata).byteInputStream(charset), objectMetadata)
-        s3.putObject(putObjectReq)
-        return backupMetadata
     }
 
-    private fun getBackupMetadataFile(backupId: String) = backupId + "/metadata.json"
+    private val backupMetadataDir = "backupMetadata"
+    private val backupDir = "backups"
+
+    private fun getBackupMetadataFile(backupId: String) = "$backupMetadataDir/$backupId-metadata.json"
     private fun getBackupFile(backupId: String, tenantTable: TenantTable, scanCount: Int) =
-            "$backupId/${tenantTable.tenantName}/${tenantTable.virtualTable}-$scanCount.json"
+            "$backupDir/$backupId/${tenantTable.tenantName}/${tenantTable.virtualTable}-$scanCount.json"
+
+    private fun getBackupIdFromKey(backupMetadataKey: String) = backupMetadataKey.split("/")[1].split("-metadata")[0]
 
     private fun flushScanResult(backupId: String, scanCount: Int, rowsPerTenant: Multimap<TenantTable, TenantTableRow>) {
         for (tenantTable: TenantTable in rowsPerTenant.keySet()) {
