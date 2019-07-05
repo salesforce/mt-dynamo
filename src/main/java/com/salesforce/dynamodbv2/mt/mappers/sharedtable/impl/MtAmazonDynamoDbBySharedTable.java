@@ -157,8 +157,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     public boolean isMtTable(String tableName) {
-        return mtTables.containsKey(tableName);
-    }
+        return mtTables.containsKey(tableName) || mtTableDescriptionRepo.getMetadataTableName().equals(tableName);  }
 
     Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
         CreateTableRequest table = mtTables.get(sharedTableName);
@@ -465,7 +464,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private ScanResult multiTenantScan(ScanRequest scanRequest) {
-        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
+        Preconditions.checkArgument(isMtTable(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we're working with,

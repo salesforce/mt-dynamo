@@ -33,6 +33,7 @@ import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 
 import java.util.HashMap;
@@ -146,6 +147,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return tableDescription;
     }
 
+    @Override
+    public String getMetadataTableName() {
+        return tableDescriptionTableName;
+    }
+
     private String getTableDescriptionTableName() {
         try {
             cache.get(tableDescriptionTableName, () -> {
@@ -245,6 +251,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return getPrefix() + tableName;
     }
 
+    public TenantTable getTenantTableFromHashKey(String hashKey) {
+        String[] parts = hashKey.split(delimiter);
+        return new TenantTable(parts[1], parts[0]);
+    }
     private String getPrefix() {
         return mtContext.getContext() + delimiter;
     }

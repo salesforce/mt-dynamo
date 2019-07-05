@@ -23,4 +23,6 @@ public interface MtTableDescriptionRepo {
 
     TableDescription deleteTable(String tableName);
 
+    String getMetadataTableName();
+
 }
