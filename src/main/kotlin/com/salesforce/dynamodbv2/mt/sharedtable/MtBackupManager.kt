@@ -26,9 +26,9 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 interface MtBackupManager {
     fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBase): MtBackupMetadata
 
-    fun getBackup(id: String): MtBackupMetadata
+    fun getBackup(id: String): MtBackupMetadata?
 
-    fun terminateBackup(id: String): MtBackupMetadata
+    fun deleteBackup(id: String): MtBackupMetadata?
 
     fun getTenantTableBackup(id: String): TenantTableBackupMetadata
 

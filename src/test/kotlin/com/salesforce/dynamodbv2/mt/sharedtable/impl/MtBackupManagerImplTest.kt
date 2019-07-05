@@ -15,6 +15,7 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
+import com.google.common.collect.Lists
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
@@ -29,6 +30,7 @@ import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 internal class MtBackupManagerImplTest {
@@ -89,7 +91,12 @@ internal class MtBackupManagerImplTest {
             assertEquals(backupId, mtBackupMetadata.mtBackupId)
             assertEquals(Status.COMPLETE, mtBackupMetadata.status)
             assertTrue(mtBackupMetadata.tenantTables.size > 0)
+
+            backupManager.deleteBackup(backupId)
+            assertNull(backupManager.getBackup(backupId))
         }
+
+
     }
 
     @Test
@@ -110,6 +117,8 @@ internal class MtBackupManagerImplTest {
                 .withBinaryHashKey(true)
                 .build()
         val backupManager: MtBackupManager = object : MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket) {
+
+            //don't actually create data, just create a metadata marker
             override fun createBackupData(
                 createMtBackupRequest: CreateMtBackupRequest,
                 mtDynamo: MtAmazonDynamoDbBase
@@ -117,13 +126,23 @@ internal class MtBackupManagerImplTest {
                 return MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE, ImmutableSet.of())
             }
         }
-        for (i in 1..10) {
-            backupManager.createMtBackup(
-                    CreateMtBackupRequest("testListBackup-$i", "mt_shared_table_static_b_no_lsi"),
-                    sharedTableBinaryHashKey)
-        }
+        val backupIds = Lists.newArrayList<String>()
+        try {
+            for (i in 1..10) {
+                val backupId = "testListBackup-$i"
+                backupIds.add(backupId)
+                backupManager.createMtBackup(
+                        CreateMtBackupRequest(backupId, "mt_shared_table_static_b_no_lsi"),
+                        sharedTableBinaryHashKey)
+            }
 
-        val allBackups: List<MtBackupMetadata> = backupManager.listMtBackups()
-        assertTrue(allBackups.size >= 10)
+            val allBackups: List<MtBackupMetadata> = backupManager.listMtBackups()
+            assertTrue(allBackups.size >= 10)
+        } finally {
+            for (backup in backupIds) {
+                backupManager.deleteBackup(backup)
+                assertNull(backupManager.getBackup(backup))
+            }
+        }
     }
 }

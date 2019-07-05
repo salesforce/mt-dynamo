@@ -9,6 +9,9 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.amazonaws.services.s3.model.AmazonS3Exception
+import com.amazonaws.services.s3.model.DeleteObjectRequest
+import com.amazonaws.services.s3.model.DeleteObjectsRequest
 import com.amazonaws.services.s3.model.ListObjectsV2Request
 import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.ObjectMetadata
@@ -68,14 +71,46 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         return ret
     }
 
-    override fun getBackup(id: String): MtBackupMetadata {
-        val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
-        return gson.fromJson<MtBackupMetadata>(backupFile.objectContent.bufferedReader(), MtBackupMetadata::class.java)
+    override fun getBackup(id: String): MtBackupMetadata? {
+        try {
+            val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
+            return gson.fromJson<MtBackupMetadata>(backupFile.objectContent.bufferedReader(), MtBackupMetadata::class.java)
+        } catch (e: AmazonS3Exception) {
+            if ("NoSuchKey".equals(e.errorCode)) {
+                return null
+            } else {
+                throw e
+            }
+        }
+
     }
 
-    override fun terminateBackup(id: String): MtBackupMetadata {
-        TODO("not implemented")
+    override fun deleteBackup(id: String): MtBackupMetadata? {
+        var continuationToken : String? = null
+        var deleteCount = 0
+        do {
+            val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
+                    ListObjectsV2Request()
+                            //.withDelimiter("/")
+                            .withBucketName(s3BucketName)
+                            .withContinuationToken(continuationToken)
+                            .withPrefix("$backupDir/${id}/"))
+            continuationToken = listBucketResult.continuationToken
+            if (listBucketResult.objectSummaries.size > 0) {
+                deleteCount += listBucketResult.objectSummaries.size
+                s3.deleteObjects(DeleteObjectsRequest(s3BucketName).withKeys(
+                        listBucketResult.objectSummaries.stream()
+                                .map { DeleteObjectsRequest.KeyVersion(it.key) }
+                                .collect(Collectors.toList()) as List<DeleteObjectsRequest.KeyVersion>).withQuiet(true))
+            }
+        } while (listBucketResult.isTruncated)
+        println("Deleted $deleteCount backup files for $id")
+        val ret = getBackup(id)
+        s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
+        return ret
     }
+
+
 
     /**
      * Go through the shared data table and dump full row dumps into S3, segregated by tenant-table.
