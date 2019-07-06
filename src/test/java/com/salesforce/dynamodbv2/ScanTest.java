@@ -28,7 +28,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtScanResult;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
@@ -139,6 +138,7 @@ class ScanTest {
         });
     }
 
+
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAllTenants(TestArgument testArgument) {
@@ -164,16 +164,18 @@ class ScanTest {
         boolean isFound = false;
         for (String tableName: tableNames) {
             ScanResult scanResult = testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName));
-            assertTrue(scanResult instanceof MtScanResult);
+
             List<Map<String, AttributeValue>> items = scanResult.getItems();
             if (items != null && !items.isEmpty()) {
                 isFound = true;
-                assertEquals(((MtScanResult)scanResult).getTenants().size(), items.size());
-                assertEquals(((MtScanResult)scanResult).getVirtualTables().size(), items.size());
+                assertTrue(scanResult.getItems().stream().allMatch(
+                    row -> row.containsKey(MtAmazonDynamoDbBase.TENANT_KEY)
+                        && row.containsKey(MtAmazonDynamoDbBase.VIRTUAL_TABLE_KEY)));
             }
         }
         assertTrue(isFound, "all scans found no items... that's not right");
     }
+
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
