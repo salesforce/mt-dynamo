@@ -4,9 +4,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.Identity;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import java.util.List;
 
 /**
  * This interface (including all contained interfaces and methods) is
@@ -96,34 +94,4 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
                 + '}';
         }
     }
-
-    /**
-     * Wrap a scan result from a multi tenant scan, to associate tenant information per scan result item.
-     **/
-    class MtScanResult extends ScanResult {
-        private final List<String> tenants;
-        private final List<String> virtualTables;
-
-        public MtScanResult(ScanResult scanResult, List<String> tenants, List<String> virtualTables) {
-            super();
-            this.withLastEvaluatedKey(scanResult.getLastEvaluatedKey());
-            this.withConsumedCapacity(scanResult.getConsumedCapacity());
-            this.withCount(scanResult.getCount());
-            this.withScannedCount(scanResult.getScannedCount());
-            this.setSdkHttpMetadata(scanResult.getSdkHttpMetadata());
-            this.setSdkResponseMetadata(scanResult.getSdkResponseMetadata());
-            this.withItems(scanResult.getItems());
-            this.tenants = tenants;
-            this.virtualTables = virtualTables;
-        }
-
-        public List<String> getTenants() {
-            return tenants;
-        }
-
-        public List<String> getVirtualTables() {
-            return virtualTables;
-        }
-    }
-
 }

@@ -218,15 +218,13 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
             Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
-            ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
-            List<String> tenants = new ArrayList(result.getCount());
-            List<String> tables = new ArrayList(result.getCount());
-            for (int i = 0; i < result.getCount(); i++) {
-                tenants.add(tenantTable[0]);
-                tables.add(tenantTable[1]);
-            }
-            return new MtScanResult(result, tenants, tables);
+            ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
+            result.getItems().stream().forEach(row -> {
+                    row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
+                    row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
+                });
+            return result;
         } else {
             scanRequest = scanRequest.clone();
             scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));

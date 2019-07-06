@@ -106,6 +106,12 @@ import java.util.Map;
  */
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
+    /**
+     * Special "column" key returned to client on multi-tenant scans
+     */
+    public static final String TENANT_KEY = "mt:context";
+    public static final String VIRTUAL_TABLE_KEY = "mt:tableName";
+
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
 
@@ -324,12 +330,20 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables() {
-        return getAmazonDynamoDb().listTables();
+        if (mtContext.getContextOpt().isEmpty()) {
+            return getAmazonDynamoDb().listTables();
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        return getAmazonDynamoDb().listTables(exclusiveStartTableName);
+        if (mtContext.getContextOpt().isEmpty()) {
+            return getAmazonDynamoDb().listTables(exclusiveStartTableName);
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override

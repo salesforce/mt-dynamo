@@ -473,9 +473,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
             getFieldValueFunction(scanRequest.getTableName());
         List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
-        List<String> tenants = new ArrayList<>(scanResult.getItems().size());
-        List<String> virtualTables = new ArrayList<>(scanResult.getItems().size());
-        ScanResult ret = new MtScanResult(scanResult, tenants, virtualTables);
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             // go through each row in the scan, and pull out the tenant and table information from the primary key
             // to separate attributes in each items map
@@ -483,12 +480,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
                 tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
-            tenants.add(virtualFieldKeys.getContext());
-            virtualTables.add(virtualFieldKeys.getTableName());
+            unpackedVirtualItem.put(VIRTUAL_TABLE_KEY, new AttributeValue(virtualFieldKeys.getTableName()));
+            unpackedVirtualItem.put(TENANT_KEY, new AttributeValue(virtualFieldKeys.getContext()));
             unpackedItems.add(unpackedVirtualItem);
         }
-        ret.withItems(unpackedItems);
-        return ret.withItems(unpackedItems);
+
+        return scanResult.withItems(unpackedItems);
     }
 
     @VisibleForTesting
