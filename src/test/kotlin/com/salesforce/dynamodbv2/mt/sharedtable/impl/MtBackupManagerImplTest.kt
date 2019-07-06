@@ -111,7 +111,6 @@ internal class MtBackupManagerImplTest {
 
         backupManager.deleteBackup(backupId)
         assertNull(backupManager.getBackup(backupId))
-
     }
 
     @Test
@@ -133,7 +132,7 @@ internal class MtBackupManagerImplTest {
                 .build()
         val backupManager: MtBackupManager = object : MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket) {
 
-            //don't actually create data, just create a metadata marker
+            // don't actually create data, just create a metadata marker
             override fun createBackupData(
                 createMtBackupRequest: CreateMtBackupRequest,
                 mtDynamo: MtAmazonDynamoDbBase

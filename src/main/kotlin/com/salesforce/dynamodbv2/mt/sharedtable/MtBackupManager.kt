@@ -34,20 +34,24 @@ interface MtBackupManager {
 
     fun getTenantTableBackup(id: String): TenantTableBackupMetadata
 
-    fun restoreTenantTableBackup(restoreMtBackupRequest: RestoreMtBackupRequest,
-                                 mtDynamo: MtAmazonDynamoDbBase,
-                                 mtContext: MtAmazonDynamoDbContextProvider): TenantRestoreMetadata
+    fun restoreTenantTableBackup(
+        restoreMtBackupRequest: RestoreMtBackupRequest,
+        mtDynamo: MtAmazonDynamoDbBase,
+        mtContext: MtAmazonDynamoDbContextProvider
+    ): TenantRestoreMetadata
 
     fun listMtBackups(): List<MtBackupMetadata>
 }
 
 data class MtBackupMetadata(val mtBackupId: String, val status: Status, val tenantTables: Set<TenantTableBackupMetadata>)
 
-data class TenantTableBackupMetadata(val backupId: String,
-                                     val status: Status,
-                                     val tenantId: String,
-                                     val virtualTableName: String,
-                                     val backupKeys: Set<String>)
+data class TenantTableBackupMetadata(
+    val backupId: String,
+    val status: Status,
+    val tenantId: String,
+    val virtualTableName: String,
+    val backupKeys: Set<String>
+)
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
