@@ -17,6 +17,7 @@ import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.util.Map;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -84,6 +85,11 @@ class ItemMapperTest {
         @Override
         public AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute) {
             return new AttributeValue().withS(qualifiedAttribute.getS().substring(7));
+        }
+
+        @Override
+        public Predicate<AttributeValue> createFilter() {
+            return v -> true;
         }
     }
 

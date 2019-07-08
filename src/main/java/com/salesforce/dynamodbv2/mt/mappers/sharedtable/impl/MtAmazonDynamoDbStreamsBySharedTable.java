@@ -11,11 +11,10 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -55,6 +54,31 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         return super.getShardIterator(request);
     }
 
+    @Override
+    protected MtGetRecordsResult getMtRecords(GetRecordsRequest request, StreamArn streamArn) {
+        final GetRecordsResult result = dynamoDbStreams.getRecords(request);
+        final List<Record> records = result.getRecords();
+        final String nextIterator = result.getNextShardIterator();
+        if (records.isEmpty()) {
+            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator);
+        }
+
+        final Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
+            mtDynamoDb.getFieldValueFunction(streamArn.getTableName());
+        final List<Record> mtRecords = new ArrayList<>(records.size());
+        for (Record record : records) {
+            final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
+            mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () ->
+                mtRecords.add(mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record))
+            );
+        }
+
+        return new MtGetRecordsResult()
+            .withRecords(mtRecords)
+            .withNextShardIterator(nextIterator)
+            .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
+    }
+
     /**
      * Keeps fetching records until it reaches:
      * <ol>
@@ -66,8 +90,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      * stream shard, so that clients can request a new shard iterator where they left off.
      */
     @Override
-    protected MtGetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
-                                            Predicate<MtRecord> recordFilter) {
+    protected MtGetRecordsResult getMtRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
         return getRecordsTime.record(() -> {
             Optional.ofNullable(request.getLimit()).ifPresent(limit -> checkArgument(limit > 0 && limit <= MAX_LIMIT));
 
@@ -79,9 +102,13 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withRecords(new ArrayList<>(limit))
                 .withNextShardIterator(request.getShardIterator());
 
+            final RecordMapper recordMapper =
+                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).getRecordMapper();
+            final Predicate<Record> recordFilter = recordMapper.createFilter();
+
             int recordsLoaded = 0;
             do {
-                recordsLoaded += loadRecords(result, limit, recordMapper, recordFilter);
+                recordsLoaded += loadRecords(result, limit, recordFilter, recordMapper);
             } while (result.getRecords().size() < limit     // only continue if we need more tenant records,
                 && recordsLoaded % MAX_LIMIT == 0           // have not reached current end of the underlying stream,
                 && result.getNextShardIterator() != null    // have not reached absolute end of underlying stream,
@@ -93,6 +120,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
             return result;
         });
+
     }
 
     /**
@@ -101,18 +129,18 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      */
     private int loadRecords(MtGetRecordsResult mtResult,
                             int limit,
-                            Function<Record, MtRecord> recordMapper,
-                            Predicate<MtRecord> recordFilter) {
+                            Predicate<Record> recordFilter,
+                            Function<Record, MtRecord> recordMapper) {
         // retrieve max number of records from underlying stream (and retry below if we got too many)
         final GetRecordsRequest request = new GetRecordsRequest().withLimit(MAX_LIMIT)
             .withShardIterator(mtResult.getNextShardIterator());
         final GetRecordsResult result = dynamoDbStreams.getRecords(request);
         final List<Record> records = result.getRecords();
 
-        // otherwise, transform records and add those that match the filter
+        // otherwise, transform records and add those that match the createFilter
         final int remaining = limit - mtResult.getRecords().size();
         final List<Record> innerMtRecords = new ArrayList<>(remaining);
-        final int consumed = addRecords(innerMtRecords, remaining, records, recordMapper, recordFilter);
+        final int consumed = addRecords(innerMtRecords, remaining, records, recordFilter, recordMapper);
 
         // If we consumed all records, then we can return the records and next shard iterator
         if (consumed == records.size()) {
@@ -128,15 +156,15 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             // iterator would skip the records that were not returned. Therefore, we retry the load request with the
             // number of consumed records as the call limit, so that we get at most as many tenant records as needed for
             // the client-specified limit.
-            return retryLoadRecords(mtResult, limit, recordMapper, recordFilter, consumed);
+            return retryLoadRecords(mtResult, limit, recordFilter, recordMapper, consumed);
         }
     }
 
     // helper method for loadRecords (extracted to avoid accidentally referencing the wrong local variables)
     private int retryLoadRecords(MtGetRecordsResult mtResult,
                                  int limit,
+                                 Predicate<Record> recordFilter,
                                  Function<Record, MtRecord> recordMapper,
-                                 Predicate<MtRecord> recordFilter,
                                  int innerLimit) {
         final GetRecordsRequest request = new GetRecordsRequest().withLimit(innerLimit)
             .withShardIterator(mtResult.getNextShardIterator());
@@ -145,7 +173,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         mtResult.setNextShardIterator(result.getNextShardIterator());
         // shouldn't happen, but just to be safe
         if (!records.isEmpty()) {
-            final int consumed = addRecords(mtResult.getRecords(), limit, records, recordMapper, recordFilter);
+            final int consumed = addRecords(mtResult.getRecords(), limit, records, recordFilter, recordMapper);
             checkState(consumed == records.size()); // can't happen unless stream order changes
             mtResult.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
         }
@@ -159,68 +187,20 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     private static int addRecords(List<? super MtRecord> mtRecords,
                                   int limit,
                                   List<? extends Record> records,
-                                  Function<Record, MtRecord> recordMapper,
-                                  Predicate<MtRecord> recordFilter) {
+                                  Predicate<Record> recordFilter,
+                                  Function<Record, MtRecord> recordMapper) {
         int consumedRecords = 0;
         for (Record record : records) {
-            MtRecord mtRecord = recordMapper.apply(record);
-            if (recordFilter.test(mtRecord)) {
+            if (recordFilter.test(record)) {
                 if (mtRecords.size() >= limit) {
                     break;
                 } else {
-                    mtRecords.add(mtRecord);
+                    mtRecords.add(recordMapper.apply(record));
                 }
             }
             consumedRecords++;
         }
         return consumedRecords;
-    }
-
-    @Override
-    protected Predicate<MtRecord> getRecordFilter(StreamArn arn) {
-        Predicate<MtRecord> defaultPredicate = super.getRecordFilter(arn);
-        return mtRecord ->
-            mtDynamoDb.getMtContext().withContext(mtRecord.getContext(), this::isStreamEnabled, mtRecord.getTableName())
-                && defaultPredicate.test(mtRecord);
-    }
-
-    private boolean isStreamEnabled(String tableName) {
-        return mtDynamoDb.getTableMapping(tableName).getVirtualTable().getStreamSpecification().isStreamEnabled();
-    }
-
-    @Override
-    protected Function<Record, MtRecord> getRecordMapper(StreamArn arn) {
-        Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
-            mtDynamoDb.getFieldValueFunction(arn.getTableName());
-        return record -> mapRecord(fieldValueFunction, record);
-    }
-
-    private MtRecord mapRecord(Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction,
-                               Record record) {
-        FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
-        MtAmazonDynamoDbContextProvider mtContext = mtDynamoDb.getMtContext();
-        // execute in record tenant context to get table mapping
-
-        TableMapping tableMapping = mtContext.withContext(fieldValue.getContext(),
-            mtDynamoDb::getTableMapping, fieldValue.getTableName());
-        ItemMapper itemMapper = tableMapping.getItemMapper();
-        StreamRecord streamRecord = record.getDynamodb();
-        return new MtRecord()
-            .withAwsRegion(record.getAwsRegion())
-            .withEventID(record.getEventID())
-            .withEventName(record.getEventName())
-            .withEventSource(record.getEventSource())
-            .withEventVersion(record.getEventVersion())
-            .withContext(fieldValue.getContext())
-            .withTableName(fieldValue.getTableName())
-            .withDynamodb(new StreamRecord()
-                .withKeys(itemMapper.reverse(streamRecord.getKeys()))
-                .withNewImage(itemMapper.reverse(streamRecord.getNewImage()))
-                .withOldImage(itemMapper.reverse(streamRecord.getOldImage()))
-                .withSequenceNumber(streamRecord.getSequenceNumber())
-                .withStreamViewType(streamRecord.getStreamViewType())
-                .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime())
-                .withSizeBytes(streamRecord.getSizeBytes()));
     }
 
 }

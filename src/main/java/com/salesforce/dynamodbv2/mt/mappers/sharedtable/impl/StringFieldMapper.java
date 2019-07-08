@@ -16,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.nio.ByteBuffer;
 import java.util.Base64;
+import java.util.function.Predicate;
 
 /**
  * Adds and removes prefixes to fields based on the tenant context.
@@ -46,6 +47,13 @@ class StringFieldMapper implements FieldMapper {
         checkArgument(fieldMapping.getSource().getType() == S);
         FieldValue<String> fieldValue = StringFieldPrefixFunction.INSTANCE.reverse(qualifiedAttribute.getS());
         return convertFromString(fieldMapping.getTarget().getType(), fieldValue.getValue());
+    }
+
+    @Override
+    public Predicate<AttributeValue> createFilter() {
+        final Predicate<String> prefixFilter =
+            StringFieldPrefixFunction.INSTANCE.createFilter(mtContext.getContext(), virtualTableName);
+        return attributeValue -> prefixFilter.test(attributeValue.getS());
     }
 
     private String convertToStringNotNull(ScalarAttributeType type, AttributeValue attributeValue) {
