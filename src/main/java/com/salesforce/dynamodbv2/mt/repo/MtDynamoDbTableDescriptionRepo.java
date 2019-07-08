@@ -16,28 +16,38 @@ import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -145,6 +155,33 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return tableDescription;
     }
 
+    @Override
+    public Map<TenantTable, CreateTableRequest> getAllMtTables() {
+        ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
+        Map<TenantTable, CreateTableRequest> ret = Maps.newHashMap();
+        ScanResult scanResult;
+        scanResult = amazonDynamoDb.scan(scanReq);
+        ret.putAll(scanResult.getItems().stream()
+            .collect(Collectors.toMap(
+                rowItem ->
+                    getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS())
+                ,
+                rowItem -> {
+                    String tableDataJson = rowItem.get(tableDescriptionTableDataField).getS();
+                    return getCreateTableRequest(jsonToTableData(tableDataJson));
+                })));
+
+        if (scanResult.getCount() == scanReq.getLimit()) {
+            throw new IllegalStateException("Pagination not yet implemented, missing results");
+        }
+        return ret;
+    }
+
+    private TenantTable getTenantTableFromHashKey(String hashKey) {
+        String[] parts = hashKey.split(Pattern.quote(delimiter));
+        return new TenantTable(parts[1], parts[0]);
+    }
+
     private String getTableDescriptionTableName() {
         try {
             cache.get(tableDescriptionTableName, () -> {
@@ -175,6 +212,45 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             pollIntervalSeconds);
     }
 
+    private CreateTableRequest getCreateTableRequest(TableDescription description) {
+        return new CreateTableRequest().withTableName(description.getTableName())
+            .withKeySchema(description.getKeySchema())
+            .withAttributeDefinitions(description.getAttributeDefinitions())
+            .withStreamSpecification(description.getStreamSpecification())
+            .withProvisionedThroughput(
+                getProvisionedThroughput(description.getProvisionedThroughput()))
+            .withGlobalSecondaryIndexes(getGlobalIndexes(description.getGlobalSecondaryIndexes()))
+            .withLocalSecondaryIndexes(getLocalIndexes(description.getLocalSecondaryIndexes()));
+    }
+
+
+    private List<GlobalSecondaryIndex> getGlobalIndexes(Collection<GlobalSecondaryIndexDescription> descriptions) {
+        return descriptions == null ?  null : descriptions
+            .stream()
+            .map(s->
+                new GlobalSecondaryIndex().withIndexName(s.getIndexName())
+                .withKeySchema(s.getKeySchema())
+                .withProjection(s.getProjection())
+                .withProvisionedThroughput(getProvisionedThroughput(s.getProvisionedThroughput())))
+            .collect(Collectors.toList());
+    }
+
+    private List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
+        return descriptions == null ? null :
+            descriptions.stream()
+                .map(s->
+                    new LocalSecondaryIndex()
+                        .withIndexName(s.getIndexName())
+                        .withKeySchema(s.getKeySchema())
+                        .withProjection(s.getProjection()))
+                .collect(Collectors.toList());
+    }
+
+    private ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
+        return description == null ? null :
+            new ProvisionedThroughput(description.getReadCapacityUnits(), description.getWriteCapacityUnits());
+    }
+
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
         TableDescription tableDescription = new TableDescription()
                 .withTableName(createTableRequest.getTableName())
@@ -182,21 +258,21 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
                 .withStreamSpecification(createTableRequest.getStreamSpecification());
 
-        // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
-        DynamoDbCapacity capacityUtil = new DynamoDbCapacity();
-        final boolean setProvisionedThroughput = (createTableRequest.getBillingMode() == null
-                || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-
-        if (setProvisionedThroughput) {
-            long readCapacityUnits = capacityUtil.getCapacity(
-                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
-            long writeCapacityUnits = capacityUtil.getCapacity(
-                    createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
-
-            tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                    .withReadCapacityUnits(readCapacityUnits)
-                    .withWriteCapacityUnits(writeCapacityUnits));
-        }
+        // // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
+        // DynamoDbCapacity capacityUtil = new DynamoDbCapacity();
+        // final boolean setProvisionedThroughput = (createTableRequest.getBillingMode() == null
+        //         || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
+        //
+        // if (setProvisionedThroughput) {
+        //     long readCapacityUnits = capacityUtil.getCapacity(
+        //             createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+        //     long writeCapacityUnits = capacityUtil.getCapacity(
+        //             createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
+        //
+        //     tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+        //             .withReadCapacityUnits(readCapacityUnits)
+        //             .withWriteCapacityUnits(writeCapacityUnits));
+        // }
 
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
@@ -213,16 +289,16 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withKeySchema(gsi.getKeySchema())
                         .withProjection(gsi.getProjection());
 
-                    if (setProvisionedThroughput) {
-                        long readCapacityUnits = capacityUtil.getCapacity(
-                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
-                        long writeCapacityUnits = capacityUtil.getCapacity(
-                                gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
-
-                        gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                                .withReadCapacityUnits(readCapacityUnits)
-                                .withWriteCapacityUnits(writeCapacityUnits));
-                    }
+                    // if (setProvisionedThroughput) {
+                    //     long readCapacityUnits = capacityUtil.getCapacity(
+                    //             gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
+                    //     long writeCapacityUnits = capacityUtil.getCapacity(
+                    //             gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
+                    //
+                    //     gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
+                    //             .withReadCapacityUnits(readCapacityUnits)
+                    //             .withWriteCapacityUnits(writeCapacityUnits));
+                    // }
                     return gsiDescription;
                 }).collect(Collectors.toList()));
         }
@@ -314,8 +390,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         }
 
         /**
-         * TODO: write Javadoc.
-         *
          * @return a newly created {@code MtDynamoDbTableDescriptionRepo} based on the contents of the
          *     {@code MtDynamoDbTableDescriptionRepoBuilder}
          */

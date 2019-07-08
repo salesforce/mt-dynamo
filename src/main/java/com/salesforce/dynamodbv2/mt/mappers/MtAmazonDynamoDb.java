@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.model.Identity;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import java.util.Objects;
 
 /**
  * This interface (including all contained interfaces and methods) is
@@ -92,6 +93,42 @@ public interface MtAmazonDynamoDb extends AmazonDynamoDB {
                 + ", tableName='" + tableName + '\''
                 + ", recordFields=" + super.toString()
                 + '}';
+        }
+    }
+
+    class TenantTable {
+        private final String virtualTable;
+        private final String tenant;
+
+        public TenantTable(String virtualTable, String tenant) {
+            this.virtualTable = virtualTable;
+            this.tenant = tenant;
+        }
+
+        public String getVirtualTable() {
+            return virtualTable;
+        }
+
+        public String getTenant() {
+            return tenant;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TenantTable that = (TenantTable) o;
+            return virtualTable.equals(that.virtualTable) &&
+                tenant.equals(that.tenant);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(virtualTable, tenant);
         }
     }
 
