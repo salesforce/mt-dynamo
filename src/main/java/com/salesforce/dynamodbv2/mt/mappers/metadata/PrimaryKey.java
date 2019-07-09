@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-
 import com.google.common.base.Preconditions;
 import java.util.Optional;
 
@@ -91,7 +90,7 @@ public class PrimaryKey {
             return false;
         }
 
-        PrimaryKey that = (PrimaryKey) o;
+        final PrimaryKey that = (PrimaryKey) o;
 
         return hashKey.equals(that.hashKey)
                 && hashKeyType == that.hashKeyType

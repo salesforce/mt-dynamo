@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
@@ -69,7 +70,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 public class MtAmazonDynamoDbStreamsBaseTest {
 
     protected static final String SHARED_TABLE_NAME = "SharedTable";
-    protected static final String[] TENANTS = {"tenant1", "tenant2"};
+    protected static final String[] TENANTS = { "tenant1", "tenant2" };
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsTest.class.getSimpleName() + ".";
     private static final String TENANT_TABLE_NAME = "TenantTable";
@@ -79,13 +80,13 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     /**
      * Test utility method.
      */
-    protected static CreateTableRequest newCreateTableRequest(String tableName) {
+    protected static CreateTableRequest newCreateTableRequest(String tableName, boolean binaryHashKey) {
         return new CreateTableRequest()
-            .withTableName(tableName)
+            .withTableName(tableName + (binaryHashKey ? "_b" : ""))
             .withKeySchema(new KeySchemaElement(ID_ATTR_NAME, HASH))
             .withAttributeDefinitions(
-                new AttributeDefinition(ID_ATTR_NAME, S),
-                new AttributeDefinition(INDEX_ID_ATTR_NAME, S))
+                new AttributeDefinition(ID_ATTR_NAME, binaryHashKey ? B : S),
+                new AttributeDefinition(INDEX_ID_ATTR_NAME, binaryHashKey ? B : S))
             .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
             .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
                 .withIndexName("index")
@@ -100,7 +101,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
     protected static void createTenantTables(AmazonDynamoDB mtDynamoDb) {
         for (String tenant : TENANTS) {
-            MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(newCreateTableRequest(TENANT_TABLE_NAME)));
+            MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(newCreateTableRequest(
+                TENANT_TABLE_NAME, false)));
         }
     }
 
@@ -175,7 +177,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         if (!(actual instanceof MtRecord)) {
             return false;
         }
-        MtRecord mtRecord = (MtRecord) actual;
+        final MtRecord mtRecord = (MtRecord) actual;
         return Objects.equals(expected.getContext(), mtRecord.getContext())
             && Objects.equals(expected.getTableName(), mtRecord.getTableName())
             && Objects.equals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys())
@@ -234,21 +236,25 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
-            // enable logging
-            // dynamoDb = MtAmazonDynamoDbLogger.builder()
-            //     .withAmazonDynamoDb(dynamoDb)
-            //     .withLogAll()
-            //     .withContext(MT_CONTEXT).build();
-            // }
-
             MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
-                .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME))
+                .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, false))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
             MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
+                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build());
+
+            MtAmazonDynamoDbBySharedTable indexBinaryHkMtDynamoDb = SharedTableBuilder.builder()
+                .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
+                .withAmazonDynamoDb(dynamoDb)
+                .withTablePrefix(prefix)
+                .withContext(MT_CONTEXT)
+                .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
+                .build();
+            MtAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(
+                indexBinaryHkMtDynamoDb,
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build());
 
             MtAmazonDynamoDbByTable tableMtDynamoDb = MtAmazonDynamoDbByTable.builder()
@@ -261,6 +267,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             return java.util.stream.Stream.of(
                 Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams),
+                Arguments.of(indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreams),
                 Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams)
             );
         }
@@ -343,7 +350,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             // create table with streams enabled
             String tableWithStreamsEnabled = TENANT_TABLE_NAME + "_streams_enabled";
             CreateTableRequest createTableRequestStreamsEnabled =
-                newCreateTableRequest(tableWithStreamsEnabled)
+                newCreateTableRequest(tableWithStreamsEnabled, false)
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamEnabled(true)
                         .withStreamViewType(NEW_AND_OLD_IMAGES));
@@ -352,7 +359,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             // create table with streams disabled
             String tableWithStreamsDisabled = TENANT_TABLE_NAME + "_streams_disabled";
             CreateTableRequest createTableRequestStreamsDisabled =
-                newCreateTableRequest(tableWithStreamsDisabled)
+                newCreateTableRequest(tableWithStreamsDisabled, false)
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamEnabled(false)
                     );

@@ -56,7 +56,7 @@ public class LocalDynamoDbServer {
             try {
                 System.setProperty("sqlite4java.library.path", "src/test/resources/bin");
                 server = ServerRunner
-                    .createServerFromCommandLineArgs(new String[]{"-inMemory", "-port", String.valueOf(port)});
+                    .createServerFromCommandLineArgs(new String[] { "-inMemory", "-port", String.valueOf(port) });
                 server.start();
                 running = true;
                 log.info("started dynamodblocal on port " + port);

@@ -1,13 +1,8 @@
 package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl.BASE_CONTEXT;
 
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -23,8 +18,8 @@ public class StreamArn {
         private static final String VIRTUAL_FORMAT =
             "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
 
-        private final String context; // (not URL encoded)
-        private final String tenantTableName; // (not URL encoded)
+        private final String context;
+        private final String tenantTableName;
 
         MtStreamArn(String prefix, String tableName, String streamLabel, String context, String tenantTableName) {
             super(prefix, tableName, streamLabel);
@@ -33,8 +28,8 @@ public class StreamArn {
         }
 
         @Override
-        public String getContext() {
-            return this.context;
+        public Optional<String> getContext() {
+            return Optional.of(this.context);
         }
 
         @Override
@@ -44,8 +39,7 @@ public class StreamArn {
 
         @Override
         public boolean matches(MtRecord record) {
-            return this.getContext().equals(record.getContext())
-                && this.getTenantTableName().equals(Optional.of(record.getTableName()));
+            return this.context.equals(record.getContext()) && this.tenantTableName.equals(record.getTableName());
         }
 
         @Override
@@ -59,7 +53,7 @@ public class StreamArn {
             if (!super.equals(o)) {
                 return false;
             }
-            MtStreamArn that = (MtStreamArn) o;
+            final MtStreamArn that = (MtStreamArn) o;
             return Objects.equals(context, that.context) && Objects.equals(tenantTableName, that.tenantTableName);
         }
 
@@ -68,32 +62,11 @@ public class StreamArn {
             return Objects.hash(super.hashCode(), context, tenantTableName);
         }
 
-        // URL encodes {@code context} and {@code tenantTableName}
-        // TODO: don't re-encode on multiple calls to {@code toString}? (i.e., do it once and save it)?
         @Override
         public String toString() {
-            return String.format(VIRTUAL_FORMAT, super.toString(), wrappedEncoder(context),
-                wrappedEncoder(tenantTableName));
+            return String.format(VIRTUAL_FORMAT, super.toString(), context, tenantTableName);
         }
 
-    }
-
-    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
-    private static String wrappedDecoder(String s) {
-        try {
-            return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException uee) {
-            throw new IllegalArgumentException("Cannot decode " + s, uee);
-        }
-    }
-
-    // unchecks potential UnsupportedEncodingException (as IllegalArgumentException)
-    private static String wrappedEncoder(String s) {
-        try {
-            return URLEncoder.encode(s, StandardCharsets.UTF_8.name());
-        } catch (UnsupportedEncodingException uee) {
-            throw new IllegalArgumentException("Cannot encode " + s, uee);
-        }
     }
 
     private static final char QUALIFIER_SEPARATOR = ':';
@@ -110,14 +83,14 @@ public class StreamArn {
      * Parses ARN from string value and assigns the given context and tenant table.
      *
      * @param arn Arn to parse.
-     * @param unencodedContext Tenant context (not URL encoded).
-     * @param unencodedMtTableName Tenant table (not URL encoded).
+     * @param context Tenant context.
+     * @param tenantTableName Tenant table.
      * @return Parsed arn.
      */
-    public static StreamArn fromString(String arn, String unencodedContext, String unencodedMtTableName) {
+    public static StreamArn fromString(String arn, String context, String tenantTableName) {
         final StreamArn streamArn = fromString(arn);
-        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, unencodedContext,
-            unencodedMtTableName);
+        return new MtStreamArn(streamArn.qualifier, streamArn.tableName, streamArn.streamLabel, context,
+            tenantTableName);
     }
 
     /**
@@ -165,7 +138,7 @@ public class StreamArn {
         start += CONTEXT_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end != -1);
-        final String decodedContext = wrappedDecoder(arn.substring(start, end));
+        final String context = arn.substring(start, end);
 
         // tenant table
         start = end + 1;
@@ -173,9 +146,9 @@ public class StreamArn {
         start += TENANT_TABLE_SEGMENT.length();
         end = arn.indexOf(RESOURCE_SEPARATOR, start);
         checkArgument(end == -1);
-        final String decodedTenantTableName = wrappedDecoder(arn.substring(start));
+        final String tenantTableName = arn.substring(start);
 
-        return new MtStreamArn(qualifier, tableName, streamLabel, decodedContext, decodedTenantTableName);
+        return new MtStreamArn(qualifier, tableName, streamLabel, context, tenantTableName);
     }
 
     private final String qualifier;
@@ -202,8 +175,8 @@ public class StreamArn {
      *
      * @return Context in this arn.
      */
-    public String getContext() {
-        return BASE_CONTEXT;
+    public Optional<String> getContext() {
+        return Optional.empty();
     }
 
     /**
@@ -247,7 +220,7 @@ public class StreamArn {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StreamArn that = (StreamArn) o;
+        final StreamArn that = (StreamArn) o;
         return Objects.equals(qualifier, that.qualifier)
             && Objects.equals(tableName, that.tableName)
             && Objects.equals(streamLabel, that.streamLabel);

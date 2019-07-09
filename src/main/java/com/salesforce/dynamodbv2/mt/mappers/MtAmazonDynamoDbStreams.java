@@ -20,7 +20,7 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
      * Extends {@link GetRecordsResult} to add the last sequence number observed in the underlying multi-tenant stream,
      * so that clients can resume iteration where they left off if they don't hold on to the shard iterator.
      */
-    public class MtGetRecordsResult extends GetRecordsResult {
+    class MtGetRecordsResult extends GetRecordsResult {
 
         /**
          * <p>
@@ -65,7 +65,7 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
             if (!super.equals(o)) {
                 return false;
             }
-            MtGetRecordsResult that = (MtGetRecordsResult) o;
+            final MtGetRecordsResult that = (MtGetRecordsResult) o;
             return Objects.equals(lastSequenceNumber, that.lastSequenceNumber);
         }
 

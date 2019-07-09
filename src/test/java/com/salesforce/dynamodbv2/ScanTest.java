@@ -14,7 +14,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -32,12 +31,14 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Function;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 
@@ -64,7 +65,8 @@ class ScanTest {
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
                 .build(),
-                testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0));
+                executeScan(exclusiveStartKey -> testArgument.getAmazonDynamoDb()
+                    .scan(scanRequest.withExclusiveStartKey(exclusiveStartKey))).get(0));
             assertEquals(TABLE1, scanRequest.getTableName());
             assertEquals(filterExpression, scanRequest.getFilterExpression());
             assertEquals(expressionAttrNames, scanRequest.getExpressionAttributeNames());
@@ -77,8 +79,8 @@ class ScanTest {
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> assertEquals(
             ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-            .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-            .build(),
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build(),
             testArgument.getAmazonDynamoDb().scan(new ScanRequest()
                 .withTableName(TABLE1)
                 .withScanFilter(ImmutableMap.of(
@@ -102,7 +104,9 @@ class ScanTest {
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
                 .build(),
-                testArgument.getAmazonDynamoDb().scan(scanRequest).getItems().get(0));
+                executeScan(exclusiveStartKey ->
+                    testArgument.getAmazonDynamoDb().scan(scanRequest).withLastEvaluatedKey(exclusiveStartKey))
+                    .get(0));
             assertEquals(TABLE1, scanRequest.getTableName()); // assert no side effects
             assertEquals(filterExpression, scanRequest.getFilterExpression()); // assert no side effects
             assertEquals(expressionAttrNames, scanRequest.getExpressionAttributeNames()); // assert no side effects
@@ -114,8 +118,9 @@ class ScanTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAll(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            final Set<Map<String, AttributeValue>> items = new HashSet<>(testArgument.getAmazonDynamoDb()
-                .scan(new ScanRequest().withTableName(TABLE1)).getItems());
+            List<Map<String, AttributeValue>> items = executeScan(
+                exclusiveStartKey -> testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(TABLE1)
+                    .withExclusiveStartKey(exclusiveStartKey)));
             assertEquals(2, items.size());
             final Map<String, AttributeValue> someValue = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                         HASH_KEY_VALUE)
@@ -126,40 +131,53 @@ class ScanTest {
                     .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
                     .build();
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
-            assertEquals(expectedSet, items);
+            assertEquals(expectedSet, new HashSet<>(items));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanWithPaging(TestArgument testArgument) {
-        testArgument.forEachOrgContext(org -> scanAndAssertItemKeys(scanTestSetup.orgItemKeys.get(org),
-            testArgument.getAmazonDynamoDb(),
-            testArgument.getHashKeyAttrType()));
+        testArgument.forEachOrgContext(org -> scanAndAssertItemKeys(
+            scanTestSetup.orgItemKeys.get(org),
+            exclusiveStartKey -> testArgument.getAmazonDynamoDb().scan(new ScanRequest(TABLE1)
+                .withLimit(10).withExclusiveStartKey(exclusiveStartKey)),
+            testArgument.getHashKeyAttrType()
+        ));
     }
 
     private void scanAndAssertItemKeys(Set<Integer> expectedItems,
-        AmazonDynamoDB amazonDynamoDb,
-        ScalarAttributeType hashKeyAttrType) {
+                                       Function<Map<String, AttributeValue>, ScanResult> scanExecutor,
+                                       ScalarAttributeType hashKeyAttrType) {
+        List<Map<String, AttributeValue>> items = executeScan(scanExecutor);
+
+        if (items.isEmpty()) {
+            assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
+        } else {
+            assertTrue(items.stream()
+                .map(i -> i.get(HASH_KEY_FIELD))
+                .map(i -> attributeValueToString(hashKeyAttrType, i))
+                .map(Integer::parseInt)
+                .allMatch(expectedItems::remove));
+        }
+
+        assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
+    }
+
+    /**
+     * Executes a ScanRequest and iterates through pages until a scan result that has an empty lastEvaluatedKey
+     * is found.
+     */
+    private List<Map<String, AttributeValue>> executeScan(
+        Function<Map<String, AttributeValue>, ScanResult> scanExecutor) {
+        List<Map<String, AttributeValue>> items = new ArrayList<>();
         Map<String, AttributeValue> exclusiveStartKey = null;
         do {
-            ScanResult scanResult = amazonDynamoDb
-                .scan(new ScanRequest(TABLE1).withLimit(10).withExclusiveStartKey(exclusiveStartKey));
+            ScanResult scanResult = scanExecutor.apply(exclusiveStartKey);
             exclusiveStartKey = scanResult.getLastEvaluatedKey();
-            List<Map<String, AttributeValue>> items = scanResult.getItems();
-
-            if (items.isEmpty()) {
-                assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
-                assertNull(exclusiveStartKey);
-            } else {
-                assertTrue(items.stream()
-                    .map(i -> i.get(HASH_KEY_FIELD))
-                    .map(i -> attributeValueToString(hashKeyAttrType, i))
-                    .map(Integer::parseInt)
-                    .allMatch(expectedItems::remove));
-            }
+            items.addAll(scanResult.getItems());
         } while (exclusiveStartKey != null);
-        assertTrue(expectedItems.isEmpty(), "Some expected items were not returned: " + expectedItems);
+        return items;
     }
 
     private static class ScanTestSetup extends DefaultTestSetup {
@@ -169,12 +187,12 @@ class ScanTest {
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
             CreateTableRequest createTableRequest) {
-            int ordinal = (Integer.parseInt(org.substring(org.indexOf("-") + 1)) - 1) % ORGS_PER_TEST;
-            int putCount = ordinal < orgPutCounts.size() ? orgPutCounts.get(ordinal) : new Random().nextInt(10);
             getMtContext().setContext(org);
             Set<Integer> itemKeys = new HashSet<>();
             orgItemKeys.put(org, itemKeys);
             // insert some data for another tenant as noise
+            int ordinal = (Integer.parseInt(org.substring(org.indexOf("-") + 1)) - 1) % ORGS_PER_TEST;
+            int putCount = ordinal < orgPutCounts.size() ? orgPutCounts.get(ordinal) : new Random().nextInt(10);
             for (int i = 0; i < putCount; i++) {
                 amazonDynamoDb.putItem(
                     new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(

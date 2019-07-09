@@ -16,7 +16,14 @@ See details below on each of the 3 tenant storage schemes.  Further details are 
 Note: Not all `AmazonDynamoDB` methods are currently supported.  See Javadoc for details.
 
 ## Usage
-
+Importing
+```xml
+        <dependency>
+            <groupId>com.salesforce.dynamodb</groupId>
+            <artifactId>mt-dynamodb</artifactId>
+            <version>${mt-dynamodb-version}</version>
+        </dependency>
+```
 ### Multitenant Context
 
 `MtAmazonDynamoDbContextProvider`
@@ -67,10 +74,10 @@ See Javadoc for `MtAmazonDynamoDbByTable` for more details.  See `MtAmazonDynamo
 
 Allows for storing all tenant data in a set of shared tables, dividing tenants by prefixing the table's `HASH` key field with the tenant identifier.  [bySharedTable](docs/bySharedTable) shows an example of how data looks in its persisted state.
 
-To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLEMETADATA`.  Data will be stored in tables starting with the name `mt_sharedtablestatic_`.
+To use, pass your `AmazonDynamoDB` and `MtAmazonDynamoDbContextProvider` to the builder.  At runtime, the implementation will prefix the `HASH` key with the tenant identifier.  It will store table definitions in DynamoDB itself in a table called `_TABLE_METADATA`.  Data will be stored in tables starting with the name `mt_shared_table_static_`.
 
 ```java
-MtAmazonDynamoDbBySharedTableBuilders.SharedTable.builder()
+SharedTableBuilder.builder()
     .withAmazonDynamoDb(AmazonDynamoDBClientBuilder.standard().build())
     .withContext(mtContext)
     .build();
@@ -91,11 +98,11 @@ For example, you may want to split your tenants across 2 AWS accounts.  Within t
 Below is a list of supported chaining sequences, each with a link to an example of how data looks in its persisted state for the configured chaining sequence.
 
  * [table &rarr; account](docs/chains/byTableByAccount)
- * [sharedtable &rarr; account](docs/chains/bySharedTableByAccount)
- * [table &rarr; sharedtable](docs/chains/byTableBySharedTable)
- * [sharedtable &rarr; table](docs/chains/bySharedTableByTable)
- * [table &rarr; sharedtable &rarr; account](docs/chains/byTableBySharedTableByAccount)
- * [sharedtable &rarr; table &rarr; account](docs/chains/bySharedTableByTableByAccount)
+ * [shared_table &rarr; account](docs/chains/bySharedTableByAccount)
+ * [table &rarr; shared_table](docs/chains/byTableBySharedTable)
+ * [shared_table &rarr; table](docs/chains/bySharedTableByTable)
+ * [table &rarr; shared_table &rarr; account](docs/chains/byTableBySharedTableByAccount)
+ * [shared_table &rarr; table &rarr; account](docs/chains/bySharedTableByTableByAccount)
 
 See `DocGeneratorRunner` for examples of how to configure builders for each of the chain sequences.
 

@@ -5,6 +5,30 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
+## 0.9.42 (July 3, 2019)
+
+* Stream metrics refinements.
+* Introduced Micrometer metrics instrumentation.
+
+## 0.9.41 (July 1, 2019)
+
+* Performance improvements for stream caching.
+* Parameterized raw `Cache` types.
+
+## 0.9.40 (June 18, 2019)
+
+* Exposed the ability to provide implementations of table-description and table-mapping caches to `SharedTableBuilder`s.
+
+## 0.9.39 (May 24, 2019)
+
+* Fixed bug [Batch get that exceeds provisioned throughput or size limit results in `table metadata entry for 'SHARED.mt_shared_table_static_s_no_lsi' does not exist in SHARED._table_metadata` error](https://github.com/salesforce/mt-dynamo/issues/386)
+
+## 0.9.36 (May 23, 2019)
+
+* Add support for mapping to table with purely binary types
+* Make metadata-table description configurable
+* Add context validation
+
 ## 0.9.34 (April 9, 2019)
 
 * Fixed bug [querying secondary indexes may yield unexpected results if two tables in the same tenant have the same index name](https://github.com/salesforce/mt-dynamo/pull/342)

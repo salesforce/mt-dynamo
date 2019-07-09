@@ -121,6 +121,17 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withContext(MT_CONTEXT)
             .withTruncateOnDeleteTable(true).build();
 
+        /*
+         * bySharedTable w/ binary hash key
+         */
+        AmazonDynamoDB sharedTableBinaryHashKey = SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(amazonDynamoDb)
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .withBinaryHashKey(true)
+            .build();
+
         return ImmutableList.of(
             /*
              * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
@@ -128,7 +139,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
              */
             //byAccount,
             byTable,
-            sharedTable
+            sharedTable,
+            sharedTableBinaryHashKey
         );
     }
 

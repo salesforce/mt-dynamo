@@ -34,7 +34,7 @@ class SharedTableBuilderTest {
     private static String tablePrefix;
     private static final AtomicInteger counter = new AtomicInteger();
     private static String tableName;
-    private static final String metadataTableName = "_tablemetadata";
+    private static final String metadataTableName = "_table_metadata";
 
     @BeforeEach
     void beforeEach() {
@@ -42,10 +42,10 @@ class SharedTableBuilderTest {
         tablePrefix = TABLE_PREFIX_PREFIX + counter.incrementAndGet();
     }
 
-    private static final List<String> testTables = ImmutableList.of("mt_sharedtablestatic_s_s",
-        "mt_sharedtablestatic_s_n", "mt_sharedtablestatic_s_b", "mt_sharedtablestatic_s_nolsi",
-        "mt_sharedtablestatic_s_s_nolsi", "mt_sharedtablestatic_s_n_nolsi",
-        "mt_sharedtablestatic_s_b_nolsi");
+    private static final List<String> testTables = ImmutableList.of("mt_shared_table_static_s_s",
+        "mt_shared_table_static_s_n", "mt_shared_table_static_s_b", "mt_shared_table_static_s_no_lsi",
+        "mt_shared_table_static_s_s_no_lsi", "mt_shared_table_static_s_n_no_lsi",
+        "mt_shared_table_static_s_b_no_lsi");
 
     @Test
     void testBillingModeProvisionedThroughputIsSetForCustomCreateTableRequests() {
@@ -60,8 +60,8 @@ class SharedTableBuilderTest {
                         .withIndexName("index")
                         .withKeySchema(new KeySchemaElement(INDEX_ID_ATTR_NAME, HASH))
                         .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L,1L))
-                ).withProvisionedThroughput(new ProvisionedThroughput(1L,1L));
+                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+                ).withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
 
         SharedTableBuilder.builder()
                 .withBillingMode(BillingMode.PROVISIONED)
@@ -88,7 +88,7 @@ class SharedTableBuilderTest {
                 .withContext(MT_CONTEXT)
                 .build();
 
-        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB,1L);
+        DynamoDbTestUtils.assertProvisionedIsSetForSetOfTables(getPrefixedTables(), LOCAL_DYNAMO_DB, 1L);
         DynamoDbTestUtils.assertProvisionedIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB, 1L);
     }
 
@@ -175,4 +175,19 @@ class SharedTableBuilderTest {
         DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + metadataTableName, LOCAL_DYNAMO_DB);
     }
 
+    @Test
+    void testTableDescriptionTableName() {
+        final String tableDescriptionTableName = "CustomTableDescriptionTableName";
+
+        SharedTableBuilder.builder()
+            .withAmazonDynamoDb(LOCAL_DYNAMO_DB)
+            .withTablePrefix(tablePrefix)
+            .withCreateTablesEagerly(true)
+            .withContext(MT_CONTEXT)
+            .withBillingMode(BillingMode.PAY_PER_REQUEST)
+            .withTableDescriptionTableName(tableDescriptionTableName)
+            .build();
+
+        DynamoDbTestUtils.assertPayPerRequestIsSet(tablePrefix + tableDescriptionTableName, LOCAL_DYNAMO_DB);
+    }
 }

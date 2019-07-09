@@ -66,7 +66,7 @@ class ConditionMapperTest {
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
         ConditionMapper sut = new ConditionMapper(tableMapping,
-                new FieldMapper(mtContext, inputs.getVirtualTableName(), new FieldPrefixFunction('.')));
+                new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.applyKeyConditionToField(requestWrapper,
                 inputs.getFieldMapping(),
@@ -252,7 +252,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field1", "physicalHk")
-                                .attributeValues(":value", "ctx.virtualTable.hkValue").build()
+                                .attributeValues(":value", "ctx/virtualTable/hkValue").build()
                 ),
                 // map gsi hash-key field name and value on a primary expression on a table with hk only
                 new KeyConditionTestInvocation(
@@ -271,7 +271,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field", "physicalGsiHk")
-                                .attributeValues(":value", "ctx.virtualTable.hkGsiValue").build()
+                                .attributeValues(":value", "ctx/virtualTable/hkGsiValue").build()
                 ),
                 // map table's hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -282,14 +282,14 @@ class ConditionMapperTest {
                                 .attributeValues(":value2", "rangeKeyValue", ":value", "1")
                                 .fieldMapping(new FieldMapping(new Field("hashKeyField", S), new Field("hk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.1").build()
+                                .attributeValues(":value", "ctx1/Table3/1").build()
                 ),
                 // map table's range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -300,7 +300,7 @@ class ConditionMapperTest {
                                 .attributeValues(":value2", "rangeKeyValue", ":value", "1")
                                 .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         false))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
@@ -319,14 +319,14 @@ class ConditionMapperTest {
                                 .fieldMapping(new FieldMapping(
                                         new Field("hashKeyField", S), new Field("hk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value")
                                 .filterExpression("#name2 = :value2").build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.hashKeyValue3").build()
+                                .attributeValues(":value", "ctx1/Table3/hashKeyValue3").build()
                 ),
                 // map table's range-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -339,7 +339,7 @@ class ConditionMapperTest {
                                         ":newValue", "someValueTable3Org-51Updated")
                                 .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
                                         "Table3",
-                                        "mt_sharedtablestatic_s_s",
+                                        "mt_shared_table_static_s_s",
                                         TABLE,
                                         false))
                                 .primaryExpression("set #someField = :newValue")
@@ -364,7 +364,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
                 ),
                 // map lsi hash-key field name and value on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -383,7 +383,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1.Table3.1").build()
+                                .attributeValues(":value", "ctx1/Table3/1").build()
                 ),
                 // map lsi range-key field name on a primary expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -391,7 +391,7 @@ class ConditionMapperTest {
                                 .org("ctx1")
                                 .virtualTableName("Table3")
                                 .attributeNames("#name", "hk", "#name2", "indexField")
-                                .attributeValues(":value", "ctx1.Table3.1", ":value2", "indexFieldValue")
+                                .attributeValues(":value", "ctx1/Table3/1", ":value2", "indexFieldValue")
                                 .fieldMapping(new FieldMapping(
                                         new Field("indexField", S), new Field("lsi_s_s_rk", S),
                                         "testLsi",
@@ -420,7 +420,7 @@ class ConditionMapperTest {
                                 .filterExpression(null).build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1.Table3.indexFieldValue").build()
+                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
                 ),
                 // map attribute_exists expression
                 new KeyConditionTestInvocation(
@@ -443,14 +443,14 @@ class ConditionMapperTest {
 
     private static Map<String, String> toAttributeNames(String... attributeNames) {
         return IntStream.range(0, attributeNames.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m,i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
+                .collect(HashMap::new, (m, i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
     }
 
     private static Map<String, AttributeValue> toAttributeValues(String... attributeValues) {
         return attributeValues == null
             ? new HashMap<>()
             : IntStream.range(0, attributeValues.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m,i) -> m.put(attributeValues[i],
+                .collect(HashMap::new, (m, i) -> m.put(attributeValues[i],
                         new AttributeValue().withS(attributeValues[i + 1])), Map::putAll);
     }
 
