@@ -309,7 +309,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name2", "rk")
                                 .attributeValues(":value2", "rangeKeyValue").build()
                 ),
-                // map table's hash-key field name on a createFilter expression on a table with hk and rk
+                // map table's hash-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("ctx1")
@@ -328,7 +328,7 @@ class ConditionMapperTest {
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1/Table3/hashKeyValue3").build()
                 ),
-                // map table's range-key field name on a createFilter expression on a table with hk and rk
+                // map table's range-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
                         new KeyConditionTestInputs()
                                 .org("Org-51")
