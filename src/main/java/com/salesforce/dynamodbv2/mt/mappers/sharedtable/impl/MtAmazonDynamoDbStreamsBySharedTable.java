@@ -58,6 +58,13 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         return super.getShardIterator(request);
     }
 
+    /**
+     * To get all records, use key prefix to determine how to map records. Does not check whether streaming is enabled
+     * for a given tenant table, since the consumers of this API (such as KCL) currently expect to see all records in
+     * the physical stream. It could be argued that this somewhat breaks the abstraction, since the client now has to
+     * check on its end whether the virtual table for a given record has streaming enabled. On the other hand, we are
+     * already breaking the abstraction by allowing calling without context, so hopefully that's acceptable.
+     */
     @Override
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
         return getAllRecordsTime.record(() ->
@@ -79,7 +86,8 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     /**
-     * Keeps fetching records until it reaches:
+     * To fetch records for a specific tenant, fetch records from underlying stream, filter to only those records that
+     * match the requested tenant table, and then convert them. Keeps fetching records from stream until it reaches:
      * <ol>
      * <li>limit,</li>
      * <li>current or absolute end of shard, or</li>
@@ -87,6 +95,9 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      * </ol>
      * Returns a subtype of {@link GetRecordsResult} that includes the last consumed sequence number from the underlying
      * stream shard, so that clients can request a new shard iterator where they left off.
+     * Note that the method does not check whether streaming is enabled for the given tenant table. That check is
+     * already done when obtaining a tenant ARN; once we allow updating tables (e.g., turning off streaming) we may need
+     * to check here as well.
      */
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {

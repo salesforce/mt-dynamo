@@ -32,6 +32,9 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
         getAllRecordsSize = meterRegistry.summary(name + ".GetAllRecords.Size");
     }
 
+    /**
+     * When called to retrieve all records, derive tenant context and table name from physical table name.
+     */
     @Override
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
         return getAllRecordsTime.record(() -> {
@@ -40,6 +43,9 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
         });
     }
 
+    /**
+     * When called to retrieve records for a specific tenant, derive tenant context and table name from arn.
+     */
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
         return getRecordsTime.record(() ->

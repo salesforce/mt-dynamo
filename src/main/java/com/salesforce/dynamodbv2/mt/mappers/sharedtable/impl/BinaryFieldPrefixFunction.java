@@ -46,6 +46,7 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
 
     @Override
     public Predicate<ByteBuffer> createFilter(String context, String tableName) {
+        // equivalent of String.startsWith
         final ByteBuffer prefix = newBuffer(context, tableName, 0).flip();
         final int end = prefix.limit();
         return b -> b.asReadOnlyBuffer().mismatch(prefix.asReadOnlyBuffer()) == end;

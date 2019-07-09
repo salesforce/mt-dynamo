@@ -73,7 +73,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         checkArgument(listStreamsRequest.getTableName() == null,
             "listStreams currently does not support filtering by table name");
 
-        // createFilter to mt tables
+        // filter to mt tables
         ListStreamsResult result = dynamoDbStreams.listStreams(listStreamsRequest);
 
         result.setStreams(result.getStreams().stream()
