@@ -9,7 +9,6 @@ package com.salesforce.dynamodbv2.mt.mappers.index;
 
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-
 import java.util.stream.Collectors;
 
 /**

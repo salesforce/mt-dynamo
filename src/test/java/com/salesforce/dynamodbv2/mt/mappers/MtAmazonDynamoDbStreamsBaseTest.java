@@ -70,7 +70,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 public class MtAmazonDynamoDbStreamsBaseTest {
 
     protected static final String SHARED_TABLE_NAME = "SharedTable";
-    protected static final String[] TENANTS = {"tenant1", "tenant2"};
+    protected static final String[] TENANTS = { "tenant1", "tenant2" };
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsTest.class.getSimpleName() + ".";
     private static final String TENANT_TABLE_NAME = "TenantTable";
@@ -177,7 +177,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         if (!(actual instanceof MtRecord)) {
             return false;
         }
-        MtRecord mtRecord = (MtRecord) actual;
+        final MtRecord mtRecord = (MtRecord) actual;
         return Objects.equals(expected.getContext(), mtRecord.getContext())
             && Objects.equals(expected.getTableName(), mtRecord.getTableName())
             && Objects.equals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys())

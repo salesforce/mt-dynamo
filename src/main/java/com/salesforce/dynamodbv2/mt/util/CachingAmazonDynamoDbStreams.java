@@ -437,7 +437,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            CachingShardIterator that = (CachingShardIterator) o;
+            final CachingShardIterator that = (CachingShardIterator) o;
             return Objects.equals(streamArn, that.streamArn)
                 && Objects.equals(shardId, that.shardId)
                 && type == that.type

@@ -196,7 +196,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
             return false;
         }
 
-        DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
+        final DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
 
         return Objects.equals(streamSpecification, that.streamSpecification) && tableName.equals(that.tableName)
             && attributeDefinitions.equals(that.attributeDefinitions)

@@ -9,7 +9,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
-
 import java.util.List;
 
 /**
@@ -41,7 +40,7 @@ public class DynamoDbTestUtils {
                                               Long expectedThroughput) {
         TableDescription tableDescription = dynamoDbInstance.describeTable(tableName).getTable();
 
-        assertEquals(BillingMode.PROVISIONED.toString(),tableDescription.getBillingModeSummary().getBillingMode());
+        assertEquals(BillingMode.PROVISIONED.toString(), tableDescription.getBillingModeSummary().getBillingMode());
 
         assertNotNull(tableDescription.getProvisionedThroughput());
         assert (tableDescription.getProvisionedThroughput().getReadCapacityUnits().equals(expectedThroughput));
