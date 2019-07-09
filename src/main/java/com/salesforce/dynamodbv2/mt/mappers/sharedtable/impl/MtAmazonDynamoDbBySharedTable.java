@@ -82,7 +82,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private final MeterRegistry meterRegistry;
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
-    private final Cache<String, TableMapping> tableMappingCache;
+    private final Cache<Object, TableMapping> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
@@ -114,7 +114,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
                                          Clock clock,
-                                         Cache<String, TableMapping> tableMappingCache,
+                                         Cache<Object, TableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry) {
         super(mtContext, amazonDynamoDb, meterRegistry);
         this.name = name;
