@@ -164,8 +164,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         ret.putAll(scanResult.getItems().stream()
             .collect(Collectors.toMap(
                 rowItem ->
-                    getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS())
-                ,
+                    getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS()),
                 rowItem -> {
                     String tableDataJson = rowItem.get(tableDescriptionTableDataField).getS();
                     return getCreateTableRequest(jsonToTableData(tableDataJson));
@@ -227,7 +226,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private List<GlobalSecondaryIndex> getGlobalIndexes(Collection<GlobalSecondaryIndexDescription> descriptions) {
         return descriptions == null ?  null : descriptions
             .stream()
-            .map(s->
+            .map(s ->
                 new GlobalSecondaryIndex().withIndexName(s.getIndexName())
                 .withKeySchema(s.getKeySchema())
                 .withProjection(s.getProjection())
@@ -238,7 +237,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
         return descriptions == null ? null :
             descriptions.stream()
-                .map(s->
+                .map(s ->
                     new LocalSecondaryIndex()
                         .withIndexName(s.getIndexName())
                         .withKeySchema(s.getKeySchema())
@@ -251,28 +250,20 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             new ProvisionedThroughput(description.getReadCapacityUnits(), description.getWriteCapacityUnits());
     }
 
+    private ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
+        return throughput == null ? null :
+            new ProvisionedThroughputDescription()
+                .withReadCapacityUnits(throughput.getReadCapacityUnits())
+                .withWriteCapacityUnits(throughput.getWriteCapacityUnits());
+    }
+
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
         TableDescription tableDescription = new TableDescription()
                 .withTableName(createTableRequest.getTableName())
                 .withKeySchema(createTableRequest.getKeySchema())
                 .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-                .withStreamSpecification(createTableRequest.getStreamSpecification());
-
-        // // Only set provisioned throughput if the BillingMode is not PAY_PER_REQUEST
-        // DynamoDbCapacity capacityUtil = new DynamoDbCapacity();
-        // final boolean setProvisionedThroughput = (createTableRequest.getBillingMode() == null
-        //         || !createTableRequest.getBillingMode().equals(BillingMode.PAY_PER_REQUEST.toString()));
-        //
-        // if (setProvisionedThroughput) {
-        //     long readCapacityUnits = capacityUtil.getCapacity(
-        //             createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
-        //     long writeCapacityUnits = capacityUtil.getCapacity(
-        //             createTableRequest.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
-        //
-        //     tableDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-        //             .withReadCapacityUnits(readCapacityUnits)
-        //             .withWriteCapacityUnits(writeCapacityUnits));
-        // }
+                .withStreamSpecification(createTableRequest.getStreamSpecification())
+                .withProvisionedThroughput(getProvisionedThroughputDesc(createTableRequest.getProvisionedThroughput()));
 
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
@@ -283,24 +274,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
             tableDescription.withGlobalSecondaryIndexes(createTableRequest.getGlobalSecondaryIndexes().stream().map(
-                gsi -> {
-                    GlobalSecondaryIndexDescription gsiDescription = new GlobalSecondaryIndexDescription()
+                gsi ->
+                    new GlobalSecondaryIndexDescription()
                         .withIndexName(gsi.getIndexName())
                         .withKeySchema(gsi.getKeySchema())
-                        .withProjection(gsi.getProjection());
-
-                    // if (setProvisionedThroughput) {
-                    //     long readCapacityUnits = capacityUtil.getCapacity(
-                    //             gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.READ);
-                    //     long writeCapacityUnits = capacityUtil.getCapacity(
-                    //             gsi.getProvisionedThroughput(), DynamoDbCapacity.CapacityType.WRITE);
-                    //
-                    //     gsiDescription.withProvisionedThroughput(new ProvisionedThroughputDescription()
-                    //             .withReadCapacityUnits(readCapacityUnits)
-                    //             .withWriteCapacityUnits(writeCapacityUnits));
-                    // }
-                    return gsiDescription;
-                }).collect(Collectors.toList()));
+                        .withProjection(gsi.getProjection())
+                        .withProvisionedThroughput(getProvisionedThroughputDesc(gsi.getProvisionedThroughput()))
+                ).collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(

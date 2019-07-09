@@ -23,17 +23,21 @@ public interface MtTableDescriptionRepo {
      * Create a multi-tenant (virtual) table with specs defined in @param createTableRequest under the given
      * multi-tenant contexts' namespace.
      *
+     * @param createTableRequest specs of table to create
      * @return the table description of said table
      */
     TableDescription createTable(CreateTableRequest createTableRequest);
 
     /**
-     * Get the table description of the given virtual table under the current multi-tenant context.
+     * @param tableName to look up
+     * @return the table description of the given virtual table under the current multi-tenant context
      */
     TableDescription getTableDescription(String tableName);
 
     /**
      * Delete the designated virtual table metadata.
+     * @param tableName tpo de.lete
+     * @return the table description of the virtual table deleted
      */
     TableDescription deleteTable(String tableName);
 

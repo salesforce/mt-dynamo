@@ -143,7 +143,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    public boolean isMtTable(String tableName) { return mtTables.containsKey(tableName); }
+    public boolean isMtTable(String tableName) {
+        return mtTables.containsKey(tableName);
+    }
 
     Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
         CreateTableRequest table = mtTables.get(sharedTableName);
