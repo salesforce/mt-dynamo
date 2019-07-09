@@ -53,7 +53,7 @@ public final class StreamShardId {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StreamShardId streamShardId = (StreamShardId) o;
+        final StreamShardId streamShardId = (StreamShardId) o;
         return Objects.equals(streamArn, streamShardId.streamArn)
             && Objects.equals(shardId, streamShardId.shardId);
     }

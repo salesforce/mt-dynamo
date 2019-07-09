@@ -5,6 +5,7 @@ import com.amazonaws.services.dynamodbv2.model.Identity;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import java.util.Objects;
 
 /**
  * This interface (including all contained interfaces and methods) is

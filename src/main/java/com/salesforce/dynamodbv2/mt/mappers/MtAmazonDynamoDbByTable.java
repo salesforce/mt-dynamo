@@ -77,8 +77,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Determines if the table for the given name is a multitenant table associated with this instance.
-     *
      * @param tableName Name of the table.
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
@@ -117,9 +115,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return batchGetItemResult;
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
@@ -132,9 +127,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return result;
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         deleteItemRequest = deleteItemRequest.clone();
@@ -142,9 +134,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         String unqualifiedTableName = deleteTableRequest.getTableName();
@@ -155,9 +144,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return deleteTableResult;
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         String unqualifiedTableName = describeTableRequest.getTableName();
@@ -179,9 +165,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
         getItemRequest = getItemRequest.clone();
@@ -325,7 +308,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         Preconditions.checkArgument(idx > 0);
         String tenant = qualifiedTableName.substring(start, idx);
         String name = qualifiedTableName.substring(idx + delimiter.length());
-        return new String[]{tenant, name};
+        return new String[] { tenant, name };
     }
 
 }

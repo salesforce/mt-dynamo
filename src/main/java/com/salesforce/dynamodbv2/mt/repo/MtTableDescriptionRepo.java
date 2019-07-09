@@ -9,20 +9,41 @@ package com.salesforce.dynamodbv2.mt.repo;
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable;
+import java.util.Map;
 
 /**
- * TODO: write Javadoc.
+ * Interface for managing table metadata of multi-tenant virtual tables within mt-dynamo.
  *
  * @author msgroi
  */
 public interface MtTableDescriptionRepo {
 
+    /**
+     * Create a multi-tenant (virtual) table with specs defined in @param createTableRequest under the given
+     * multi-tenant contexts' namespace.
+     *
+     * @param createTableRequest specs of table to create
+     * @return the table description of said table
+     */
     TableDescription createTable(CreateTableRequest createTableRequest);
 
+    /**
+     * @param tableName to look up
+     * @return the table description of the given virtual table under the current multi-tenant context
+     */
     TableDescription getTableDescription(String tableName);
 
+    /**
+     * Delete the designated virtual table metadata.
+     * @param tableName tpo de.lete
+     * @return the table description of the virtual table deleted
+     */
     TableDescription deleteTable(String tableName);
 
-    String getMetadataTableName();
+    /**
+     * @return all multi tenant tables maintained by this instance of mt-dynamo.
+     */
+    Map<TenantTable, CreateTableRequest> getAllMtTables();
 
 }

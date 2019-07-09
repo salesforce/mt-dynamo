@@ -95,7 +95,7 @@ class FieldMapping {
                 return false;
             }
 
-            Field field = (Field) o;
+            final Field field = (Field) o;
 
             return name.equals(field.name)
                 && type == field.type;
@@ -116,7 +116,7 @@ class FieldMapping {
             return false;
         }
 
-        FieldMapping that = (FieldMapping) o;
+        final FieldMapping that = (FieldMapping) o;
 
         return isContextAware == that.isContextAware
             && source.equals(that.source)

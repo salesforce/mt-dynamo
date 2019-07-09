@@ -64,7 +64,7 @@ class FieldMapperTest {
             { BFM, N, B, TABLE, new AttributeValue().withN("1.1"), new AttributeValue().withB(
                 prefix(5).put(ByteBuffer.allocate(5).putInt(1).put((byte) 11).array()).flip()) },
             { BFM, B, B, TABLE, new AttributeValue().withB(ByteBuffer.wrap(TEST_BYTES)),
-                new AttributeValue().withB(prefix(TEST_BYTES.length).put(TEST_BYTES).flip())}
+                new AttributeValue().withB(prefix(TEST_BYTES.length).put(TEST_BYTES).flip()) }
         });
     }
 
@@ -103,7 +103,7 @@ class FieldMapperTest {
         return Arrays.stream(new Object[][] {
             { SFM, N, S, new NullPointerException("attributeValue={S: value,} of type=N could not be converted") },
             { SFM, null, S, new NullPointerException("null attribute type") },
-            { BFM, N, B, new NullPointerException()},
+            { BFM, N, B, new NullPointerException() },
             { BFM, null, B, new NullPointerException("null attribute type") },
         });
     }

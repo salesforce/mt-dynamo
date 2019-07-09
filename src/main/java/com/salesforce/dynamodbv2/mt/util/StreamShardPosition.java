@@ -75,7 +75,7 @@ final class StreamShardPosition {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StreamShardPosition that = (StreamShardPosition) o;
+        final StreamShardPosition that = (StreamShardPosition) o;
         return Objects.equals(streamShardId, that.streamShardId)
             && Objects.equals(sequenceNumber, that.sequenceNumber);
     }
