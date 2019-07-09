@@ -107,7 +107,7 @@ import java.util.Map;
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     /**
-     * Special "column" key returned to client on multi-tenant scans
+     * Special "column" key returned to client on multi-tenant scans.
      */
     public static final String TENANT_KEY = "mt:context";
     public static final String VIRTUAL_TABLE_KEY = "mt:tableName";

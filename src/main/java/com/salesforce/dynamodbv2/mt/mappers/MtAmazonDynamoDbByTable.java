@@ -37,7 +37,6 @@ import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -221,9 +220,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
             ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
             result.getItems().stream().forEach(row -> {
-                    row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
-                    row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
-                });
+                row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
+                row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
+            });
             return result;
         } else {
             scanRequest = scanRequest.clone();
