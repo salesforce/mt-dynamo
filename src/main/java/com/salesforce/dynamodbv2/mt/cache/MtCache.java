@@ -25,19 +25,46 @@ import javax.annotation.Nullable;
  *
  * @author msgroi
  */
-public class MtCache<V> implements Cache<String, V> {
+public class MtCache<V> implements Cache<Object, V> {
 
-    private static final String DELIMITER = "-";
+    private static class Key {
+        private final String context;
+        private final Object key;
+
+        Key(String context, Object key) {
+            this.context = context;
+            this.key = key;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Key key1 = (Key) o;
+            return Objects.equals(context, key1.context)
+                && Objects.equals(key, key1.key);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(context, key);
+        }
+    }
+
     private final MtAmazonDynamoDbContextProvider contextProvider;
-    private final Cache<String, V> cache;
+    private final Cache<Object, V> cache;
 
-    public MtCache(MtAmazonDynamoDbContextProvider contextProvider, Cache<String, V> cache) {
+    public MtCache(MtAmazonDynamoDbContextProvider contextProvider, Cache<Object, V> cache) {
         this.contextProvider = contextProvider;
         this.cache = cache;
     }
 
-    private String getKey(Object key) {
-        return contextProvider.getContext() + DELIMITER + key;
+    private Key getKey(Object key) {
+        return new Key(contextProvider.getContext(), key);
     }
 
     @Override
@@ -46,19 +73,19 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public V get(@Nullable String key,
+    public V get(@Nullable Object key,
                  @Nullable Callable<? extends V> valueLoader) throws ExecutionException {
         return cache.get(getKey(key), Objects.requireNonNull(valueLoader));
     }
 
     @Override
-    public void put(@Nullable String key,
+    public void put(@Nullable Object key,
                     @Nullable V value) {
         cache.put(getKey(key), Objects.requireNonNull(value));
     }
 
     @Override
-    public void putAll(Map<? extends String, ? extends V> m) {
+    public void putAll(Map<? extends Object, ? extends V> m) {
         m.forEach(this::put);
     }
 
@@ -94,12 +121,12 @@ public class MtCache<V> implements Cache<String, V> {
     }
 
     @Override
-    public ConcurrentMap<String, V> asMap() {
+    public ConcurrentMap<Object, V> asMap() {
         return cache.asMap();
     }
 
     @Override
-    public ImmutableMap<String, V> getAllPresent(@Nullable Iterable<?> keys) {
+    public ImmutableMap<Object, V> getAllPresent(@Nullable Iterable<?> keys) {
         throw new UnsupportedOperationException();
     }
 
