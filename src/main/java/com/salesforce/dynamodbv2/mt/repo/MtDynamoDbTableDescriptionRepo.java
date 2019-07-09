@@ -159,20 +159,21 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     public Map<TenantTable, CreateTableRequest> getAllMtTables() {
         ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
         Map<TenantTable, CreateTableRequest> ret = Maps.newHashMap();
+        Map<String, AttributeValue> lastEvaluatedKey = null;
         ScanResult scanResult;
-        scanResult = amazonDynamoDb.scan(scanReq);
-        ret.putAll(scanResult.getItems().stream()
-            .collect(Collectors.toMap(
-                rowItem ->
-                    getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS()),
-                rowItem -> {
-                    String tableDataJson = rowItem.get(tableDescriptionTableDataField).getS();
-                    return getCreateTableRequest(jsonToTableData(tableDataJson));
-                })));
-
-        if (scanResult.getCount() == scanReq.getLimit()) {
-            throw new IllegalStateException("Pagination not yet implemented, missing results");
-        }
+        do {
+            scanReq.setExclusiveStartKey(lastEvaluatedKey);
+            scanResult = amazonDynamoDb.scan(scanReq);
+            ret.putAll(scanResult.getItems().stream()
+                .collect(Collectors.toMap(
+                    rowItem ->
+                        getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS()),
+                    rowItem -> {
+                        String tableDataJson = rowItem.get(tableDescriptionTableDataField).getS();
+                        return getCreateTableRequest(jsonToTableData(tableDataJson));
+                    })));
+            lastEvaluatedKey = scanResult.getLastEvaluatedKey();
+        } while (lastEvaluatedKey != null);
         return ret;
     }
 
