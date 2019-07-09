@@ -29,6 +29,8 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
     private static final int MAX_LIMIT = 1000;
 
+    private final Timer getAllRecordsTime;
+    private final DistributionSummary getAllRecordsSize;
     private final Timer getRecordsTime;
     private final DistributionSummary getRecordsSize;
     private final DistributionSummary getRecordsLoadedCounter;
@@ -47,6 +49,8 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
         getRecordsTime = meterRegistry.timer(name + ".GetRecords.Time");
         getRecordsSize = meterRegistry.summary(name + ".GetRecords.Size");
         getRecordsLoadedCounter = meterRegistry.summary(name + ".GetRecords.Loaded.Size");
+        getAllRecordsTime = meterRegistry.timer(name + ".GetAllRecords.Time");
+        getAllRecordsSize = meterRegistry.summary(name + ".GetAllRecords.Size");
     }
 
     @Override
@@ -55,28 +59,23 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     }
 
     @Override
-    protected MtGetRecordsResult getMtRecords(GetRecordsRequest request, StreamArn streamArn) {
-        final GetRecordsResult result = dynamoDbStreams.getRecords(request);
-        final List<Record> records = result.getRecords();
-        final String nextIterator = result.getNextShardIterator();
-        if (records.isEmpty()) {
-            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator);
-        }
+    protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
+        return getAllRecordsTime.record(() ->
+            getMtRecords(request, getRecordMapper(streamArn.getTableName()), getAllRecordsSize));
+    }
 
+    private Function<Record, MtRecord> getRecordMapper(String physicalTableName) {
+        // get function that extracts tenant context and table name from key prefix
         final Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
-            mtDynamoDb.getFieldValueFunction(streamArn.getTableName());
-        final List<Record> mtRecords = new ArrayList<>(records.size());
-        for (Record record : records) {
+            mtDynamoDb.getFieldValueFunction(physicalTableName);
+        return record -> {
+            // when called to map a record, extract tenant context and table
             final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
-            mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () ->
-                mtRecords.add(mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record))
+            // then establish context to map physical to virtual record, i.e., remove index key prefixes
+            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () ->
+                mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record)
             );
-        }
-
-        return new MtGetRecordsResult()
-            .withRecords(mtRecords)
-            .withNextShardIterator(nextIterator)
-            .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
+        };
     }
 
     /**
@@ -90,7 +89,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      * stream shard, so that clients can request a new shard iterator where they left off.
      */
     @Override
-    protected MtGetRecordsResult getMtRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
+    protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
         return getRecordsTime.record(() -> {
             Optional.ofNullable(request.getLimit()).ifPresent(limit -> checkArgument(limit > 0 && limit <= MAX_LIMIT));
 

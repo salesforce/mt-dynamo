@@ -13,6 +13,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -47,6 +49,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         private MtAmazonDynamoDbContextProvider mtContext;
         private AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder;
         private MtAccountCredentialsMapper credentialsMapper;
+        private MeterRegistry meterRegistry;
 
         public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
@@ -65,6 +68,11 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withMeterRegistry(MeterRegistry meterRegistry) {
+            this.meterRegistry = meterRegistry;
+            return this;
+        }
+
         /**
          * TODO: write Javadoc.
          *
@@ -76,7 +84,11 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             Preconditions.checkNotNull(amazonDynamoDbClientBuilder,
                 "amazonDynamoDbClientBuilder is required");
             Preconditions.checkNotNull(credentialsMapper, "credentialsMapper is required");
-            return new MtAmazonDynamoDbByAccount(mtContext, amazonDynamoDbClientBuilder, credentialsMapper);
+            if (meterRegistry == null) {
+                meterRegistry = new CompositeMeterRegistry();
+            }
+            return new MtAmazonDynamoDbByAccount(mtContext, meterRegistry, amazonDynamoDbClientBuilder,
+                credentialsMapper);
         }
 
     }
@@ -127,6 +139,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
     public static class MtAmazonDynamoDbByAccountBuilder {
         private MtAmazonDynamoDbContextProvider mtContext;
         private MtAccountMapper accountMapper;
+        private MeterRegistry meterRegistry;
 
         public MtAmazonDynamoDbByAccountBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
@@ -135,6 +148,11 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
 
         public MtAmazonDynamoDbByAccountBuilder withAccountMapper(MtAccountMapper accountMapper) {
             this.accountMapper = accountMapper;
+            return this;
+        }
+
+        public MtAmazonDynamoDbByAccountBuilder withMeterRegistry(MeterRegistry meterRegistry) {
+            this.meterRegistry = meterRegistry;
             return this;
         }
 
@@ -147,22 +165,27 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         public AmazonDynamoDB build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");
             Preconditions.checkNotNull(accountMapper, "accountMapper is required");
-            return new MtAmazonDynamoDbByAccount(mtContext, accountMapper);
+            if (meterRegistry == null) {
+                meterRegistry = new CompositeMeterRegistry();
+            }
+            return new MtAmazonDynamoDbByAccount(mtContext, meterRegistry, accountMapper);
         }
     }
 
     private final MtAccountMapper accountMapper;
 
     private MtAmazonDynamoDbByAccount(MtAmazonDynamoDbContextProvider mtContext,
+                                      MeterRegistry meterRegistry,
                                       MtAccountMapper accountMapper) {
-        super(mtContext, null);
+        super(mtContext, null, meterRegistry);
         this.accountMapper = accountMapper;
     }
 
     private MtAmazonDynamoDbByAccount(MtAmazonDynamoDbContextProvider mtContext,
+                                      MeterRegistry meterRegistry,
                                       AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder,
                                       MtAccountCredentialsMapper credentialsMapper) {
-        super(mtContext, null);
+        super(mtContext, null, meterRegistry);
         this.accountMapper = new CredentialBasedAccountMapperImpl(amazonDynamoDbClientBuilder, credentialsMapper);
     }
 
