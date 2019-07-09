@@ -16,7 +16,11 @@ public class RecordMapper implements Function<Record, MtRecord> {
     private final String hashKeyName;
     private final FieldMapper fieldMapper;
 
-    RecordMapper(MtAmazonDynamoDbContextProvider mtContext, String virtualTableName, ItemMapper itemMapper, FieldMapper fieldMapper, String hashKeyName) {
+    RecordMapper(MtAmazonDynamoDbContextProvider mtContext,
+                 String virtualTableName,
+                 ItemMapper itemMapper,
+                 FieldMapper fieldMapper,
+                 String hashKeyName) {
         this.mtContext = mtContext;
         this.virtualTableName = virtualTableName;
         this.itemMapper = itemMapper;
