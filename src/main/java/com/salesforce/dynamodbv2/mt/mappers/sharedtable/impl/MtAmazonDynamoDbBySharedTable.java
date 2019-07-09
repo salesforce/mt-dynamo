@@ -116,7 +116,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Clock clock,
                                          Cache<String, TableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry) {
-        super(mtContext, amazonDynamoDb);
+        super(mtContext, amazonDynamoDb, meterRegistry);
         this.name = name;
         this.meterRegistry = meterRegistry;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
@@ -136,10 +136,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     Clock getClock() {
         return clock;
-    }
-
-    public MeterRegistry getMeterRegistry() {
-        return meterRegistry;
     }
 
     @Override
