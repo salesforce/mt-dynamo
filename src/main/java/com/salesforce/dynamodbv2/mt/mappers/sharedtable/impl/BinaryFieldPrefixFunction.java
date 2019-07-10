@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer> {
 
@@ -17,17 +18,11 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
 
     @Override
     public ByteBuffer apply(FieldValue<ByteBuffer> fieldValue) {
-        final byte[] context = fieldValue.getContext().getBytes(UTF_8);
-        final byte[] tableName = fieldValue.getTableName().getBytes(UTF_8);
         final ByteBuffer value = fieldValue.getValue().asReadOnlyBuffer();
-        ByteBuffer qualifiedValue = ByteBuffer.allocate(context.length + tableName.length + value.remaining() + 2);
-        qualifiedValue.put(context);
-        qualifiedValue.put(DELIMITER);
-        qualifiedValue.put(tableName);
-        qualifiedValue.put(DELIMITER);
-        qualifiedValue.put(value);
-        qualifiedValue.flip();
-        return qualifiedValue;
+        final ByteBuffer buffer = newBuffer(fieldValue.getContext(), fieldValue.getTableName(), value.remaining());
+        buffer.put(value);
+        buffer.flip();
+        return buffer;
     }
 
     @Override
@@ -49,6 +44,14 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
         return new FieldValue<>(context, tableName, ByteBuffer.wrap(value));
     }
 
+    @Override
+    public Predicate<ByteBuffer> createFilter(String context, String tableName) {
+        // equivalent of String.startsWith
+        final ByteBuffer prefix = newBuffer(context, tableName, 0).flip();
+        final int end = prefix.limit();
+        return b -> b.asReadOnlyBuffer().mismatch(prefix.asReadOnlyBuffer()) == end;
+    }
+
     private static int indexOf(byte[] array, byte target, int start) {
         for (int i = start; i < array.length; i++) {
             if (array[i] == target) {
@@ -57,4 +60,16 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
         }
         return -1;
     }
+
+    private static ByteBuffer newBuffer(String context, String tableName, int valueLength) {
+        final byte[] contextBytes = context.getBytes(UTF_8);
+        final byte[] tableNameBytes = tableName.getBytes(UTF_8);
+        final ByteBuffer buffer = ByteBuffer.allocate(contextBytes.length + tableNameBytes.length + valueLength + 2);
+        buffer.put(contextBytes);
+        buffer.put(DELIMITER);
+        buffer.put(tableNameBytes);
+        buffer.put(DELIMITER);
+        return buffer;
+    }
+
 }

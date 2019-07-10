@@ -23,28 +23,35 @@ import org.junit.jupiter.params.provider.MethodSource;
  */
 class FieldPrefixFunctionTest {
 
-    private static Object[] binaryData(String context, String table, String value) {
-        return new Object[] {
-            BinaryFieldPrefixFunction.INSTANCE, context, table, UTF_8.encode(value), ByteBuffer
+    private static String qualifiedStringValue(String context, String table, String value) {
+        return context + '/' + table + '/' + value;
+    }
+
+    private static ByteBuffer qualifiedBinaryValue(String context, String table, String value) {
+        return ByteBuffer
             .allocate(context.length() + table.length() + value.length() + 2)
             .put(UTF_8.encode(context)).put((byte) 0x00)
             .put(UTF_8.encode(table)).put((byte) 0x00)
             .put(UTF_8.encode(value))
-            .flip()
-        };
+            .flip();
+    }
+
+    private static Stream<Object[]> forEach(Stream<Object[]> stream) {
+        return stream.flatMap(e -> Stream.of(
+            new Object[] { StringFieldPrefixFunction.INSTANCE, e[0], e[1], e[2],
+                qualifiedStringValue(e[0].toString(), e[1].toString(), e[2].toString()) },
+            new Object[] { BinaryFieldPrefixFunction.INSTANCE, e[0], e[1], UTF_8.encode(e[2].toString()),
+                qualifiedBinaryValue(e[0].toString(), e[1].toString(), e[2].toString()) }
+        ));
     }
 
     static Stream<Object[]> data() {
-        return Arrays.stream(new Object[][] {
-            { StringFieldPrefixFunction.INSTANCE, "ctx", "table", "value",
-                "ctx/table/value" },
-            { StringFieldPrefixFunction.INSTANCE, "ctx2", "com.salesforce.zero.someObject", "value2",
-                "ctx2/com.salesforce.zero.someObject/value2" },
-            { StringFieldPrefixFunction.INSTANCE, "ctx_3", "My-Object", "prefix/suffix",
-                "ctx_3/My-Object/prefix/suffix" },
-            binaryData("ctx", "table", "value"),
-            binaryData("ctx", "table", "val\u0000ue"),
-        });
+        return forEach(Arrays.stream(new Object[][] {
+            { "ctx", "table", "value" },
+            { "ctx2", "com.salesforce.zero.someObject", "value2" },
+            { "ctx_3", "My-Object", "prefix/suffix" },
+            { "ctx", "table", "val\u0000ue" }
+        }));
     }
 
     @ParameterizedTest
@@ -60,4 +67,30 @@ class FieldPrefixFunctionTest {
         assertEquals(expected, sut.reverse(actual));
     }
 
+    private static Stream<Object[]> filterForEach(Stream<Object[]> stream) {
+        return stream.flatMap(e -> Stream.of(
+            new Object[] { StringFieldPrefixFunction.INSTANCE, e[0], e[1],
+                qualifiedStringValue(e[2].toString(), e[3].toString(), e[4].toString()), e[5] },
+            new Object[] { BinaryFieldPrefixFunction.INSTANCE, e[0], e[1],
+                qualifiedBinaryValue(e[2].toString(), e[3].toString(), e[4].toString()), e[5] }
+        ));
+    }
+
+    static Stream<Object[]> filterData() {
+        return filterForEach(Arrays.stream(new Object[][] {
+            { "ctx", "table", "ctx", "table", "0", true },
+            { "ctx", "table", "ctx", "table", "abc", true },
+            { "ctx", "table", "ct", "tabl", "0", false },
+            { "ctx", "table", "ctx", "tabl1", "0", false },
+            { "ctx", "table", "c", "t", "x", false },
+            { "ctx", "table", "ctx2", "table2", "abc", false }
+        }));
+    }
+
+    @ParameterizedTest
+    @MethodSource("filterData")
+    <V> void filter(FieldPrefixFunction<V> sut, String context, String tableName, V qualifiedValue,
+                    boolean expected) {
+        assertEquals(expected, sut.createFilter(context, tableName).test(qualifiedValue));
+    }
 }

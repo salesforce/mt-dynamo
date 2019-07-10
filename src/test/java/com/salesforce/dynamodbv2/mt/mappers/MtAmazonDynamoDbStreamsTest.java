@@ -29,8 +29,11 @@ class MtAmazonDynamoDbStreamsTest {
      */
     @Test
     void testCreateFromDynamoByTable() {
+        MtAmazonDynamoDbByTable mtDynamo = mock(MtAmazonDynamoDbByTable.class);
+        when(mtDynamo.getMeterRegistry()).thenReturn(new CompositeMeterRegistry());
+
         AmazonDynamoDBStreams actual = MtAmazonDynamoDbStreams
-            .createFromDynamo(mock(MtAmazonDynamoDbByTable.class), mock(AmazonDynamoDBStreams.class));
+            .createFromDynamo(mtDynamo, mock(AmazonDynamoDBStreams.class));
 
         assertTrue(actual instanceof MtAmazonDynamoDbStreamsByTable,
             "Expected an instance of MtAmazonDynamoDbStreamsByTable");

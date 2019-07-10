@@ -9,6 +9,8 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import java.util.function.Predicate;
+
 /**
  * TODO: write Javadoc.
  *
@@ -26,9 +28,12 @@ class StringFieldPrefixFunction implements FieldPrefixFunction<String> {
 
     @Override
     public String apply(FieldValue<String> fieldValue) {
+        final String context = fieldValue.getContext();
+        final String tableName = fieldValue.getTableName();
+        final String value = fieldValue.getValue();
         // TODO turn into runtime checks?
         assert fieldValue.getContext().indexOf(DELIMITER) == -1 && fieldValue.getTableName().indexOf(DELIMITER) == -1;
-        return fieldValue.getContext() + DELIMITER + fieldValue.getTableName() + DELIMITER + fieldValue.getValue();
+        return newPrefixBuffer(context, tableName, value.length()).append(value).toString();
     }
 
     @Override
@@ -46,6 +51,18 @@ class StringFieldPrefixFunction implements FieldPrefixFunction<String> {
         String value = qualifiedValue.substring(idx2);
 
         return new FieldValue<>(context, tableName, value);
+    }
+
+    @Override
+    public Predicate<String> createFilter(String context, String tableName) {
+        final String prefix = newPrefixBuffer(context, tableName, 0).toString();
+        return qualifiedValue -> qualifiedValue.startsWith(prefix);
+    }
+
+    private StringBuilder newPrefixBuffer(String context, String tableName, int valueLength) {
+        return new StringBuilder(context.length() + tableName.length() + 2 + valueLength)
+            .append(context).append(DELIMITER)
+            .append(tableName).append(DELIMITER);
     }
 
 }
