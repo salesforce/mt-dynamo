@@ -65,6 +65,7 @@ import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -1140,6 +1141,79 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that if a {@code DescribeStreamResult} for a stream has a null or empty list of shards,
+     * the result returned has no shards (an empty list).
+     */
+    @Test
+    void testDescribeStreamCacheWithNullOrEmptyListOfShards() {
+
+        List<Shard> shards = null;
+
+        for (int i = 0; i < 2; i++) {
+            AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+            DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
+                new StreamDescription().withStreamArn(streamArn).withShards(shards));
+            CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult).build();
+            DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+
+            assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
+
+            StreamDescription streamDesc = cachingStreams.getDescribeStreamCache().getIfPresent(streamArn)
+                .getStreamDescription();
+            assertNotNull(streamDesc.getShards());
+            assertTrue(streamDesc.getShards().isEmpty());
+
+            verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
+
+            if (i == 0) {
+                shards = Collections.emptyList();
+            }
+        }
+    }
+
+    /**
+     * Verifies that if a {@code DescribeStreamResult} for a stream has a null or empty list of shards, but contains
+     * shards from a previous result, we stop calling describeStream and return the current list of shards.
+     */
+    @Test
+    public void testDescribeStreamCacheWithEmptyListOfShardsAfterNonEmptyList() {
+
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2"),
+            newShard("B", null, "1")
+        );
+
+        List<Shard> secondShardsList = null;
+
+        for (int i = 0; i < 2; i++) {
+            AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+            ArrayList<DescribeStreamResult> expectedResults = new ArrayList<>();
+            expectedResults.add(new DescribeStreamResult().withStreamDescription(
+                new StreamDescription().withStreamArn(streamArn).withShards(
+                    shards.subList(0, 2)).withLastEvaluatedShardId("B")));
+            expectedResults.add(new DescribeStreamResult().withStreamDescription(
+                new StreamDescription().withStreamArn(streamArn).withShards(
+                    secondShardsList).withLastEvaluatedShardId("B")));
+
+            CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams,
+                expectedResults).build();
+            DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+
+            DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
+                new StreamDescription().withStreamArn(streamArn).withShards(shards));
+
+            assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
+            assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
+
+            verify(mockStreams, times(expectedResults.size())).describeStream(any(DescribeStreamRequest.class));
+
+            if (i == 0) {
+                secondShardsList = Collections.emptyList();
+            }
+        }
+    }
+
+    /**
      * Verifies that the describeStreamCache fetches {@code DescribeStreamResult}s for multiple streams.
      * (Multiple keys in the describeStreamCache).
      */
@@ -1218,47 +1292,6 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that if a {@code DescribeStreamResult} is null after a sequence of non null
-     * {@code DescribeStreamResult}s, that the null {@code DescribeStreamResult} is not processed, but non null
-     * responses are processed until a null response is encountered.
-     */
-    @Test
-    public void testDescribeStreamCacheProcessesShardsUntilNullDescribeStreamResultReceived() {
-
-        List<Shard> shards = ImmutableList.of(
-            newShard("A", null, "1", "2"),
-            newShard("B", null, "1"),
-            newShard("C", null, "1", "2"),
-            newShard("D", null, "3", "4"),
-            newShard("E", null, "1", "2")
-        );
-
-        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
-        ArrayList<DescribeStreamResult> expectedResults = new ArrayList<>();
-        expectedResults.add(new DescribeStreamResult().withStreamDescription(
-            new StreamDescription().withStreamArn(streamArn).withShards(
-                shards.subList(0, 2)).withLastEvaluatedShardId("B")));
-        expectedResults.add(new DescribeStreamResult().withStreamDescription(
-            new StreamDescription().withStreamArn(streamArn).withShards(
-                shards.subList(2, 4)).withLastEvaluatedShardId("D")));
-        expectedResults.add(null); // add null Describe Stream result
-        expectedResults.add(new DescribeStreamResult().withStreamDescription(
-            new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(4, 5))));
-
-        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults).build();
-        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
-
-        DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
-            new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 4)));
-
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
-
-        verify(mockStreams, times(expectedResults.size() - 1))
-            .describeStream(any(DescribeStreamRequest.class));
-    }
-
-    /**
      * Verifies that the describeStreamCache refreshes writes.
      */
     @Test
@@ -1327,27 +1360,6 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that when describeStream is unable to load a {@code DescribeStreamResult} from the cache or
-     * returns a null result when calling the loader method, that an empty stream description is returned.
-     * If null is returned {@code InvalidCacheLoadException} should be thrown by lookupDescribeStreamResult.
-     */
-    @Test
-    void testDescribeStreamWithNullResult() {
-
-        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
-        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult)null)
-            .build();
-        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
-
-        assertTrue(cachingStreams.describeStream(request).equals(
-            new DescribeStreamResult().withStreamDescription(new StreamDescription().withStreamArn(streamArn)
-            .withShards(emptyList()))));
-
-        // Ensures describeStream is only called once
-        verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
-    }
-
-    /**
      * Verifies that if describe stream throws a throttling exception, it's thrown to the client.
      */
     @Test
@@ -1368,6 +1380,29 @@ class CachingAmazonDynamoDbStreamsTest {
             cachingStreams.describeStream(new DescribeStreamRequest().withStreamArn(streamArn));
             Assertions.fail();
         } catch (AmazonDynamoDBException e) {
+            assertNotNull(e);
+        }
+    }
+
+    /**
+     * Verifies that if describe stream throws a resource not found exception, it's thrown to the client.
+     */
+    @Test
+    public void testDescribeStreamResourceNotFound() {
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult)null)
+            .build();
+
+        AmazonDynamoDBException expectedException = new ResourceNotFoundException("com.amazonaws.services."
+            + "dynamodbv2.model.ResourceNotFoundException: Requested resource not found: Stream: "
+            + "arn:aws:dynamodb:ddblocal:000000000000:table/restOfArn not found (Service: null; Status Code: 400;"
+            + "Error Code: ResourceNotFoundException; Request ID: null");
+        when(mockStreams.describeStream(any())).thenThrow(expectedException, expectedException);
+
+        try {
+            cachingStreams.describeStream(new DescribeStreamRequest().withStreamArn(streamArn));
+            Assertions.fail();
+        } catch (ResourceNotFoundException e) {
             assertNotNull(e);
         }
     }

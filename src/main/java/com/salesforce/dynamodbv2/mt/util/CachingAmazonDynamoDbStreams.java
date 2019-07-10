@@ -594,7 +594,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * Gets the {@code DescribeStreamResult} from the DescribeStream API.
      * @param describeStreamRequest Describe stream request.
+     *
      * @return Stream details for the given request with all the shards currently available.
+     *      Throws exceptions that AmazonDynamoDBStreams describeStream could potentially throw.
+     * @throws ResourceNotFoundException
+     *         The requested resource could not be found. The stream might not be specified correctly.
+     * @throws LimitExceededException
+     *         The requested resource exceeds the maximum number allowed, or the number of concurrent stream requests
+     *         exceeds the maximum number allowed (5).
      */
     protected DescribeStreamResult loadStreamDescriptionForAllShards(DescribeStreamRequest describeStreamRequest)
         throws AmazonDynamoDBException {
@@ -608,38 +615,25 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
         // TODO metrics: count cache miss
 
-        DescribeStreamResult result = null;
-        DescribeStreamResult previousResult;
+        DescribeStreamResult result;
         do {
             describeStreamRequest = new DescribeStreamRequest().withStreamArn(streamArn)
                 .withExclusiveStartShardId(lastShardId);
-            previousResult = result;
             result = super.describeStream(describeStreamRequest);
 
-            if (result != null && result.getStreamDescription().getShards() != null) {
+            if (result.getStreamDescription().getShards() != null
+                && !result.getStreamDescription().getShards().isEmpty()) {
                 List<Shard> shards = result.getStreamDescription().getShards();
                 allShards.addAll(shards);
                 lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
-            } else {
-                // since the request was null, update lastShardId to null since we can't get the next request
-                // from a null response
+            } else { // If the shards list is null/empty exit since there shouldn't be more shards.
                 lastShardId = null;
             }
         } while (lastShardId != null);
 
-        if (result != null) {
-            StreamDescription streamDescription = result.getStreamDescription();
-            streamDescription.setShards(allShards);
-            result.setStreamDescription(streamDescription);
-        } else if (previousResult != null) {
-            StreamDescription streamDescription = previousResult.getStreamDescription();
-            streamDescription.setShards(allShards);
-            result = previousResult;
-            result.setStreamDescription(streamDescription);
-        } else {
-            result = new DescribeStreamResult().withStreamDescription(new StreamDescription().withStreamArn(streamArn)
-                .withShards(allShards));
-        }
+        StreamDescription streamDescription = result.getStreamDescription();
+        streamDescription.setShards(allShards);
+        result.setStreamDescription(streamDescription);
 
         return result;
     }
