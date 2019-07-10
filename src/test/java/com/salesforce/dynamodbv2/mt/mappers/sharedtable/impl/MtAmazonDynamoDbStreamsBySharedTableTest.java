@@ -334,6 +334,57 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         assertEquals(mockMtArn + "|it1500", result.getNextShardIterator());
     }
 
+    /**
+     * Verifies that getRecords for tenant does not retry for empty results.
+     */
+    @Test
+    void testRetryNoRecords() {
+        /* ARRANGE (lots of stuff) */
+
+        final String tablePrefix = TABLE_PREFIX + "testRetryNoRecords.";
+
+        // fix clock (so that we don't run out of time)
+        final Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
+
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tableName/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
+        final String iterator = mockArn + "|iterator";
+        final String nextIterator = mockArn + "|nextIterator";
+
+        final MtAmazonDynamoDbBySharedTable mtDynamo = createMtAmazonDynamoDb(tablePrefix, clock);
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        when(streams.getShardIterator(any())).thenReturn(new GetShardIteratorResult().withShardIterator(iterator));
+        when(streams.getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(1000)))
+            .thenReturn(new GetRecordsResult().withRecords().withNextShardIterator(nextIterator));
+        when(streams.getRecords(new GetRecordsRequest().withShardIterator(nextIterator).withLimit(1000)))
+            .thenThrow(new AssertionError());
+        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamo, streams);
+
+        /* ACT */
+        GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            mtDynamo.createTable(new CreateTableRequest()
+                .withTableName("tenantTableName")
+                .withKeySchema(
+                    new KeySchemaElement("vhk", HASH))
+                .withAttributeDefinitions(
+                    new AttributeDefinition("vhk", S)
+                )
+                .withStreamSpecification(new StreamSpecification()
+                    .withStreamEnabled(true)
+                    .withStreamViewType(NEW_AND_OLD_IMAGES))
+                .withBillingMode(PAY_PER_REQUEST)
+            );
+            final String shardIterator = mtDynamoDbStreams.getShardIterator(
+                new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
+                    .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1")).getShardIterator();
+            return mtDynamoDbStreams.getRecords(new GetRecordsRequest().withShardIterator(shardIterator));
+        }, null);
+
+        /* ASSERT */
+
+        // expect no records (and no retry attempt)
+        assertEquals(0, result.getRecords().size());
+    }
 
     private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
         final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();

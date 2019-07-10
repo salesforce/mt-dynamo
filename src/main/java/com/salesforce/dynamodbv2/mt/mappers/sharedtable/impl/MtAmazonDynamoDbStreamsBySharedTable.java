@@ -117,16 +117,18 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             final Predicate<Record> recordFilter = recordMapper.createFilter();
 
             int recordsLoaded = 0;
+            int recordsLoadedSum = 0;
             do {
-                recordsLoaded += loadRecords(result, limit, recordFilter, recordMapper);
+                recordsLoaded = loadRecords(result, limit, recordFilter, recordMapper);
+                recordsLoadedSum += recordsLoaded;
             } while (result.getRecords().size() < limit     // only continue if we need more tenant records,
-                && recordsLoaded % MAX_LIMIT == 0           // have not reached current end of the underlying stream,
+                && recordsLoaded == MAX_LIMIT               // have not reached current end of the underlying stream,
                 && result.getNextShardIterator() != null    // have not reached absolute end of underlying stream,
                 && (mtDynamoDb.getClock().millis() - time) <= timeLimit // and have not exceeded the soft time limit
             );
 
             getRecordsSize.record(result.getRecords().size());
-            getRecordsLoadedCounter.record(recordsLoaded);
+            getRecordsLoadedCounter.record(recordsLoadedSum);
 
             return result;
         });
