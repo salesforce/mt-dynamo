@@ -604,7 +604,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 allShards.addAll(result.getStreamDescription().getShards());
             }
             lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
-        } while (lastShardId != null);
+        } while (lastShardId != null && !lastShardId.isEmpty());
 
         return new DescribeStreamResult().withStreamDescription(result.getStreamDescription().withShards(allShards));
     }

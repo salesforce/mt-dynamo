@@ -1217,6 +1217,44 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that if a {@code DescribeStreamResult} returns a LastEvaluatedShardId that is empty, we stop processing.
+     */
+    @Test
+    public void testDescribeStreamCacheWhenLastEvaluatedShardIdIsEmpty() {
+
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2"),
+            newShard("B", null, "1"),
+            newShard("C", null, "1")
+        );
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        // the last result should not be processed
+        ArrayList<DescribeStreamResult> expectedResults = new ArrayList<>();
+        expectedResults.add(new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(
+                shards.subList(0, 1)).withLastEvaluatedShardId("A")));
+        expectedResults.add(new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(
+                shards.subList(1, 2)).withLastEvaluatedShardId("")));
+        expectedResults.add(new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(
+                shards.subList(2, 3)).withLastEvaluatedShardId("B")));
+
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams,
+            expectedResults).build();
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+
+        DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 2)));
+
+        assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
+        assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
+
+        verify(mockStreams, times(expectedResults.size() - 1)).describeStream(any(DescribeStreamRequest.class));
+    }
+
+    /**
      * Verifies that the describeStreamCache fetches {@code DescribeStreamResult}s for multiple streams.
      * (Multiple keys in the describeStreamCache).
      */
