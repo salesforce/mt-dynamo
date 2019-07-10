@@ -33,7 +33,6 @@ import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
-import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
@@ -564,11 +563,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ListTablesResult listTables() {
-        return new ListTablesResult().withTableNames(mtTables.keySet());
     }
 
     /**
