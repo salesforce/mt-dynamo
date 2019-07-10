@@ -20,6 +20,7 @@ import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.LimitExceededException;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
@@ -569,29 +570,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     }
 
     /**
-     * Gets the {@code DescribeStreamResult} from cache or from DescribeStream API.
-     * @param describeStreamRequest Describe stream request.
-     * @return Stream details for the given request (streamArn).
-     */
-    private DescribeStreamResult lookupDescribeStreamResult(DescribeStreamRequest describeStreamRequest)
-        throws AmazonDynamoDBException {
-
-        String key = describeStreamRequest.getStreamArn();
-        try {
-            DescribeStreamResult result = describeStreamCache.get(key,
-                () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
-            return result;
-        } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
-            // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
-            // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
-            LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
-                + "Retrying describeStream call.");
-            e.printStackTrace();
-            return this.loadStreamDescriptionForAllShards(describeStreamRequest);
-        }
-    }
-
-    /**
      * Gets the {@code DescribeStreamResult} from the DescribeStream API.
      * @param describeStreamRequest Describe stream request.
      *
@@ -604,7 +582,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      *         exceeds the maximum number allowed (5).
      */
     protected DescribeStreamResult loadStreamDescriptionForAllShards(DescribeStreamRequest describeStreamRequest)
-        throws AmazonDynamoDBException {
+        throws AmazonDynamoDBException, ResourceNotFoundException {
 
         List<Shard> allShards = new ArrayList<>();
         String streamArn = describeStreamRequest.getStreamArn();
@@ -628,12 +606,12 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
             } else { // If the shards list is null/empty exit since there shouldn't be more shards.
                 lastShardId = null;
+                result.getStreamDescription().setLastEvaluatedShardId(null);
             }
         } while (lastShardId != null);
 
-        StreamDescription streamDescription = result.getStreamDescription();
-        streamDescription.setShards(allShards);
-        result.setStreamDescription(streamDescription);
+        result.getStreamDescription().setShards(allShards);
+        result.setStreamDescription(result.getStreamDescription());
 
         return result;
     }
@@ -645,12 +623,24 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
      * @return {@code DescribeStreamResult}.
      */
     @Override
-    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest)
+        throws AmazonDynamoDBException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("describeStream request={}", describeStreamRequest);
         }
-        DescribeStreamResult result = lookupDescribeStreamResult(describeStreamRequest);
-        return result;
+
+        String key = describeStreamRequest.getStreamArn();
+        try {
+            DescribeStreamResult result = describeStreamCache.get(key,
+                () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
+            return result;
+        } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
+            // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
+            // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
+            LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
+                + "Retrying describeStream call. " + e.getMessage());
+            return this.loadStreamDescriptionForAllShards(describeStreamRequest);
+        }
     }
 
     @Override

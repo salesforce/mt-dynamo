@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.google.common.cache.Cache;
 import java.util.Arrays;
 import java.util.List;
@@ -55,13 +57,15 @@ public class StreamsTestUtil {
         } else {
             assertNotNull(cacheLookupResult);
 
-            assertTrue(cacheLookupResult.getStreamDescription().getStreamArn()
-                .equals(expectedResult.getStreamDescription().getStreamArn()));
-
-            if (expectedResult.getStreamDescription().getShards() != null) {
-                assertTrue(cacheLookupResult.getStreamDescription().getShards().equals(
-                    expectedResult.getStreamDescription().getShards()));
-            }
+            // These are the StreamDescription fields we care about validating for the describeStreamCache logic.
+            // For example StreamViewType and CreationRequestDateTime are not affected by the cache loader method.
+            StreamDescription cacheResultDesc = cacheLookupResult.getStreamDescription();
+            StreamDescription expectedResultDesc = expectedResult.getStreamDescription();
+            assert (cacheResultDesc.getStreamArn().equals(expectedResultDesc.getStreamArn()));
+            assert expectedResult.getStreamDescription().getShards() == null
+                || (cacheResultDesc.getShards().equals(expectedResultDesc.getShards()));
+            assert cacheResultDesc.getStreamStatus() == null
+                || (cacheResultDesc.getStreamStatus().equals(StreamStatus.ENABLED.toString()));
         }
 
         return cacheLookupResult;
