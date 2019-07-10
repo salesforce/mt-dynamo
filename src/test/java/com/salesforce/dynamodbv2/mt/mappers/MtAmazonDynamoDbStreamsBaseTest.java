@@ -122,7 +122,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         return getShardIterator(mtDynamoDbStreams, stream.getStreamArn());
     }
 
-    private static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
+    protected static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
         return getShardIterator(mtDynamoDbStreams, streamArn, ShardIteratorType.TRIM_HORIZON, null);
     }
 
