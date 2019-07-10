@@ -9,23 +9,39 @@ import javax.annotation.Nonnull;
 /**
  * Qualifies a shard identifier with its stream arn to form a unique identifier for the shard.
  */
-final class ShardId {
+public final class StreamShardId {
 
     @Nonnull
     private final String streamArn;
     @Nonnull
     private final String shardId;
 
-    ShardId(String streamArn, String shardId) {
+    /**
+     * Creates a new composite identifier from the given stream and shard identifiers.
+     *
+     * @param streamArn Stream ARN.
+     * @param shardId   Shard Id.
+     */
+    public StreamShardId(String streamArn, String shardId) {
         this.streamArn = checkNotNull(streamArn);
         this.shardId = checkNotNull(shardId);
     }
 
-    String getStreamArn() {
+    /**
+     * Returns the Stream ARN part of this identifier.
+     *
+     * @return Stream ARN.
+     */
+    public String getStreamArn() {
         return streamArn;
     }
 
-    String getShardId() {
+    /**
+     * Returns the Shard ID part of this identifier.
+     *
+     * @return Shard ID.
+     */
+    public String getShardId() {
         return shardId;
     }
 
@@ -37,9 +53,9 @@ final class ShardId {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        ShardId shardId = (ShardId) o;
-        return Objects.equals(streamArn, shardId.streamArn)
-            && Objects.equals(this.shardId, shardId.shardId);
+        final StreamShardId streamShardId = (StreamShardId) o;
+        return Objects.equals(streamArn, streamShardId.streamArn)
+            && Objects.equals(shardId, streamShardId.shardId);
     }
 
     @Override

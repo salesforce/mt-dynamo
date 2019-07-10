@@ -64,7 +64,7 @@ class FieldMapperTest {
             { BFM, N, B, TABLE, new AttributeValue().withN("1.1"), new AttributeValue().withB(
                 prefix(5).put(ByteBuffer.allocate(5).putInt(1).put((byte) 11).array()).flip()) },
             { BFM, B, B, TABLE, new AttributeValue().withB(ByteBuffer.wrap(TEST_BYTES)),
-                new AttributeValue().withB(prefix(TEST_BYTES.length).put(TEST_BYTES).flip())}
+                new AttributeValue().withB(prefix(TEST_BYTES.length).put(TEST_BYTES).flip()) }
         });
     }
 
@@ -103,7 +103,7 @@ class FieldMapperTest {
         return Arrays.stream(new Object[][] {
             { SFM, N, S, new NullPointerException("attributeValue={S: value,} of type=N could not be converted") },
             { SFM, null, S, new NullPointerException("null attribute type") },
-            { BFM, N, B, new NullPointerException()},
+            { BFM, N, B, new NullPointerException() },
             { BFM, null, B, new NullPointerException("null attribute type") },
         });
     }
@@ -122,6 +122,24 @@ class FieldMapperTest {
             assertEquals(expected.getClass(), e.getClass());
             assertEquals(expected.getMessage(), e.getMessage());
         }
+    }
+
+    static Stream<Object[]> filterData() {
+        return Arrays.stream(new Object[][] {
+            { SFM, new AttributeValue(PREFIX + "value"), true },
+            { SFM, new AttributeValue("other/table/value"), false },
+            { BFM, new AttributeValue().withB(prefix(2).put(UTF_8.encode("ab")).flip()), true },
+            { BFM, new AttributeValue().withB(ByteBuffer.allocate(5 + 5 + 2 + 3)
+                .put(UTF_8.encode("other")).put((byte) 0x00)
+                .put(UTF_8.encode("table")).put((byte) 0x00)
+                .put(UTF_8.encode("abc")).flip()), false }
+        });
+    }
+
+    @ParameterizedTest
+    @MethodSource("filterData")
+    void testFilter(FieldMapper fieldMapper, AttributeValue value, boolean expected) {
+        assertEquals(expected, fieldMapper.createFilter().test(value));
     }
 
     private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, ScalarAttributeType targetFieldType,

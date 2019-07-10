@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2.mt.util;
 
-import static com.salesforce.dynamodbv2.mt.util.ShardIteratorPosition.at;
+import static com.salesforce.dynamodbv2.mt.util.StreamShardPosition.at;
 import static com.salesforce.dynamodbv2.testsupport.StreamsTestUtil.mockRecord;
 import static com.salesforce.dynamodbv2.testsupport.StreamsTestUtil.mockRecords;
 import static com.salesforce.dynamodbv2.testsupport.StreamsTestUtil.mockSequenceNumber;
@@ -112,12 +112,12 @@ class StreamsRecordCacheTest {
             mockRecord(11)
         );
 
-        final ShardIteratorPosition position1 = at("stream1", "shard1", "0");
+        final StreamShardPosition position1 = at("stream1", "shard1", "0");
         final List<Record> records1 = records.subList(0, 3);
         sut.putRecords(position1, records1);
         assertEquals(Optional.of(records1), sut.getRecords(position1, 10));
 
-        final ShardIteratorPosition position2 = at("stream1", "shard1", "4");
+        final StreamShardPosition position2 = at("stream1", "shard1", "4");
         final List<Record> records2 = records.subList(2, 5);
         sut.putRecords(position2, records2);
         assertEquals(Optional.of(records2), sut.getRecords(position2, 10));
@@ -140,12 +140,12 @@ class StreamsRecordCacheTest {
             mockRecord(11)
         );
 
-        final ShardIteratorPosition position1 = at("stream1", "shard1", "4");
+        final StreamShardPosition position1 = at("stream1", "shard1", "4");
         final List<Record> records1 = records.subList(2, 5);
         sut.putRecords(position1, records1);
         assertEquals(Optional.of(records1), sut.getRecords(position1, 10));
 
-        final ShardIteratorPosition position2 = at("stream1", "shard1", "0");
+        final StreamShardPosition position2 = at("stream1", "shard1", "0");
         final List<Record> records2 = records.subList(0, 4);
         sut.putRecords(position2, records2);
         assertEquals(Optional.of(records1), sut.getRecords(position1, 10));
@@ -160,11 +160,11 @@ class StreamsRecordCacheTest {
     void testPutDifferentShards() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardIteratorPosition position1 = at("stream1", "shard1", "0");
+        final StreamShardPosition position1 = at("stream1", "shard1", "0");
         final List<Record> records1 = Arrays.asList(mockRecord(1), mockRecord(3));
         sut.putRecords(position1, records1);
 
-        final ShardIteratorPosition position2 = at("stream1", "shard2", "10");
+        final StreamShardPosition position2 = at("stream1", "shard2", "10");
         final List<Record> records2 = Arrays.asList(mockRecord(11), mockRecord(13));
         sut.putRecords(position2, records2);
 
@@ -179,13 +179,13 @@ class StreamsRecordCacheTest {
     void testEvictionSameShard() {
         final StreamsRecordCache sut = new StreamsRecordCache(3L);
 
-        final ShardIteratorPosition position1 = at("stream1", "shard1", "5");
+        final StreamShardPosition position1 = at("stream1", "shard1", "5");
         final List<Record> records1 = Arrays.asList(mockRecord(5), mockRecord(8));
         sut.putRecords(position1, records1);
         assertEquals(Optional.of(records1), sut.getRecords(position1, 10));
 
         // second segment overlaps with first, expect to adjust to fix, then evict first
-        final ShardIteratorPosition position2 = at("stream1", "shard1", "0");
+        final StreamShardPosition position2 = at("stream1", "shard1", "0");
         final List<Record> records2 = Arrays.asList(mockRecord(1), mockRecord(3), mockRecord(5));
         sut.putRecords(position2, records2);
 
@@ -200,12 +200,12 @@ class StreamsRecordCacheTest {
     void testEvictionDifferentShard() {
         final StreamsRecordCache sut = new StreamsRecordCache(3L);
 
-        final ShardIteratorPosition position1 = at("stream1", "shard1", "5");
+        final StreamShardPosition position1 = at("stream1", "shard1", "5");
         final List<Record> records1 = Arrays.asList(mockRecord(5), mockRecord(8));
         sut.putRecords(position1, records1);
         assertEquals(Optional.of(records1), sut.getRecords(position1, 10));
 
-        final ShardIteratorPosition position2 = at("stream1", "shard2", "10");
+        final StreamShardPosition position2 = at("stream1", "shard2", "10");
         final List<Record> records2 = Arrays.asList(mockRecord(11), mockRecord(13));
         sut.putRecords(position2, records2);
 
@@ -229,12 +229,12 @@ class StreamsRecordCacheTest {
     void testGetNoEntry() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition position = at(shardId, "5");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
+        final StreamShardPosition position = at(streamShardId, "5");
         final List<Record> records = Arrays.asList(mockRecord(5), mockRecord(8));
         sut.putRecords(position, records);
 
-        assertEquals(Optional.empty(), sut.getRecords(at(shardId, "0"), 10));
+        assertEquals(Optional.empty(), sut.getRecords(at(streamShardId, "0"), 10));
     }
 
     /**
@@ -244,12 +244,12 @@ class StreamsRecordCacheTest {
     void testGetNoEntryOverlap() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition position = at(shardId, "0");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
+        final StreamShardPosition position = at(streamShardId, "0");
         final List<Record> records = Arrays.asList(mockRecord(1), mockRecord(3));
         sut.putRecords(position, records);
 
-        assertEquals(Optional.empty(), sut.getRecords(at(shardId, "4"), 10));
+        assertEquals(Optional.empty(), sut.getRecords(at(streamShardId, "4"), 10));
     }
 
     /**
@@ -259,12 +259,12 @@ class StreamsRecordCacheTest {
     void testExactGetHit() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition position = at(shardId, "0");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
+        final StreamShardPosition position = at(streamShardId, "0");
         final List<Record> records = Arrays.asList(mockRecord(1), mockRecord(3));
         sut.putRecords(position, records);
 
-        assertEquals(Optional.of(records), sut.getRecords(at(shardId, "0"), 5));
+        assertEquals(Optional.of(records), sut.getRecords(at(streamShardId, "0"), 5));
     }
 
     /**
@@ -274,12 +274,12 @@ class StreamsRecordCacheTest {
     void testPartialHit() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition position = at(shardId, "0");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
+        final StreamShardPosition position = at(streamShardId, "0");
         final List<Record> records = Arrays.asList(mockRecord(1), mockRecord(3));
         sut.putRecords(position, records);
 
-        assertEquals(Optional.of(records.subList(1, 2)), sut.getRecords(at(shardId, "2"), 2));
+        assertEquals(Optional.of(records.subList(1, 2)), sut.getRecords(at(streamShardId, "2"), 2));
     }
 
     /**
@@ -289,7 +289,7 @@ class StreamsRecordCacheTest {
     void testGetAdjacent() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
 
         final List<Record> records = Arrays.asList(
             mockRecord(1),
@@ -299,11 +299,11 @@ class StreamsRecordCacheTest {
             mockRecord(11)
         );
 
-        sut.putRecords(at(shardId, "4"), records.subList(2, 4));
-        sut.putRecords(at(shardId, "0"), records.subList(0, 4));
-        sut.putRecords(at(shardId, "6"), records.subList(3, 5));
+        sut.putRecords(at(streamShardId, "4"), records.subList(2, 4));
+        sut.putRecords(at(streamShardId, "0"), records.subList(0, 4));
+        sut.putRecords(at(streamShardId, "6"), records.subList(3, 5));
 
-        assertEquals(Optional.of(records), sut.getRecords(at(shardId, "1"), 10));
+        assertEquals(Optional.of(records), sut.getRecords(at(streamShardId, "1"), 10));
     }
 
     /**
@@ -313,12 +313,12 @@ class StreamsRecordCacheTest {
     void testGetLimit() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
-        final ShardIteratorPosition position = at(shardId, "0");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
+        final StreamShardPosition position = at(streamShardId, "0");
         final List<Record> records = Arrays.asList(mockRecord(1), mockRecord(3), mockRecord(5));
         sut.putRecords(position, records);
 
-        assertEquals(Optional.of(records.subList(0, 2)), sut.getRecords(at(shardId, "0"), 2));
+        assertEquals(Optional.of(records.subList(0, 2)), sut.getRecords(at(streamShardId, "0"), 2));
     }
 
     /**
@@ -328,7 +328,7 @@ class StreamsRecordCacheTest {
     void testGetLimitAdjacent() {
         final StreamsRecordCache sut = new StreamsRecordCache(Long.MAX_VALUE);
 
-        final ShardId shardId = new ShardId("stream1", "shard1");
+        final StreamShardId streamShardId = new StreamShardId("stream1", "shard1");
 
         final List<Record> records = Arrays.asList(
             mockRecord(1),
@@ -338,10 +338,10 @@ class StreamsRecordCacheTest {
             mockRecord(11)
         );
 
-        sut.putRecords(at(shardId, "0"), records.subList(0, 2));
-        sut.putRecords(at(shardId, "0"), records.subList(0, 4));
-        sut.putRecords(at(shardId, "0"), records.subList(0, 5));
+        sut.putRecords(at(streamShardId, "0"), records.subList(0, 2));
+        sut.putRecords(at(streamShardId, "0"), records.subList(0, 4));
+        sut.putRecords(at(streamShardId, "0"), records.subList(0, 5));
 
-        assertEquals(Optional.of(records.subList(0, 3)), sut.getRecords(at(shardId, "1"), 3));
+        assertEquals(Optional.of(records.subList(0, 3)), sut.getRecords(at(streamShardId, "1"), 3));
     }
 }

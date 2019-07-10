@@ -1,7 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.function.Predicate.not;
+import static com.google.common.collect.Iterables.getLast;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
@@ -16,15 +16,15 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
+import io.micrometer.core.instrument.DistributionSummary;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +37,18 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
     private static final Logger LOG = LoggerFactory.getLogger(MtAmazonDynamoDbStreamsBase.class);
 
+    /**
+     * Parses arn and validates that tenant context matches current thread tenant context.
+     *
+     * @param arn Arn to parse.
+     * @return Parsed Arn.
+     */
+    private StreamArn parseAndValidateContext(String arn) {
+        final StreamArn parsedArn = StreamArn.fromString(arn);
+        checkArgument(parsedArn.getContextOpt().equals(mtDynamoDb.getMtContext().getContextOpt()),
+            "Current context does not match ARN context");
+        return parsedArn;
+    }
 
     protected final T mtDynamoDb;
 
@@ -90,13 +102,13 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         }
 
         String arn = describeStreamRequest.getStreamArn();
-        StreamArn streamArn = parse(arn);
+        StreamArn streamArn = parseAndValidateContext(arn);
         DescribeStreamRequest request = describeStreamRequest.clone().withStreamArn(streamArn.toDynamoDbArn());
 
         DescribeStreamResult result = dynamoDbStreams.describeStream(request);
 
         StreamDescription description = result.getStreamDescription();
-        streamArn.getTenantTableName().ifPresent(description::setTableName);
+        streamArn.getTenantTableNameOpt().ifPresent(description::setTableName);
         description.setStreamArn(arn);
 
         if (LOG.isDebugEnabled()) {
@@ -118,7 +130,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         }
 
         String arn = getShardIteratorRequest.getStreamArn();
-        String dynamoDbArn = parse(arn).toDynamoDbArn();
+        String dynamoDbArn = parseAndValidateContext(arn).toDynamoDbArn();
         GetShardIteratorRequest request = getShardIteratorRequest.clone().withStreamArn(dynamoDbArn);
 
         GetShardIteratorResult result = dynamoDbStreams.getShardIterator(request);
@@ -145,32 +157,18 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             LOG.debug("getRecords request={}", getRecordsRequest);
         }
 
-        ShardIterator iterator = ShardIterator.fromString(getRecordsRequest.getShardIterator());
-        String arn = iterator.getArn();
-        StreamArn streamArn = parse(arn);
+        final ShardIterator iterator = ShardIterator.fromString(getRecordsRequest.getShardIterator());
+        final String arn = iterator.getArn();
+        final StreamArn streamArn = parseAndValidateContext(arn);
 
         // transform tenant-aware into DynamoDB iterator request
-        GetRecordsRequest request = getRecordsRequest.clone()
-            .withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString());
+        final GetRecordsRequest request = new GetRecordsRequest()
+            .withShardIterator(iterator.withArn(streamArn.toDynamoDbArn()).toString())
+            .withLimit(getRecordsRequest.getLimit());
 
-        // create tenant record mapper and filter
-        Function<Record, MtRecord> recordMapper = getRecordMapper(streamArn);
-        Predicate<MtRecord> recordFilter = getRecordFilter(streamArn);
-
-        // perform actual lookup
-        GetRecordsResult result = getRecords(request, recordMapper, recordFilter);
-
-        if (!(result instanceof MtGetRecordsResult)) {
-            result = new MtGetRecordsResult()
-                .withRecords(result.getRecords())
-                .withNextShardIterator(result.getNextShardIterator())
-                .withLastSequenceNumber(Optional.ofNullable(result.getRecords())
-                    .filter(not(List::isEmpty))
-                    .map(Iterables::getLast)
-                    .map(Record::getDynamodb)
-                    .map(StreamRecord::getSequenceNumber)
-                    .orElse(null));
-        }
+        final MtGetRecordsResult result = streamArn instanceof MtStreamArn
+            ? getRecords(request, (MtStreamArn) streamArn)
+            : getAllRecords(request, streamArn);
 
         // translate back to tenant-aware iterator
         Optional.ofNullable(result.getNextShardIterator())
@@ -184,24 +182,51 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         return result;
     }
 
-    protected GetRecordsResult getRecords(GetRecordsRequest request, Function<Record, MtRecord> recordMapper,
-        Predicate<MtRecord> recordFilter) {
-        GetRecordsResult result = dynamoDbStreams.getRecords(request);
-        return result.withRecords(
-            result.getRecords().stream().map(recordMapper).filter(recordFilter).collect(toList()));
-    }
+    /**
+     * Get only records for the given tenant context and table.
+     *
+     * @param request     GetRecordsRequest for physical stream.
+     * @param mtStreamArn MtStreamArn containg physical table and stream names as well as context and tenant table name.
+     * @return MtGetRecordsResult containing converted records.
+     */
+    protected abstract MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn);
 
-    protected abstract Function<Record, MtRecord> getRecordMapper(StreamArn arn);
+    /**
+     * Get all records present in the physical stream outside of the context of a given tenant.
+     *
+     * @param request   GetRecordsRequest for physical stream.
+     * @param streamArn StreamArn containing the physical table and stream names.
+     * @return MtGetRecordsResult containing converted records.
+     */
+    protected abstract MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn);
 
-    protected Predicate<MtRecord> getRecordFilter(StreamArn arn) {
-        return arn::matches;
-    }
-
-    private StreamArn parse(String arn) {
-        StreamArn parsedArn = StreamArn.fromString(arn);
-        checkArgument(parsedArn.getContext().equals(mtDynamoDb.getMtContext().getContextOpt()),
-            "Current context does not match ARN context");
-        return parsedArn;
+    /**
+     * Shared helper method for subclasses.
+     *
+     * @param request GetRecordsRequest for physical stream.
+     * @param mapper  Function for mapping Records to MtRecords.
+     * @param meter   Meter to emit size of returned records collection.
+     * @return MtGetRecordsResult result.
+     */
+    protected MtGetRecordsResult getMtRecords(GetRecordsRequest request,
+                                              Function<Record, MtRecord> mapper,
+                                              DistributionSummary meter) {
+        final GetRecordsResult result = dynamoDbStreams.getRecords(request);
+        final List<Record> records = result.getRecords();
+        final String nextIterator = result.getNextShardIterator();
+        if (records.isEmpty()) {
+            meter.record(0);
+            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator);
+        }
+        final List<Record> mtRecords = new ArrayList<>(records.size());
+        for (Record record : records) {
+            mtRecords.add(mapper.apply(record));
+        }
+        meter.record(mtRecords.size());
+        return new MtGetRecordsResult()
+            .withRecords(mtRecords)
+            .withNextShardIterator(nextIterator)
+            .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
     }
 
 }

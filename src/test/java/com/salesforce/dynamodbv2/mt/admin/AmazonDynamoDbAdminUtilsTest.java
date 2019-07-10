@@ -96,7 +96,7 @@ class AmazonDynamoDbAdminUtilsTest {
 
         Throwable e = null;
         try {
-            localUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName),10);
+            localUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
 
         } catch (Throwable ex) {
             e = ex;

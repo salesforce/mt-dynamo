@@ -9,7 +9,6 @@ package com.salesforce.dynamodbv2.testsupport;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
-
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 

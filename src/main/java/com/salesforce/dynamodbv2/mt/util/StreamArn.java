@@ -2,7 +2,6 @@ package com.salesforce.dynamodbv2.mt.util;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -13,7 +12,7 @@ import java.util.Optional;
  */
 public class StreamArn {
 
-    static class MtStreamArn extends StreamArn {
+    public static class MtStreamArn extends StreamArn {
 
         private static final String VIRTUAL_FORMAT =
             "%s" + RESOURCE_SEPARATOR + CONTEXT_SEGMENT + "%s" + RESOURCE_SEPARATOR + TENANT_TABLE_SEGMENT + "%s";
@@ -27,19 +26,22 @@ public class StreamArn {
             this.tenantTableName = tenantTableName;
         }
 
+        public String getContext() {
+            return context;
+        }
+
+        public String getTenantTableName() {
+            return tenantTableName;
+        }
+
         @Override
-        public Optional<String> getContext() {
+        public Optional<String> getContextOpt() {
             return Optional.of(this.context);
         }
 
         @Override
-        public Optional<String> getTenantTableName() {
+        public Optional<String> getTenantTableNameOpt() {
             return Optional.of(tenantTableName);
-        }
-
-        @Override
-        public boolean matches(MtRecord record) {
-            return this.context.equals(record.getContext()) && this.tenantTableName.equals(record.getTableName());
         }
 
         @Override
@@ -53,7 +55,7 @@ public class StreamArn {
             if (!super.equals(o)) {
                 return false;
             }
-            MtStreamArn that = (MtStreamArn) o;
+            final MtStreamArn that = (MtStreamArn) o;
             return Objects.equals(context, that.context) && Objects.equals(tenantTableName, that.tenantTableName);
         }
 
@@ -175,7 +177,7 @@ public class StreamArn {
      *
      * @return Context in this arn.
      */
-    public Optional<String> getContext() {
+    public Optional<String> getContextOpt() {
         return Optional.empty();
     }
 
@@ -184,18 +186,8 @@ public class StreamArn {
      *
      * @return Tenant table name in this arn. May be empty.
      */
-    public Optional<String> getTenantTableName() {
+    public Optional<String> getTenantTableNameOpt() {
         return Optional.empty();
-    }
-
-    /**
-     * Checks whether this arn matches the given record given the context and tenantTableName configured in it.
-     *
-     * @param record Record to test
-     * @return true if arn context and table name matches record, false otherwise.
-     */
-    public boolean matches(MtRecord record) {
-        return true;
     }
 
     /**
@@ -220,7 +212,7 @@ public class StreamArn {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        StreamArn that = (StreamArn) o;
+        final StreamArn that = (StreamArn) o;
         return Objects.equals(qualifier, that.qualifier)
             && Objects.equals(tableName, that.tableName)
             && Objects.equals(streamLabel, that.streamLabel);

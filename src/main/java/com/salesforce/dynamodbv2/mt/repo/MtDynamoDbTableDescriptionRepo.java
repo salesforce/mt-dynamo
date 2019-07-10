@@ -34,7 +34,6 @@ import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -76,7 +75,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds,
-                                           Cache<String, TableDescription> tableDescriptionCache) {
+                                           Cache<Object, TableDescription> tableDescriptionCache) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.billingMode = billingMode;
         this.mtContext = mtContext;
@@ -259,7 +258,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private Integer pollIntervalSeconds;
         private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
-        private Cache<String, TableDescription> tableDescriptionCache;
+        private Cache<Object, TableDescription> tableDescriptionCache;
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -308,7 +307,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache<String, TableDescription>
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache<Object, TableDescription>
                                                                                    tableDescriptionCache) {
             this.tableDescriptionCache = tableDescriptionCache;
             return this;

@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +64,7 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
                                    Consumer<List<String>> logCallback,
                                    List<String> methodsToLog,
                                    boolean logAll) {
-        super(mtContext, amazonDynamoDb);
+        super(mtContext, amazonDynamoDb, null);
         this.logCallback = Optional.ofNullable(logCallback);
         this.methodsToLog = methodsToLog;
         this.logAll = logAll;
