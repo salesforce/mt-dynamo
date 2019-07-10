@@ -84,33 +84,37 @@ internal class MtBackupManagerImplTest {
         val backupManager: MtBackupManager = MtBackupManagerImpl(s3.region.toAWSRegion().name, bucket)
         val backupId = "test-backup"
 
-        // TODO: Don't hardcode the shared table here..
-        val table = "mt_shared_table_static_b_no_lsi"
-        MT_CONTEXT.withContext(null) {
-            backupManager.createMtBackup(CreateMtBackupRequest(backupId, table), sharedTableBinaryHashKey)
-            val mtBackupMetadata = backupManager.getBackup(backupId)
-            assertNotNull(mtBackupMetadata)
-            assertEquals(backupId, mtBackupMetadata.mtBackupId)
-            assertEquals(Status.COMPLETE, mtBackupMetadata.status)
-            assertTrue(mtBackupMetadata.tenantTables.size > 0)
+        try {
+            // TODO: Don't hardcode the shared table here..
+            val table = "mt_shared_table_static_b_no_lsi"
+            MT_CONTEXT.withContext(null) {
+                backupManager.createMtBackup(CreateMtBackupRequest(backupId, table), sharedTableBinaryHashKey)
+                val mtBackupMetadata = backupManager.getBackup(backupId)
+                assertNotNull(mtBackupMetadata)
+                assertEquals(backupId, mtBackupMetadata.mtBackupId)
+                assertEquals(Status.COMPLETE, mtBackupMetadata.status)
+                assertTrue(mtBackupMetadata.tenantTables.size > 0)
+            }
+
+            val newRestoreTableName = tableName + "-copy"
+            val restoreResult = backupManager.restoreTenantTableBackup(RestoreMtBackupRequest(backupId,
+                    TenantTable(tenantName = tenant, virtualTable = tableName),
+                    TenantTable(tenantName = tenant, virtualTable = newRestoreTableName)),
+                    sharedTableBinaryHashKey,
+                    MT_CONTEXT)
+
+            assertEquals(Status.COMPLETE, restoreResult.status)
+
+            MT_CONTEXT.withContext(tenant) {
+                val clonedRow = sharedTableBinaryHashKey.getItem(
+                        GetItemRequest(newRestoreTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
+                assertNotNull(clonedRow)
+                assertEquals("1", clonedRow.item.get("value")!!.s)
+            }
+        } finally {
+            backupManager.deleteBackup(backupId)
+            assertNull(backupManager.getBackup(backupId))
         }
-
-        val newRestoreTableName = tableName + "-copy"
-        val restoreResult = backupManager.restoreTenantTableBackup(RestoreMtBackupRequest(backupId,
-                TenantTable(tenantName = tenant, virtualTable = tableName),
-                TenantTable(tenantName = tenant, virtualTable = newRestoreTableName)),
-                sharedTableBinaryHashKey,
-                MT_CONTEXT)
-
-        assertEquals(Status.COMPLETE, restoreResult.status)
-
-        MT_CONTEXT.withContext(tenant) {
-            val clonedRow = sharedTableBinaryHashKey.getItem(GetItemRequest(newRestoreTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
-            assertNotNull(clonedRow)
-        }
-
-        backupManager.deleteBackup(backupId)
-        assertNull(backupManager.getBackup(backupId))
     }
 
     @Test
@@ -142,7 +146,7 @@ internal class MtBackupManagerImplTest {
         }
         val backupIds = Lists.newArrayList<String>()
         try {
-            for (i in 1..10) {
+            for (i in 1..3) {
                 val backupId = "testListBackup-$i"
                 backupIds.add(backupId)
                 backupManager.createMtBackup(

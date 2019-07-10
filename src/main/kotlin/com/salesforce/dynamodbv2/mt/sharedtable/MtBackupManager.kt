@@ -7,6 +7,7 @@ package com.salesforce.dynamodbv2.mt.sharedtable
 
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable
 import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable
 
 /**
@@ -26,20 +27,38 @@ import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable
  * style continuous backups, offering a time window of available restore points (versus choosing from N snapshots)
  */
 interface MtBackupManager {
-    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBase): MtBackupMetadata
+    /**
+     * Go through all tenants owned by this instance, and create a backup snapshot on S3 per table-tenant.
+     */
+    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata
 
+    /**
+     * Get the status of a given multi-tenant backup.
+     */
     fun getBackup(id: String): MtBackupMetadata?
 
+    /**
+     * Delete the give multi-tenant backup.
+     */
     fun deleteBackup(id: String): MtBackupMetadata?
 
+    /**
+     * Get details of a given table-tenant backup.
+     */
     fun getTenantTableBackup(id: String): TenantTableBackupMetadata
 
+    /**
+     * Initiate a restore of a given table-tenant backup to a new table-tenant target.
+     */
     fun restoreTenantTableBackup(
         restoreMtBackupRequest: RestoreMtBackupRequest,
         mtDynamo: MtAmazonDynamoDbBase,
         mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata
 
+    /**
+     * List all multi-tenant backups known to us on S3.
+     */
     fun listMtBackups(): List<MtBackupMetadata>
 }
 

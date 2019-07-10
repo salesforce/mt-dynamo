@@ -160,6 +160,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return mtTables.containsKey(tableName);
     }
 
+    public MtTableDescriptionRepo getMtTableDescriptionRepo() {
+        return mtTableDescriptionRepo;
+    }
+
     Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
         CreateTableRequest table = mtTables.get(sharedTableName);
         checkArgument(table != null);
@@ -566,6 +570,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public ListTablesResult listTables() {
         return new ListTablesResult().withTableNames(mtTables.keySet());
     }
+
     /**
      * See class level Javadoc for explanation of why the use of addAttributeUpdateEntry and withAttributeUpdates is
      * not supported.
