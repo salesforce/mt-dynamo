@@ -91,6 +91,11 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
      * High level, the multitenant shared table is being scanned, and with each page of results, we write a file per
      * tenant-table onto S3 organized such that restoring a single tenant-table is a simple S3 directory listFiles
      * operation providing full row dumps to insert|restore back into dynamo under a different tenant-table space.
+     *
+     * TODO: Make this an async operation that properly uses an on-demand dynamo backup/restored table to run scans
+     * against with a callback hook to monitor progress and wait for backup completion like the existing dynamo backup
+     * APIs. For now, this is a synchronous call that operates the scan against a live table that may be taking writes,
+     * so proceed with caution.
      */
     override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
