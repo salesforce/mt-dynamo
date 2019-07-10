@@ -1173,7 +1173,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
     /**
      * Verifies that if a {@code DescribeStreamResult} for a stream has a null or empty list of shards, but contains
-     * shards from a previous result, we stop calling describeStream and return the current list of shards.
+     * shards from a previous result, we continue until the LastEvaluatedShardId is null.
      */
     @Test
     public void testDescribeStreamCacheWithEmptyListOfShardsAfterNonEmptyList() {
@@ -1190,10 +1190,13 @@ class CachingAmazonDynamoDbStreamsTest {
             ArrayList<DescribeStreamResult> expectedResults = new ArrayList<>();
             expectedResults.add(new DescribeStreamResult().withStreamDescription(
                 new StreamDescription().withStreamArn(streamArn).withShards(
-                    shards.subList(0, 2)).withLastEvaluatedShardId("B")));
+                    shards.subList(0, 1)).withLastEvaluatedShardId("A")));
             expectedResults.add(new DescribeStreamResult().withStreamDescription(
                 new StreamDescription().withStreamArn(streamArn).withShards(
-                    secondShardsList).withLastEvaluatedShardId("B")));
+                    secondShardsList).withLastEvaluatedShardId("A")));
+            expectedResults.add(new DescribeStreamResult().withStreamDescription(
+                new StreamDescription().withStreamArn(streamArn).withShards(
+                    shards.subList(1, 2))));
 
             CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams,
                 expectedResults).build();

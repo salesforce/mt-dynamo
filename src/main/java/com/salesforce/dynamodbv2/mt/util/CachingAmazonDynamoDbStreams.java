@@ -91,8 +91,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
         private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
-        private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 1;
-
+        private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
@@ -515,6 +514,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private Cache<String, DescribeStreamResult> describeStreamCache;
 
     @VisibleForTesting
+    // TODO: introduce builder/constructor variant that allows passing in cache reference
     public Cache<String, DescribeStreamResult> getDescribeStreamCache() {
         return describeStreamCache;
     }
@@ -591,6 +591,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             LOG.debug("cache miss in describe stream cache for key: {}", streamArn);
         }
         // TODO metrics: count cache miss
+        // TODO metrics: measure time for fetching results from describeStream
 
         DescribeStreamResult result;
         do {
@@ -600,13 +601,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
             if (result.getStreamDescription().getShards() != null
                 && !result.getStreamDescription().getShards().isEmpty()) {
-                List<Shard> shards = result.getStreamDescription().getShards();
-                allShards.addAll(shards);
-                lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
-            } else { // If the shards list is null/empty exit since there shouldn't be more shards.
-                lastShardId = null;
-                result.getStreamDescription().setLastEvaluatedShardId(null);
+                allShards.addAll(result.getStreamDescription().getShards());
             }
+            lastShardId = result.getStreamDescription().getLastEvaluatedShardId();
         } while (lastShardId != null);
 
         return new DescribeStreamResult().withStreamDescription(result.getStreamDescription().withShards(allShards));
