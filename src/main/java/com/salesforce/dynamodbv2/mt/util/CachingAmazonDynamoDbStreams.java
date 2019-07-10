@@ -609,10 +609,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
         } while (lastShardId != null);
 
-        result.getStreamDescription().setShards(allShards);
-        result.setStreamDescription(result.getStreamDescription());
-
-        return result;
+        return new DescribeStreamResult().withStreamDescription(result.getStreamDescription().withShards(allShards));
     }
 
     /**
