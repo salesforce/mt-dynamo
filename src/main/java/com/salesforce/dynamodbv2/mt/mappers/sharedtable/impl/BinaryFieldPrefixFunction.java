@@ -49,7 +49,7 @@ public class BinaryFieldPrefixFunction implements FieldPrefixFunction<ByteBuffer
         // equivalent of String.startsWith
         final ByteBuffer prefix = newBuffer(context, tableName, 0).flip();
         final int end = prefix.limit();
-        return b -> b.asReadOnlyBuffer().mismatch(prefix.asReadOnlyBuffer()) == end;
+        return b -> b.mismatch(prefix) == end;
     }
 
     private static int indexOf(byte[] array, byte target, int start) {
