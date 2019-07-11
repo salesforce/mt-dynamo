@@ -85,7 +85,7 @@ public class MtCache<V> implements Cache<Object, V> {
     }
 
     @Override
-    public void putAll(Map<? extends Object, ? extends V> m) {
+    public void putAll(Map<?, ? extends V> m) {
         m.forEach(this::put);
     }
 

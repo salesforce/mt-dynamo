@@ -7,27 +7,27 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.44 (July 10, 2019)
 
-* Fix shared table stream getRecords performance regression
+* Fix performance regression in `getRecords` with shared-table streams
 
 ## 0.9.43 (July 10, 2019)
 
-* Optimize shared table stream record filtering
+* Optimize shared-table stream-record filtering
 * Emit separate metrics for stream record retrieval (with/without context and byTable/byIndex) 
-* Change Cache key type (breaking API change)
+* Change `Cache` key type (API-breaking change)
 
 ## 0.9.42 (July 3, 2019)
 
-* Stream metrics refinements.
-* Introduced Micrometer metrics instrumentation.
+* Stream metrics refinements
+* Introduced Micrometer metrics instrumentation
 
 ## 0.9.41 (July 1, 2019)
 
-* Performance improvements for stream caching.
-* Parameterized raw `Cache` types.
+* Performance improvements for stream caching
+* Parameterized raw `Cache` types
 
 ## 0.9.40 (June 18, 2019)
 
-* Exposed the ability to provide implementations of table-description and table-mapping caches to `SharedTableBuilder`s.
+* Exposed the ability to provide implementations of table-description and table-mapping caches to `SharedTableBuilder`s
 
 ## 0.9.39 (May 24, 2019)
 
