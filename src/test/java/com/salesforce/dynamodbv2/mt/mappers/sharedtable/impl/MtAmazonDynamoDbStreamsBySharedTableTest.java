@@ -1,11 +1,14 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.amazonaws.services.dynamodbv2.model.BillingMode.PAY_PER_REQUEST;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
+import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -13,12 +16,15 @@ import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
@@ -30,12 +36,10 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTest;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -49,7 +53,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Tests shared table streams.
  */
-class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBaseTest {
+class MtAmazonDynamoDbStreamsBySharedTableTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsBySharedTableTest.class.getSimpleName() + ".";
 
@@ -57,7 +61,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     private static String getShardIterator(MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         ListStreamsResult lsResult = mtDynamoDbStreams.listStreams(new ListStreamsRequest());
         List<String> iterators = lsResult.getStreams().stream()
-            .map(stream -> getShardIterator(mtDynamoDbStreams, stream))
+            .map(stream -> MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, stream))
             .filter(Optional::isPresent)
             .map(Optional::get)
             .collect(toList());
@@ -81,7 +85,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String randomTableName = "RandomTable";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, false))
+            .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, false))
             .withAmazonDynamoDb(dynamoDb)
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -89,7 +94,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
             .build();
         try {
-            TableUtils.createTableIfNotExists(dynamoDb, newCreateTableRequest(randomTableName, false));
+            TableUtils.createTableIfNotExists(dynamoDb,
+                MtAmazonDynamoDbStreamsBaseTestUtils.newCreateTableRequest(randomTableName, false));
 
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
@@ -98,11 +104,11 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             assertEquals(1, streams.size());
 
             Stream stream = streams.get(0);
-            assertEquals(tablePrefix + SHARED_TABLE_NAME, stream.getTableName());
+            assertEquals(tablePrefix + MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, stream.getTableName());
             assertNotNull(stream.getStreamArn());
             assertNotNull(stream.getStreamLabel());
         } finally {
-            deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
             TableUtils.deleteTableIfExists(dynamoDb, new DeleteTableRequest(randomTableName));
         }
     }
@@ -116,21 +122,26 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testRecords.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
+            .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
             .withContext(MT_CONTEXT)
             .build();
         try {
-            createTenantTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
 
             int i = 0;
-            MtRecord expected1 = putTestItem(mtDynamoDb, TENANTS[0], i++);
-            MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i);
+            MtRecord expected1 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++);
+            MtRecord expected2 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i);
             i = 0;
-            MtRecord expected3 = putTestItem(mtDynamoDb, TENANTS[1], i++);
-            MtRecord expected4 = putTestItem(mtDynamoDb, TENANTS[1], i);
+            MtRecord expected3 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
+            MtRecord expected4 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i);
 
             // get shard iterator
             CountingAmazonDynamoDbStreams dynamoDbStreams =
@@ -140,23 +151,28 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
 
             // test without context
             String iterator = getShardIterator(mtDynamoDbStreams);
-            assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
 
             // test with each tenant context
-            MT_CONTEXT.withContext(TENANTS[0], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
-                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
+                String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+                    .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
+                MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
             });
-            MT_CONTEXT.withContext(TENANTS[1], () -> {
-                String tenantIterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
-                assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], () -> {
+                String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+                    .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
+                MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
 
             // once per fetch (since they are all trim horizon)
             assertEquals(3, dynamoDbStreams.getRecordsCount);
             assertEquals(3, dynamoDbStreams.getShardIteratorCount);
         } finally {
-            deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -169,7 +185,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         String tablePrefix = TABLE_PREFIX + "testLimit.";
 
         MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
-            .withCreateTableRequests(newCreateTableRequest(SHARED_TABLE_NAME, true))
+            .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
             .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
             .withTablePrefix(tablePrefix)
             .withCreateTablesEagerly(true)
@@ -177,24 +194,31 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .build();
         try {
             // create tenant tables
-            createTenantTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
 
             int i = 0;
             // one record for tenant 1 on page 1 (expect to get that record)
-            putTestItem(mtDynamoDb, TENANTS[1], i++);
-            final MtRecord expected1 = putTestItem(mtDynamoDb, TENANTS[0], i++);
-            putTestItem(mtDynamoDb, TENANTS[1], i++);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
+            final MtRecord expected1 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
             // one record for tenant 1 on page 2 (also expect to get that one)
-            putTestItem(mtDynamoDb, TENANTS[1], i++);
-            final MtRecord expected2 = putTestItem(mtDynamoDb, TENANTS[0], i++);
-            putTestItem(mtDynamoDb, TENANTS[1], i);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
+            final MtRecord expected2 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i);
 
             // now query change streams
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
-            MT_CONTEXT.withContext(TENANTS[0], () -> {
-                String iterator = getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
+                String iterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, mtDynamoDb)
+                    .orElseThrow();
                 GetRecordsResult result = mtDynamoDbStreams.getRecords(new GetRecordsRequest()
                     .withShardIterator(iterator)
                     .withLimit(3));
@@ -203,11 +227,11 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
                 // we only expect to see 2 records, since the last page would exceed limit
                 assertEquals(2, result.getRecords().size());
                 Iterator<Record> it = result.getRecords().iterator();
-                assertMtRecord(expected1, it.next());
-                assertMtRecord(expected2, it.next());
+                MtAmazonDynamoDbStreamsBaseTestUtils.assertMtRecord(expected1, it.next());
+                MtAmazonDynamoDbStreamsBaseTestUtils.assertMtRecord(expected2, it.next());
             });
         } finally {
-            deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -218,6 +242,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testTimeout() {
         /* ARRANGE (lots of stuff) */
 
+        final String tablePrefix = TABLE_PREFIX + "testTimeout.";
+
         // second clock tick is higher than limit
         final Clock clock = mock(Clock.class);
         when(clock.millis()).thenReturn(1L).thenReturn(3L);
@@ -226,6 +252,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
 
         // two get records calls that return max records (we expect only first call to happen due to timeout)
+        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         when(streams.getShardIterator(any())).thenReturn(
             new GetShardIteratorResult().withShardIterator(mockArn + "|it"));
@@ -235,8 +262,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it3")
                 .withRecords(mockRecords(1000, 1000)));
 
-        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
-        final MtAmazonDynamoDbBySharedTable mtDynamo = mockMtAmazonDynamoDb(clock);
+        final MtAmazonDynamoDbBySharedTable mtDynamo = createMtAmazonDynamoDb(tablePrefix, clock);
 
         // finally create SUT
         final MtAmazonDynamoDbStreamsBySharedTable sharedTableStreams =
@@ -244,6 +270,15 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
 
         /* ACT */
         GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            mtDynamo.createTable(new CreateTableRequest()
+                .withTableName("tenantTableName")
+                .withKeySchema(
+                    new KeySchemaElement("vhk", HASH))
+                .withAttributeDefinitions(
+                    new AttributeDefinition("vhk", S)
+                )
+                .withBillingMode(PAY_PER_REQUEST)
+            );
             GetShardIteratorResult iteratorResult = sharedTableStreams.getShardIterator(
                 new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
                     .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1"));
@@ -265,6 +300,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
     void testRetry() {
         /* ARRANGE (lots of stuff) */
 
+        final String tablePrefix = TABLE_PREFIX + "testRetry.";
+
         // fix clock (so that we don't run out of time)
         final Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
 
@@ -272,6 +309,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
 
         // two get records calls that return max records (we expect only first call to happen due to timeout)
+        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         when(streams.getShardIterator(any())).thenReturn(
             new GetShardIteratorResult().withShardIterator(mockArn + "|it0"));
@@ -285,8 +323,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
             .thenReturn(new GetRecordsResult().withNextShardIterator(mockArn + "|it1500")
                 .withRecords(mockRecords(1000, 500)));
 
-        // every 10th record is for tenant (so we would get more records if it weren't for timeout)
-        final MtAmazonDynamoDbBySharedTable mtDynamo = mockMtAmazonDynamoDb(clock);
+        final MtAmazonDynamoDbBySharedTable mtDynamo = createMtAmazonDynamoDb(tablePrefix, clock);
 
         // finally create SUT
         final MtAmazonDynamoDbStreamsBySharedTable sharedTableStreams =
@@ -294,6 +331,15 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
 
         /* ACT */
         GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            mtDynamo.createTable(new CreateTableRequest()
+                .withTableName("tenantTableName")
+                .withKeySchema(
+                    new KeySchemaElement("vhk", HASH))
+                .withAttributeDefinitions(
+                    new AttributeDefinition("vhk", S)
+                )
+                .withBillingMode(PAY_PER_REQUEST)
+            );
             GetShardIteratorResult iteratorResult = sharedTableStreams.getShardIterator(
                 new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
                     .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1"));
@@ -308,33 +354,86 @@ class MtAmazonDynamoDbStreamsBySharedTableTest extends MtAmazonDynamoDbStreamsBa
         assertEquals(mockMtArn + "|it1500", result.getNextShardIterator());
     }
 
+    /**
+     * Verifies that getRecords for tenant does not retry for empty results.
+     */
+    @Test
+    void testRetryNoRecords() {
+        /* ARRANGE (lots of stuff) */
 
-    private static MtAmazonDynamoDbBySharedTable mockMtAmazonDynamoDb(Clock clock) {
-        final MtAmazonDynamoDbBySharedTable mtDynamo = mock(MtAmazonDynamoDbBySharedTable.class);
-        when(mtDynamo.getMtContext()).thenReturn(MT_CONTEXT);
-        when(mtDynamo.getGetRecordsTimeLimit()).thenReturn(1L);
-        when(mtDynamo.getClock()).thenReturn(clock);
-        when(mtDynamo.getFieldValueFunction(any())).thenReturn(key -> {
-            String id = key.get("id").getS();
-            return new FieldValue<>(Integer.parseInt(id) % 10 == 0 ? "T1" : "T2", "tenantTableName", id);
-        });
-        final ItemMapper itemMapper = mock(ItemMapper.class);
-        when(itemMapper.reverse(any())).then(returnsFirstArg());
-        final TableMapping tableMapping = mock(TableMapping.class);
-        when(tableMapping.getItemMapper()).thenReturn(itemMapper);
-        final DynamoTableDescription tableDescription = mock(DynamoTableDescription.class);
-        when(tableDescription.getStreamSpecification()).thenReturn(new StreamSpecification().withStreamEnabled(true));
-        when(tableMapping.getVirtualTable()).thenReturn(tableDescription);
-        when(mtDynamo.getTableMapping(any())).thenReturn(tableMapping);
-        when(mtDynamo.getMeterRegistry()).thenReturn(new CompositeMeterRegistry());
-        return mtDynamo;
+        final String tablePrefix = TABLE_PREFIX + "testRetryNoRecords.";
+
+        // fix clock (so that we don't run out of time)
+        final Clock clock = Clock.fixed(Instant.now(), ZoneId.systemDefault());
+
+        final String mockArn = "arn:aws:dynamodb:region:account-id:table/tableName/stream/label";
+        final String mockMtArn = mockArn + "/context/T1/tenantTable/tenantTableName";
+        final String iterator = mockArn + "|iterator";
+        final String nextIterator = mockArn + "|nextIterator";
+
+        final MtAmazonDynamoDbBySharedTable mtDynamo = createMtAmazonDynamoDb(tablePrefix, clock);
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        when(streams.getShardIterator(any())).thenReturn(new GetShardIteratorResult().withShardIterator(iterator));
+        when(streams.getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(1000)))
+            .thenReturn(new GetRecordsResult().withRecords().withNextShardIterator(nextIterator));
+        when(streams.getRecords(new GetRecordsRequest().withShardIterator(nextIterator).withLimit(1000)))
+            .thenThrow(new AssertionError());
+        final MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamo, streams);
+
+        /* ACT */
+        GetRecordsResult result = MT_CONTEXT.withContext("T1", i -> {
+            mtDynamo.createTable(new CreateTableRequest()
+                .withTableName("tenantTableName")
+                .withKeySchema(
+                    new KeySchemaElement("vhk", HASH))
+                .withAttributeDefinitions(
+                    new AttributeDefinition("vhk", S)
+                )
+                .withStreamSpecification(new StreamSpecification()
+                    .withStreamEnabled(true)
+                    .withStreamViewType(NEW_AND_OLD_IMAGES))
+                .withBillingMode(PAY_PER_REQUEST)
+            );
+            final String shardIterator = mtDynamoDbStreams.getShardIterator(
+                new GetShardIteratorRequest().withStreamArn(mockMtArn).withShardId("shard")
+                    .withShardIteratorType(AFTER_SEQUENCE_NUMBER).withSequenceNumber("1")).getShardIterator();
+            return mtDynamoDbStreams.getRecords(new GetRecordsRequest().withShardIterator(shardIterator));
+        }, null);
+
+        /* ASSERT */
+
+        // expect no records (and no retry attempt)
+        assertEquals(0, result.getRecords().size());
+    }
+
+    private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
+        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+        return SharedTableBuilder.builder()
+            .withAmazonDynamoDb(amazonDynamoDB)
+            .withClock(clock)
+            .withContext(MT_CONTEXT)
+            .withGetRecordsTimeLimit(1L)
+            .withTablePrefix(prefix)
+            .withCreateTableRequests(new CreateTableRequest()
+                .withTableName("TestTable")
+                .withKeySchema(
+                    new KeySchemaElement("hk", HASH))
+                .withAttributeDefinitions(
+                    new AttributeDefinition("hk", S)
+                )
+                .withStreamSpecification(new StreamSpecification()
+                    .withStreamEnabled(true)
+                    .withStreamViewType(NEW_AND_OLD_IMAGES))
+                .withBillingMode(PAY_PER_REQUEST))
+            .build();
     }
 
     private static List<Record> mockRecords(int start, int num) {
         List<Record> records = new ArrayList<>(num);
         for (int i = 0; i < num; i++) {
+            final String val = (i % 10 == 0 ? "T1" : "T2") + "/tenantTableName/" + i;
             records.add(new Record().withDynamodb(new StreamRecord()
-                .withKeys(ImmutableMap.of("id", new AttributeValue(String.valueOf(i))))
+                .withKeys(ImmutableMap.of("hk", new AttributeValue(val)))
                 .withSequenceNumber(String.valueOf(start + i))));
         }
         return records;

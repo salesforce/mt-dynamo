@@ -51,6 +51,7 @@ public class TableMapping {
 
     private final ItemMapper itemMapper;
     private final ItemMapper keyMapper;
+    private final RecordMapper recordMapper;
     private final QueryAndScanMapper queryAndScanMapper;
     private final ConditionMapper conditionMapper;
 
@@ -78,6 +79,8 @@ public class TableMapping {
                 fieldMapper,
                 buildVirtualToPhysicalKeyFieldMappings()
         );
+        recordMapper = new RecordMapper(mtContext, virtualTable.getTableName(), itemMapper, fieldMapper,
+            physicalTable.getPrimaryKey().getHashKey());
         queryAndScanMapper = new QueryAndScanMapper(this, fieldMapper);
         conditionMapper = new ConditionMapper(this, fieldMapper);
     }
@@ -96,6 +99,10 @@ public class TableMapping {
 
     ItemMapper getKeyMapper() {
         return keyMapper;
+    }
+
+    public RecordMapper getRecordMapper() {
+        return recordMapper;
     }
 
     QueryAndScanMapper getQueryAndScanMapper() {
