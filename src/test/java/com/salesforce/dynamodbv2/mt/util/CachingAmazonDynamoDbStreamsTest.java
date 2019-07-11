@@ -67,6 +67,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.awaitility.core.ConditionTimeoutException;
@@ -322,7 +323,7 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static void mockGetShardIterator(AmazonDynamoDBStreams streams, GetShardIteratorRequest iteratorRequest,
-        String iterator) {
+                                             String iterator) {
         GetShardIteratorResult result = new GetShardIteratorResult().withShardIterator(iterator);
         when(streams.getShardIterator(eq(iteratorRequest))).thenReturn(result);
     }
@@ -352,9 +353,9 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static String assertGetRecords(AmazonDynamoDBStreams streams,
-        String iterator,
-        Integer limit,
-        List<Record> expectedRecords) {
+                                           String iterator,
+                                           Integer limit,
+                                           List<Record> expectedRecords) {
         GetRecordsRequest request = new GetRecordsRequest().withShardIterator(iterator).withLimit(limit);
         GetRecordsResult result = streams.getRecords(request);
         assertEquals(expectedRecords, result.getRecords());
@@ -362,10 +363,10 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static String assertGetRecords(AmazonDynamoDBStreams streams,
-        GetShardIteratorRequest iteratorRequest,
-        Integer limit,
-        int from,
-        int to) {
+                                           GetShardIteratorRequest iteratorRequest,
+                                           Integer limit,
+                                           int from,
+                                           int to) {
         final String iterator = streams.getShardIterator(iteratorRequest).getShardIterator();
         assertNotNull(iterator);
         final List<Record> mockRecords = records.subList(from, to);
@@ -373,8 +374,8 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static GetShardIteratorRequest mockTrimHorizonRequest(AmazonDynamoDBStreams streams,
-        String streamArn,
-        String shardId) {
+                                                                  String streamArn,
+                                                                  String shardId) {
         GetShardIteratorRequest thRequest = new GetShardIteratorRequest()
             .withStreamArn(streamArn)
             .withShardId(shardId)
@@ -457,7 +458,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertTrue(expectedResults.size() >= 1);
         when(mockStreams.describeStream(any(DescribeStreamRequest.class)))
             .thenReturn(expectedResults.get(0),
-                expectedResults.subList(1, expectedResults.size()).toArray(new DescribeStreamResult[]{}));
+                expectedResults.subList(1, expectedResults.size()).toArray(new DescribeStreamResult[] {}));
 
         return new CachingAmazonDynamoDbStreams.Builder(mockStreams);
     }
@@ -898,9 +899,9 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, iterator, 0, 6);
 
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-                .withMaxRecordsByteSize(0L)
-                .withMaxIteratorCacheSize(0)
-                .build();
+            .withMaxRecordsByteSize(0L)
+            .withMaxIteratorCacheSize(0)
+            .build();
 
         String nextShardIterator = assertGetRecords(cachingStreams, firstRequest, null, 0, 6);
 
@@ -1185,8 +1186,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
             assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
 
-            StreamDescription streamDesc = cachingStreams.getDescribeStreamCache().getIfPresent(streamArn)
-                .getStreamDescription();
+            StreamDescription streamDesc = Objects.requireNonNull(cachingStreams.getDescribeStreamCache()
+                .getIfPresent(streamArn)).getStreamDescription();
             assertNotNull(streamDesc.getShards());
             assertTrue(streamDesc.getShards().isEmpty());
 
@@ -1363,7 +1364,7 @@ class CachingAmazonDynamoDbStreamsTest {
      * Verifies that the describeStreamCache doesn't update cache if shard weight limit is reached for given entry.
      */
     @Test
-    void testDescribeStreamCacheWeightEvition() {
+    void testDescribeStreamCacheWeightEviction() {
         List<Shard> shards = ImmutableList.of(
             newShard("A", null, "1", "2"),
             newShard("B", null, "1", "2"),
@@ -1455,7 +1456,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
 
         DescribeStreamResult cacheLookupResult = cachingStreams.getDescribeStreamCache().getIfPresent(streamArn);
-        assertTrue(cacheLookupResult.getStreamDescription().getShards().isEmpty());
+        assertTrue(Objects.requireNonNull(cacheLookupResult).getStreamDescription().getShards().isEmpty());
 
         // Ensures describeStream is only called once
         verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
@@ -1467,7 +1468,7 @@ class CachingAmazonDynamoDbStreamsTest {
     @Test
     public void testDescribeStreamThrottled() {
         AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
-        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult)null)
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult) null)
             .build();
 
         AmazonDynamoDBException expectedException = new AmazonDynamoDBException("Rate exceeded "
@@ -1492,7 +1493,7 @@ class CachingAmazonDynamoDbStreamsTest {
     @Test
     public void testDescribeStreamResourceNotFound() {
         AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
-        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult)null)
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, (DescribeStreamResult) null)
             .build();
 
         AmazonDynamoDBException expectedException = new ResourceNotFoundException("com.amazonaws.services."

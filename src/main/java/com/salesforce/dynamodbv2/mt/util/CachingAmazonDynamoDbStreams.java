@@ -92,8 +92,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final int DEFAULT_MAX_GET_RECORDS_RETRIES = 10;
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
         private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
-        private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5;
-        private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000;
+        private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5L;
+        private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000L;
         private static final boolean DESCRIBE_STREAM_CACHE_ENABLED = true;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -541,8 +541,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     // iterator cache
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
 
-    private Cache<String, DescribeStreamResult> describeStreamCache;
-    private boolean describeStreamCacheEnabled;
+    private final Cache<String, DescribeStreamResult> describeStreamCache;
+    private final boolean describeStreamCacheEnabled;
 
     @VisibleForTesting
     // TODO: introduce builder/constructor variant that allows passing in cache reference
@@ -664,9 +664,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         if (describeStreamCacheEnabled) {
             String key = describeStreamRequest.getStreamArn();
             try {
-                DescribeStreamResult result = describeStreamCache.get(key,
+                return describeStreamCache.get(key,
                     () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
-                return result;
             } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
                 // Catch exceptions thrown on cache lookup or cache loader and try load method once more. (get call
                 // will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
