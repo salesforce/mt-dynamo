@@ -1141,6 +1141,33 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that {@code DescribeStreamResult}s are not used when disabled.
+     */
+    @Test
+    void testDescribeStreamCacheNotUsedWhenDisabled() {
+
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2")
+        );
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards));
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
+            .withDescribeStreamCacheDisabled().build();
+
+        cachingStreams.describeStream(request);
+        assertNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn));
+
+        cachingStreams.describeStream(request);
+        assertNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn));
+
+        verify(mockStreams, times(2)).describeStream(any(DescribeStreamRequest.class));
+    }
+
+    /**
      * Verifies that if a {@code DescribeStreamResult} for a stream has a null or empty list of shards,
      * the result returned has no shards (an empty list).
      */

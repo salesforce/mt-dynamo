@@ -94,6 +94,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
         private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5;
         private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000;
+        private static final boolean DESCRIBE_STREAM_CACHE_ENABLED = true;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
@@ -102,6 +103,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int maxGetRecordsRetries = DEFAULT_MAX_GET_RECORDS_RETRIES;
         private long describeStreamCacheTtl = DEFAULT_DESCRIBE_STREAM_CACHE_TTL;
+        private boolean describeStreamCacheEnabled = DESCRIBE_STREAM_CACHE_ENABLED;
         private long maxDescribeStreamCacheWeight = DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT;
         private long getRecordsLimitExceededBackoffInMillis =
             DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
@@ -173,6 +175,16 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Disables the describe stream cache.
+         * @return this Builder.
+         */
+        public Builder withDescribeStreamCacheDisabled() {
+            LOG.info("describeStream cache is disabled");
+            this.describeStreamCacheEnabled = false;
+            return this;
+        }
+
+        /**
          * Time to live for describe stream cache entries.
          *
          * @param describeStreamCacheTtl Duration to wait before refreshing describe stream cache on writes.
@@ -231,7 +243,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 getRecordsLimitExceededBackoffInMillis,
                 maxIteratorCacheSize,
                 describeStreamCacheTtl,
-                maxDescribeStreamCacheWeight);
+                maxDescribeStreamCacheWeight,
+                describeStreamCacheEnabled);
         }
     }
 
@@ -528,6 +541,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final LoadingCache<CachingShardIterator, String> iteratorCache;
 
     private Cache<String, DescribeStreamResult> describeStreamCache;
+    private boolean describeStreamCacheEnabled;
 
     @VisibleForTesting
     // TODO: introduce builder/constructor variant that allows passing in cache reference
@@ -555,7 +569,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                          long getRecordsLimitExceededBackoffInMillis,
                                          int maxIteratorCacheSize,
                                          long describeStreamCacheTtl,
-                                         long maxDescribeStreamCacheWeight) {
+                                         long maxDescribeStreamCacheWeight,
+                                         boolean describeStreamCacheEnabled) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.maxGetRecordsRetries = maxGetRecordsRetries;
@@ -565,6 +580,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             List<Shard> shards = result.getStreamDescription().getShards();
             return shards == null ? 0 : shards.size();
         };
+        this.describeStreamCacheEnabled = describeStreamCacheEnabled;
         this.describeStreamCache = CacheBuilder
             .newBuilder()
             .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
@@ -610,7 +626,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         String streamArn = describeStreamRequest.getStreamArn();
         String lastShardId = describeStreamRequest.getExclusiveStartShardId();
 
-        if (LOG.isDebugEnabled()) {
+        if (LOG.isDebugEnabled() && describeStreamCacheEnabled) {
             LOG.debug("cache miss in describe stream cache for key: {}", streamArn);
         }
         // TODO metrics: count cache miss
@@ -644,18 +660,23 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             LOG.debug("describeStream request={}", describeStreamRequest);
         }
 
-        String key = describeStreamRequest.getStreamArn();
-        try {
-            DescribeStreamResult result = describeStreamCache.get(key,
-                () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
-            return result;
-        } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
-            // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
-            // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
-            LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
-                + "Retrying describeStream call. " + e.getMessage());
-            return this.loadStreamDescriptionForAllShards(describeStreamRequest);
+        if (describeStreamCacheEnabled) {
+            String key = describeStreamRequest.getStreamArn();
+            try {
+                DescribeStreamResult result = describeStreamCache.get(key,
+                    () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
+                return result;
+            } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
+                // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
+                // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
+                LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
+                    + "Retrying describeStream call. " + e.getMessage());
+                return this.loadStreamDescriptionForAllShards(describeStreamRequest);
+            }
         }
+
+        // Call describeStream without caching since the cache is disabled
+        return this.loadStreamDescriptionForAllShards(describeStreamRequest);
     }
 
     @Override
