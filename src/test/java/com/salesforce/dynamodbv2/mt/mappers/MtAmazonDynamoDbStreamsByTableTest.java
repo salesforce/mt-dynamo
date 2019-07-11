@@ -22,8 +22,6 @@ import org.junit.jupiter.api.Test;
 class MtAmazonDynamoDbStreamsByTableTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsByTableTest.class.getSimpleName() + ".";
-    private static final MtAmazonDynamoDbStreamsBaseTestUtils BASE_TEST_UTILS
-        = new MtAmazonDynamoDbStreamsBaseTestUtils();
 
     // work-around for command-line build: some previous tests don't seem to be clearing the mt context
     @BeforeEach

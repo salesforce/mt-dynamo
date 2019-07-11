@@ -42,8 +42,6 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 public class MtAmazonDynamoDbStreamsBaseTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsBaseTest.class.getSimpleName() + ".";
-    private static final MtAmazonDynamoDbStreamsBaseTestUtils BASE_TEST_UTILS
-        = new MtAmazonDynamoDbStreamsBaseTestUtils();
 
     private static class Args implements ArgumentsProvider {
 

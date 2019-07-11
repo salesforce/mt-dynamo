@@ -56,8 +56,6 @@ import org.junit.jupiter.api.Test;
 class MtAmazonDynamoDbStreamsBySharedTableTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsBySharedTableTest.class.getSimpleName() + ".";
-    private static final MtAmazonDynamoDbStreamsBaseTestUtils BASE_TEST_UTILS
-        = new MtAmazonDynamoDbStreamsBaseTestUtils();
 
     // helper method that assumes there is only one shared table stream
     private static String getShardIterator(MtAmazonDynamoDbStreams mtDynamoDbStreams) {
