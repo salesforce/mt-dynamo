@@ -11,6 +11,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.function.Predicate;
 
 class BinaryFieldMapper implements FieldMapper {
 
@@ -36,6 +37,13 @@ class BinaryFieldMapper implements FieldMapper {
         checkArgument(fieldMapping.getSource().getType() == B);
         FieldValue<ByteBuffer> fieldValue = BinaryFieldPrefixFunction.INSTANCE.reverse(qualifiedAttribute.getB());
         return convertFromBinary(fieldMapping.getTarget().getType(), fieldValue.getValue());
+    }
+
+    @Override
+    public Predicate<AttributeValue> createFilter() {
+        final Predicate<ByteBuffer> prefixFilter =
+            BinaryFieldPrefixFunction.INSTANCE.createFilter(mtContext.getContext(), virtualTableName);
+        return attributeValue -> prefixFilter.test(attributeValue.getB());
     }
 
     private ByteBuffer convertToBinary(ScalarAttributeType type, AttributeValue attributeValue) {

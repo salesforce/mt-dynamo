@@ -37,6 +37,8 @@ import com.google.common.base.Preconditions;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -68,8 +70,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private final BillingMode billingMode;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
-                                    BillingMode billingMode, String delimiter, Optional<String> tablePrefix) {
-        super(mtContext, amazonDynamoDb);
+                                    MeterRegistry meterRegistry, BillingMode billingMode, String delimiter,
+                                    Optional<String> tablePrefix) {
+        super(mtContext, amazonDynamoDb, meterRegistry);
         this.billingMode = billingMode;
         // TODO add billingMode support
         this.delimiter = delimiter;
@@ -249,6 +252,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
+        private MeterRegistry meterRegistry;
         private BillingMode billingMode;
         private String delimiter;
         private Optional<String> tablePrefix = Optional.empty();
@@ -279,6 +283,11 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             return this;
         }
 
+        public MtAmazonDynamoDbBuilder withMeterRegistry(MeterRegistry meterRegistry) {
+            this.meterRegistry = meterRegistry;
+            return this;
+        }
+
         /**
          * TODO: write Javadoc.
          *
@@ -289,7 +298,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             setDefaults();
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
-            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, billingMode, delimiter, tablePrefix);
+            return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, meterRegistry, billingMode, delimiter,
+                tablePrefix);
         }
 
         private void setDefaults() {
@@ -298,6 +308,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             }
             if (billingMode == null) {
                 billingMode = BillingMode.PROVISIONED;
+            }
+            if (meterRegistry == null) {
+                meterRegistry = new CompositeMeterRegistry();
             }
         }
 
