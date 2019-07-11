@@ -5,6 +5,7 @@ import static com.google.common.collect.Iterables.getLast;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
@@ -94,7 +95,8 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * @return Result
      */
     @Override
-    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest)
+        throws AmazonDynamoDBException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("describeStream request={}", describeStreamRequest);
         }

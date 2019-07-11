@@ -5,6 +5,10 @@ Multitenant AWS Dynamo supports the [AWS Dynamo Java API](http://docs.aws.amazon
   
 You can write your application code against the Amazon DynamoDB interface as you would for any other application.  The implementation will manage storage of data by tenant.
 
+## 0.9.45 (July 11, 2019)
+
+* Added caching for describe stream.  Can be disabled in `CachingAmazonDynamoDbStreams` builder method.
+
 ## 0.9.44 (July 10, 2019)
 
 * Fix performance regression in `getRecords` with shared-table streams
