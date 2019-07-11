@@ -189,8 +189,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
-    private Cache<String, TableMapping> tableMappingCache;
-    private Cache<String, TableDescription> tableDescriptionCache;
+    private Cache<Object, TableMapping> tableMappingCache;
+    private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
 
     public static SharedTableBuilder builder() {
@@ -541,12 +541,12 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTableMappingCache(Cache<String, TableMapping> tableMappingCache) {
+    public SharedTableBuilder withTableMappingCache(Cache<Object, TableMapping> tableMappingCache) {
         this.tableMappingCache = tableMappingCache;
         return this;
     }
 
-    public SharedTableBuilder withTableDescriptionCache(Cache<String, TableDescription> tableDescriptionCache) {
+    public SharedTableBuilder withTableDescriptionCache(Cache<Object, TableDescription> tableDescriptionCache) {
         this.tableDescriptionCache = tableDescriptionCache;
         return this;
     }

@@ -93,6 +93,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
 
@@ -114,15 +115,22 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
+    private final MeterRegistry meterRegistry;
 
     protected MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
-                                AmazonDynamoDB amazonDynamoDb) {
+                                   AmazonDynamoDB amazonDynamoDb,
+                                   MeterRegistry meterRegistry) {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
+        this.meterRegistry = meterRegistry;
     }
 
     public AmazonDynamoDB getAmazonDynamoDb() {
         return amazonDynamoDb;
+    }
+
+    public MeterRegistry getMeterRegistry() {
+        return meterRegistry;
     }
 
     protected MtAmazonDynamoDbContextProvider getMtContext() {

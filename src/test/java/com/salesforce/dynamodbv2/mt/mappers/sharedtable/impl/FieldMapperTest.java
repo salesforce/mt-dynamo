@@ -124,6 +124,24 @@ class FieldMapperTest {
         }
     }
 
+    static Stream<Object[]> filterData() {
+        return Arrays.stream(new Object[][] {
+            { SFM, new AttributeValue(PREFIX + "value"), true },
+            { SFM, new AttributeValue("other/table/value"), false },
+            { BFM, new AttributeValue().withB(prefix(2).put(UTF_8.encode("ab")).flip()), true },
+            { BFM, new AttributeValue().withB(ByteBuffer.allocate(5 + 5 + 2 + 3)
+                .put(UTF_8.encode("other")).put((byte) 0x00)
+                .put(UTF_8.encode("table")).put((byte) 0x00)
+                .put(UTF_8.encode("abc")).flip()), false }
+        });
+    }
+
+    @ParameterizedTest
+    @MethodSource("filterData")
+    void testFilter(FieldMapper fieldMapper, AttributeValue value, boolean expected) {
+        assertEquals(expected, fieldMapper.createFilter().test(value));
+    }
+
     private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, ScalarAttributeType targetFieldType,
                                            IndexType indexType) {
         return new FieldMapping(
