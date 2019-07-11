@@ -95,6 +95,7 @@ import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
@@ -107,7 +108,7 @@ import java.util.Map;
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     /**
-     * Special "column" key returned to client on multi-tenant scans.
+     * Special "column" key returned to client on multitenant scans.
      */
     public static final String TENANT_KEY = "mt:context";
     public static final String VIRTUAL_TABLE_KEY = "mt:tableName";
@@ -135,7 +136,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
      * @param tableName Name of the table.
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         return true;
     }
 
@@ -330,17 +331,18 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables() {
-        if (mtContext.getContextOpt().isEmpty()) {
-            return getAmazonDynamoDb().listTables();
-        } else {
-            throw new UnsupportedOperationException();
-        }
+        return listTables((String)null);
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
         if (mtContext.getContextOpt().isEmpty()) {
-            return getAmazonDynamoDb().listTables(exclusiveStartTableName);
+            ListTablesResult rawResults = getAmazonDynamoDb().listTables();
+            return rawResults.withTableNames(rawResults
+                .getTableNames()
+                .stream()
+                .filter(this::isMtTable)
+                .collect(Collectors.toList()));
         } else {
             throw new UnsupportedOperationException();
         }
