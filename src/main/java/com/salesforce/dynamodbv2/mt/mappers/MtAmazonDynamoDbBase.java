@@ -92,6 +92,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
@@ -344,27 +345,35 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
+        return listTables(exclusiveStartTableName, 100);
+    }
+
+    @Override
+    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         if (mtContext.getContextOpt().isEmpty()) {
-            ListTablesResult rawResults = getAmazonDynamoDb().listTables(exclusiveStartTableName);
+            List<String> tableNames = Lists.newArrayList();
+            String innerExclusiveStartTableName = exclusiveStartTableName;
+
             // filter out any physical tables on this account that this mt-dynamo instance does not manage
-            return rawResults.withTableNames(rawResults
-                .getTableNames()
-                .stream()
-                .filter(this::isMtTable)
-                .collect(Collectors.toList()));
+            // and eagerly pull more pages until we fill up a full result set or run out of tables
+            do  {
+                ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName);
+                tableNames.addAll(
+                    rawResults.getTableNames().stream().filter(this::isMtTable).collect(Collectors.toList()));
+                innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
+            } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
+
+            return new ListTablesResult()
+                .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
+                .withTableNames(tableNames.subList(0, limit));
         } else {
             throw new UnsupportedOperationException();
         }
     }
 
     @Override
-    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public ListTablesResult listTables(Integer limit) {
-        throw new UnsupportedOperationException();
+        return listTables(null, limit);
     }
 
     @Override

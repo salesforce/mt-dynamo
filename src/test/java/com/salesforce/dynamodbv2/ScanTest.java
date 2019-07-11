@@ -21,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
@@ -142,15 +143,8 @@ class ScanTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
-        String startTableName = null;
-        int maxPages = 5;
-        int attemptCount = 0;
-        List<String> tableNames;
-        do {
-            tableNames = testArgument.getAmazonDynamoDb().listTables(startTableName).getTableNames();
-            startTableName = tableNames.get(tableNames.size() - 1);
-            attemptCount++;
-        } while (tableNames.size() == 0 && attemptCount < maxPages);
+        ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
+        List<String> tableNames = listTablesResult.getTableNames();
 
         assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
         // go through every table, and issue at least one successful scan request.
