@@ -83,7 +83,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
     @Override
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
         return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }

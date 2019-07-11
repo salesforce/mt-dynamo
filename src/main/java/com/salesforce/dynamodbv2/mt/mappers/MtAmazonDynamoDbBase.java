@@ -338,6 +338,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public ListTablesResult listTables(String exclusiveStartTableName) {
         if (mtContext.getContextOpt().isEmpty()) {
             ListTablesResult rawResults = getAmazonDynamoDb().listTables();
+            // filter out any physical tables on this account that this mt-dynamo instance does not manage
             return rawResults.withTableNames(rawResults
                 .getTableNames()
                 .stream()
