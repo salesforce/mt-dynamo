@@ -175,12 +175,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Disables the describe stream cache.
+         * Enables or disables the describe stream cache.
+         *
+         * @param describeStreamCacheEnabled Disable or enable the describe stream cache.
          * @return this Builder.
          */
-        public Builder withDescribeStreamCacheDisabled() {
-            LOG.info("describeStream cache is disabled");
-            this.describeStreamCacheEnabled = false;
+        public Builder withDescribeStreamCacheEnabled(boolean describeStreamCacheEnabled) {
+            this.describeStreamCacheEnabled = describeStreamCacheEnabled;
+
+            if (!this.describeStreamCacheEnabled) {
+                LOG.info("describeStream cache is disabled");
+            }
             return this;
         }
 

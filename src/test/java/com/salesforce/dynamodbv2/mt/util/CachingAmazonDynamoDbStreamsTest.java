@@ -1156,7 +1156,7 @@ class CachingAmazonDynamoDbStreamsTest {
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
-            .withDescribeStreamCacheDisabled().build();
+            .withDescribeStreamCacheEnabled(false).build();
 
         cachingStreams.describeStream(request);
         assertNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn));
