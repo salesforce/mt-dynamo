@@ -93,6 +93,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.sample.SampleDataClass;
 import java.util.List;
 import java.util.Map;
 
@@ -474,5 +475,4 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException();
     }
-
 }

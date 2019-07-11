@@ -8,6 +8,9 @@ package com.salesforce.dynamodbv2.mt.sample
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
+/**
+ * Dummy test to integrate Kotlin.
+ */
 internal class SampleDataClassTest {
 
     @Test
