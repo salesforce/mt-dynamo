@@ -365,7 +365,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
             return new ListTablesResult()
                 .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
-                .withTableNames(tableNames.subList(0, limit));
+                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit - 1) : tableNames);
         } else {
             throw new UnsupportedOperationException();
         }
