@@ -400,7 +400,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Execute a scan meeting the specs of {@link AmazonDynamoDB}, but scoped to single tenants within a shared table.
      * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
      * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
-     * ie: not great.
+     * so, not great.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
