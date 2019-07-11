@@ -31,6 +31,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.CacheLoader.InvalidCacheLoadException;
 import com.google.common.cache.LoadingCache;
+import com.google.common.cache.Weigher;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import io.micrometer.core.instrument.Counter;
@@ -92,6 +93,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final long DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS = 1000L;
         private static final int DEFAULT_MAX_ITERATOR_CACHE_SIZE = 100;
         private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5;
+        private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
@@ -100,6 +102,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int maxGetRecordsRetries = DEFAULT_MAX_GET_RECORDS_RETRIES;
         private long describeStreamCacheTtl = DEFAULT_DESCRIBE_STREAM_CACHE_TTL;
+        private long maxDescribeStreamCacheWeight = DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT;
         private long getRecordsLimitExceededBackoffInMillis =
             DEFAULT_GET_RECORDS_LIMIT_EXCEEDED_BACKOFF_IN_MILLIS;
 
@@ -181,6 +184,18 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return this;
         }
 
+        /**
+         * The maximum total number of shards the describe stream cache may hold for a given key.
+         *
+         * @param maxDescribeStreamCacheWeight Maximum number of shards allowed for value in describe stream cache.
+         * @return This Builder.
+         */
+        public Builder withMaxDescribeStreamCacheWeight(long maxDescribeStreamCacheWeight) {
+            checkArgument(maxDescribeStreamCacheWeight >= 0);
+            this.maxDescribeStreamCacheWeight = maxDescribeStreamCacheWeight;
+            return this;
+        }
+
         /** MeterRegistry to record metrics to.
          *
          * @param meterRegistry Meter registry to report metrics to.
@@ -215,7 +230,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 maxGetRecordsRetries,
                 getRecordsLimitExceededBackoffInMillis,
                 maxIteratorCacheSize,
-                describeStreamCacheTtl);
+                describeStreamCacheTtl,
+                maxDescribeStreamCacheWeight);
         }
     }
 
@@ -538,15 +554,22 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                          int maxGetRecordsRetries,
                                          long getRecordsLimitExceededBackoffInMillis,
                                          int maxIteratorCacheSize,
-                                         long describeStreamCacheTtl) {
+                                         long describeStreamCacheTtl,
+                                         long maxDescribeStreamCacheWeight) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.maxGetRecordsRetries = maxGetRecordsRetries;
         this.getRecordsLimitExceededBackoffInMillis = getRecordsLimitExceededBackoffInMillis;
 
+        Weigher<String, DescribeStreamResult> weightByShardCount = (key, result) -> {
+            List<Shard> shards = result.getStreamDescription().getShards();
+            return shards == null ? 0 : shards.size();
+        };
         this.describeStreamCache = CacheBuilder
             .newBuilder()
             .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
+            .maximumWeight(maxDescribeStreamCacheWeight)
+            .weigher(weightByShardCount)
             .build();
 
         this.recordCache = new StreamsRecordCache(meterRegistry, maxRecordsByteSize);
@@ -598,7 +621,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             describeStreamRequest = new DescribeStreamRequest().withStreamArn(streamArn)
                 .withExclusiveStartShardId(lastShardId);
             result = super.describeStream(describeStreamRequest);
-
             if (result.getStreamDescription().getShards() != null
                 && !result.getStreamDescription().getShards().isEmpty()) {
                 allShards.addAll(result.getStreamDescription().getShards());

@@ -1333,6 +1333,44 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that the describeStreamCache doesn't update cache if shard weight limit is reached for given entry.
+     */
+    @Test
+    void testDescribeStreamCacheWeightEvition() {
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2"),
+            newShard("B", null, "1", "2"),
+            newShard("C", null, "1", "2"),
+            newShard("D", null, "1", "2")
+        );
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+
+        ArrayList<DescribeStreamResult> expectedResults = new ArrayList<>();
+        expectedResults.add(new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 3))));
+        expectedResults.add(new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 1))
+                .withLastEvaluatedShardId("")));
+
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults)
+            .withMaxDescribeStreamCacheWeight(2).build();
+        Cache describeStreamCache = cachingStreams.getDescribeStreamCache();
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+
+        // The number of shards > max number of shards allowed. The result should not be added to the cache
+        cachingStreams.describeStream(request);
+        StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, streamArn, false, null);
+
+        // The number of shards < max number of shards allowed. The result is added to the cache.
+        cachingStreams.describeStream(request);
+        StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, streamArn, true,
+            expectedResults.get(1));
+
+        verify(mockStreams, times(2)).describeStream(any(DescribeStreamRequest.class));
+    }
+
+    /**
      * Verifies that the describeStreamCache refreshes writes.
      */
     @Test
@@ -1353,14 +1391,10 @@ class CachingAmazonDynamoDbStreamsTest {
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults)
             .withDescribeStreamCacheTtl(1).build();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
-        DescribeStreamResult shardsBefore = new DescribeStreamResult()
-            .withStreamDescription(new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 1)));
-        DescribeStreamResult shardsAfter = new DescribeStreamResult()
-            .withStreamDescription(new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 2)));
 
         // Describe the stream which should return the first shard, second call should return value from the cache
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, shardsBefore);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, shardsBefore);
+        assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResults.get(0));
+        assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResults.get(0));
 
         try {
             // Wait until the cache is refreshed (when the cache lookup returns null)
@@ -1369,8 +1403,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
             // Validate the cache return value is updated with both shards now (describeStream call will force a cache
             // update with the full shards list)
-            assertDescribeStreamCache(cachingStreams, streamArn, request, false, shardsAfter);
-            assertDescribeStreamCache(cachingStreams, streamArn, request, true, shardsAfter);
+            assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResults.get(1));
+            assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResults.get(1));
         } catch (ConditionTimeoutException e) {
             fail(e.getMessage());
         }
