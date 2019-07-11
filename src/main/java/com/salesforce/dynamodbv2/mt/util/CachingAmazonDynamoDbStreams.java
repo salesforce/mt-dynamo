@@ -667,8 +667,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
                 return result;
             } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
-                // Catch exceptions thrown on cache lookup or cache loader and try load method once more.
-                // (get call will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
+                // Catch exceptions thrown on cache lookup or cache loader and try load method once more. (get call
+                // will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
                 LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
                     + "Retrying describeStream call. " + e.getMessage());
                 return this.loadStreamDescriptionForAllShards(describeStreamRequest);
