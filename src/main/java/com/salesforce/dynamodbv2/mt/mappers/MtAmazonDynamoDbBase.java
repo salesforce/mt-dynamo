@@ -345,7 +345,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
         if (mtContext.getContextOpt().isEmpty()) {
-            ListTablesResult rawResults = getAmazonDynamoDb().listTables();
+            ListTablesResult rawResults = getAmazonDynamoDb().listTables(exclusiveStartTableName);
             // filter out any physical tables on this account that this mt-dynamo instance does not manage
             return rawResults.withTableNames(rawResults
                 .getTableNames()
