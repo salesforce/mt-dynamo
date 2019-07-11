@@ -80,7 +80,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private final String name;
 
-    private final MeterRegistry meterRegistry;
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<Object, TableMapping> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
@@ -118,7 +117,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          MeterRegistry meterRegistry) {
         super(mtContext, amazonDynamoDb, meterRegistry);
         this.name = name;
-        this.meterRegistry = meterRegistry;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;

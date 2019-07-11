@@ -116,7 +116,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).getRecordMapper();
             final Predicate<Record> recordFilter = recordMapper.createFilter();
 
-            int recordsLoaded = 0;
+            int recordsLoaded;
             int recordsLoadedSum = 0;
             do {
                 recordsLoaded = loadRecords(result, limit, recordFilter, recordMapper);

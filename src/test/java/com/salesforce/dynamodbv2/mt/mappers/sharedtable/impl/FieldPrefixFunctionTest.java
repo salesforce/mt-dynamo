@@ -80,8 +80,8 @@ class FieldPrefixFunctionTest {
         return filterForEach(Arrays.stream(new Object[][] {
             { "ctx", "table", "ctx", "table", "0", true },
             { "ctx", "table", "ctx", "table", "abc", true },
-            { "ctx", "table", "ct", "tabl", "0", false },
-            { "ctx", "table", "ctx", "tabl1", "0", false },
+            { "ctx", "table", "ct", "table0", "0", false },
+            { "ctx", "table", "ctx", "table1", "0", false },
             { "ctx", "table", "c", "t", "x", false },
             { "ctx", "table", "ctx2", "table2", "abc", false }
         }));

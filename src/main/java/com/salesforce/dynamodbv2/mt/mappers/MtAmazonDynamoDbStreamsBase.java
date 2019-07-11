@@ -184,7 +184,8 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * Get only records for the given tenant context and table.
      *
      * @param request     GetRecordsRequest for physical stream.
-     * @param mtStreamArn MtStreamArn containg physical table and stream names as well as context and tenant table name.
+     * @param mtStreamArn MtStreamArn containing physical table and stream names as well as context and tenant-table
+     *                    name.
      * @return MtGetRecordsResult containing converted records.
      */
     protected abstract MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn);

@@ -66,12 +66,12 @@ class RecordMapperTest {
 
     @Test
     void testMap() {
-        final AttributeValue physicalHkVal = new AttributeValue("context/table/hkval");
-        final AttributeValue physicalRkVal = new AttributeValue("rkval");
-        final AttributeValue virtualHkVal = new AttributeValue("hkval");
+        final AttributeValue physicalHkVal = new AttributeValue("context/table/hkVal");
+        final AttributeValue physicalRkVal = new AttributeValue("rkVal");
+        final AttributeValue virtualHkVal = new AttributeValue("hkVal");
         final AttributeValue virtualRkVal = physicalRkVal.clone();
 
-        final String attrName = "somefield";
+        final String attrName = "someField";
         final AttributeValue oldAttrVal = new AttributeValue("old");
         final AttributeValue newAttrVal = new AttributeValue("new");
 
