@@ -7,7 +7,7 @@ You can write your application code against the Amazon DynamoDB interface as you
 
 ## 0.9.45 (July 11, 2019)
 
-* Added caching for describe stream.  Can be disabled in `CachingAmazonDynamoDbStreams` builder method.
+* Added caching for describe stream (can be disabled in `CachingAmazonDynamoDbStreams` builder method)
 
 ## 0.9.44 (July 10, 2019)
 

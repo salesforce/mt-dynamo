@@ -4,6 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SE
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -41,7 +42,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 public class MtAmazonDynamoDbStreamsBaseTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsBaseTest.class.getSimpleName() + ".";
-    private static MtAmazonDynamoDbStreamsBaseTestUtils BASE_TEST_UTILS = new MtAmazonDynamoDbStreamsBaseTestUtils();
+    private static final MtAmazonDynamoDbStreamsBaseTestUtils BASE_TEST_UTILS
+        = new MtAmazonDynamoDbStreamsBaseTestUtils();
 
     private static class Args implements ArgumentsProvider {
 
@@ -53,8 +55,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
 
             MtAmazonDynamoDbBySharedTable indexMtDynamoDb = SharedTableBuilder.builder()
-                .withCreateTableRequests(BASE_TEST_UTILS.newCreateTableRequest(BASE_TEST_UTILS.SHARED_TABLE_NAME,
-                    false))
+                .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                    .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, false))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)
                 .withContext(MT_CONTEXT)
@@ -66,7 +68,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 indexMtDynamoDbStreamsCache);
 
             MtAmazonDynamoDbBySharedTable indexBinaryHkMtDynamoDb = SharedTableBuilder.builder()
-                .withCreateTableRequests(BASE_TEST_UTILS.newCreateTableRequest(BASE_TEST_UTILS.SHARED_TABLE_NAME, true))
+                .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                    .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
                 .withAmazonDynamoDb(dynamoDb)
                 .withTablePrefix(prefix)
                 .withContext(MT_CONTEXT)
@@ -110,12 +113,13 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, key, expectedCacheHit, expectedResult);
 
         // Trigger flow that interacts with the describe stream cache
-        Optional<String> shardIterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, stream);
+        Optional<String> shardIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+            .getShardIterator(mtDynamoDbStreams, stream);
         assertTrue(shardIterator.isPresent());
 
         // Get expected shard id for the stream (expecting 1 shard) to compare to cached DescribeStreamResult's shard
-        Optional<String> expectedShardIdForIterator = BASE_TEST_UTILS.getShardId(mtDynamoDbStreams,
-            stream.getStreamArn());
+        Optional<String> expectedShardIdForIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+            .getShardId(mtDynamoDbStreams, stream.getStreamArn());
         assertTrue(expectedShardIdForIterator.isPresent());
         assertTrue(shardIterator.get().contains(expectedShardIdForIterator.get()));
 
@@ -126,8 +130,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         // Verify cache lookup result contains the expected shard id
         assertNotNull(cacheLookupResult.getStreamDescription().getShards());
         assertTrue(cacheLookupResult.getStreamDescription().getShards().size() > 0);
-        assertTrue(cacheLookupResult.getStreamDescription().getShards().get(0).getShardId().equals(
-            expectedShardIdForIterator.get()));
+        assertEquals(expectedShardIdForIterator.get(),
+            cacheLookupResult.getStreamDescription().getShards().get(0).getShardId());
     }
 
     // work-around for command-line build: some previous tests don't seem to be clearing the mt context
@@ -144,27 +148,31 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     void testStream(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
             // create tenant tables and test data
-            BASE_TEST_UTILS.createTenantTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
             final Collection<MtRecord> expected = new ArrayList<>(4);
             int i = 0;
-            expected.add(BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], i++));
-            expected.add(BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], i));
+            expected.add(MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++));
+            expected.add(MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i));
             i = 0;
-            expected.add(BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[1], i++));
-            expected.add(BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[1], i));
+            expected.add(MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++));
+            expected.add(MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i));
 
             List<Stream> streams = mtDynamoDbStreams.listStreams(new ListStreamsRequest()).getStreams();
 
             // we are not asserting how many streams we get back, since that's strategy-specific
             List<String> iterators = streams.stream()
-                .map(stream -> BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, stream))
+                .map(stream -> MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, stream))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(toList());
             // we are also not asserting which stream returns which records, just that we get them all
-            BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, iterators, expected);
+            MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, iterators, expected);
         } finally {
-            BASE_TEST_UTILS.deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -176,23 +184,30 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     void testTableStream(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
             // create tenant tables and test data
-            BASE_TEST_UTILS.createTenantTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
             int i = 0;
-            final MtRecord expected1 = BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], i++);
-            final MtRecord expected2 = BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], i);
+            final MtRecord expected1 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++);
+            final MtRecord expected2 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i);
             i = 0;
-            BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[1], i++);
-            BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[1], i);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i);
 
-            MT_CONTEXT.withContext(BASE_TEST_UTILS.TENANTS[0], () -> {
-                String streamArn = mtDynamoDb.describeTable(BASE_TEST_UTILS.TENANT_TABLE_NAME).getTable()
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
+                String streamArn = mtDynamoDb.describeTable(MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME)
+                    .getTable()
                     .getLatestStreamArn();
                 assertNotNull(streamArn);
-                String iterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
-                BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2);
+                String iterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
+                    .orElseThrow();
+                MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2);
             });
         } finally {
-            BASE_TEST_UTILS.deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -203,37 +218,41 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     @ArgumentsSource(Args.class)
     void testDisabledStreams(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
-            String tenant = BASE_TEST_UTILS.TENANTS[0];
+            String tenant = MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0];
 
             // create table with streams enabled
-            String tableWithStreamsEnabled = BASE_TEST_UTILS.TENANT_TABLE_NAME + "_streams_enabled";
+            String tableWithStreamsEnabled = MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME
+                + "_streams_enabled";
             CreateTableRequest createTableRequestStreamsEnabled =
-                BASE_TEST_UTILS.newCreateTableRequest(tableWithStreamsEnabled, false)
+                MtAmazonDynamoDbStreamsBaseTestUtils.newCreateTableRequest(tableWithStreamsEnabled, false)
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamEnabled(true)
                         .withStreamViewType(NEW_AND_OLD_IMAGES));
             MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(createTableRequestStreamsEnabled));
 
             // create table with streams disabled
-            String tableWithStreamsDisabled = BASE_TEST_UTILS.TENANT_TABLE_NAME + "_streams_disabled";
+            String tableWithStreamsDisabled = MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME
+                + "_streams_disabled";
             CreateTableRequest createTableRequestStreamsDisabled =
-                BASE_TEST_UTILS.newCreateTableRequest(tableWithStreamsDisabled, false)
+                MtAmazonDynamoDbStreamsBaseTestUtils.newCreateTableRequest(tableWithStreamsDisabled, false)
                     .withStreamSpecification(new StreamSpecification()
                         .withStreamEnabled(false)
                     );
             MT_CONTEXT.withContext(tenant, () -> mtDynamoDb.createTable(createTableRequestStreamsDisabled));
 
             // put an item in each table
-            final MtRecord streamsEnabledRecord = BASE_TEST_UTILS.putTestItem(mtDynamoDb, tableWithStreamsEnabled,
-                tenant, 1);
-            BASE_TEST_UTILS.putTestItem(mtDynamoDb, tableWithStreamsDisabled, tenant, 2);
+            final MtRecord streamsEnabledRecord = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, tableWithStreamsEnabled, tenant, 1);
+            MtAmazonDynamoDbStreamsBaseTestUtils.putTestItem(mtDynamoDb, tableWithStreamsDisabled, tenant, 2);
 
             // verify that the record from the stream enabled table is returned
             MT_CONTEXT.withContext(tenant, () -> {
                 String streamArn = mtDynamoDb.describeTable(tableWithStreamsEnabled).getTable().getLatestStreamArn();
                 assertNotNull(streamArn);
-                String iterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
-                BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, iterator, streamsEnabledRecord);
+                String iterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
+                    .orElseThrow();
+                MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, iterator, streamsEnabledRecord);
             });
 
             // verify that either the streamArn is null(for ByTable or ByAccount) or the iterator returns no records
@@ -241,12 +260,13 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 String streamArn = mtDynamoDb.describeTable(tableWithStreamsDisabled).getTable().getLatestStreamArn();
                 if (streamArn != null) {
                     // for byIndex, the streamArn will not be null, but it should return no records
-                    String iterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
-                    BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, iterator);
+                    String iterator = MtAmazonDynamoDbStreamsBaseTestUtils
+                        .getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
+                    MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, iterator);
                 }
             });
         } finally {
-            BASE_TEST_UTILS.deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -258,29 +278,35 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     @ArgumentsSource(Args.class)
     void testGap(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams) {
         try {
-            BASE_TEST_UTILS.createTenantTables(mtDynamoDb);
-            final MtRecord expected1 = BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], 0);
-            BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[1], 1);
-            final MtRecord expected2 = BASE_TEST_UTILS.putTestItem(mtDynamoDb, BASE_TEST_UTILS.TENANTS[0], 3);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
+            final MtRecord expected1 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], 0);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], 1);
+            final MtRecord expected2 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], 3);
 
-            MT_CONTEXT.withContext(BASE_TEST_UTILS.TENANTS[0], () -> {
-                String streamArn = mtDynamoDb.describeTable(BASE_TEST_UTILS.TENANT_TABLE_NAME).getTable()
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
+                String streamArn = mtDynamoDb.describeTable(MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME)
+                    .getTable()
                     .getLatestStreamArn();
 
                 // first start at trim horizon
-                String thIterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
-                String lastSn = BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, thIterator, 1, expected1);
+                String thIterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
+                    .orElseThrow();
+                String lastSn = MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, thIterator, 1, expected1);
                 assertNotNull(lastSn);
 
                 // now start at last record: expect to get next record
-                String afterIterator = BASE_TEST_UTILS.getShardIterator(mtDynamoDbStreams, streamArn,
-                    AFTER_SEQUENCE_NUMBER, lastSn)
+                String afterIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+                    .getShardIterator(mtDynamoDbStreams, streamArn, AFTER_SEQUENCE_NUMBER, lastSn)
                     .orElseThrow();
-                BASE_TEST_UTILS.assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
+                MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
             });
 
         } finally {
-            BASE_TEST_UTILS.deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 
@@ -298,7 +324,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         }
 
         try {
-            BASE_TEST_UTILS.createTenantTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
             List<Stream> streams = mtDynamoDbStreams.listStreams(new ListStreamsRequest()).getStreams();
 
             for (Stream stream : streams) {
@@ -310,7 +336,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, stream, true, expectedResult);
             }
         } finally {
-            BASE_TEST_UTILS.deleteMtTables(mtDynamoDb);
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
     }
 }
