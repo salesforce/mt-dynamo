@@ -592,6 +592,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.recordCache = new StreamsRecordCache(meterRegistry, maxRecordsByteSize);
         this.iteratorCache = CacheBuilder.newBuilder()
             .maximumSize(maxIteratorCacheSize)
+            .recordStats()
             .build(CacheLoader.from(this::loadShardIterator));
 
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
