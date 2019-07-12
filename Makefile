@@ -8,7 +8,6 @@ integration:
 	mvn -Dskip.surefire.tests -DskipITs=false failsafe:integration-test@failsafe-execution
 
 validate:
-	mvn dokka:javadoc
 	mvn checkstyle:check@checkstyle-execution
 
 coveralls:
