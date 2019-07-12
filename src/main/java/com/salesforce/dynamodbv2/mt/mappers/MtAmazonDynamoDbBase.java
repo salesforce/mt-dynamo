@@ -357,7 +357,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
             // filter out any physical tables on this account that this mt-dynamo instance does not manage
             // and eagerly pull more pages until we fill up a full result set or run out of tables
             do  {
-                ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName);
+                ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName, limit);
                 tableNames.addAll(
                     rawResults.getTableNames().stream().filter(this::isMtTable).collect(Collectors.toList()));
                 innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
@@ -365,7 +365,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
             return new ListTablesResult()
                 .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
-                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit - 1) : tableNames);
+                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
         } else {
             throw new UnsupportedOperationException();
         }
