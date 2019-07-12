@@ -268,7 +268,7 @@ class StreamsRecordCache {
     private final DistributionSummary putRecordsSize;
     private final DistributionSummary putRecordsDiscardedSize;
     private final Timer evictRecordsTimer;
-    private final Counter evictRecordsSize;
+    private final DistributionSummary evictRecordsSize;
 
     StreamsRecordCache(long maxRecordsByteSize) {
         this(new CompositeMeterRegistry(), maxRecordsByteSize);
@@ -291,7 +291,7 @@ class StreamsRecordCache {
         this.putRecordsSize = meterRegistry.summary(className + ".PutRecords.Size");
         this.putRecordsDiscardedSize = meterRegistry.summary(className + ".PutRecords.Discarded.Size");
         this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Time");
-        this.evictRecordsSize = meterRegistry.counter(className + ".EvictRecords.Size");
+        this.evictRecordsSize = meterRegistry.summary(className + ".EvictRecords.Size");
         meterRegistry.gauge(className + ".size", size);
         meterRegistry.gauge(className + ".byteSize", byteSize);
     }
@@ -443,7 +443,7 @@ class StreamsRecordCache {
                     }
                 }
             }
-            evictRecordsSize.increment(numEvicted);
+            evictRecordsSize.record(numEvicted);
         });
     }
 
