@@ -55,6 +55,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TrimmedDataAccessException;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.common.base.Ticker;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -109,8 +110,15 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
         AmazonDynamoDBStreams dynamoDbStreams = AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal();
         CountingAmazonDynamoDbStreams countingDynamoDbStreams = new CountingAmazonDynamoDbStreams(dynamoDbStreams);
-        CachingAmazonDynamoDbStreams cachingDynamoDbStreams = new CachingAmazonDynamoDbStreams.Builder(
-            countingDynamoDbStreams).build();
+        CachingAmazonDynamoDbStreams cachingDynamoDbStreams = new CachingAmazonDynamoDbStreams
+            .Builder(countingDynamoDbStreams)
+            .withTicker(new Ticker() {
+                @Override
+                public long read() {
+                    return 0L;
+                }
+            })
+            .build();
 
         // setup: create a table with streams enabled
         String tableName = CachingAmazonDynamoDbStreamsTest.class.getSimpleName() + "_it_" + System.currentTimeMillis();
@@ -247,7 +255,7 @@ class CachingAmazonDynamoDbStreamsTest {
             records = result.getRecords();
             assertEquals(0, records.size());
             // another getRecords call to fetch empty page
-            assertEquals(5, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
             assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // second client now tries to go beyond second page which still has no records
@@ -258,7 +266,7 @@ class CachingAmazonDynamoDbStreamsTest {
             records = result.getRecords();
             assertEquals(0, records.size());
             // another getRecords call to fetch empty page
-            assertEquals(6, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
             assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
         } finally {
             // cleanup after ourselves (want to be able to run against hosted DynamoDB as well)
