@@ -752,7 +752,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withGetRecordsLimitExceededBackoffInMillis(10000L)
+            .withGetRecordsBackoffInMillis(10000L)
             .withSleeper(sleeper)
             .build();
 
@@ -780,8 +780,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withGetRecordsLimitExceededBackoffInMillis(500)
-            .withMaxGetRecordsRetries(3)
+            .withGetRecordsBackoffInMillis(500)
+            .withGetRecordsMaxRetries(3)
             .withSleeper(sleeper)
             .withMaxRecordsByteSize(100L)
             .build();
@@ -820,7 +820,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withMaxGetRecordsRetries(1)
+            .withGetRecordsMaxRetries(1)
             .withSleeper(sleeper)
             .build();
 
