@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
@@ -20,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
@@ -27,6 +29,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
@@ -135,6 +138,33 @@ class ScanTest {
         });
     }
 
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void scanAllTenants(TestArgument testArgument) {
+        MT_CONTEXT.setContext(null);
+        ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
+        List<String> tableNames = listTablesResult.getTableNames();
+
+        assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
+        // go through every table, and issue at least one successful scan request.
+        // validate that at least one table is populated
+        boolean isFound = false;
+        for (String tableName: tableNames) {
+            ScanResult scanResult = testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName));
+
+            List<Map<String, AttributeValue>> items = scanResult.getItems();
+            if (items != null && !items.isEmpty()) {
+                isFound = true;
+                assertTrue(scanResult.getItems().stream().allMatch(
+                    row -> row.containsKey(MtAmazonDynamoDbBase.TENANT_KEY)
+                        && row.containsKey(MtAmazonDynamoDbBase.VIRTUAL_TABLE_KEY)));
+            }
+        }
+        assertTrue(isFound, "all scans found no items... that's not right");
+    }
+
+
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
     void scanWithPaging(TestArgument testArgument) {
@@ -184,6 +214,7 @@ class ScanTest {
         final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
+
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
             CreateTableRequest createTableRequest) {
@@ -212,5 +243,4 @@ class ScanTest {
         }
 
     }
-
 }
