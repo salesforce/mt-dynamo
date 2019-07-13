@@ -92,10 +92,12 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
@@ -106,6 +108,12 @@ import java.util.Map;
  * @author msgroi
  */
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
+
+    /**
+     * Special "column" key returned to client on multitenant scans.
+     */
+    public static final String TENANT_KEY = "mt:context";
+    public static final String VIRTUAL_TABLE_KEY = "mt:tableName";
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
@@ -332,22 +340,40 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables() {
-        return getAmazonDynamoDb().listTables();
+        return listTables((String)null);
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        throw new UnsupportedOperationException();
+        return listTables(exclusiveStartTableName, 100);
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
-        throw new UnsupportedOperationException();
+        if (mtContext.getContextOpt().isEmpty()) {
+            List<String> tableNames = Lists.newArrayList();
+            String innerExclusiveStartTableName = exclusiveStartTableName;
+
+            // filter out any physical tables on this account that this mt-dynamo instance does not manage
+            // and eagerly pull more pages until we fill up a full result set or run out of tables
+            do  {
+                ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName, limit);
+                tableNames.addAll(
+                    rawResults.getTableNames().stream().filter(this::isMtTable).collect(Collectors.toList()));
+                innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
+            } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
+
+            return new ListTablesResult()
+                .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
+                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
+        } else {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override
     public ListTablesResult listTables(Integer limit) {
-        throw new UnsupportedOperationException();
+        return listTables(null, limit);
     }
 
     @Override
