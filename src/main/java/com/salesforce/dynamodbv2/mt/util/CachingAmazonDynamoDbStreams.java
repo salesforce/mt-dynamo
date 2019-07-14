@@ -125,6 +125,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private long maxDescribeStreamCacheWeight = DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT;
         private long getRecordsBackoffInMillis = DEFAULT_GET_RECORDS_BACKOFF_IN_MILLIS;
         private long emptyResultCacheTtlInMillis = DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS;
+        // for testing
+        private Striped<Lock> getRecordsLocks;
 
         public Builder(AmazonDynamoDBStreams amazonDynamoDbStreams) {
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
@@ -261,6 +263,12 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return this;
         }
 
+        @VisibleForTesting
+        Builder withGetRecordsLocks(Striped<Lock> getRecordsLocks) {
+            this.getRecordsLocks = getRecordsLocks;
+            return this;
+        }
+
         /**
          * Build instance using the configured properties.
          *
@@ -290,7 +298,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     .ticker(ticker)
                     .recordStats()
                     .build(),
-                Striped.lazyWeakLock(16384),
+                getRecordsLocks == null ? Striped.lazyWeakLock(16384) : getRecordsLocks,
                 getRecordsMaxRetries,
                 getRecordsBackoffInMillis,
                 CacheBuilder.newBuilder()
@@ -853,6 +861,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         final StreamShardPosition position = iterator.resolvePosition().orElseThrow();
         final Lock lock = getRecordsLocks.get(position);
         // try to acquire a lock for the given shard position (to avoid redundant concurrent load attempts)
+        // since we are accessing an external resource while holding the lock, limit the max wait time
         if (getRecordsLoadLockWaitTime.record(() -> {
             try {
                 return lock.tryLock(5, TimeUnit.SECONDS);
@@ -971,7 +980,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 }
 
                 // update record cache: record empty result (to avoid concurrent requests)
-                iterator.resolvePosition().ifPresent(position -> getRecordsEmptyResultCache.put(position, Boolean.TRUE));
+                iterator.resolvePosition()
+                    .ifPresent(position -> getRecordsEmptyResultCache.put(position, Boolean.TRUE));
             } else {
                 // update iterator cache
                 if (loadedNextIterator == null) {

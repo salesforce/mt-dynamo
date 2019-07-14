@@ -274,7 +274,7 @@ class StreamsRecordCache {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new ConcurrentHashMap<>();
         this.insertionOrder = new ConcurrentLinkedQueue<>();
-        this.shardLocks = Striped.lazyWeakReadWriteLock(16384);
+        this.shardLocks = Striped.lazyWeakReadWriteLock(1024);
         this.size = new AtomicLong(0L);
         this.byteSize = new AtomicLong(0L);
 
