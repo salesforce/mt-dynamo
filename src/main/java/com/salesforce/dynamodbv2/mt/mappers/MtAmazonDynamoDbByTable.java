@@ -201,9 +201,20 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
-        scanRequest = scanRequest.clone();
-        scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
-        return getAmazonDynamoDb().scan(scanRequest);
+        if (getMtContext().getContextOpt().isEmpty()) {
+            Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
+            String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
+            ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
+            result.getItems().stream().forEach(row -> {
+                row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
+                row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
+            });
+            return result;
+        } else {
+            scanRequest = scanRequest.clone();
+            scanRequest.withTableName(buildPrefixedTableName(scanRequest.getTableName()));
+            return getAmazonDynamoDb().scan(scanRequest);
+        }
     }
 
     /**
