@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2018, salesforce.com, inc.
+/* Copyright (c) 2019, Salesforce.com, Inc.
  * All rights reserved.
- * Licensed under the BSD 3-Clause license.
- * For full license text, see LICENSE.txt file in the repo root  or https://opensource.org/licenses/BSD-3-Clause
+ * SPDX-License-Identifier: BSD-3-Clause.
+ * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
-
 package com.salesforce.dynamodbv2.mt.repo
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
@@ -47,19 +45,20 @@ interface MtTableDescriptionRepo {
      * @return a list of TenantTableMetadata objects, with a lastEvaluatedTable populated to the last table name if the
      * result set fully populated @param limit results, null otherwise.
      */
-    fun listVirtualTableMetadatas(limit: Int,
-            exclusiveStartTableMetadata: TenantTableMetadata?) : ListMetadataResult
+    fun listVirtualTableMetadatas(
+        limit: Int,
+        exclusiveStartTableMetadata: TenantTableMetadata?
+    ): ListMetadataResult
 
     /**
      * TODO: these below methods are placeholders from implementing this interface in Java.
      * Once the impl is converted to Kotlin, all the below signatures can be removed with defaulted params.
      */
-    fun listVirtualTableMetadatas(exclusiveStartTableMetadata: TenantTableMetadata?) : ListMetadataResult
-    fun listVirtualTableMetadatas(limit: Int) : ListMetadataResult
-    fun listVirtualTableMetadatas() : ListMetadataResult
+    fun listVirtualTableMetadatas(exclusiveStartTableMetadata: TenantTableMetadata?): ListMetadataResult
+    fun listVirtualTableMetadatas(limit: Int): ListMetadataResult
+    fun listVirtualTableMetadatas(): ListMetadataResult
 
     data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
 
     data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
-
 }

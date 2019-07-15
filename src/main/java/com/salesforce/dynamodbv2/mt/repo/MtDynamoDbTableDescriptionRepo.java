@@ -292,7 +292,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @NotNull
     @Override
-    public ListMetadataResult listVirtualTableMetadatas(int limit, @Nullable TenantTableMetadata exclusiveStartTableMetadata) {
+    public ListMetadataResult listVirtualTableMetadatas(int limit,
+                                                        @Nullable TenantTableMetadata exclusiveStartTableMetadata) {
         ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
         Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(exclusiveStartTableMetadata)
             .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
@@ -309,7 +310,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                     getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
             .collect(Collectors.toList());
         TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
-            metadataList.get(metadataList.size()-1);
+            metadataList.get(metadataList.size() - 1);
         return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
     }
 
