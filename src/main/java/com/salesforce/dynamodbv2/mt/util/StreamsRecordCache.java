@@ -11,7 +11,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Striped;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -29,7 +28,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -261,14 +259,12 @@ class StreamsRecordCache {
     private final AtomicLong byteSize;
     // meters for observability
     private final Timer getRecordsTime;
-    private final Timer getRecordsWaitTime;
     private final DistributionSummary getRecordsHitSize;
     private final Timer putRecordsTime;
-    private final Timer putRecordsWaitTime;
     private final DistributionSummary putRecordsSize;
     private final DistributionSummary putRecordsDiscardedSize;
     private final Timer evictRecordsTimer;
-    private final Counter evictRecordsSize;
+    private final DistributionSummary evictRecordsSize;
 
     StreamsRecordCache(long maxRecordsByteSize) {
         this(new CompositeMeterRegistry(), maxRecordsByteSize);
@@ -278,71 +274,69 @@ class StreamsRecordCache {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new ConcurrentHashMap<>();
         this.insertionOrder = new ConcurrentLinkedQueue<>();
-        this.shardLocks = Striped.lazyWeakReadWriteLock(1000);
+        this.shardLocks = Striped.lazyWeakReadWriteLock(1024);
         this.size = new AtomicLong(0L);
         this.byteSize = new AtomicLong(0L);
 
         final String className = StreamsRecordCache.class.getSimpleName();
         this.getRecordsTime = meterRegistry.timer(className + ".GetRecords.Time");
-        this.getRecordsWaitTime = meterRegistry.timer(className + ".GetRecords.Wait.Time");
         this.getRecordsHitSize = meterRegistry.summary(className + ".GetRecords.Hit.Size");
         this.putRecordsTime = meterRegistry.timer(className + ".PutRecords.Time");
-        this.putRecordsWaitTime = meterRegistry.timer(className + ".PutRecords.Wait.Time");
         this.putRecordsSize = meterRegistry.summary(className + ".PutRecords.Size");
         this.putRecordsDiscardedSize = meterRegistry.summary(className + ".PutRecords.Discarded.Size");
         this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Time");
-        this.evictRecordsSize = meterRegistry.counter(className + ".EvictRecords.Size");
+        this.evictRecordsSize = meterRegistry.summary(className + ".EvictRecords.Size");
         meterRegistry.gauge(className + ".size", size);
         meterRegistry.gauge(className + ".byteSize", byteSize);
     }
 
     /**
-     * Returns the cached segment that contains the given shard location. If no such segment exists, returns empty.
+     * Returns the set of records cached for the given shard location.
      *
-     * @param iteratorPosition Shard location for which to return the cached segment that contains it.
-     * @return Segment that contains the given location or empty.
+     * @param iteratorPosition Shard location for which to return cached records.
+     * @return List of records cached. Empty if none cached
      */
-    Optional<List<Record>> getRecords(StreamShardPosition iteratorPosition, int limit) {
+    List<Record> getRecords(StreamShardPosition iteratorPosition, int limit) {
         return getRecordsTime.record(() -> {
             checkArgument(iteratorPosition != null && limit > 0);
 
-            final Optional<List<Record>> records;
+            final List<Record> records;
             final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
             final ReadWriteLock lock = shardLocks.get(streamShardId);
-
             final Lock readLock = lock.readLock();
-            final long waitTime = time(readLock::lock); // timing manually to avoid calling record in critical section
+            readLock.lock();
             try {
                 records = innerGetRecords(streamShardId, iteratorPosition.getSequenceNumber(), limit);
             } finally {
                 readLock.unlock();
-                getRecordsWaitTime.record(waitTime, TimeUnit.NANOSECONDS);
             }
 
             // record cache hit, including size
-            records.map(List::size).ifPresent(getRecordsHitSize::record);
+            if (!records.isEmpty()) {
+                getRecordsHitSize.record(records.size());
+            }
 
             return records;
         });
     }
 
     // inner helper method must be called with lock held
-    private Optional<List<Record>> innerGetRecords(StreamShardId streamShardId, BigInteger sequenceNumber, int limit) {
+    private List<Record> innerGetRecords(StreamShardId streamShardId, BigInteger sequenceNumber, int limit) {
         final NavigableMap<BigInteger, Segment> shardCache = segments.get(streamShardId);
         if (shardCache == null) {
             // nothing cached for the requested shard
-            return Optional.empty();
+            return Collections.emptyList();
         }
         final Entry<BigInteger, Segment> entry = shardCache.floorEntry(sequenceNumber);
         if (entry == null) {
             // no segment with requested or smaller sequence number exists
-            return Optional.empty();
+            return Collections.emptyList();
         }
         final Segment segment = entry.getValue();
         if (segment.getEnd().compareTo(sequenceNumber) <= 0) {
             // preceding segment does not contain requested sequence number (which means there are no records cached yet
             // for the requested sequence number, since otherwise floorEntry would have returned the next higher entry)
-            return Optional.empty();
+            return Collections.emptyList();
         }
 
         // preceding segment contains (some) records for the requested sequence number
@@ -360,7 +354,7 @@ class StreamsRecordCache {
             addAll(innerRecords, next.getRecords(), limit);
         }
 
-        return Optional.of(Collections.unmodifiableList(innerRecords));
+        return Collections.unmodifiableList(innerRecords);
     }
 
     // Should we bring back segment merging to avoid cache fragmentation?
@@ -375,7 +369,7 @@ class StreamsRecordCache {
             final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
             final ReadWriteLock lock = shardLocks.get(streamShardId);
             final Lock writeLock = lock.writeLock();
-            final long waitTime = time(writeLock::lock);
+            writeLock.lock();
             try {
                 final NavigableMap<BigInteger, Segment> shardCache =
                     segments.computeIfAbsent(streamShardId, k -> new TreeMap<>());
@@ -395,7 +389,6 @@ class StreamsRecordCache {
                 }
             } finally {
                 writeLock.unlock();
-                putRecordsWaitTime.record(waitTime, TimeUnit.NANOSECONDS);
             }
 
             putRecordsSize.record(cacheSegment.getRecords().size());
@@ -443,7 +436,7 @@ class StreamsRecordCache {
                     }
                 }
             }
-            evictRecordsSize.increment(numEvicted);
+            evictRecordsSize.record(numEvicted);
         });
     }
 
@@ -461,13 +454,6 @@ class StreamsRecordCache {
         } else {
             list.addAll(toAdd.subList(0, remaining));
         }
-    }
-
-    // helper for timing a runnable
-    private static long time(Runnable runnable) {
-        final long before = System.nanoTime();
-        runnable.run();
-        return System.nanoTime() - before;
     }
 
 }
