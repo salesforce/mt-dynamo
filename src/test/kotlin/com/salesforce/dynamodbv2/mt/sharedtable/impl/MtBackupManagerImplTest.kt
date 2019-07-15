@@ -119,6 +119,7 @@ internal class MtBackupManagerImplTest {
                 val clonedRow = sharedTableBinaryHashKey.getItem(
                         GetItemRequest(newRestoreTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
                 assertNotNull(clonedRow)
+                assertNotNull(clonedRow.item)
                 assertEquals("1", clonedRow.item.get("value")!!.s)
             }
         } finally {

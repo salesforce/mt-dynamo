@@ -238,16 +238,19 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         return ret
     }
 
-    private fun commitTenantTableMetadata(backupId: String, tenantTableMetadata: MtTableDescriptionRepo.ListMetadataResult) {
-//        for (tenantTable in tenantTableMetadataMap.keys) {
-//            val tenantTableMetadata = gson.toJson(tenantTableMetadataMap.get(tenantTable)).toByteArray(charset)
-//            val objectMetadata = ObjectMetadata()
-//            objectMetadata.contentLength = tenantTableMetadata.size.toLong()
-//            objectMetadata.contentType = "application/json"
-//            val putObjectReq = PutObjectRequest(s3BucketName, getTenantTableMetadataFile(backupId, tenantTable),
-//                    gson.toJson(tenantTableMetadataMap.get(tenantTable)).byteInputStream(charset), objectMetadata)
-//            s3.putObject(putObjectReq)
-//        }
+    private fun commitTenantTableMetadata(backupId: String,
+                                          tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult) {
+        for (tenantTableMetadata in tenantTableMetadatas.metadataList) {
+            val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
+            val objectMetadata = ObjectMetadata()
+            objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
+            objectMetadata.contentType = "application/json"
+            val putObjectReq = PutObjectRequest(s3BucketName,
+                    getTenantTableMetadataFile(backupId, tenantTableMetadata.tenantTable),
+                    gson.toJson(tenantTableMetadata.createTableRequest).byteInputStream(charset),
+                    objectMetadata)
+            s3.putObject(putObjectReq)
+        }
     }
 
     protected fun commitBackupMetadata(backupMetadata: MtBackupMetadata) {
