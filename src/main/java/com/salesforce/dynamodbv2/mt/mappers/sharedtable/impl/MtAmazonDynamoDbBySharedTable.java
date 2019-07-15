@@ -282,11 +282,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Delete the given virtual table for the given mt_context tenant configured with @param deleteTableRequest.
      * Bear in mind, this is a virtual table, where actual data for said table lives shared amongst other tenants data.
      * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
-     * the shared table to find relevant rows for the given tenant-table to delete before the table metadata can be deleted.
+     * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
      *
      * Additionally, there is no support for this JVM crashing during the delete, in which case, although a successful
      * delete response my be handed back to the client, the virtual table and its relevant data may not actually be
-     * properly delete.
+     * properly delete. Therefore, use with caution.
      *
      * @return a DeleteTableResult with the description of the virtual table deleted.
      */
@@ -409,8 +409,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * i.e., not great.
      *
      * This should rarely, if ever, be exposed for tenants to consume, given how expensive scans on a shared table are.
-     * If used, it should be an async job that properly resumes the scans across app server restarts,
-     * given servers can fall over before the scan can finish given enough data maintained on the shared table.
+     * If used, it needs to be on a non-web request, as this makes several repeat callouts to dynamo to fill a single
+     * result set. Performance of this call degrades with data size of all other tenant table data stored, and will
+     * likely time out a synchronous web request if querying a sparse table-tenant in the shared table.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
@@ -574,9 +575,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             for (Map<String, AttributeValue> item : scanResult.getItems()) {
                 deleteItem(new DeleteItemRequest().withTableName(tableName).withKey(getKeyFromItem(item, tableName)));
             }
-            log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName + " complete");
+            log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName
+                + (scanResult.getLastEvaluatedKey() == null
+                    ? " complete. "
+                    : "but data may have been dropped to the floor, beware."));
+
         } else {
-            log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation");
+            log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
+                + "Data has been dropped, clean up on aisle "
+                + getMtContext().getContextOpt().orElse("no-context"));
         }
     }
 

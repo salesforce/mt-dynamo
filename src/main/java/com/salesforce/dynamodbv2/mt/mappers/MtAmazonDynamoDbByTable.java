@@ -118,6 +118,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return batchGetItemResult;
     }
 
+    /**
+     * Create a physical table within dynamo with the given @param createTableRequest table name
+     * prefixed by the tenant context.
+     */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
@@ -137,6 +141,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
+    /**
+     * Delete the physical dynamo table with the @param deleteTableRequest table name prefixed by the current tenant
+     * context.
+     */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         String unqualifiedTableName = deleteTableRequest.getTableName();
@@ -147,6 +155,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return deleteTableResult;
     }
 
+    /**
+     * Describe the table with @param describeTableRequest table name prefixed by the current tenant context.
+     */
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         String unqualifiedTableName = describeTableRequest.getTableName();
@@ -176,9 +187,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().getItem(getItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         putItemRequest = putItemRequest.clone();
@@ -186,9 +194,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public QueryResult query(QueryRequest queryRequest) {
         queryRequest = queryRequest.clone();
@@ -197,7 +202,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Run a scan on the given table specified @param scanRequest table name prefixed by the current tenant context.
+     * If the context is not specified, run a scan against the @param scanRequest raw table name, with tenant context
+     * info encoded into the result item map keyed by {@link VIRTUAL_TABLE_KEY} and {@link TENANT_KEY}.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
@@ -217,9 +224,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         updateItemRequest = updateItemRequest.clone();
