@@ -64,7 +64,8 @@ public class MtAmazonDynamoDbLogger extends MtAmazonDynamoDbBase {
                                    Consumer<List<String>> logCallback,
                                    List<String> methodsToLog,
                                    boolean logAll) {
-        super(mtContext, amazonDynamoDb, null);
+        super(mtContext, amazonDynamoDb, null, MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY,
+            MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY);
         this.logCallback = Optional.ofNullable(logCallback);
         this.methodsToLog = methodsToLog;
         this.logAll = logAll;

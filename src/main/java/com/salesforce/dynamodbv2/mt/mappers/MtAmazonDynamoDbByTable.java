@@ -71,8 +71,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     MeterRegistry meterRegistry, BillingMode billingMode, String delimiter,
-                                    Optional<String> tablePrefix) {
-        super(mtContext, amazonDynamoDb, meterRegistry);
+                                    Optional<String> tablePrefix, String scanTenantKey, String scanVirtualTableKey) {
+        super(mtContext, amazonDynamoDb, meterRegistry, scanVirtualTableKey, scanTenantKey);
         this.billingMode = billingMode;
         // TODO add billingMode support
         this.delimiter = delimiter;
@@ -118,6 +118,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return batchGetItemResult;
     }
 
+    /**
+     * Create a physical table within dynamo with the given @param createTableRequest table name
+     * prefixed by the tenant context.
+     */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         DynamoDbCapacity.setBillingMode(createTableRequest, billingMode);
@@ -137,6 +141,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
     }
 
+    /**
+     * Delete the physical dynamo table with the deleteTableRequest's table name prefixed by the current tenant
+     * context.
+     */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
         String unqualifiedTableName = deleteTableRequest.getTableName();
@@ -147,6 +155,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return deleteTableResult;
     }
 
+    /**
+     * Describe the table with describeTableRequest's table name prefixed by the current tenant context.
+     */
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         String unqualifiedTableName = describeTableRequest.getTableName();
@@ -176,9 +187,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().getItem(getItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         putItemRequest = putItemRequest.clone();
@@ -186,9 +194,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public QueryResult query(QueryRequest queryRequest) {
         queryRequest = queryRequest.clone();
@@ -197,7 +202,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Run a scan on the given table specified scanRequest's table name prefixed by the current tenant context.
+     * If the context is not specified, run a scan against the @param scanRequest raw table name, with tenant context
+     * info encoded into the result item map keyed by {@link scanTenantKey} and {@link scanVirtualTableKey}.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
@@ -205,9 +212,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
             ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
-            result.getItems().stream().forEach(row -> {
-                row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
-                row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
+            result.getItems().forEach(row -> {
+                row.put(scanTenantKey, new AttributeValue(tenantTable[1]));
+                row.put(scanVirtualTableKey, new AttributeValue(tenantTable[0]));
             });
             return result;
         } else {
@@ -217,9 +224,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         updateItemRequest = updateItemRequest.clone();
@@ -238,6 +242,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         private MeterRegistry meterRegistry;
         private BillingMode billingMode;
         private String delimiter;
+        private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
+        private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
         private Optional<String> tablePrefix = Optional.empty();
 
         public MtAmazonDynamoDbBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
@@ -248,6 +254,18 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         @Override
         public MtAmazonDynamoDbBuilder withBillingMode(BillingMode billingMode) {
             this.billingMode = billingMode;
+            return this;
+        }
+
+        @Override
+        public TableBuilder withScanTenantKey(String scanTenantKey) {
+            this.scanTenantKey = scanTenantKey;
+            return this;
+        }
+
+        @Override
+        public TableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
+            this.scanVirtualTableKey = scanVirtualTableKey;
             return this;
         }
 
@@ -272,8 +290,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
 
         /**
-         * TODO: write Javadoc.
-         *
          * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
          *     {@code MtAmazonDynamoDbBuilder}
          */
@@ -282,7 +298,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             Preconditions.checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
             Preconditions.checkNotNull(mtContext, "mtContext is required");
             return new MtAmazonDynamoDbByTable(mtContext, amazonDynamoDb, meterRegistry, billingMode, delimiter,
-                tablePrefix);
+                tablePrefix, scanTenantKey, scanVirtualTableKey);
         }
 
         private void setDefaults() {

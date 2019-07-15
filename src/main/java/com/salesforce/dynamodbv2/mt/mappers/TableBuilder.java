@@ -9,4 +9,17 @@ import com.amazonaws.services.dynamodbv2.model.BillingMode;
  */
 public interface TableBuilder {
     TableBuilder withBillingMode(BillingMode billingMode);
+
+
+    /**
+     * When doing a scan across a table without a tenant context provided, encode the tenant key of each row encoded
+     * with this column name on the returned result set.
+     */
+    TableBuilder withScanTenantKey(String scanTenantKey);
+
+    /**
+     * When doing a scan across a table without a tenant context provided, encode the customer provided table name
+     * of each row encoded with this column name on the returned result set.
+     */
+    TableBuilder withScanVirtualTableKey(String scanVirtualTableKey);
 }

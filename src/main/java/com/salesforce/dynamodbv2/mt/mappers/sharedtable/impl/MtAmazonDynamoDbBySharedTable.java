@@ -89,7 +89,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private final String name;
 
-    private final MeterRegistry meterRegistry;
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<Object, TableMapping> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
@@ -101,7 +100,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Optional<MtBackupManager> backupManager;
 
     /**
-     * TODO: write Javadoc.
      *
      * @param name the name of the multitenant AmazonDynamoDB instance
      * @param mtContext the multitenant context provider
@@ -114,6 +112,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param clock clock instance to use for enforcing time limit (injected for unit tests).
      * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
      * @param meterRegistry MeterRegistry for reporting metrics.
+     *
+     * @param scanTenantKey name of column in multitenant scans to return tenant key encoded into scan result set
+     * @param scanVirtualTableKey name of column in multitenant scans to return virtual table name encoded into result
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -126,10 +127,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Clock clock,
                                          Cache<Object, TableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry,
-                                         Optional<MtBackupManager> backupManager) {
-        super(mtContext, amazonDynamoDb, meterRegistry);
+                                         Optional<MtBackupManager> backupManager,
+                                         String scanTenantKey,
+                                         String scanVirtualTableKey) {
+        super(mtContext, amazonDynamoDb, meterRegistry, scanVirtualTableKey, scanTenantKey);
         this.name = name;
-        this.meterRegistry = meterRegistry;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
@@ -151,7 +153,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         return mtTables.containsKey(tableName);
     }
 
@@ -263,7 +265,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Create a virtual table configured with createTableRequest. Really, this is not creating a physical table
+     * in Dynamo, but inserting a row into a metadata table, thus creating a virtual table, for the given mt_context
+     * tenant to insert data into.
+     * @return a CreateTableResult object with the description of the table created.
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -272,7 +277,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Delete a row for the given virtual table configured with deleteItemRequest.
+     * @return a DeleteItemResult containing the data of the row deleted from Dynamo.
      */
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
@@ -292,7 +298,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Delete the given virtual table for the given mt_context tenant configured with @param deleteTableRequest.
+     * Bear in mind, this is a virtual table, where actual data for said table lives shared amongst other tenants data.
+     * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
+     * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
+     *
+     * Additionally, if the delete is done asynchronously, there is no support for this JVM crashing during the delete,
+     * in which case, although a successful delete response my be handed back to the client,
+     * the virtual table and its relevant data may not actually be properly deleted. Therefore, use with caution.
+     *
+     * @return a DeleteTableResult with the description of the virtual table deleted.
      */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
@@ -326,7 +341,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Fetch a row by primary key for the given tenant context and virtual table.
      */
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
@@ -367,9 +382,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
@@ -387,9 +399,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public QueryResult query(QueryRequest queryRequest) {
         final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
@@ -413,16 +422,28 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
+<<<<<<< HEAD
      * Execute a scan meeting the specs of @{link AmazonDynamoDB}, but scoped to single tenants within a shared table.
      * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
      * Scans scoped to single tenants is not a performant operation.
      * Multi tenant scans are as bad as scans on any other dynamo table, ie: not great.
+=======
+     * Execute a scan meeting the specs of {@link AmazonDynamoDB}, but scoped to single tenants within a shared table.
+     * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table.
+     * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
+     * i.e., not great.
+     *
+     * This should rarely, if ever, be exposed for tenants to consume, given how expensive scans on a shared table are.
+     * If used, it needs to be on a non-web request, as this makes several repeat callouts to dynamo to fill a single
+     * result set. Performance of this call degrades with data size of all other tenant table data stored, and will
+     * likely time out a synchronous web request if querying a sparse table-tenant in the shared table.
+>>>>>>> 4eab94522717faa75ad24de488a3a425bcafb6db
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
-            // if we're here, we're doing a multi tenant scan on a shared table
-            return multiTenantScan(scanRequest);
+            // if we're here, we're doing a multitenant scan on a shared table
+            return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
@@ -463,8 +484,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return scanResult;
     }
 
-    private ScanResult multiTenantScan(ScanRequest scanRequest) {
-        Preconditions.checkArgument(isMtTable(scanRequest.getTableName()), scanRequest.getTableName());
+    private ScanResult scanAllTenants(ScanRequest scanRequest) {
+        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we're working with,
@@ -477,11 +498,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             // go through each row in the scan, and pull out the tenant and table information from the primary key
             // to separate attributes in each items map
             FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
-            TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
-                tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
-            Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
-            unpackedVirtualItem.put(VIRTUAL_TABLE_KEY, new AttributeValue(virtualFieldKeys.getTableName()));
-            unpackedVirtualItem.put(TENANT_KEY, new AttributeValue(virtualFieldKeys.getContext()));
+            TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
+                virtualFieldKeys.getTableName());
+            Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
+            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getTableName()));
+            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getContext()));
             unpackedItems.add(unpackedVirtualItem);
         }
 
@@ -523,7 +544,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Update a given row with primary key defined in updateItemRequest.
+     *
+     * @return UpdateItemResult of the updated row.
      */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
@@ -593,9 +616,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             for (Map<String, AttributeValue> item : scanResult.getItems()) {
                 deleteItem(new DeleteItemRequest().withTableName(tableName).withKey(getKeyFromItem(item, tableName)));
             }
-            log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName + " complete");
+            log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName
+                + (scanResult.getLastEvaluatedKey() == null
+                    ? " complete. "
+                    : "but data may have been dropped to the floor, beware."));
+
         } else {
-            log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation");
+            log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
+                + "Data has been dropped, clean up on aisle "
+                + getMtContext().getContextOpt().orElse("no-context"));
         }
     }
 

@@ -92,10 +92,12 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Base class for each mapping scheme to extend.  It reduces code by ...
@@ -108,21 +110,28 @@ import java.util.Map;
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     /**
-     * Special "column" key returned to client on multi-tenant scans.
+     * Special default "column" key returned to client on multitenant scans.
+     * Configurable by clients if needed.
      */
-    public static final String TENANT_KEY = "mt:context";
-    public static final String VIRTUAL_TABLE_KEY = "mt:tableName";
+    public static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
+    public static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
     private final MeterRegistry meterRegistry;
+    protected final String scanVirtualTableKey;
+    protected final String scanTenantKey;
 
     protected MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
                                    AmazonDynamoDB amazonDynamoDb,
-                                   MeterRegistry meterRegistry) {
+                                   MeterRegistry meterRegistry,
+                                   String scanVirtualTableKey,
+                                   String scanTenantKey) {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
         this.meterRegistry = meterRegistry;
+        this.scanTenantKey = scanTenantKey;
+        this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
     public AmazonDynamoDB getAmazonDynamoDb() {
@@ -131,6 +140,14 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     public MeterRegistry getMeterRegistry() {
         return meterRegistry;
+    }
+
+    public String getScanTenantKey() {
+        return scanTenantKey;
+    }
+
+    public String getScanVirtualTableKey() {
+        return scanVirtualTableKey;
     }
 
     protected MtAmazonDynamoDbContextProvider getMtContext() {
@@ -143,7 +160,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
      * @param tableName Name of the table.
      * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
      */
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         return true;
     }
 
@@ -338,30 +355,40 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables() {
-        if (mtContext.getContextOpt().isEmpty()) {
-            return getAmazonDynamoDb().listTables();
-        } else {
-            throw new UnsupportedOperationException();
-        }
+        return listTables((String)null);
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
+        return listTables(exclusiveStartTableName, 100);
+    }
+
+    @Override
+    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         if (mtContext.getContextOpt().isEmpty()) {
-            return getAmazonDynamoDb().listTables(exclusiveStartTableName);
+            List<String> tableNames = Lists.newArrayList();
+            String innerExclusiveStartTableName = exclusiveStartTableName;
+
+            // filter out any physical tables on this account that this mt-dynamo instance does not manage
+            // and eagerly pull more pages until we fill up a full result set or run out of tables
+            do  {
+                ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName, limit);
+                tableNames.addAll(
+                    rawResults.getTableNames().stream().filter(this::isMtTable).collect(Collectors.toList()));
+                innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
+            } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
+
+            return new ListTablesResult()
+                .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
+                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
         } else {
             throw new UnsupportedOperationException();
         }
     }
 
     @Override
-    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public ListTablesResult listTables(Integer limit) {
-        throw new UnsupportedOperationException();
+        return listTables(null, limit);
     }
 
     @Override
@@ -397,24 +424,22 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
-        return getAmazonDynamoDb().scan(scanRequest);
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet) {
-        return scan(new ScanRequest().withTableName(tableName).withAttributesToGet(attributesToGet));
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public ScanResult scan(String tableName, Map<String, Condition> scanFilter) {
-        return scan(new ScanRequest().withTableName(tableName).withScanFilter(scanFilter));
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet, Map<String, Condition> scanFilter) {
-        return scan(new ScanRequest().withTableName(tableName)
-            .withAttributesToGet(attributesToGet)
-            .withScanFilter(scanFilter));
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -496,5 +521,4 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException();
     }
-
 }

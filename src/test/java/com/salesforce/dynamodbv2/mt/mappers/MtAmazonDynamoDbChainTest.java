@@ -146,7 +146,8 @@ class MtAmazonDynamoDbChainTest {
     private static class MockAmazonDynamoDb extends MtAmazonDynamoDbBase {
 
         MockAmazonDynamoDb(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb) {
-            super(mtContext, amazonDynamoDb, null);
+            super(mtContext, amazonDynamoDb, null, MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY,
+                MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY);
         }
 
     }

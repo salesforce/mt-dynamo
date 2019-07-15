@@ -21,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
@@ -143,24 +144,12 @@ class ScanTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
-        String startTableName = null;
-        List<String> tableNames;
-        int maxPages = 5;
-        int attemptCount = 0;
-        do {
-            List<String> allTableNames = testArgument.getAmazonDynamoDb().listTables(startTableName).getTableNames();
-
-            //filter scan to just tables this mt dymamo strategy manages
-            tableNames = allTableNames.stream()
-                .filter(t -> ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).isMtTable(t))
-                .collect(Collectors.toList());
-            startTableName = allTableNames.get(allTableNames.size() - 1);
-            attemptCount++;
-        } while (tableNames.size() == 0 && attemptCount < maxPages);
+        ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
+        List<String> tableNames = listTablesResult.getTableNames();
 
         assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
         // go through every table, and issue at least one successful scan request.
-        // validate at least one table is populated
+        // validate that at least one table is populated
         boolean isFound = false;
         for (String tableName: tableNames) {
             ScanResult scanResult = testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName));
@@ -169,8 +158,8 @@ class ScanTest {
             if (items != null && !items.isEmpty()) {
                 isFound = true;
                 assertTrue(scanResult.getItems().stream().allMatch(
-                    row -> row.containsKey(MtAmazonDynamoDbBase.TENANT_KEY)
-                        && row.containsKey(MtAmazonDynamoDbBase.VIRTUAL_TABLE_KEY)));
+                    row -> row.containsKey(MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY)
+                        && row.containsKey(MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY)));
             }
         }
         assertTrue(isFound, "all scans found no items... that's not right");

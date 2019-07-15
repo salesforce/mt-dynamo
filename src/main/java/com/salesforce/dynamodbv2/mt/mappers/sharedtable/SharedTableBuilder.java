@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -192,6 +193,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Cache<Object, TableMapping> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
+    private String scanTenantKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY;
+    private String scanVirtualTableKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -246,6 +249,18 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    @Override
+    public TableBuilder withScanTenantKey(String scanTenantKey) {
+        this.scanTenantKey = scanTenantKey;
+        return this;
+    }
+
+    @Override
+    public TableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
+        this.scanVirtualTableKey = scanVirtualTableKey;
+        return this;
+    }
+
     public SharedTableBuilder withBinaryHashKey(boolean binaryHashKey) {
         this.binaryHashKey = binaryHashKey;
         return this;
@@ -296,7 +311,9 @@ public class SharedTableBuilder implements TableBuilder {
             clock,
             tableMappingCache,
             meterRegistry,
-            Optional.ofNullable(backupManager));
+            Optional.ofNullable(backupManager),
+            scanTenantKey,
+            scanVirtualTableKey);
     }
 
     private void setDefaults() {

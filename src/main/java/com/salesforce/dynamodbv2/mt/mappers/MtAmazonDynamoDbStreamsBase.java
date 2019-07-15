@@ -5,6 +5,7 @@ import static com.google.common.collect.Iterables.getLast;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
@@ -94,7 +95,8 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * @return Result
      */
     @Override
-    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest) {
+    public DescribeStreamResult describeStream(DescribeStreamRequest describeStreamRequest)
+        throws AmazonDynamoDBException {
         if (LOG.isDebugEnabled()) {
             LOG.debug("describeStream request={}", describeStreamRequest);
         }
@@ -184,7 +186,8 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * Get only records for the given tenant context and table.
      *
      * @param request     GetRecordsRequest for physical stream.
-     * @param mtStreamArn MtStreamArn containg physical table and stream names as well as context and tenant table name.
+     * @param mtStreamArn MtStreamArn containing physical table and stream names as well as context and tenant-table
+     *                    name.
      * @return MtGetRecordsResult containing converted records.
      */
     protected abstract MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn);

@@ -5,7 +5,6 @@
  */
 package com.salesforce.dynamodbv2.mt.sharedtable.impl
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
@@ -23,6 +22,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
@@ -44,8 +44,7 @@ internal class MtBackupManagerImplTest {
         val REGION = "us-east-1"
         val MT_CONTEXT: MtAmazonDynamoDbContextProvider = MtAmazonDynamoDbContextProviderThreadLocalImpl()
 
-
-        val bucket: String =  "test-basic-backup-create"
+        val bucket: String = "test-basic-backup-create"
         val dynamo = AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
 
         val sharedTableBinaryHashKey = SharedTableBuilder.builder()
@@ -74,7 +73,6 @@ internal class MtBackupManagerImplTest {
             s3!!.createBucket(createBucketRequest)
         }
     }
-
 
     @Test
     fun testBasicBackupCreate() {
@@ -110,8 +108,8 @@ internal class MtBackupManagerImplTest {
 
             val newRestoreTableName = tableName + "-copy"
             val restoreResult = backupManager.restoreTenantTableBackup(RestoreMtBackupRequest(backupId,
-                    TenantTable(tenantName = tenant, virtualTable = tableName),
-                    TenantTable(tenantName = tenant, virtualTable = newRestoreTableName)),
+                    TenantTable(tenantName = tenant, virtualTableName = tableName),
+                    TenantTable(tenantName = tenant, virtualTableName = newRestoreTableName)),
                     sharedTableBinaryHashKey,
                     MT_CONTEXT)
 

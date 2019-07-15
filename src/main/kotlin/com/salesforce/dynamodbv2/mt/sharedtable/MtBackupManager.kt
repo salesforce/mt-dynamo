@@ -4,11 +4,10 @@
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
 package com.salesforce.dynamodbv2.mt.sharedtable
-
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable
-import com.salesforce.dynamodbv2.mt.sharedtable.impl.TenantTable
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -75,7 +74,11 @@ data class TenantTableBackupMetadata(
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
 data class CreateMtBackupRequest(val backupId: String, val sharedTableName: String)
-data class RestoreMtBackupRequest(val backupId: String, val tenantTableBackup: TenantTable, val newTenantTable: TenantTable)
+data class RestoreMtBackupRequest(
+    val backupId: String,
+    val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
+    val newTenantTable: MtAmazonDynamoDb.TenantTable
+)
 
 enum class Status {
     IN_PROGRESS,
