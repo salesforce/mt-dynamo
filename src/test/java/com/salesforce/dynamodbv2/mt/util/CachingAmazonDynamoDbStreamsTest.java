@@ -416,6 +416,13 @@ class CachingAmazonDynamoDbStreamsTest {
         return cachingStreams;
     }
 
+    private Striped<Lock> mockStripedLock(Lock lock) {
+        @SuppressWarnings("unchecked")
+        final Striped<Lock> mockStripedLock = (Striped<Lock>) mock(Striped.class);
+        when(mockStripedLock.get(any())).thenReturn(lock);
+        return mockStripedLock;
+    }
+
     private static Shard newShard(String shardId) {
         return newShard(shardId, null);
     }
@@ -1176,7 +1183,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, nextDynamoDbIterator, 0, 1);
 
         final Lock lock = mock(Lock.class);
-        final Striped<Lock> getRecordsLocks = getMockStripedLock(lock);
+        final Striped<Lock> getRecordsLocks = mockStripedLock(lock);
         final MockTicker ticker = new MockTicker();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
@@ -1219,7 +1226,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, dynamoDbIterator, 0, 5);
 
         final Lock lock = mock(Lock.class);
-        final Striped<Lock> getRecordsLocks = getMockStripedLock(lock);
+        final Striped<Lock> getRecordsLocks = mockStripedLock(lock);
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withGetRecordsLocks(getRecordsLocks)
             .build();
@@ -1253,7 +1260,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), mockShardIterator(request));
 
         final Lock lock = mock(Lock.class);
-        final Striped<Lock> getRecordsLocks = getMockStripedLock(lock);
+        final Striped<Lock> getRecordsLocks = mockStripedLock(lock);
         final MockTicker ticker = new MockTicker();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
@@ -1290,7 +1297,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, dynamoDbIterator, 0, 5);
 
         final Lock lock = mock(Lock.class);
-        final Striped<Lock> getRecordsLocks = getMockStripedLock(lock);
+        final Striped<Lock> getRecordsLocks = mockStripedLock(lock);
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withGetRecordsLocks(getRecordsLocks)
             .build();
@@ -1325,7 +1332,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, dynamoDbIterator, 0, 5);
 
         final Lock lock = mock(Lock.class);
-        final Striped<Lock> getRecordsLocks = getMockStripedLock(lock);
+        final Striped<Lock> getRecordsLocks = mockStripedLock(lock);
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withGetRecordsLocks(getRecordsLocks)
             .build();
@@ -1338,13 +1345,6 @@ class CachingAmazonDynamoDbStreamsTest {
         assertThrows(LimitExceededException.class,
             () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
         assertCacheMisses(streams, 0, 0);
-    }
-
-    private Striped<Lock> getMockStripedLock(Lock lock) {
-        @SuppressWarnings("unchecked")
-        final Striped<Lock> mockStripedLock = (Striped<Lock>) mock(Striped.class);
-        when(mockStripedLock.get(any())).thenReturn(lock);
-        return mockStripedLock;
     }
 
     /**
