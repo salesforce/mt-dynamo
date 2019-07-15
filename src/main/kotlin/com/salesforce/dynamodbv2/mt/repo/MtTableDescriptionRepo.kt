@@ -17,8 +17,8 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 interface MtTableDescriptionRepo {
 
     /**
-     * Create a multi-tenant (virtual) table with specs defined in @param createTableRequest under the given
-     * multi-tenant contexts' namespace.
+     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given
+     * multitenant context's namespace.
      *
      * @param createTableRequest specs of table to create
      * @return the table description of said table
