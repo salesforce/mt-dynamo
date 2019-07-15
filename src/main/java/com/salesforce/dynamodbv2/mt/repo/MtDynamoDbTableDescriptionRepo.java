@@ -292,17 +292,16 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @NotNull
     @Override
-    public ListMetadataResult listVirtualTableMetadatas(int limit,
-                                                        @Nullable TenantTableMetadata exclusiveStartTableMetadata) {
+    public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
         ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
-        Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(exclusiveStartTableMetadata)
+        Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
             .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(getHashKey(exclusiveStartTableMetadata)))))
+                new AttributeValue(getHashKey(t)))))
             .orElse(null);
         ScanResult scanResult;
 
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
-        scanReq.setLimit(limit);
+        scanReq.setLimit(listMetadataRequest.getLimit());
         scanResult = amazonDynamoDb.scan(scanReq);
         List<TenantTableMetadata> metadataList = scanResult.getItems().stream()
             .map(rowMap ->
@@ -312,25 +311,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
             metadataList.get(metadataList.size() - 1);
         return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas(@Nullable TenantTableMetadata exclusiveStartTableMetadata) {
-        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT, exclusiveStartTableMetadata);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas(int limit) {
-        return listVirtualTableMetadatas(limit, MtTableDescriptionRepoKt.DEFAULT_START_KEY);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas() {
-        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT,
-            MtTableDescriptionRepoKt.DEFAULT_START_KEY);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {
@@ -399,6 +379,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         }
 
         /**
+         * Builder. Build!
+         *
          * @return a newly created {@code MtDynamoDbTableDescriptionRepo} based on the contents of the
          *     {@code MtDynamoDbTableDescriptionRepoBuilder}
          */

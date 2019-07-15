@@ -94,6 +94,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final String scanVirtualTableKey;
 
     /**
+     * Shared table constructor.
      *
      * @param name the name of the multitenant AmazonDynamoDB instance
      * @param mtContext the multitenant context provider
@@ -292,7 +293,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
      * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
      *
-     * Additionally, if the delete is done asynchronously, there is no support for this JVM crashing during the delete,
+     * <p>Additionally, for asynchronous deletes, there is no support for this JVM crashing during the delete,
      * in which case, although a successful delete response my be handed back to the client,
      * the virtual table and its relevant data may not actually be properly deleted. Therefore, use with caution.
      *
@@ -416,7 +417,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
      * i.e., not great.
      *
-     * This should rarely, if ever, be exposed for tenants to consume, given how expensive scans on a shared table are.
+     * <p>This should rarely, if ever, be exposed for tenants to run, given how expensive scans on a shared table are.
      * If used, it needs to be on a non-web request, as this makes several repeat callouts to dynamo to fill a single
      * result set. Performance of this call degrades with data size of all other tenant table data stored, and will
      * likely time out a synchronous web request if querying a sparse table-tenant in the shared table.

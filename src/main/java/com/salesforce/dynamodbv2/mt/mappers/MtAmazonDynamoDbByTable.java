@@ -83,10 +83,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
-    /**
-     * @param tableName Name of the table.
-     * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
-     */
     @Override
     protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
@@ -294,6 +290,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
 
         /**
+         * Useful comment.
+         *
          * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
          *     {@code MtAmazonDynamoDbBuilder}
          */
