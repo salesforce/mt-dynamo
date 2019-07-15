@@ -33,7 +33,6 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
@@ -49,6 +48,8 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
@@ -153,28 +154,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 new AttributeValue(addPrefix(tableName))))));
 
         return tableDescription;
-    }
-
-    @Override
-    public Map<TenantTable, CreateTableRequest> getAllMtTables() {
-        ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
-        Map<TenantTable, CreateTableRequest> ret = Maps.newHashMap();
-        Map<String, AttributeValue> lastEvaluatedKey = null;
-        ScanResult scanResult;
-        do {
-            scanReq.setExclusiveStartKey(lastEvaluatedKey);
-            scanResult = amazonDynamoDb.scan(scanReq);
-            ret.putAll(scanResult.getItems().stream()
-                .collect(Collectors.toMap(
-                    rowItem ->
-                        getTenantTableFromHashKey(rowItem.get(tableDescriptionTableHashKeyField).getS()),
-                    rowItem -> {
-                        String tableDataJson = rowItem.get(tableDescriptionTableDataField).getS();
-                        return getCreateTableRequest(jsonToTableData(tableDataJson));
-                    })));
-            lastEvaluatedKey = scanResult.getLastEvaluatedKey();
-        } while (lastEvaluatedKey != null);
-        return ret;
     }
 
     private TenantTable getTenantTableFromHashKey(String hashKey) {
@@ -297,12 +276,59 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
+    private String getHashKey(TenantTableMetadata tenantTableMetadata) {
+        return tenantTableMetadata.getTenantTable().getTenantName()
+            + delimiter
+            + tenantTableMetadata.getTenantTable().getVirtualTableName();
+    }
+
     private String addPrefix(String tableName) {
         return getPrefix() + tableName;
     }
 
     private String getPrefix() {
         return mtContext.getContext() + delimiter;
+    }
+
+    @NotNull
+    @Override
+    public ListMetadataResult listVirtualTableMetadatas(int limit, @Nullable TenantTableMetadata exclusiveStartTableMetadata) {
+        ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
+        Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(exclusiveStartTableMetadata)
+            .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                new AttributeValue(getHashKey(exclusiveStartTableMetadata)))))
+            .orElse(null);
+        ScanResult scanResult;
+
+        scanReq.setExclusiveStartKey(lastEvaluatedKey);
+        scanReq.setLimit(limit);
+        scanResult = amazonDynamoDb.scan(scanReq);
+        List<TenantTableMetadata> metadataList = scanResult.getItems().stream()
+            .map(rowMap ->
+                new TenantTableMetadata(getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()),
+                    getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
+            .collect(Collectors.toList());
+        TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
+            metadataList.get(metadataList.size()-1);
+        return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
+    }
+
+    @NotNull
+    @Override
+    public ListMetadataResult listVirtualTableMetadatas(@Nullable TenantTableMetadata exclusiveStartTableMetadata) {
+        return listVirtualTableMetadatas(10, exclusiveStartTableMetadata);
+    }
+
+    @NotNull
+    @Override
+    public ListMetadataResult listVirtualTableMetadatas(int limit) {
+        return listVirtualTableMetadatas(limit, null);
+    }
+
+    @NotNull
+    @Override
+    public ListMetadataResult listVirtualTableMetadatas() {
+        return listVirtualTableMetadatas(10, null);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {
