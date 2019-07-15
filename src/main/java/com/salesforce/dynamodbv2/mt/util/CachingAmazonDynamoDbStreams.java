@@ -111,7 +111,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5L;
         private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000L;
         private static final boolean DESCRIBE_STREAM_CACHE_ENABLED = true;
-        private static final long DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS = 100L;
+        private static final long DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS = 1000L;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
@@ -646,6 +646,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final Counter getRecordsLoadMaxRetries;
     private final Counter getRecordsLoadExpiredIterator;
     private final Counter getRecordsLoadLockTimeouts;
+    private final Counter getRecordsLoadLockTimeoutsFailures;
     private final Counter getRecordsUncached;
     private final Timer getShardIteratorLoadTime;
     private final Counter getShardIteratorUncached;
@@ -681,6 +682,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsLoadSize = meterRegistry.summary(cn + ".GetRecords.Load.Size");
         this.getRecordsLoadLockWaitTime = meterRegistry.timer(cn + ".GetRecords.Load.Lock.Time");
         this.getRecordsLoadLockTimeouts = meterRegistry.counter(cn + ".GetRecords.Load.Lock.Timeouts");
+        this.getRecordsLoadLockTimeoutsFailures = meterRegistry.counter(cn + ".GetRecords.Load.Lock.Timeouts.Failures");
         this.getRecordsLoadRetries = meterRegistry.summary(cn + ".GetRecords.Load.Retries");
         this.getRecordsLoadMaxRetries = meterRegistry.counter(cn + ".GetRecords.Load.MaxRetries");
         this.getRecordsLoadExpiredIterator = meterRegistry.counter(cn + ".GetRecords.Load.ExpiredIterator");
@@ -887,16 +889,22 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         } else {
             // failed to get load lock: check caches again to see if anything was loaded while waiting, but don't load.
             if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed to obtain record load lock for iterator {}.", iterator);
+                LOG.warn("Failed to obtain getRecords lock for iterator {}.", iterator);
             }
             getRecordsLoadLockTimeouts.increment();
             if (Boolean.TRUE == getRecordsEmptyResultCache.getIfPresent(position)) {
                 result = iterator.emptyResult();
             } else {
                 final List<Record> cachedRecords = recordCache.getRecords(position, limit);
-                result = cachedRecords.isEmpty()
-                    ? iterator.emptyResult() // Could throw LimitExceededException here instead
-                    : iterator.nextResult(cachedRecords);
+                if (cachedRecords.isEmpty()) {
+                    getRecordsLoadLockTimeoutsFailures.increment();
+                    if (LOG.isWarnEnabled()) {
+                        LOG.warn("Failed to obtain getRecords lock or cached records for iterator {}.", iterator);
+                    }
+                    throw new LimitExceededException("Failed to obtain getRecords lock in time");
+                } else {
+                    return iterator.nextResult(cachedRecords);
+                }
             }
         }
         return result;

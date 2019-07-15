@@ -1318,8 +1318,8 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that if a thread times out waiting for a lock and concurrent load has not finished, it returns an empty
-     * result without trying to load records.
+     * Verifies that if a thread times out waiting for a lock and no records have been loaded into caches concurrently,
+     * it fails with a LimitExceededException.
      */
     @Test
     void testGetRecordsLockTimeout() throws InterruptedException {
@@ -1339,7 +1339,9 @@ class CachingAmazonDynamoDbStreamsTest {
         when(lock.tryLock(anyLong(), any())).thenReturn(false);
 
         // while this thread waits for lock, another thread loads result into cache, so this one should not load again
-        assertGetRecords(cachingStreams, request, null, 0, 0);
+        String iterator = cachingStreams.getShardIterator(request).getShardIterator();
+        assertThrows(LimitExceededException.class,
+            () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
         assertCacheMisses(streams, 0, 0);
     }
 
