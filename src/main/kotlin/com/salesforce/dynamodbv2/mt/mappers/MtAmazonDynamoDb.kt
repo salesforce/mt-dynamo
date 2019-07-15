@@ -68,7 +68,7 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
             return this
         }
 
-        override fun withUserIdentity(userIdentity: Identity?): MtRecord {
+        override fun withUserIdentity(userIdentity: Identity): MtRecord {
             setUserIdentity(userIdentity)
             return this
         }
