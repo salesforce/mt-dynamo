@@ -190,7 +190,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             pollIntervalSeconds);
     }
 
-    private CreateTableRequest getCreateTableRequest(TableDescription description) {
+    private static CreateTableRequest getCreateTableRequest(TableDescription description) {
         return new CreateTableRequest().withTableName(description.getTableName())
             .withKeySchema(description.getKeySchema())
             .withAttributeDefinitions(description.getAttributeDefinitions())
@@ -202,7 +202,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
 
-    private List<GlobalSecondaryIndex> getGlobalIndexes(Collection<GlobalSecondaryIndexDescription> descriptions) {
+    private static List<GlobalSecondaryIndex> getGlobalIndexes(
+        Collection<GlobalSecondaryIndexDescription> descriptions) {
         return descriptions == null ?  null : descriptions
             .stream()
             .map(s ->
@@ -213,7 +214,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             .collect(Collectors.toList());
     }
 
-    private List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
+    private static List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
         return descriptions == null ? null :
             descriptions.stream()
                 .map(s ->
@@ -224,12 +225,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .collect(Collectors.toList());
     }
 
-    private ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
+    private static ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
         return description == null ? null :
             new ProvisionedThroughput(description.getReadCapacityUnits(), description.getWriteCapacityUnits());
     }
 
-    private ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
+    private static ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
         return throughput == null ? null :
             new ProvisionedThroughputDescription()
                 .withReadCapacityUnits(throughput.getReadCapacityUnits())
@@ -267,11 +268,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
-    private String tableDataToJson(TableDescription tableDescription) {
+    private static String tableDataToJson(TableDescription tableDescription) {
         return GSON.toJson(tableDescription);
     }
 
-    private TableDescription jsonToTableData(String tableDataString) {
+    private static TableDescription jsonToTableData(String tableDataString) {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
