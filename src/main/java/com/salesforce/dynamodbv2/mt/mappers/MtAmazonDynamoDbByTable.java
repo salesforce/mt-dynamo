@@ -146,7 +146,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Delete the physical dynamo table with the @param deleteTableRequest table name prefixed by the current tenant
+     * Delete the physical dynamo table with the deleteTableRequest's table name prefixed by the current tenant
      * context.
      */
     @Override
@@ -160,7 +160,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Describe the table with @param describeTableRequest table name prefixed by the current tenant context.
+     * Describe the table with describeTableRequest's table name prefixed by the current tenant context.
      */
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
@@ -206,7 +206,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Run a scan on the given table specified @param scanRequest table name prefixed by the current tenant context.
+     * Run a scan on the given table specified scanRequest's table name prefixed by the current tenant context.
      * If the context is not specified, run a scan against the @param scanRequest raw table name, with tenant context
      * info encoded into the result item map keyed by {@link scanTenantKey} and {@link scanVirtualTableKey}.
      */
@@ -294,8 +294,6 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
 
         /**
-         * TODO: write Javadoc.
-         *
          * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
          *     {@code MtAmazonDynamoDbBuilder}
          */

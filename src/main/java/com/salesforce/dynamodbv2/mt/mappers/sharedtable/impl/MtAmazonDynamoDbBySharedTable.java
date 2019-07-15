@@ -254,7 +254,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Create a virtual table configured with @param createTableRequest. Really, this is not creating a physical table
+     * Create a virtual table configured with createTableRequest. Really, this is not creating a physical table
      * in Dynamo, but inserting a row into a metadata table, thus creating a virtual table, for the given mt_context
      * tenant to insert data into.
      * @return a CreateTableResult object with the description of the table created.
@@ -266,7 +266,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Delete a row for the given virtual table configured with @param deleteItemRequest.
+     * Delete a row for the given virtual table configured with deleteItemRequest.
      * @return a DeleteItemResult containing the data of the row deleted from Dynamo.
      */
     @Override
@@ -292,9 +292,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
      * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
      *
-     * Additionally, there is no support for this JVM crashing during the delete, in which case, although a successful
-     * delete response my be handed back to the client, the virtual table and its relevant data may not actually be
-     * properly delete. Therefore, use with caution.
+     * Additionally, if the delete is done asynchronously, there is no support for this JVM crashing during the delete,
+     * in which case, although a successful delete response my be handed back to the client,
+     * the virtual table and its relevant data may not actually be properly deleted. Therefore, use with caution.
      *
      * @return a DeleteTableResult with the description of the virtual table deleted.
      */
@@ -526,7 +526,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Update a given row with primary key defined in @param updateItemRequest.
+     * Update a given row with primary key defined in updateItemRequest.
      *
      * @return UpdateItemResult of the updated row.
      */
