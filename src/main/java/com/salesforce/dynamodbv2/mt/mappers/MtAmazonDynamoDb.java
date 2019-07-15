@@ -6,12 +6,12 @@ import com.amazonaws.services.dynamodbv2.model.OperationType;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 
+
 /**
  * This interface (including all contained interfaces and methods) is
  * experimental. It is subject to breaking changes. Use at your own risk.
  */
 public interface MtAmazonDynamoDb extends AmazonDynamoDB {
-
     class MtRecord extends Record {
 
         private static final long serialVersionUID = -6099434068333437314L;

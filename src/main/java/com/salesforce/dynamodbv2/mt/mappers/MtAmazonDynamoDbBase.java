@@ -508,5 +508,4 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException();
     }
-
 }
