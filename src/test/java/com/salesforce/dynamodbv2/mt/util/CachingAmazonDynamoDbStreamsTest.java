@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -55,9 +56,11 @@ import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TrimmedDataAccessException;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.common.base.Ticker;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.util.concurrent.Striped;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
@@ -69,6 +72,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
 import java.util.stream.IntStream;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterAll;
@@ -109,8 +114,10 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
         AmazonDynamoDBStreams dynamoDbStreams = AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal();
         CountingAmazonDynamoDbStreams countingDynamoDbStreams = new CountingAmazonDynamoDbStreams(dynamoDbStreams);
-        CachingAmazonDynamoDbStreams cachingDynamoDbStreams = new CachingAmazonDynamoDbStreams.Builder(
-            countingDynamoDbStreams).build();
+        CachingAmazonDynamoDbStreams cachingDynamoDbStreams = new CachingAmazonDynamoDbStreams
+            .Builder(countingDynamoDbStreams)
+            .withTicker(new MockTicker())
+            .build();
 
         // setup: create a table with streams enabled
         String tableName = CachingAmazonDynamoDbStreamsTest.class.getSimpleName() + "_it_" + System.currentTimeMillis();
@@ -247,7 +254,7 @@ class CachingAmazonDynamoDbStreamsTest {
             records = result.getRecords();
             assertEquals(0, records.size());
             // another getRecords call to fetch empty page
-            assertEquals(5, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
             assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
 
             // second client now tries to go beyond second page which still has no records
@@ -258,12 +265,23 @@ class CachingAmazonDynamoDbStreamsTest {
             records = result.getRecords();
             assertEquals(0, records.size());
             // another getRecords call to fetch empty page
-            assertEquals(6, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
             assertEquals(2, countingDynamoDbStreams.getShardIteratorCount);
         } finally {
             // cleanup after ourselves (want to be able to run against hosted DynamoDB as well)
             dynamoDb.deleteTable(tableName);
         }
+    }
+
+    private static class MockTicker extends Ticker {
+
+        long nanos;
+
+        @Override
+        public long read() {
+            return nanos;
+        }
+
     }
 
     // some test fixtures
@@ -744,7 +762,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withGetRecordsLimitExceededBackoffInMillis(10000L)
+            .withGetRecordsBackoffInMillis(10000L)
             .withSleeper(sleeper)
             .build();
 
@@ -772,8 +790,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withGetRecordsLimitExceededBackoffInMillis(500)
-            .withMaxGetRecordsRetries(3)
+            .withGetRecordsBackoffInMillis(500)
+            .withGetRecordsMaxRetries(3)
             .withSleeper(sleeper)
             .withMaxRecordsByteSize(100L)
             .build();
@@ -812,7 +830,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         Sleeper sleeper = mock(Sleeper.class);
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withMaxGetRecordsRetries(1)
+            .withGetRecordsMaxRetries(1)
             .withSleeper(sleeper)
             .build();
 
@@ -1111,6 +1129,220 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertThrows(ResourceNotFoundException.class,
             () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
+    }
+
+    /**
+     * Verifies that empty results are cached for a while.
+     */
+    @Test
+    void testEmptyRecordsCache() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        final String nextDynamoDbIteator = mockShardIterator(request);
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIteator);
+        mockGetRecords(streams, nextDynamoDbIteator, 0, 1);
+
+        final MockTicker ticker = new MockTicker();
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withTicker(ticker)
+            .withEmptyResultCacheTtlInMillis(1)
+            .build();
+
+        // first request should retrieve empty result and then cache it
+        assertGetRecords(cachingStreams, request, null, 0, 0);
+        assertCacheMisses(streams, 1, 1);
+
+        // so second request should not try to fetch again
+        assertGetRecords(cachingStreams, request, null, 0, 0);
+        assertCacheMisses(streams, 1, 1);
+
+        // after clock advances, empty result should get evicted
+        ticker.nanos += 1000000;
+        assertGetRecords(cachingStreams, request, null, 0, 1);
+        assertCacheMisses(streams, 1, 2);
+    }
+
+    /**
+     * Verifies that empty records cache is used even for concurrent access (by simulating locks).
+     */
+    @Test
+    void testConcurrentEmptyGetRecordsResult() throws InterruptedException {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        final String nextDynamoDbIteator = mockShardIterator(request);
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIteator);
+        mockGetRecords(streams, nextDynamoDbIteator, 0, 1);
+
+        final Lock lock = mock(Lock.class);
+        final Striped<Lock> getRecordsLocks = mock(Striped.class);
+        when(getRecordsLocks.get(any())).thenReturn(lock);
+        final MockTicker ticker = new MockTicker();
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withTicker(ticker)
+            .withEmptyResultCacheTtlInMillis(1)
+            .withGetRecordsLocks(getRecordsLocks)
+            .build();
+
+        // simulate concurrent access
+        final AtomicInteger callCount = new AtomicInteger();
+        when(lock.tryLock(anyLong(), any()))
+            .thenAnswer(invocation -> {
+                // another thread concurrently loads/caches empty result
+                callCount.incrementAndGet();
+                assertGetRecords(cachingStreams, request, null, 0, 0);
+                assertCacheMisses(streams, 1, 1);
+                return true;
+            })
+            .thenReturn(true);
+
+        // while this thread waits for the lock, another thread loads empty result, so this one should not load again
+        assertGetRecords(cachingStreams, request, null, 0, 0);
+        assertCacheMisses(streams, 1, 1);
+        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
+
+        // after clock advances, next thread should load results
+        ticker.nanos += 1000000;
+        assertGetRecords(cachingStreams, request, null, 0, 1);
+        assertCacheMisses(streams, 1, 2);
+        assertEquals(1, callCount.get());
+    }
+
+    /**
+     * Verifies that if another thread concurrently loads and populates cache, thread does not attempt to load.
+     */
+    @Test
+    void testConcurrentNonEmptyGetRecordsResult() throws InterruptedException {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        mockGetRecords(streams, dynamoDbIterator, 0, 5);
+
+        final Lock lock = mock(Lock.class);
+        final Striped<Lock> getRecordsLocks = mock(Striped.class);
+        when(getRecordsLocks.get(any())).thenReturn(lock);
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withGetRecordsLocks(getRecordsLocks)
+            .build();
+
+        // simulate concurrent access
+        final AtomicInteger callCount = new AtomicInteger();
+        when(lock.tryLock(anyLong(), any()))
+            .thenAnswer(invocation -> {
+                // another thread concurrently loads and caches result
+                callCount.incrementAndGet();
+                assertGetRecords(cachingStreams, request, null, 0, 5);
+                assertCacheMisses(streams, 1, 1);
+                return true;
+            })
+            .thenReturn(true);
+
+        // while this thread waits for lock, another thread loads result into cache, so this one should not load again
+        assertGetRecords(cachingStreams, request, null, 0, 5);
+        assertCacheMisses(streams, 1, 1);
+        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
+    }
+
+    /**
+     * Verifies that if a thread times out waiting for a lock, it still returns concurrently loaded empty result.
+     */
+    @Test
+    void testConcurrentEmptyGetRecordsResultWithTimeout() throws InterruptedException {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), mockShardIterator(request));
+
+        final Lock lock = mock(Lock.class);
+        final Striped<Lock> getRecordsLocks = mock(Striped.class);
+        when(getRecordsLocks.get(any())).thenReturn(lock);
+        final MockTicker ticker = new MockTicker();
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withTicker(ticker)
+            .withEmptyResultCacheTtlInMillis(1)
+            .withGetRecordsLocks(getRecordsLocks)
+            .build();
+
+        // simulate concurrent access
+        final AtomicInteger callCount = new AtomicInteger();
+        when(lock.tryLock(anyLong(), any()))
+            .thenAnswer(invocation -> {
+                // another thread concurrently loads/caches empty result
+                callCount.incrementAndGet();
+                assertGetRecords(cachingStreams, request, null, 0, 0);
+                assertCacheMisses(streams, 1, 1);
+                return false; // this simulates a timeout waiting for the lock
+            })
+            .thenReturn(true);
+
+        // while this thread waits for the lock, another thread loads empty result, so this one should not load again
+        assertGetRecords(cachingStreams, request, null, 0, 0);
+        assertCacheMisses(streams, 1, 1);
+        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
+    }
+
+    /**
+     * Verifies that if a thread times out waiting for a lock, it still returns concurrently loaded result.
+     */
+    @Test
+    void testConcurrentNonEmptyGetRecordsResultWithTimeout() throws InterruptedException {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        mockGetRecords(streams, dynamoDbIterator, 0, 5);
+
+        final Lock lock = mock(Lock.class);
+        final Striped<Lock> getRecordsLocks = mock(Striped.class);
+        when(getRecordsLocks.get(any())).thenReturn(lock);
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withGetRecordsLocks(getRecordsLocks)
+            .build();
+
+        // simulate concurrent access
+        final AtomicInteger callCount = new AtomicInteger();
+        when(lock.tryLock(anyLong(), any()))
+            .thenAnswer(invocation -> {
+                // another thread concurrently loads and caches result
+                callCount.incrementAndGet();
+                assertGetRecords(cachingStreams, request, null, 0, 5);
+                assertCacheMisses(streams, 1, 1);
+                return false;
+            })
+            .thenReturn(true);
+
+        // while this thread waits for lock, another thread loads result into cache, so this one should not load again
+        assertGetRecords(cachingStreams, request, null, 0, 5);
+        assertCacheMisses(streams, 1, 1);
+        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
+    }
+
+    /**
+     * Verifies that if a thread times out waiting for a lock and no records have been loaded into caches concurrently,
+     * it fails with a LimitExceededException.
+     */
+    @Test
+    void testGetRecordsLockTimeout() throws InterruptedException {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        mockGetRecords(streams, dynamoDbIterator, 0, 5);
+
+        final Lock lock = mock(Lock.class);
+        final Striped<Lock> getRecordsLocks = mock(Striped.class);
+        when(getRecordsLocks.get(any())).thenReturn(lock);
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withGetRecordsLocks(getRecordsLocks)
+            .build();
+
+        // simulate concurrent access
+        when(lock.tryLock(anyLong(), any())).thenReturn(false);
+
+        // while this thread waits for lock, another thread loads result into cache, so this one should not load again
+        String iterator = cachingStreams.getShardIterator(request).getShardIterator();
+        assertThrows(LimitExceededException.class,
+            () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
+        assertCacheMisses(streams, 0, 0);
     }
 
     /**
