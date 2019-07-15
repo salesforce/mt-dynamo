@@ -46,7 +46,7 @@ interface MtTableDescriptionRepo {
      * result set fully populated @param limit results, null otherwise.
      */
     fun listVirtualTableMetadata(
-            listMetadataRequest: ListMetadataRequest
+        listMetadataRequest: ListMetadataRequest
     ): ListMetadataResult
 
     data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
