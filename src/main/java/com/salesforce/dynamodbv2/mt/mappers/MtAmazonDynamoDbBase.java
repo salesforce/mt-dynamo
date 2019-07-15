@@ -110,10 +110,11 @@ import java.util.stream.Collectors;
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     /**
-     * Special "column" key returned to client on multitenant scans.
+     * Special default "column" key returned to client on multitenant scans.
+     * Configurable by clients if needed.
      */
-    public static final String TENANT_KEY = "mt:context";
-    public static final String VIRTUAL_TABLE_KEY = "mt:tableName";
+    public static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
+    public static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
