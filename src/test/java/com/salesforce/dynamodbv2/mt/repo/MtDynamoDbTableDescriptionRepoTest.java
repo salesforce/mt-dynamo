@@ -142,7 +142,8 @@ class MtDynamoDbTableDescriptionRepoTest {
         MT_CONTEXT.withContext(tenant2, () ->
             repo.createTable(createReq2));
 
-        ListMetadataResult returnedMetadatas = ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
+        ListMetadataResult returnedMetadatas =
+            ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
 
         TenantTableMetadata tenantTable1 = new TenantTableMetadata(new TenantTable(tableName1, tenant1), createReq1);
         TenantTableMetadata tenantTable2 = new TenantTableMetadata(new TenantTable(tableName2, tenant2), createReq2);
@@ -155,7 +156,8 @@ class MtDynamoDbTableDescriptionRepoTest {
         expected = new ListMetadataResult(ImmutableList.of(tenantTable1), tenantTable1);
         assertEquals(expected, returnedMetadatas);
 
-        returnedMetadatas = repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1));
+        returnedMetadatas =
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1));
         assertEquals(returnedMetadatas,
             repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1).withLimit(5)));
         expected = new ListMetadataResult(ImmutableList.of(tenantTable2), null);

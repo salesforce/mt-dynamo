@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
@@ -294,10 +293,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
         ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
-        Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
-            .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(getHashKey(t)))))
-            .orElse(null);
+        Map<String, AttributeValue> lastEvaluatedKey =
+            Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
+                .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                    new AttributeValue(getHashKey(t)))))
+                .orElse(null);
         ScanResult scanResult;
 
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
