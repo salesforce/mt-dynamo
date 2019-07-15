@@ -51,14 +51,17 @@ interface MtTableDescriptionRepo {
     ): ListMetadataResult
 
     /**
-     * TODO: these below methods are placeholders from implementing this interface in Java.
+     * TODO: these overloaded listVirtualTableMetadatas are placeholders from implementing this interface in Java.
+     * (see https://stackoverflow.com/questions/47070968/kotlin-default-arguments-in-interface-bug)
      * Once the impl is converted to Kotlin, all the below signatures can be removed with defaulted params.
      */
     fun listVirtualTableMetadatas(exclusiveStartTableMetadata: TenantTableMetadata?): ListMetadataResult
     fun listVirtualTableMetadatas(limit: Int): ListMetadataResult
     fun listVirtualTableMetadatas(): ListMetadataResult
-
     data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
 
     data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
 }
+
+const val DEFAULT_RESULT_LIMIT = 10
+@JvmField val DEFAULT_START_KEY: MtTableDescriptionRepo.TenantTableMetadata? = null

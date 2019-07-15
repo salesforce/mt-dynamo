@@ -317,19 +317,20 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadatas(@Nullable TenantTableMetadata exclusiveStartTableMetadata) {
-        return listVirtualTableMetadatas(10, exclusiveStartTableMetadata);
+        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT, exclusiveStartTableMetadata);
     }
 
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadatas(int limit) {
-        return listVirtualTableMetadatas(limit, null);
+        return listVirtualTableMetadatas(limit, MtTableDescriptionRepoKt.DEFAULT_START_KEY);
     }
 
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadatas() {
-        return listVirtualTableMetadatas(10, null);
+        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT,
+            MtTableDescriptionRepoKt.DEFAULT_START_KEY);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {

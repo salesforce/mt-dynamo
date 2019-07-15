@@ -154,6 +154,10 @@ class MtDynamoDbTableDescriptionRepoTest {
         expected = new ListMetadataResult(ImmutableList.of(tenantTable1), tenantTable1);
         assertEquals(expected, returnedMetadatas);
 
+        assertEquals(repo.listVirtualTableMetadatas(1, null),
+            repo.listVirtualTableMetadatas(1));
+        assertEquals(repo.listVirtualTableMetadatas(tenantTable1),
+            repo.listVirtualTableMetadatas(5, tenantTable1));
         returnedMetadatas = repo.listVirtualTableMetadatas(2, tenantTable1);
         expected = new ListMetadataResult(ImmutableList.of(tenantTable2), null);
         assertEquals(expected, returnedMetadatas);
