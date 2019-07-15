@@ -90,6 +90,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Map<String, CreateTableRequest> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
+    private final String scanTenantKey;
+    private final String scanVirtualTableKey;
 
     /**
      *
@@ -104,6 +106,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param clock clock instance to use for enforcing time limit (injected for unit tests).
      * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
      * @param meterRegistry MeterRegistry for reporting metrics.
+     * @param scanTenantKey name of column in multitenant scans to return tenant key encoded into scan result set
+     * @param scanVirtualTableKey name of column in multitenant scans to return virtual table name encoded into result
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -115,7 +119,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          long getRecordsTimeLimit,
                                          Clock clock,
                                          Cache<Object, TableMapping> tableMappingCache,
-                                         MeterRegistry meterRegistry) {
+                                         MeterRegistry meterRegistry,
+                                         String scanTenantKey,
+                                         String scanVirtualTableKey) {
         super(mtContext, amazonDynamoDb, meterRegistry);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
@@ -127,6 +133,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
+        this.scanTenantKey = scanTenantKey;
+        this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
     long getGetRecordsTimeLimit() {
@@ -475,8 +483,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
-            unpackedVirtualItem.put(VIRTUAL_TABLE_KEY, new AttributeValue(virtualFieldKeys.getTableName()));
-            unpackedVirtualItem.put(TENANT_KEY, new AttributeValue(virtualFieldKeys.getContext()));
+            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getTableName()));
+            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getContext()));
             unpackedItems.add(unpackedVirtualItem);
         }
 
