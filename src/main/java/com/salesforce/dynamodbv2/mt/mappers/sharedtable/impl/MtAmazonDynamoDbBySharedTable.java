@@ -398,14 +398,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     /**
      * Execute a scan meeting the specs of {@link AmazonDynamoDB}, but scoped to single tenants within a shared table.
-     * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
+     * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table.
      * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
      * i.e., not great.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
-            // if we're here, we're doing a multi tenant scan on a shared table
+            // if we're here, we're doing a multitenant scan on a shared table
             return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
@@ -461,9 +461,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             // go through each row in the scan, and pull out the tenant and table information from the primary key
             // to separate attributes in each items map
             FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
-            TableMapping tableMappping = getMtContext().withContext(virtualFieldKeys.getContext(),
-                tableName -> getTableMapping(tableName), virtualFieldKeys.getTableName());
-            Map<String, AttributeValue> unpackedVirtualItem = tableMappping.getItemMapper().reverse(item);
+            TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
+                virtualFieldKeys.getTableName());
+            Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
             unpackedVirtualItem.put(VIRTUAL_TABLE_KEY, new AttributeValue(virtualFieldKeys.getTableName()));
             unpackedVirtualItem.put(TENANT_KEY, new AttributeValue(virtualFieldKeys.getContext()));
             unpackedItems.add(unpackedVirtualItem);

@@ -205,9 +205,9 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
             Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
             ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
-            result.getItems().stream().forEach(row -> {
-                row.put(super.VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
-                row.put(super.TENANT_KEY, new AttributeValue(tenantTable[0]));
+            result.getItems().forEach(row -> {
+                row.put(VIRTUAL_TABLE_KEY, new AttributeValue(tenantTable[1]));
+                row.put(TENANT_KEY, new AttributeValue(tenantTable[0]));
             });
             return result;
         } else {
