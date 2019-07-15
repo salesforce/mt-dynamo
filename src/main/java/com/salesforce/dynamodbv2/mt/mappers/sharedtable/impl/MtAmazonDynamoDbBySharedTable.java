@@ -92,7 +92,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Clock clock;
 
     /**
-     * TODO: write Javadoc.
      *
      * @param name the name of the multitenant AmazonDynamoDB instance
      * @param mtContext the multitenant context provider
@@ -139,7 +138,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         return mtTables.containsKey(tableName);
     }
 
@@ -247,7 +246,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Create a virtual table configured with @param createTableRequest. Really, this is not creating a physical table
+     * in Dynamo, but inserting a row into a metadata table, thus creating a virtual table, for the given mt_context
+     * tenant to insert data into.
+     * @return a CreateTableResult object with the description of the table created.
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -256,7 +258,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Delete a row for the given virtual table configured with @param deleteItemRequest.
+     * @return a DeleteItemResult containing the data of the row deleted from Dynamo.
      */
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
@@ -276,7 +279,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Delete the given virtual table for the given mt_context tenant configured with @param deleteTableRequest.
+     * Bear in mind, this is a virtual table, where actual data for said table lives shared amongst other tenants data.
+     * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
+     * the shared table to find relevant rows for the given tenant-table to delete before the table metadata can be deleted.
+     *
+     * Additionally, there is no support for this JVM crashing during the delete, in which case, although a successful
+     * delete response my be handed back to the client, the virtual table and its relevant data may not actually be
+     * properly delete.
+     *
+     * @return a DeleteTableResult with the description of the virtual table deleted.
      */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
@@ -310,7 +322,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Fetch a row by primary key for the given tenant context and virtual table.
      */
     @Override
     public GetItemResult getItem(GetItemRequest getItemRequest) {
@@ -351,9 +363,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
@@ -371,9 +380,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().putItem(putItemRequest);
     }
 
-    /**
-     * TODO: write Javadoc.
-     */
     @Override
     public QueryResult query(QueryRequest queryRequest) {
         final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
@@ -401,6 +407,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table.
      * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
      * i.e., not great.
+     *
+     * This should rarely, if ever, be exposed for tenants to consume, given how expensive scans on a shared table are.
+     * If used, it should be an async job that properly resumes the scans across app server restarts,
+     * given servers can fall over before the scan can finish given enough data maintained on the shared table.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
@@ -507,7 +517,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * TODO: write Javadoc.
+     * Update a given row with primary key defined in @param updateItemRequest.
+     *
+     * @return UpdateItemResult of the updated row.
      */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
