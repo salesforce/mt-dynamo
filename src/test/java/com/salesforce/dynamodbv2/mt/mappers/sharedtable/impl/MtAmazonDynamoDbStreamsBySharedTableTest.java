@@ -39,6 +39,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
+import com.salesforce.dynamodbv2.mt.util.MockTicker;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import java.time.Clock;
 import java.time.Instant;
@@ -147,7 +148,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             CountingAmazonDynamoDbStreams dynamoDbStreams =
                 new CountingAmazonDynamoDbStreams(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
             MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
-                new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).build());
+                new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).withTicker(new MockTicker()).build());
 
             // test without context
             String iterator = getShardIterator(mtDynamoDbStreams);
@@ -169,8 +170,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             });
 
             // once per fetch (since they are all trim horizon)
-            assertEquals(3, dynamoDbStreams.getRecordsCount);
-            assertEquals(3, dynamoDbStreams.getShardIteratorCount);
+            assertEquals(2, dynamoDbStreams.getRecordsCount);
+            assertEquals(1, dynamoDbStreams.getShardIteratorCount);
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }

@@ -14,11 +14,15 @@ import javax.annotation.Nonnull;
 final class StreamShardPosition {
 
     static StreamShardPosition at(String streamArn, String shardId, Record record) {
-        return at(streamArn, shardId, record.getDynamodb().getSequenceNumber());
+        return at(new StreamShardId(streamArn, shardId), record);
     }
 
     static StreamShardPosition at(String streamArn, String shardId, String sequenceNumber) {
         return at(new StreamShardId(streamArn, shardId), sequenceNumber);
+    }
+
+    static StreamShardPosition at(StreamShardId streamShardId, Record record) {
+        return at(streamShardId, record.getDynamodb().getSequenceNumber());
     }
 
     static StreamShardPosition at(StreamShardId streamShardId, String sequenceNumber) {
