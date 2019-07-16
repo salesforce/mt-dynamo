@@ -827,6 +827,19 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         String dynamoDbIterator;
         switch (ShardIteratorType.fromValue(request.getShardIteratorType())) {
             case TRIM_HORIZON:
+                /*
+                 * Check first if we recently found records at TRIM_HORIZON and if so, return a virtual iterator at the
+                 * sequence number of the first record. There is a risk with this approach that the TRIM_HORIZON moves
+                 * by the time the iterator is used, i.e., what we returned as the offset to use is now trimmed. If we
+                 * do not have records cached at the returned offset, the call to load records will result in a
+                 * TrimmedDataAccessException. This case should be rather unlikely, because we only cache the mapping
+                 * for a short time (so the likelihood that records are trimmed is low and the likelihood that records
+                 * are cached is high), AFAIK, DynamoDB currently trims by deleting shards (not by removing records from
+                 * shards), and KCL retries when it hits this exception (it's common to encounter it in local DynamoDB
+                 * due to a similar situation). Nevertheless, if we run into unexpected problems, we may need to remove
+                 * this cache or store some more information in the virtual iterator that allows us to retry
+                 * transparently when encountering a TrimmedDataAccessException.
+                 */
                 CachingShardIterator cachedIterator =
                     trimHorizonCache.getIfPresent(new StreamShardId(request.getStreamArn(), request.getShardId()));
                 if (cachedIterator != null) {
