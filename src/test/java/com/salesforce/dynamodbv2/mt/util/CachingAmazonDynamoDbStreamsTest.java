@@ -579,6 +579,36 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that records cache is used for TRIM_HORIZON request even if mapping was not yet cached when iterator was
+     * retrieved.
+     */
+    @Test
+    void testTrimHorizonCachedAfterGetIterator() {
+        AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+
+        GetShardIteratorRequest iteratorRequest = mockTrimHorizonRequest(streams, streamArn, shardId);
+
+        // get exact overlapping records with and without limit
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams
+            .Builder(streams)
+            .withTicker(new MockTicker())
+            .build();
+
+        // first thread looks up iterator
+        final String iterator = cachingStreams.getShardIterator(iteratorRequest).getShardIterator();
+        // second thread looks up iterator: no mapping cached, so results in call to DynamoDB
+        final String iterator2 = cachingStreams.getShardIterator(iteratorRequest).getShardIterator();
+
+        // first thread looks up records: no mapping cached, so results in call to DynamoDB
+        assertGetRecords(cachingStreams, iterator, null, records);
+        // second thread looks up records: mapping should be cached now, so even though first thread obtained phsyical
+        // iterator, its mapped to cached records without call to DynamoDB (limit so it doesn't try to look beyond)
+        assertGetRecords(cachingStreams, iterator2, 10, records);
+
+        assertCacheMisses(streams, 2, 1);
+    }
+
+    /**
      * Verifies that an exact cache hit can be serviced completely from the cache.
      */
     @Test
