@@ -119,7 +119,7 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         // write out actual backup data
         commitBackupMetadata(backupMetadata)
 
-        logger.info("${createMtBackupRequest.backupId}: Finished generating backup for ${tenantTableCount} " +
+        logger.info("${createMtBackupRequest.backupId}: Finished generating backup for $tenantTableCount " +
                 "table-tenants in ${System.currentTimeMillis() - startTime} ms")
         return backupMetadata
     }
@@ -248,8 +248,10 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
         return ret
     }
 
-    private fun commitTenantTableMetadata(backupId: String,
-                                          tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult) {
+    private fun commitTenantTableMetadata(
+        backupId: String,
+        tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
+    ) {
         for (tenantTableMetadata in tenantTableMetadatas.metadataList) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
             val objectMetadata = ObjectMetadata()

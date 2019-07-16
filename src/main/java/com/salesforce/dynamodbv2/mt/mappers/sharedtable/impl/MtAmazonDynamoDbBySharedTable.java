@@ -494,8 +494,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
-            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getTableName()));
-            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getContext()));
+            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getContext()));
+            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getTableName()));
             unpackedItems.add(unpackedVirtualItem);
         }
 
