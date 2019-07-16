@@ -45,21 +45,22 @@ interface MtTableDescriptionRepo {
      * @return a list of TenantTableMetadata objects, with a lastEvaluatedTable populated to the last table name if the
      * result set fully populated @param limit results, null otherwise.
      */
-    fun listVirtualTableMetadatas(
-        limit: Int,
-        exclusiveStartTableMetadata: TenantTableMetadata?
+    fun listVirtualTableMetadata(
+        listMetadataRequest: ListMetadataRequest
     ): ListMetadataResult
 
-    /**
-     * TODO: these overloaded listVirtualTableMetadatas are placeholders from implementing this interface in Java.
-     * (see https://stackoverflow.com/questions/47070968/kotlin-default-arguments-in-interface-bug)
-     * Once the impl is converted to Kotlin, all the below signatures can be removed with defaulted params.
-     */
-    fun listVirtualTableMetadatas(exclusiveStartTableMetadata: TenantTableMetadata?): ListMetadataResult
-    fun listVirtualTableMetadatas(limit: Int): ListMetadataResult
-    fun listVirtualTableMetadatas(): ListMetadataResult
     data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
+    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: TenantTableMetadata? = null) {
+        fun withLimit(limit: Int): ListMetadataRequest {
+            this.limit = limit
+            return this
+        }
 
+        fun withExclusiveStartKey(startKey: TenantTableMetadata?): ListMetadataRequest {
+            exclusiveStartTableMetadata = startKey
+            return this
+        }
+    }
     data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
 }
 

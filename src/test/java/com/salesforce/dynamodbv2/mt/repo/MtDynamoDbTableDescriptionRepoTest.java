@@ -18,6 +18,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.TenantTableMetadata;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
@@ -120,7 +121,7 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     @Test
-    void testListVirtualTableMetadatas() {
+    void testListVirtualTableMetadata() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         String tenant1 = "1";
         String tenant2 = "2";
@@ -141,7 +142,8 @@ class MtDynamoDbTableDescriptionRepoTest {
         MT_CONTEXT.withContext(tenant2, () ->
             repo.createTable(createReq2));
 
-        ListMetadataResult returnedMetadatas = ((MtTableDescriptionRepo)repo).listVirtualTableMetadatas();
+        ListMetadataResult returnedMetadatas =
+            ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
 
         TenantTableMetadata tenantTable1 = new TenantTableMetadata(new TenantTable(tableName1, tenant1), createReq1);
         TenantTableMetadata tenantTable2 = new TenantTableMetadata(new TenantTable(tableName2, tenant2), createReq2);
@@ -150,17 +152,16 @@ class MtDynamoDbTableDescriptionRepoTest {
 
         assertEquals(expected, returnedMetadatas);
 
-        returnedMetadatas = repo.listVirtualTableMetadatas(1, null);
+        returnedMetadatas = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
         expected = new ListMetadataResult(ImmutableList.of(tenantTable1), tenantTable1);
         assertEquals(expected, returnedMetadatas);
 
-        assertEquals(repo.listVirtualTableMetadatas(1, null),
-            repo.listVirtualTableMetadatas(1));
-        assertEquals(repo.listVirtualTableMetadatas(tenantTable1),
-            repo.listVirtualTableMetadatas(5, tenantTable1));
-        returnedMetadatas = repo.listVirtualTableMetadatas(2, tenantTable1);
+        returnedMetadatas =
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1));
+        assertEquals(returnedMetadatas,
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1).withLimit(5)));
         expected = new ListMetadataResult(ImmutableList.of(tenantTable2), null);
-        assertEquals(expected, returnedMetadatas);
-
+        assertEquals(expected,
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1)));
     }
 }

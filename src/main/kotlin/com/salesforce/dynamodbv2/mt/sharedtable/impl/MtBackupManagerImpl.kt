@@ -100,17 +100,27 @@ open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBac
      * so proceed with caution.
      */
     override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata {
-        // val startTime = System.currentTimeMillis()
+        val startTime = System.currentTimeMillis()
         // write out table metadata
-        val tenantMetadataMap =
-                mtDynamo.mtTableDescriptionRepo.listVirtualTableMetadatas()
-        commitTenantTableMetadata(createMtBackupRequest.backupId, tenantMetadataMap)
+        val startKey: MtTableDescriptionRepo.TenantTableMetadata? = null
+        val batchSize = 100
+        var tenantTableCount = 0
+        do {
+            val listTenantMetadataResult =
+                    mtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
+                            MtTableDescriptionRepo.ListMetadataRequest()
+                                    .withExclusiveStartKey(startKey)
+                                    .withLimit(batchSize))
+            commitTenantTableMetadata(createMtBackupRequest.backupId, listTenantMetadataResult)
+            tenantTableCount += listTenantMetadataResult.metadataList.size
+        } while (listTenantMetadataResult.lastEvaluatedTable != null)
 
         val backupMetadata = createBackupData(createMtBackupRequest, mtDynamo)
         // write out actual backup data
         commitBackupMetadata(backupMetadata)
-        // logger.info("${createMtBackupRequest.backupId}: Finished generating backup for ${tenantMetadataMap.size} " +
-        //        "table-tenants in ${System.currentTimeMillis() - startTime} ms")
+
+        logger.info("${createMtBackupRequest.backupId}: Finished generating backup for ${tenantTableCount} " +
+                "table-tenants in ${System.currentTimeMillis() - startTime} ms")
         return backupMetadata
     }
 

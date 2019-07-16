@@ -100,6 +100,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Optional<MtBackupManager> backupManager;
 
     /**
+     * Shared table constructor.
      *
      * @param name the name of the multitenant AmazonDynamoDB instance
      * @param mtContext the multitenant context provider
@@ -112,7 +113,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param clock clock instance to use for enforcing time limit (injected for unit tests).
      * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
      * @param meterRegistry MeterRegistry for reporting metrics.
-     *
      * @param scanTenantKey name of column in multitenant scans to return tenant key encoded into scan result set
      * @param scanVirtualTableKey name of column in multitenant scans to return virtual table name encoded into result
      */
@@ -303,7 +303,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
      * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
      *
-     * Additionally, if the delete is done asynchronously, there is no support for this JVM crashing during the delete,
+     * <p>Additionally, for asynchronous deletes, there is no support for this JVM crashing during the delete,
      * in which case, although a successful delete response my be handed back to the client,
      * the virtual table and its relevant data may not actually be properly deleted. Therefore, use with caution.
      *
@@ -422,22 +422,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-<<<<<<< HEAD
-     * Execute a scan meeting the specs of @{link AmazonDynamoDB}, but scoped to single tenants within a shared table.
-     * If no tenant context is specified, a multi tenant scan is performed over the multi tenant shared table.
-     * Scans scoped to single tenants is not a performant operation.
-     * Multi tenant scans are as bad as scans on any other dynamo table, ie: not great.
-=======
      * Execute a scan meeting the specs of {@link AmazonDynamoDB}, but scoped to single tenants within a shared table.
      * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table.
      * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
      * i.e., not great.
      *
-     * This should rarely, if ever, be exposed for tenants to consume, given how expensive scans on a shared table are.
+     * <p>This should rarely, if ever, be exposed for tenants to run, given how expensive scans on a shared table are.
      * If used, it needs to be on a non-web request, as this makes several repeat callouts to dynamo to fill a single
      * result set. Performance of this call degrades with data size of all other tenant table data stored, and will
      * likely time out a synchronous web request if querying a sparse table-tenant in the shared table.
->>>>>>> 4eab94522717faa75ad24de488a3a425bcafb6db
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {

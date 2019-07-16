@@ -49,7 +49,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Stores table definitions in single table.  Each record represents a table.  Table names are prefixed with context.
@@ -191,7 +190,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             pollIntervalSeconds);
     }
 
-    private CreateTableRequest getCreateTableRequest(TableDescription description) {
+    private static CreateTableRequest getCreateTableRequest(TableDescription description) {
         return new CreateTableRequest().withTableName(description.getTableName())
             .withKeySchema(description.getKeySchema())
             .withAttributeDefinitions(description.getAttributeDefinitions())
@@ -203,7 +202,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
 
-    private List<GlobalSecondaryIndex> getGlobalIndexes(Collection<GlobalSecondaryIndexDescription> descriptions) {
+    private static List<GlobalSecondaryIndex> getGlobalIndexes(
+        Collection<GlobalSecondaryIndexDescription> descriptions) {
         return descriptions == null ?  null : descriptions
             .stream()
             .map(s ->
@@ -214,7 +214,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             .collect(Collectors.toList());
     }
 
-    private List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
+    private static List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
         return descriptions == null ? null :
             descriptions.stream()
                 .map(s ->
@@ -225,12 +225,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .collect(Collectors.toList());
     }
 
-    private ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
+    private static ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
         return description == null ? null :
             new ProvisionedThroughput(description.getReadCapacityUnits(), description.getWriteCapacityUnits());
     }
 
-    private ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
+    private static ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
         return throughput == null ? null :
             new ProvisionedThroughputDescription()
                 .withReadCapacityUnits(throughput.getReadCapacityUnits())
@@ -268,11 +268,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
-    private String tableDataToJson(TableDescription tableDescription) {
+    private static String tableDataToJson(TableDescription tableDescription) {
         return GSON.toJson(tableDescription);
     }
 
-    private TableDescription jsonToTableData(String tableDataString) {
+    private static TableDescription jsonToTableData(String tableDataString) {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
@@ -292,17 +292,17 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @NotNull
     @Override
-    public ListMetadataResult listVirtualTableMetadatas(int limit,
-                                                        @Nullable TenantTableMetadata exclusiveStartTableMetadata) {
+    public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
         ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
-        Map<String, AttributeValue> lastEvaluatedKey = Optional.ofNullable(exclusiveStartTableMetadata)
-            .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(getHashKey(exclusiveStartTableMetadata)))))
-            .orElse(null);
+        Map<String, AttributeValue> lastEvaluatedKey =
+            Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
+                .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                    new AttributeValue(getHashKey(t)))))
+                .orElse(null);
         ScanResult scanResult;
 
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
-        scanReq.setLimit(limit);
+        scanReq.setLimit(listMetadataRequest.getLimit());
         scanResult = amazonDynamoDb.scan(scanReq);
         List<TenantTableMetadata> metadataList = scanResult.getItems().stream()
             .map(rowMap ->
@@ -312,25 +312,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
             metadataList.get(metadataList.size() - 1);
         return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas(@Nullable TenantTableMetadata exclusiveStartTableMetadata) {
-        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT, exclusiveStartTableMetadata);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas(int limit) {
-        return listVirtualTableMetadatas(limit, MtTableDescriptionRepoKt.DEFAULT_START_KEY);
-    }
-
-    @NotNull
-    @Override
-    public ListMetadataResult listVirtualTableMetadatas() {
-        return listVirtualTableMetadatas(MtTableDescriptionRepoKt.DEFAULT_RESULT_LIMIT,
-            MtTableDescriptionRepoKt.DEFAULT_START_KEY);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {
@@ -399,6 +380,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         }
 
         /**
+         * Builder. Build!
+         *
          * @return a newly created {@code MtDynamoDbTableDescriptionRepo} based on the contents of the
          *     {@code MtDynamoDbTableDescriptionRepoBuilder}
          */

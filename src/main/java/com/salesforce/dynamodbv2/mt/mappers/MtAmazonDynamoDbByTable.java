@@ -68,6 +68,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private final String delimiter;
     private final Optional<String> tablePrefix;
     private final BillingMode billingMode;
+    private final String scanTenantKey;
+    private final String scanVirtualTableKey;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     MeterRegistry meterRegistry, BillingMode billingMode, String delimiter,
@@ -77,12 +79,10 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         // TODO add billingMode support
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
+        this.scanTenantKey = scanTenantKey;
+        this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
-    /**
-     * @param tableName Name of the table.
-     * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
-     */
     @Override
     public boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
@@ -290,6 +290,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
 
         /**
+         * Useful comment.
+         *
          * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
          *     {@code MtAmazonDynamoDbBuilder}
          */
