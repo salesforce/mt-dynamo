@@ -84,7 +84,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    public boolean isMtTable(String tableName) {
+    protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
         return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }
