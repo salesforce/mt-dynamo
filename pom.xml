@@ -11,7 +11,7 @@
 
     <groupId>com.salesforce.dynamodb</groupId>
     <artifactId>mt-dynamodb</artifactId>
-    <version>0.9.46-SNAPSHOT</version>
+    <version>0.9.47-SNAPSHOT</version>
     <name>mt-dynamodb</name>
     <description>Multitenant support for the AWS Java SDK for Amazon DynamoDB</description>
 
@@ -26,6 +26,7 @@
         <kotlin.version>1.3.41</kotlin.version>
         <spotless-maven-plugin.version>1.23.1</spotless-maven-plugin.version>
         <ktlint.version>0.33.0</ktlint.version>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
 
     <scm>
@@ -382,7 +383,7 @@
                         <licenseHeader>
                             <file>${project.basedir}/license-header</file>
                         </licenseHeader>
-                        <trimTrailingWhitespace/>
+                        <trimTrailingWhitespace />
                         <ktlint>
                             <version>${ktlint.version}</version>
                         </ktlint>
