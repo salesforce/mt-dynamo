@@ -2,7 +2,6 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import org.mockito.internal.util.collections.Sets;
 
 /**
  * Tests for {@link MtAmazonDynamoDb} api spec across implementations.
@@ -38,14 +36,14 @@ public class MtAmazonDynamoDbTest {
         Set<String> allTableSet = new HashSet<>();
         ListTablesResult listTablesResult;
         String exclusiveStartKey = null;
-        int lastBatchSize = 0;
+        int lastBatchSize;
         int limit = 5;
         do {
             listTablesResult = testArgument.getAmazonDynamoDb().listTables(exclusiveStartKey, limit);
+            lastBatchSize = listTablesResult.getTableNames().size();
             assertTrue(listTablesResult.getTableNames().size() > 0 || lastBatchSize == limit,
                 "Should not have gotten empty table set, or last result set should have been full");
             int sizeBefore = allTableSet.size();
-            lastBatchSize = listTablesResult.getTableNames().size();
             allTables.addAll(listTablesResult.getTableNames());
             allTableSet.addAll(listTablesResult.getTableNames());
             assertEquals(sizeBefore + lastBatchSize, allTableSet.size(),
