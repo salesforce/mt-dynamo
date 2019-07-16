@@ -1,19 +1,26 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.TenantTableMetadata;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,5 +118,51 @@ class MtDynamoDbTableDescriptionRepoTest {
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
         DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
+    }
+
+    @Test
+    void testListVirtualTableMetadata() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        String tenant1 = "1";
+        String tenant2 = "2";
+        String table1Gsi = "index";
+        String tableName1 = "table";
+        String tableName2 = "table2";
+        CreateTableRequest createReq1 = new CreateTableRequest()
+            .withTableName(tableName1)
+            .withKeySchema(new KeySchemaElement("id", KeyType.HASH))
+            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
+                .withIndexName(table1Gsi)
+                .withKeySchema(new KeySchemaElement("secondary-id", KeyType.HASH)));
+        CreateTableRequest createReq2 = new CreateTableRequest()
+            .withTableName(tableName2)
+            .withKeySchema(new KeySchemaElement("id", KeyType.HASH));
+        MT_CONTEXT.withContext(tenant1, () ->
+            repo.createTable(createReq1));
+        MT_CONTEXT.withContext(tenant2, () ->
+            repo.createTable(createReq2));
+
+        ListMetadataResult returnedMetadatas =
+            ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
+
+        TenantTableMetadata tenantTable1 = new TenantTableMetadata(new TenantTable(tableName1, tenant1), createReq1);
+        TenantTableMetadata tenantTable2 = new TenantTableMetadata(new TenantTable(tableName2, tenant2), createReq2);
+        ListMetadataResult expected = new ListMetadataResult(
+            ImmutableList.of(tenantTable1, tenantTable2), null);
+
+        assertEquals(expected, returnedMetadatas);
+
+        returnedMetadatas = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
+        expected = new ListMetadataResult(ImmutableList.of(tenantTable1), tenantTable1);
+        assertEquals(expected, returnedMetadatas);
+
+        returnedMetadatas =
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1));
+        assertEquals(returnedMetadatas,
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1).withLimit(5)));
+        expected = new ListMetadataResult(ImmutableList.of(tenantTable2), null);
+        assertEquals(expected,
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tenantTable1)));
+
     }
 }

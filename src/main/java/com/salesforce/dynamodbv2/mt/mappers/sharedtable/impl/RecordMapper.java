@@ -40,14 +40,31 @@ public class RecordMapper implements Function<Record, MtRecord> {
     @Override
     public MtRecord apply(Record record) {
         final StreamRecord streamRecord = record.getDynamodb();
-        return new MtRecord()
-            .withAwsRegion(record.getAwsRegion())
-            .withEventID(record.getEventID())
-            .withEventName(record.getEventName())
-            .withEventSource(record.getEventSource())
-            .withEventVersion(record.getEventVersion())
-            .withUserIdentity(record.getUserIdentity())
-            .withContext(mtContext.getContext())
+        MtRecord ret = new MtRecord();
+        if (record.getAwsRegion() != null) {
+            ret.withAwsRegion(record.getAwsRegion());
+        }
+
+        if (record.getEventID() != null) {
+            ret.withEventID(record.getEventID());
+        }
+
+        if (record.getEventName() != null) {
+            ret.withEventName(record.getEventName());
+        }
+
+        if (record.getEventSource() != null) {
+            ret.withEventSource(record.getEventSource());
+        }
+
+        if (record.getEventVersion() != null) {
+            ret.withEventVersion(record.getEventVersion());
+        }
+
+        if (record.getUserIdentity() != null) {
+            ret.withUserIdentity(record.getUserIdentity());
+        }
+        return ret.withContext(mtContext.getContext())
             .withTableName(virtualTableName)
             .withDynamodb(new StreamRecord()
                 .withKeys(itemMapper.reverse(streamRecord.getKeys())) // should this use key mapper?
