@@ -364,9 +364,16 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
                 innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
             } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
 
-            return new ListTablesResult()
-                .withLastEvaluatedTableName(tableNames.isEmpty() ? null : tableNames.get(tableNames.size() - 1))
-                .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
+            // if there's more results left to go through, populate the lastEvaluatedTableName so the client can
+            // page through for more results.
+            if (tableNames.size() > limit || innerExclusiveStartTableName != null) {
+                return new ListTablesResult()
+                    .withLastEvaluatedTableName(tableNames.get(Math.min(tableNames.size() - 1, limit - 1)))
+                    .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
+            } else {
+                return new ListTablesResult()
+                    .withTableNames(tableNames);
+            }
         } else {
             throw new UnsupportedOperationException();
         }
