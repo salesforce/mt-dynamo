@@ -91,12 +91,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.billingMode = billingMode;
         this.mtContext = mtContext;
         this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
-        String prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
+        String prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionSupplier = () -> {
             createTableDescriptionTableIfNotExists(pollIntervalSeconds, prefixedTableDescriptionTableName);
             return new TableDescription().withTableName(prefixedTableDescriptionTableName);
