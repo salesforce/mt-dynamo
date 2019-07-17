@@ -79,13 +79,11 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
     )
     val charset = Charset.forName("utf-8")
 
-
-
     override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
         val backup = getBackup(createMtBackupRequest.backupId)
         if (backup != null) {
-            throw MtBackupException("Backup with that ID already exists: ${backup}")
+            throw MtBackupException("Backup with that ID already exists: $backup")
         } else {
             // write out table metadata
             val startKey: MtTableDescriptionRepo.TenantTableMetadata? = null
@@ -102,7 +100,6 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
                 tenantTables.addAll(listTenantMetadataResult.metadataList)
                 tenantTableCount += listTenantMetadataResult.metadataList.size
             } while (listTenantMetadataResult.lastEvaluatedTable != null)
-
 
             val newMetadata = MtBackupMetadata(createMtBackupRequest.backupId,
                     Status.IN_PROGRESS,
@@ -138,23 +135,25 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
      *
      * @return an {@link MtBackupMetadata} object describing current metadata of backup with backed up tenant-tables.
      */
-    override fun backupPhysicalMtTable(createMtBackupRequest: CreateMtBackupRequest,
-                                       physicalTableName: String,
-                                       mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata {
+    override fun backupPhysicalMtTable(
+        createMtBackupRequest: CreateMtBackupRequest,
+        physicalTableName: String,
+        mtDynamo: MtAmazonDynamoDbBySharedTable
+    ): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
         val backupMetadata = createBackupData(createMtBackupRequest, physicalTableName, mtDynamo)
         // write out actual backup data
         commitBackupMetadata(backupMetadata)
 
         logger.info("${createMtBackupRequest.backupId}: Finished generating backup for " +
-                "${physicalTableName} in ${System.currentTimeMillis() - startTime} ms")
+                "$physicalTableName in ${System.currentTimeMillis() - startTime} ms")
         return backupMetadata
     }
 
     override fun markBackupComplete(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata {
         val inProgressackupMetadata = getBackup(createMtBackupRequest.backupId)
-        if (inProgressackupMetadata == null || !inProgressackupMetadata.status.equals(Status.IN_PROGRESS) ) {
-            throw MtBackupException("Cannot mark ${inProgressackupMetadata} backup complete.")
+        if (inProgressackupMetadata == null || !inProgressackupMetadata.status.equals(Status.IN_PROGRESS)) {
+            throw MtBackupException("Cannot mark $inProgressackupMetadata backup complete.")
         }
         val completedBackupMetadata = MtBackupMetadata(inProgressackupMetadata.mtBackupId,
                 Status.COMPLETE,
@@ -172,9 +171,9 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
      *  There's a lot of room for improvement here, esp in parallelizing/bulkifying the restore operation.
      */
     override fun restoreTenantTableBackup(
-            restoreMtBackupRequest: RestoreMtBackupRequest,
-            mtDynamo: MtAmazonDynamoDbBase,
-            mtContext: MtAmazonDynamoDbContextProvider
+        restoreMtBackupRequest: RestoreMtBackupRequest,
+        mtDynamo: MtAmazonDynamoDbBase,
+        mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
         val startTime = System.currentTimeMillis()
         // restore tenant-table metadata
@@ -312,7 +311,7 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
     protected fun commitBackupMetadata(backupMetadata: MtBackupMetadata) {
         val currentBackupMetadata = getBackup(backupMetadata.mtBackupId)
 
-        val newBackupMetadata : MtBackupMetadata
+        val newBackupMetadata: MtBackupMetadata
         when (currentBackupMetadata) {
             null -> newBackupMetadata = backupMetadata
             else -> {
@@ -336,9 +335,9 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
     }
 
     protected open fun createBackupData(
-            createMtBackupRequest: CreateMtBackupRequest,
-            physicalTableName: String,
-            mtDynamo: MtAmazonDynamoDbBase
+        createMtBackupRequest: CreateMtBackupRequest,
+        physicalTableName: String,
+        mtDynamo: MtAmazonDynamoDbBase
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
         val tenantTables = Sets.newHashSet<TenantTable>()
@@ -355,8 +354,8 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
             for (i in 0..(scanResult.items.size - 1)) {
                 val row = scanResult.items[i]
-                val tenant = row.get(mtDynamo.scanTenantKey)!!.s
-                val virtualTable = row.remove(mtDynamo.scanVirtualTableKey)!!.s
+                val tenant = "FOO" // row.get(mtDynamo.scanTenantKey)!!.s
+                val virtualTable = "BAR" // row.remove(mtDynamo.scanVirtualTableKey)!!.s
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
                         TenantTableRow(scanResult.items[i]))
             }

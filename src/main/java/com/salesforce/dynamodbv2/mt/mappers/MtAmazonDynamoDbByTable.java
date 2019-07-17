@@ -74,7 +74,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     MeterRegistry meterRegistry, BillingMode billingMode, String delimiter,
                                     Optional<String> tablePrefix, String scanTenantKey, String scanVirtualTableKey) {
-        super(mtContext, amazonDynamoDb, meterRegistry, scanVirtualTableKey, scanTenantKey);
+        super(mtContext, amazonDynamoDb, meterRegistry);
         this.billingMode = billingMode;
         // TODO add billingMode support
         this.delimiter = delimiter;

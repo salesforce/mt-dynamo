@@ -50,8 +50,6 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         private AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder;
         private MtAccountCredentialsMapper credentialsMapper;
         private MeterRegistry meterRegistry;
-        private String scanTenantKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY;
-        private String scanVirtualTableKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
 
         public MtCredentialsBasedAmazonDynamoDbByAccountBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
@@ -90,7 +88,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
                 meterRegistry = new CompositeMeterRegistry();
             }
             return new MtAmazonDynamoDbByAccount(mtContext, meterRegistry, amazonDynamoDbClientBuilder,
-                credentialsMapper, scanVirtualTableKey, scanTenantKey);
+                credentialsMapper);
         }
 
     }
@@ -142,8 +140,6 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
         private MtAmazonDynamoDbContextProvider mtContext;
         private MtAccountMapper accountMapper;
         private MeterRegistry meterRegistry;
-        private String scanTenantKey;
-        private String scanVirtualTableKey;
 
         public MtAmazonDynamoDbByAccountBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
@@ -160,16 +156,6 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             return this;
         }
 
-        public MtAmazonDynamoDbByAccountBuilder withScanTenantKey(String scanTenantKey) {
-            this.scanTenantKey = scanTenantKey;
-            return this;
-        }
-
-        public MtAmazonDynamoDbByAccountBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
-            this.scanVirtualTableKey = scanVirtualTableKey;
-            return this;
-        }
-
         /**
          * TODO: write Javadoc.
          *
@@ -182,8 +168,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
             if (meterRegistry == null) {
                 meterRegistry = new CompositeMeterRegistry();
             }
-            return new MtAmazonDynamoDbByAccount(mtContext, meterRegistry, accountMapper, scanVirtualTableKey,
-                scanTenantKey);
+            return new MtAmazonDynamoDbByAccount(mtContext, meterRegistry, accountMapper);
         }
     }
 
@@ -191,20 +176,16 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
 
     private MtAmazonDynamoDbByAccount(MtAmazonDynamoDbContextProvider mtContext,
                                       MeterRegistry meterRegistry,
-                                      MtAccountMapper accountMapper,
-                                      String scanVirtualTableKey,
-                                      String scanTenantKey) {
-        super(mtContext, null, meterRegistry, scanVirtualTableKey, scanTenantKey);
+                                      MtAccountMapper accountMapper) {
+        super(mtContext, null, meterRegistry);
         this.accountMapper = accountMapper;
     }
 
     private MtAmazonDynamoDbByAccount(MtAmazonDynamoDbContextProvider mtContext,
                                       MeterRegistry meterRegistry,
                                       AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder,
-                                      MtAccountCredentialsMapper credentialsMapper,
-                                      String scanVirtualTableKey,
-                                      String scanTenantKey) {
-        super(mtContext, null, meterRegistry, scanVirtualTableKey, scanTenantKey);
+                                      MtAccountCredentialsMapper credentialsMapper) {
+        super(mtContext, null, meterRegistry);
         this.accountMapper = new CredentialBasedAccountMapperImpl(amazonDynamoDbClientBuilder, credentialsMapper);
     }
 

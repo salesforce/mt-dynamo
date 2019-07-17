@@ -34,16 +34,20 @@ interface MtBackupManager {
      * @return a new multitenant backup job, with status {@link Status.IN_PROGRESS} if none exists with
      * specified backupId.
      */
-    fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest,
-                       mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata
+    fun createMtBackup(
+        createMtBackupRequest: CreateMtBackupRequest,
+        mtDynamo: MtAmazonDynamoDbBySharedTable
+    ): MtBackupMetadata
 
     /**
      * Go through each physical row in {@code physicalTableName} in dynamo, and augment the current in progress backup
      * data on S3 with said data.
      */
-    fun backupPhysicalMtTable(createMtBackupRequest: CreateMtBackupRequest,
-                              physicalTableName: String,
-                              mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata
+    fun backupPhysicalMtTable(
+        createMtBackupRequest: CreateMtBackupRequest,
+        physicalTableName: String,
+        mtDynamo: MtAmazonDynamoDbBySharedTable
+    ): MtBackupMetadata
 
     fun markBackupComplete(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata
 
@@ -57,12 +61,10 @@ interface MtBackupManager {
      */
     fun deleteBackup(id: String): MtBackupMetadata?
 
-    fun fromDynamoCreateBackupRequest(createBackupRequest: CreateBackupRequest) : CreateMtBackupRequest =
+    fun fromDynamoCreateBackupRequest(createBackupRequest: CreateBackupRequest): CreateMtBackupRequest =
             CreateMtBackupRequest(createBackupRequest.backupName)
 
-
-    fun fromDescribeBackupRequest(describeBackupRequest: DescribeBackupRequest) : MtBackupMetadata
-
+    fun fromDescribeBackupRequest(describeBackupRequest: DescribeBackupRequest): MtBackupMetadata
 
     /**
      * Get details of a given table-tenant backup.
@@ -73,9 +75,9 @@ interface MtBackupManager {
      * Initiate a restore of a given table-tenant backup to a new table-tenant target.
      */
     fun restoreTenantTableBackup(
-            restoreMtBackupRequest: RestoreMtBackupRequest,
-            mtDynamo: MtAmazonDynamoDbBase,
-            mtContext: MtAmazonDynamoDbContextProvider
+        restoreMtBackupRequest: RestoreMtBackupRequest,
+        mtDynamo: MtAmazonDynamoDbBase,
+        mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata
 
     /**
@@ -84,10 +86,12 @@ interface MtBackupManager {
     fun listMtBackups(): List<MtBackupMetadata>
 }
 
-class MtBackupMetadata(val mtBackupId: String,
-                       val status: Status,
-                       val tenantTables: Set<TenantTableBackupMetadata>,
-                       val creationTime: Long = -1) {
+class MtBackupMetadata(
+    val mtBackupId: String,
+    val status: Status,
+    val tenantTables: Set<TenantTableBackupMetadata>,
+    val creationTime: Long = -1
+) {
 
     /**
      * @return a new MtBackupMetadata object merging this backup metadata with {@code otherBackupMetadata}
@@ -95,21 +99,21 @@ class MtBackupMetadata(val mtBackupId: String,
     fun merge(newBackupMetadata: MtBackupMetadata): MtBackupMetadata {
         if (!newBackupMetadata.mtBackupId.equals(mtBackupId)) {
             throw MtBackupException("Trying to merge a backup with a different backup id, " +
-                    "this: ${mtBackupId}, other: ${newBackupMetadata.mtBackupId}")
+                    "this: $mtBackupId, other: ${newBackupMetadata.mtBackupId}")
         }
         return MtBackupMetadata(mtBackupId,
-                newBackupMetadata.status, //use status of new metadata
+                newBackupMetadata.status, // use status of new metadata
                 newBackupMetadata.tenantTables.plus(tenantTables),
                 creationTime) // maintain existing create time for all merges
     }
 }
 
 data class TenantTableBackupMetadata(
-        val backupId: String,
-        val status: Status,
-        val tenantId: String,
-        val virtualTableName: String,
-        val backupKeys: Set<String>
+    val backupId: String,
+    val status: Status,
+    val tenantId: String,
+    val virtualTableName: String,
+    val backupKeys: Set<String>
 )
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
@@ -119,13 +123,13 @@ class RestoreMtBackupRequest(
     val backupId: String,
     val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
     val newTenantTable: MtAmazonDynamoDb.TenantTable
-): RestoreTableFromBackupRequest() {
+) : RestoreTableFromBackupRequest() {
     init {
         backupArn = backupId
         targetTableName = newTenantTable.virtualTableName
     }
 }
-class MtBackupException(message: String): AmazonDynamoDBException(message)
+class MtBackupException(message: String) : AmazonDynamoDBException(message)
 
 enum class Status {
     IN_PROGRESS,

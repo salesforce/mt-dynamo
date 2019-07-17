@@ -58,12 +58,12 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata;
-import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -104,6 +104,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Map<String, CreateTableRequest> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
+    private final String scanTenantKey;
+    private final String scanVirtualTableKey;
     private final Optional<MtBackupManager> backupManager;
 
     /**
@@ -137,7 +139,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Optional<MtBackupManager> backupManager,
                                          String scanTenantKey,
                                          String scanVirtualTableKey) {
-        super(mtContext, amazonDynamoDb, meterRegistry, scanVirtualTableKey, scanTenantKey);
+        super(mtContext, amazonDynamoDb, meterRegistry);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
@@ -148,6 +150,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
+        this.scanTenantKey = scanTenantKey;
+        this.scanVirtualTableKey = scanVirtualTableKey;
         this.backupManager = backupManager;
     }
 
@@ -676,6 +680,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @VisibleForTesting MtBackupManager getBackupManager() {
         return backupManager.orElse(null);
     }
+
     private static class PutItemRequestWrapper implements RequestWrapper {
 
         private final PutItemRequest putItemRequest;

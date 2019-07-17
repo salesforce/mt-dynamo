@@ -120,19 +120,13 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
     private final MeterRegistry meterRegistry;
-    protected final String scanVirtualTableKey;
-    protected final String scanTenantKey;
 
     protected MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
                                    AmazonDynamoDB amazonDynamoDb,
-                                   MeterRegistry meterRegistry,
-                                   String scanVirtualTableKey,
-                                   String scanTenantKey) {
+                                   MeterRegistry meterRegistry) {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
         this.meterRegistry = meterRegistry;
-        this.scanTenantKey = scanTenantKey;
-        this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
     public AmazonDynamoDB getAmazonDynamoDb() {
@@ -141,14 +135,6 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     public MeterRegistry getMeterRegistry() {
         return meterRegistry;
-    }
-
-    public String getScanTenantKey() {
-        return scanTenantKey;
-    }
-
-    public String getScanVirtualTableKey() {
-        return scanVirtualTableKey;
     }
 
     protected MtAmazonDynamoDbContextProvider getMtContext() {
@@ -433,22 +419,24 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
-        throw new UnsupportedOperationException();
+        return getAmazonDynamoDb().scan(scanRequest);
     }
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet) {
-        throw new UnsupportedOperationException();
+        return scan(new ScanRequest().withTableName(tableName).withAttributesToGet(attributesToGet));
     }
 
     @Override
     public ScanResult scan(String tableName, Map<String, Condition> scanFilter) {
-        throw new UnsupportedOperationException();
+        return scan(new ScanRequest().withTableName(tableName).withScanFilter(scanFilter));
     }
 
     @Override
     public ScanResult scan(String tableName, List<String> attributesToGet, Map<String, Condition> scanFilter) {
-        throw new UnsupportedOperationException();
+        return scan(new ScanRequest().withTableName(tableName)
+            .withAttributesToGet(attributesToGet)
+            .withScanFilter(scanFilter));
     }
 
     @Override
