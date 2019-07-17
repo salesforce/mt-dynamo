@@ -92,6 +92,7 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -367,9 +368,10 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
             // if there's more results left to go through, populate the lastEvaluatedTableName so the client can
             // page through for more results.
             if (tableNames.size() > limit || innerExclusiveStartTableName != null) {
+                List<String> retTableNames = tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames;
                 return new ListTablesResult()
-                    .withLastEvaluatedTableName(tableNames.get(Math.min(tableNames.size() - 1, limit - 1)))
-                    .withTableNames(tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames);
+                    .withLastEvaluatedTableName(Iterables.getLast(retTableNames))
+                    .withTableNames(retTableNames);
             } else {
                 return new ListTablesResult()
                     .withTableNames(tableNames);

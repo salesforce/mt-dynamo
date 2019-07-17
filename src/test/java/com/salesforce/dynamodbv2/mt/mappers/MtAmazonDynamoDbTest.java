@@ -36,13 +36,13 @@ public class MtAmazonDynamoDbTest {
         Set<String> allTableSet = new HashSet<>();
         ListTablesResult listTablesResult;
         String exclusiveStartKey = null;
-        int lastBatchSize;
+        int lastBatchSize = 0;
         int limit = 5;
         do {
             listTablesResult = testArgument.getAmazonDynamoDb().listTables(exclusiveStartKey, limit);
-            lastBatchSize = listTablesResult.getTableNames().size();
             assertTrue(listTablesResult.getTableNames().size() > 0 || lastBatchSize == limit,
                 "Should not have gotten empty table set, or last result set should have been full");
+            lastBatchSize = listTablesResult.getTableNames().size();
             int sizeBefore = allTableSet.size();
             allTables.addAll(listTablesResult.getTableNames());
             allTableSet.addAll(listTablesResult.getTableNames());
