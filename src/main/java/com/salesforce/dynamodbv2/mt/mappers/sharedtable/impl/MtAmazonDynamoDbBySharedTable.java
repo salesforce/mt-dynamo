@@ -14,9 +14,11 @@ import static java.util.stream.Collectors.toList;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BackupDetails;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.ContinuousBackupsUnavailableException;
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateBackupResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -57,11 +59,14 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
-import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -574,7 +579,25 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
-        throw new UnsupportedOperationException();
+        CreateMtBackupRequest createMtBackupRequest = new CreateMtBackupRequest(createBackupRequest.getBackupName());
+        if (backupManager.isPresent()) {
+            backupManager.get().createMtBackup(createMtBackupRequest, this);
+            for (String tableName : mtTables.keySet()) {
+                backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName, this);
+            }
+            MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createMtBackupRequest);
+            return new CreateBackupResult().withBackupDetails(
+                new BackupDetails()
+                    // TODO: maybe this should be the ARN for the global S3 metadata file for this backup
+                    .withBackupArn(finishedMetadata.getMtBackupId())
+                    .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
+                    .withBackupName(finishedMetadata.getMtBackupId()));
+
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+
+        }
     }
 
     /**
@@ -634,6 +657,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
 
+    @VisibleForTesting MtBackupManager getBackupManager() {
+        return backupManager.orElse(null);
+    }
     private static class PutItemRequestWrapper implements RequestWrapper {
 
         private final PutItemRequest putItemRequest;

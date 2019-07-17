@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: BSD-3-Clause.
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
-package com.salesforce.dynamodbv2.mt.sharedtable.impl
+package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
@@ -25,19 +26,15 @@ import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.sharedtable.CreateMtBackupRequest
-import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupManager
-import com.salesforce.dynamodbv2.mt.sharedtable.MtBackupMetadata
-import com.salesforce.dynamodbv2.mt.sharedtable.RestoreMtBackupRequest
-import com.salesforce.dynamodbv2.mt.sharedtable.Status
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.Status
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
-
 internal class MtBackupManagerImplTest {
 
     companion object {
@@ -54,6 +51,8 @@ internal class MtBackupManagerImplTest {
                 .withTruncateOnDeleteTable(true)
                 .withBinaryHashKey(true)
                 .build()
+
+        val backupManager = sharedTableBinaryHashKey.backupManager
 
         var s3: AmazonS3? = null
 
@@ -79,6 +78,7 @@ internal class MtBackupManagerImplTest {
         val tenant = "org1"
         val tableName = "dummy-table"
 
+        val backupManager: MtBackupManager = MtBackupManagerImpl(s3!!.region.toAWSRegion().name, bucket)
         MT_CONTEXT.withContext(tenant) {
 
             sharedTableBinaryHashKey.createTable(CreateTableRequestBuilder.builder()
@@ -91,17 +91,14 @@ internal class MtBackupManagerImplTest {
             sharedTableBinaryHashKey.putItem(PutItemRequest(tableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
         }
-        val backupManager: MtBackupManager = MtBackupManagerImpl(s3!!.region.toAWSRegion().name, bucket)
         val backupId = "test-backup"
 
         try {
-            // TODO: Don't hardcode the shared table here..
-            val table = "mt_shared_table_static_b_no_lsi"
             MT_CONTEXT.withContext(null) {
-                backupManager.createMtBackup(CreateMtBackupRequest(backupId, table), sharedTableBinaryHashKey)
+                sharedTableBinaryHashKey.createBackup(CreateBackupRequest().withBackupName(backupId))
                 val mtBackupMetadata = backupManager.getBackup(backupId)
                 assertNotNull(mtBackupMetadata)
-                assertEquals(backupId, mtBackupMetadata.mtBackupId)
+                assertEquals(backupId, mtBackupMetadata!!.mtBackupId)
                 assertEquals(Status.COMPLETE, mtBackupMetadata.status)
                 assertTrue(mtBackupMetadata.tenantTables.size > 0)
             }
@@ -130,25 +127,13 @@ internal class MtBackupManagerImplTest {
 
     @Test
     fun testListBackups() {
-        val backupManager: MtBackupManager = object : MtBackupManagerImpl(s3!!.region.toAWSRegion().name, bucket) {
-
-            // don't actually create data, just create a metadata marker
-            override fun createBackupData(
-                createMtBackupRequest: CreateMtBackupRequest,
-                mtDynamo: MtAmazonDynamoDbBase
-            ): MtBackupMetadata {
-                return MtBackupMetadata(createMtBackupRequest.backupId, Status.COMPLETE, ImmutableSet.of())
-            }
-        }
-
         val backupIds = Lists.newArrayList<String>()
         try {
             for (i in 1..3) {
                 val backupId = "testListBackup-$i"
                 backupIds.add(backupId)
                 backupManager.createMtBackup(
-                        CreateMtBackupRequest(backupId, "mt_shared_table_static_b_no_lsi"),
-                        sharedTableBinaryHashKey)
+                        CreateMtBackupRequest(backupId), sharedTableBinaryHashKey)
             }
 
             val allBackups: List<MtBackupMetadata> = backupManager.listMtBackups()
