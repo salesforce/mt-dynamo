@@ -96,19 +96,21 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     /**
      * Shared table constructor.
      *
-     * @param name the name of the multitenant AmazonDynamoDB instance
-     * @param mtContext the multitenant context provider
-     * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
-     * @param tableMappingFactory the table-mapping factory for mapping virtual to physical table instances
+     * @param name                   the name of the multitenant AmazonDynamoDB instance
+     * @param mtContext              the multitenant context provider
+     * @param amazonDynamoDb         the underlying {@code AmazonDynamoDB} delegate
+     * @param tableMappingFactory    the table-mapping factory for mapping virtual to physical table instances
      * @param mtTableDescriptionRepo the {@code MtTableDescriptionRepo} impl
-     * @param deleteTableAsync a flag indicating whether to perform delete-table operations async. (as opposed to sync.)
-     * @param truncateOnDeleteTable a flag indicating whether to delete all table data when a virtual table is deleted
-     * @param getRecordsTimeLimit soft time limit for getting records out of the shared stream.
-     * @param clock clock instance to use for enforcing time limit (injected for unit tests).
-     * @param tableMappingCache Guava cache instance that is used to start virtual table to physical table description
-     * @param meterRegistry MeterRegistry for reporting metrics.
-     * @param scanTenantKey name of column in multitenant scans to return tenant key encoded into scan result set
-     * @param scanVirtualTableKey name of column in multitenant scans to return virtual table name encoded into result
+     * @param deleteTableAsync       flag indicating whether to perform delete-table operations async (vs. sync)
+     * @param truncateOnDeleteTable  flag indicating whether to delete all table data when a virtual table is deleted
+     * @param getRecordsTimeLimit    soft time limit for getting records out of the shared stream.
+     * @param clock                  clock instance to use for enforcing time limit (injected for unit tests).
+     * @param tableMappingCache      Guava cache instance used to start virtual-table-to-physical-table description
+     * @param meterRegistry          MeterRegistry for reporting metrics.
+     * @param scanTenantKey          name of column in multitenant scans to return tenant key encoded into scan result
+     *                               set
+     * @param scanVirtualTableKey    name of column in multitenant scans to return virtual table name encoded into
+     *                               result
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
@@ -131,7 +133,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
         this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
-                .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
+            .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
         this.scanTenantKey = scanTenantKey;
@@ -156,9 +158,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         checkArgument(table != null);
         // TODO consider representing physical tables as DynamoTableDescription
         String hashKeyName = table.getKeySchema().stream()
-                .filter(elem -> HASH.toString().equals(elem.getKeyType()))
-                .map(KeySchemaElement::getAttributeName)
-                .findFirst().orElseThrow(IllegalStateException::new);
+            .filter(elem -> HASH.toString().equals(elem.getKeyType()))
+            .map(KeySchemaElement::getAttributeName)
+            .findFirst().orElseThrow(IllegalStateException::new);
         ScalarAttributeType hashKeyType = table.getAttributeDefinitions().stream()
             .filter(attr -> hashKeyName.equals(attr.getAttributeName()))
             .map(AttributeDefinition::getAttributeType)
@@ -213,7 +215,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         final BatchGetItemResult qualifiedBatchGetItemResult = getAmazonDynamoDb()
             .batchGetItem(qualifiedBatchGetItemRequest);
         Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = qualifiedBatchGetItemResult
-                .getResponses();
+            .getResponses();
 
         // map result
         final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
@@ -235,8 +237,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                             new KeysAndAttributes()
                                 .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
                                 .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
-                                .map(keysAndAttributes ->
-                                    tableMapping.getKeyMapper().reverse(keysAndAttributes))
+                                    .map(keysAndAttributes ->
+                                        tableMapping.getKeyMapper().reverse(keysAndAttributes))
                                     .collect(Collectors.toList())));
                     });
             }
@@ -258,6 +260,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Create a virtual table configured with createTableRequest. Really, this is not creating a physical table
      * in Dynamo, but inserting a row into a metadata table, thus creating a virtual table, for the given mt_context
      * tenant to insert data into.
+     *
      * @return a CreateTableResult object with the description of the table created.
      */
     @Override
@@ -268,6 +271,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     /**
      * Delete a row for the given virtual table configured with deleteItemRequest.
+     *
      * @return a DeleteItemResult containing the data of the row deleted from Dynamo.
      */
     @Override
@@ -469,7 +473,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
         Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
-        ScanResult scanResult =  getAmazonDynamoDb().scan(scanRequest);
+        ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we're working with,
         // get the function to map the primary key back to
@@ -510,7 +514,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private static boolean projectionContainsKey(String projection, Map<String, String> expressionNames,
-                                          List<String> legacyProjection, String key) {
+                                                 List<String> legacyProjection, String key) {
         if (projection != null) {
             // TODO we should probably parse expressions or use more sophisticated matching
             if (expressionNames != null) {
@@ -586,8 +590,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             }
             log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName
                 + (scanResult.getLastEvaluatedKey() == null
-                    ? " complete. "
-                    : "but data may have been dropped to the floor, beware."));
+                ? " complete. "
+                : "but data may have been dropped to the floor, beware."));
 
         } else {
             log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
