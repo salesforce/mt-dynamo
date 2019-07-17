@@ -190,8 +190,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Cache<Object, TableMapping> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
-    private String scanTenantKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY;
-    private String scanVirtualTableKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
+    private String scanTenantKey;
+    private String scanVirtualTableKey;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();

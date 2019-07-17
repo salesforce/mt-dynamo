@@ -276,10 +276,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
-    private String getHashKey(TenantTableMetadata tenantTableMetadata) {
-        return tenantTableMetadata.getTenantTable().getTenantName()
+    private String getHashKey(MtCreateTableRequest tenantTableMetadata) {
+        return tenantTableMetadata.getTenantName()
             + delimiter
-            + tenantTableMetadata.getTenantTable().getVirtualTableName();
+            + tenantTableMetadata.getCreateTableRequest().getTableName();
     }
 
     private String addPrefix(String tableName) {
@@ -304,12 +304,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
         scanReq.setLimit(listMetadataRequest.getLimit());
         scanResult = amazonDynamoDb.scan(scanReq);
-        List<TenantTableMetadata> metadataList = scanResult.getItems().stream()
+        List<MtCreateTableRequest> metadataList = scanResult.getItems().stream()
             .map(rowMap ->
-                new TenantTableMetadata(getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()),
+                new MtCreateTableRequest(
+                    getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
                     getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
             .collect(Collectors.toList());
-        TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
+        MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
             metadataList.get(metadataList.size() - 1);
         return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
     }

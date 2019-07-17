@@ -16,11 +16,10 @@ import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
-import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.TenantTableMetadata;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableRequest;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -145,8 +144,8 @@ class MtDynamoDbTableDescriptionRepoTest {
         ListMetadataResult returnedMetadatas =
             ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
 
-        TenantTableMetadata tenantTable1 = new TenantTableMetadata(new TenantTable(tableName1, tenant1), createReq1);
-        TenantTableMetadata tenantTable2 = new TenantTableMetadata(new TenantTable(tableName2, tenant2), createReq2);
+        MtCreateTableRequest tenantTable1 = new MtCreateTableRequest(tenant1, createReq1);
+        MtCreateTableRequest tenantTable2 = new MtCreateTableRequest(tenant2, createReq2);
         ListMetadataResult expected = new ListMetadataResult(
             ImmutableList.of(tenantTable1, tenantTable2), null);
 

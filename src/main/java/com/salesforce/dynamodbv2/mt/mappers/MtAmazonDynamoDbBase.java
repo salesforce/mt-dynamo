@@ -114,19 +114,25 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
      * Special default "column" key returned to client on multitenant scans.
      * Configurable by clients if needed.
      */
-    public static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
-    public static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
+    private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
+    private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
     private final MeterRegistry meterRegistry;
+    protected final String scanTenantKey;
+    protected final String scanVirtualTableKey;
 
     protected MtAmazonDynamoDbBase(MtAmazonDynamoDbContextProvider mtContext,
                                    AmazonDynamoDB amazonDynamoDb,
-                                   MeterRegistry meterRegistry) {
+                                   MeterRegistry meterRegistry,
+                                   String scanTenantKey,
+                                   String scanVirtualTableKey) {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
         this.meterRegistry = meterRegistry;
+        this.scanVirtualTableKey = scanVirtualTableKey == null ? DEFAULT_SCAN_VIRTUAL_TABLE_KEY : scanVirtualTableKey;
+        this.scanTenantKey = scanTenantKey == null ? DEFAULT_SCAN_TENANT_KEY : scanTenantKey;
     }
 
     public AmazonDynamoDB getAmazonDynamoDb() {
@@ -135,6 +141,14 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     public MeterRegistry getMeterRegistry() {
         return meterRegistry;
+    }
+
+    public String getScanTenantKey() {
+        return scanTenantKey;
+    }
+
+    public String getScanVirtualTableKey() {
+        return scanVirtualTableKey;
     }
 
     protected MtAmazonDynamoDbContextProvider getMtContext() {
