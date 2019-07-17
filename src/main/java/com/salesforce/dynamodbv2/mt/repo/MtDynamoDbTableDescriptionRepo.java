@@ -75,6 +75,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final String delimiter;
     private final int pollIntervalSeconds;
     private final MtCache<TableDescription> cache;
+    private final String prefixedTableDescriptionTableName;
     private final Supplier<TableDescription> tableDescriptionSupplier;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
@@ -96,9 +97,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
-        String prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
+        this.prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionSupplier = () -> {
-            createTableDescriptionTableIfNotExists(pollIntervalSeconds, prefixedTableDescriptionTableName);
+            createTableDescriptionTableIfNotExists(pollIntervalSeconds);
             return new TableDescription().withTableName(prefixedTableDescriptionTableName);
         };
     }
@@ -169,16 +170,16 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return tableDescriptionSupplier.get().getTableName();
     }
 
-    public void createDefaultDescriptionTable(String tableDescriptionTableName) {
-        createTableDescriptionTableIfNotExists(this.pollIntervalSeconds, tableDescriptionTableName);
+    public void createDefaultDescriptionTable() {
+        createTableDescriptionTableIfNotExists(this.pollIntervalSeconds);
     }
 
-    private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds, String tableDescriptionTableName) {
+    private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
         DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
 
         adminUtils.createTableIfNotExists(
-                createTableRequest.withTableName(tableDescriptionTableName)
+                createTableRequest.withTableName(prefixedTableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
                 .withAttributeDefinitions(new AttributeDefinition()
