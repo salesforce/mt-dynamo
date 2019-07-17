@@ -60,5 +60,6 @@ interface MtTableDescriptionRepo {
             return this
         }
     }
+
     data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
 }

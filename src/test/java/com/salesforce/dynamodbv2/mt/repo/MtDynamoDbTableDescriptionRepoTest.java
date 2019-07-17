@@ -33,20 +33,20 @@ class MtDynamoDbTableDescriptionRepoTest {
     private String fullTableName;
 
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
-            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+        new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final Optional<String> tablePrefix = Optional.of("okToDelete-testBillingMode.");
     private MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
 
     @BeforeEach
     void beforeEach() {
         tableName = String.valueOf(System.currentTimeMillis());
-        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.orElseThrow(), tableName,"");
+        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.orElseThrow(), tableName, "");
 
         mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()
-                        .withAmazonDynamoDb(localDynamoDb)
-                        .withContext(MT_CONTEXT)
-                        .withTablePrefix(tablePrefix)
-                        .withTableDescriptionTableName(tableName);
+            .withAmazonDynamoDb(localDynamoDb)
+            .withContext(MT_CONTEXT)
+            .withTablePrefix(tablePrefix)
+            .withTableDescriptionTableName(tableName);
     }
 
     /**
@@ -72,7 +72,7 @@ class MtDynamoDbTableDescriptionRepoTest {
         );
 
         dynamoDb.updateTable(new UpdateTableRequest(tableName, new ProvisionedThroughput(
-                6L, 6L)));
+            6L, 6L)));
 
         MtDynamoDbTableDescriptionRepo repo2 = b.build();
         try {
@@ -94,12 +94,12 @@ class MtDynamoDbTableDescriptionRepoTest {
      * Verifies not setting throughput, sets provisioned throughput to defaults.
      */
     @Test
-    void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault()  throws InterruptedException {
+    void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault() throws InterruptedException {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-                repo.createTable(new CreateTableRequest()
-                        .withTableName(tableName)
-                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+            repo.createTable(new CreateTableRequest()
+                .withTableName(tableName)
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
@@ -111,9 +111,9 @@ class MtDynamoDbTableDescriptionRepoTest {
         mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-                repo.createTable(new CreateTableRequest()
-                        .withTableName(tableName)
-                        .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+            repo.createTable(new CreateTableRequest()
+                .withTableName(tableName)
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
         );
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
@@ -143,7 +143,7 @@ class MtDynamoDbTableDescriptionRepoTest {
             repo.createTable(createReq2));
 
         ListMetadataResult returnedMetadata =
-            ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
+            ((MtTableDescriptionRepo) repo).listVirtualTableMetadata(new ListMetadataRequest());
 
         TenantTableMetadata tenantTable1 = new TenantTableMetadata(new TenantTable(tableName1, tenant1), createReq1);
         TenantTableMetadata tenantTable2 = new TenantTableMetadata(new TenantTable(tableName2, tenant2), createReq2);
