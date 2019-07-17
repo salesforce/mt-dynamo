@@ -86,7 +86,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     @Override
     protected boolean isMtTable(String tableName) {
         String prefix = tablePrefix.orElse("");
-        return  tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
+        return tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }
 
     /**
@@ -99,17 +99,17 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         batchGetItemRequestWithPrefixedTableNames.clearRequestItemsEntries();
         for (String unqualifiedTableName : batchGetItemRequest.getRequestItems().keySet()) {
             batchGetItemRequestWithPrefixedTableNames.addRequestItemsEntry(buildPrefixedTableName(unqualifiedTableName),
-                    batchGetItemRequest.getRequestItems().get(unqualifiedTableName));
+                batchGetItemRequest.getRequestItems().get(unqualifiedTableName));
         }
 
         final BatchGetItemResult batchGetItemResult = getAmazonDynamoDb()
-                .batchGetItem(batchGetItemRequestWithPrefixedTableNames);
+            .batchGetItem(batchGetItemRequestWithPrefixedTableNames);
 
         final Map<String, List<Map<String, AttributeValue>>> responsesWithUnprefixedTableNames
-                = new HashMap<>();
+            = new HashMap<>();
         for (String qualifiedTableName : batchGetItemResult.getResponses().keySet()) {
             responsesWithUnprefixedTableNames.put(stripTableNamePrefix(qualifiedTableName),
-                    batchGetItemResult.getResponses().get(qualifiedTableName));
+                batchGetItemResult.getResponses().get(qualifiedTableName));
         }
         batchGetItemResult.clearResponsesEntries();
         batchGetItemResult.setUnprocessedKeys(batchGetItemResult.getUnprocessedKeys().entrySet().stream().collect(
@@ -211,7 +211,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         if (getMtContext().getContextOpt().isEmpty()) {
             Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
-            ScanResult result =  getAmazonDynamoDb().scan(scanRequest);
+            ScanResult result = getAmazonDynamoDb().scan(scanRequest);
             result.getItems().forEach(row -> {
                 row.put(scanTenantKey, new AttributeValue(tenantTable[1]));
                 row.put(scanVirtualTableKey, new AttributeValue(tenantTable[0]));
@@ -293,7 +293,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
          * Useful comment.
          *
          * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
-         *     {@code MtAmazonDynamoDbBuilder}
+         * {@code MtAmazonDynamoDbBuilder}
          */
         public MtAmazonDynamoDbByTable build() {
             setDefaults();

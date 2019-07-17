@@ -40,7 +40,7 @@ public class RecordMapper implements Function<Record, MtRecord> {
     @Override
     public MtRecord apply(Record record) {
         final StreamRecord streamRecord = record.getDynamodb();
-        MtRecord ret = new MtRecord();
+        final MtRecord ret = new MtRecord();
         if (record.getAwsRegion() != null) {
             ret.withAwsRegion(record.getAwsRegion());
         }

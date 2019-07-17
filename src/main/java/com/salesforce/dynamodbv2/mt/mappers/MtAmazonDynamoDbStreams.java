@@ -18,14 +18,12 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
 
     /**
      * Extends {@link GetRecordsResult} to add the last sequence number observed in the underlying multitenant stream,
-     * so that clients can resume iteration where they left off if they don't hold on to the shard iterator.
+     * so that clients can resume iteration where they left off if they do not hold on to the shard iterator.
      */
     class MtGetRecordsResult extends GetRecordsResult {
 
         /**
-         * <p>
          * The last sequence number observed in the underlying multitenant stream.
-         * </p>
          */
         private String lastSequenceNumber;
 
