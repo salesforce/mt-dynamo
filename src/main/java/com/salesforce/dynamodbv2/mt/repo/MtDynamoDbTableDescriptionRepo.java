@@ -75,11 +75,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final String delimiter;
     private final int pollIntervalSeconds;
     private final MtCache<TableDescription> cache;
-
-    /**
-     * Don't use this instance variable directly.
-     * Instead, access the table description name through {@link this.getTableDescriptionTableName}
-     */
     private final Supplier<TableDescription> tableDescriptionSupplier;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
