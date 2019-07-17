@@ -16,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.CreateBucketRequest
+import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.Lists
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
@@ -29,11 +30,12 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.Status
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-internal class MtBackupManagerImplTest {
+internal class MtSharedTableBackupManagerImplTest {
 
     companion object {
         val REGION = "us-east-1"
@@ -127,6 +129,17 @@ internal class MtBackupManagerImplTest {
     @Test
     fun testListBackups() {
         val backupIds = Lists.newArrayList<String>()
+        val backupManager: MtBackupManager =
+                object : MtSharedTableBackupManagerImpl(s3!!.region.toAWSRegion().name, bucket) {
+
+            // don't actually scan and backup metadata
+            open override fun backupVirtualTableMetadata(
+                createMtBackupRequest: CreateMtBackupRequest,
+                mtDynamo: MtAmazonDynamoDbBySharedTable
+            ): List<MtTableDescriptionRepo.TenantTableMetadata> {
+                return ImmutableList.of()
+            }
+        }
         try {
             for (i in 1..3) {
                 val backupId = "testListBackup-$i"

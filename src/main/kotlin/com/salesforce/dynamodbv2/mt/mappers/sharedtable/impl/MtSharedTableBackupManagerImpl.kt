@@ -80,38 +80,45 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
     val charset = Charset.forName("utf-8")
 
     override fun createMtBackup(createMtBackupRequest: CreateMtBackupRequest, mtDynamo: MtAmazonDynamoDbBySharedTable): MtBackupMetadata {
-        val startTime = System.currentTimeMillis()
+
         val backup = getBackup(createMtBackupRequest.backupId)
         if (backup != null) {
             throw MtBackupException("Backup with that ID already exists: $backup")
         } else {
-            // write out table metadata
-            val startKey: MtTableDescriptionRepo.TenantTableMetadata? = null
-            val batchSize = 100
-            var tenantTableCount = 0
-            val tenantTables = Sets.newHashSet<MtTableDescriptionRepo.TenantTableMetadata>()
-            do {
-                val listTenantMetadataResult =
-                        mtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
-                                MtTableDescriptionRepo.ListMetadataRequest()
-                                        .withExclusiveStartKey(startKey)
-                                        .withLimit(batchSize))
-                commitTenantTableMetadata(createMtBackupRequest.backupId, listTenantMetadataResult)
-                tenantTables.addAll(listTenantMetadataResult.metadataList)
-                tenantTableCount += listTenantMetadataResult.metadataList.size
-            } while (listTenantMetadataResult.lastEvaluatedTable != null)
-
+            backupVirtualTableMetadata(createMtBackupRequest, mtDynamo)
             val newMetadata = MtBackupMetadata(createMtBackupRequest.backupId,
                     Status.IN_PROGRESS,
                     ImmutableSet.of(),
                     System.currentTimeMillis())
-            logger.info("${createMtBackupRequest.backupId}: Finished generating backup metadata for " +
-                    "${tenantTables.size} virtual table in ${System.currentTimeMillis() - startTime} ms")
             commitBackupMetadata(newMetadata)
             return newMetadata
         }
     }
 
+    open fun backupVirtualTableMetadata(
+        createMtBackupRequest: CreateMtBackupRequest,
+        mtDynamo: MtAmazonDynamoDbBySharedTable
+    ): List<MtTableDescriptionRepo.TenantTableMetadata> {
+        val startTime = System.currentTimeMillis()
+        // write out table metadata
+        val startKey: MtTableDescriptionRepo.TenantTableMetadata? = null
+        val batchSize = 100
+        var tenantTableCount = 0
+        val tenantTables = Lists.newArrayList<MtTableDescriptionRepo.TenantTableMetadata>()
+        do {
+            val listTenantMetadataResult =
+                    mtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
+                            MtTableDescriptionRepo.ListMetadataRequest()
+                                    .withExclusiveStartKey(startKey)
+                                    .withLimit(batchSize))
+            commitTenantTableMetadata(createMtBackupRequest.backupId, listTenantMetadataResult)
+            tenantTables.addAll(listTenantMetadataResult.metadataList)
+            tenantTableCount += listTenantMetadataResult.metadataList.size
+        } while (listTenantMetadataResult.lastEvaluatedTable != null)
+        logger.info("${createMtBackupRequest.backupId}: Finished generating backup metadata for " +
+                "${tenantTables.size} virtual table in ${System.currentTimeMillis() - startTime} ms")
+        return tenantTables
+    }
     /**
      * Go through the shared data table and dump full row dumps into S3, segregated by tenant-table.
      *
@@ -354,8 +361,8 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
             for (i in 0..(scanResult.items.size - 1)) {
                 val row = scanResult.items[i]
-                val tenant = "FOO" // row.get(mtDynamo.scanTenantKey)!!.s
-                val virtualTable = "BAR" // row.remove(mtDynamo.scanVirtualTableKey)!!.s
+                val tenant = row.get(MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY)!!.s
+                val virtualTable = row.get(MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY)!!.s
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
                         TenantTableRow(scanResult.items[i]))
             }
@@ -386,7 +393,8 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
     private fun getTenantTableMetadataFile(backupId: String, tenantTable: TenantTable) =
             "$backupMetadataDir/$backupId/${tenantTable.tenantName}/${tenantTable.virtualTableName}-metadata.json"
 
-    private fun getBackupIdFromKey(backupMetadataKey: String) = backupMetadataKey.split("/")[1].split("-metadata")[0]
+    private fun getBackupIdFromKey(backupMetadataKey: String) =
+            backupMetadataKey.split("/")[1].split("-metadata")[0]
 
     private fun flushScanResult(backupId: String, scanCount: Int, rowsPerTenant: Multimap<TenantTable, TenantTableRow>) {
         for (tenantTable: TenantTable in rowsPerTenant.keySet()) {
