@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
@@ -69,12 +70,17 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
-    private final String tableDescriptionTableName;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
     private final MtCache<TableDescription> cache;
+
+    /**
+     * Don't use this instance variable directly.
+     * Instead, access the table description name through {@link this.getTableDescriptionTableName}
+     */
+    private final Supplier<TableDescription> tableDescriptionSupplier;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
                                            BillingMode billingMode,
@@ -90,12 +96,16 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.billingMode = billingMode;
         this.mtContext = mtContext;
         this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
-        this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
+        String prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
+        this.tableDescriptionSupplier = () -> {
+            createTableDescriptionTableIfNotExists(pollIntervalSeconds, prefixedTableDescriptionTableName);
+            return new TableDescription().withTableName(prefixedTableDescriptionTableName);
+        };
     }
 
     @Override
@@ -135,7 +145,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 new AttributeValue(addPrefix(tableName)))))).getItem();
         if (item == null) {
             throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
-                + tableDescriptionTableName);
+                + getTableDescriptionTableName());
         }
         String tableDataJson = item.get(tableDescriptionTableDataField).getS();
         return jsonToTableData(tableDataJson);
@@ -161,22 +171,14 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private String getTableDescriptionTableName() {
-        try {
-            cache.get(tableDescriptionTableName, () -> {
-                createTableDescriptionTableIfNotExists(pollIntervalSeconds);
-                return new TableDescription().withTableName(tableDescriptionTableName);
-            });
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        return tableDescriptionTableName;
+        return tableDescriptionSupplier.get().getTableName();
     }
 
-    public void createDefaultDescriptionTable() {
-        createTableDescriptionTableIfNotExists(this.pollIntervalSeconds);
+    public void createDefaultDescriptionTable(String tableDescriptionTableName) {
+        createTableDescriptionTableIfNotExists(this.pollIntervalSeconds, tableDescriptionTableName);
     }
 
-    private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds) {
+    private void createTableDescriptionTableIfNotExists(int pollIntervalSeconds, String tableDescriptionTableName) {
         CreateTableRequest createTableRequest = new CreateTableRequest();
         DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
 
@@ -293,7 +295,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
+        ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
         Map<String, AttributeValue> lastEvaluatedKey =
             Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
                 .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,

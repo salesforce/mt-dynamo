@@ -369,8 +369,6 @@ public class SharedTableBuilder implements TableBuilder {
                 .withTablePrefix(tablePrefix)
                 .withTableDescriptionCache(tableDescriptionCache)
                 .build();
-
-            ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
         }
         if (getRecordsTimeLimit == null) {
             getRecordsTimeLimit = 5000L;
