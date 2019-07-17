@@ -8,7 +8,7 @@ integration:
 	mvn -Dskip.surefire.tests -DskipITs=false failsafe:integration-test@failsafe-execution
 
 validate:
-	mvn checkstyle:check@checkstyle-execution
+	mvn checkstyle:check@checkstyle-execution dependency:analyze@analyze
 
 coveralls:
 	mvn coveralls:report

@@ -83,7 +83,7 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
 
         companion object {
 
-            private val serialVersionUID = -6099434068333437314L
+            private const val serialVersionUID = -6099434068333437314L
         }
     }
 

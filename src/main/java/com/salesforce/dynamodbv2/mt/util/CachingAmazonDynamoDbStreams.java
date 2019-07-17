@@ -23,7 +23,6 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
-import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.base.Ticker;
@@ -112,6 +111,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000L;
         private static final boolean DESCRIBE_STREAM_CACHE_ENABLED = true;
         private static final long DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS = 1000L;
+        private static final long DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS = 60;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
@@ -125,6 +125,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private long maxDescribeStreamCacheWeight = DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT;
         private long getRecordsBackoffInMillis = DEFAULT_GET_RECORDS_BACKOFF_IN_MILLIS;
         private long emptyResultCacheTtlInMillis = DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS;
+        private long trimHorizonIteratorCacheTtlInSeconds = DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS;
         // for testing
         private Striped<Lock> getRecordsLocks;
 
@@ -132,17 +133,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
-        /**
-         * The maximum total sum of {@link StreamRecord#getSizeBytes()} the cache may hold. This is an approximation for
-         * heap size. The actual {@link GetRecordsResult} objects stored in the cache carry additional overhead, so this
-         * value should be used as a rough guideline.
+        /** MeterRegistry to record metrics to.
          *
-         * @param maxRecordsByteSize Maximum cache size in sum of record bytes.
+         * @param meterRegistry Meter registry to report metrics to.
          * @return This Builder.
          */
-        public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
-            checkArgument(maxRecordsByteSize >= 0);
-            this.maxRecordsByteSize = maxRecordsByteSize;
+        public Builder withMeterRegistry(MeterRegistry meterRegistry) {
+            this.meterRegistry = meterRegistry;
             return this;
         }
 
@@ -165,6 +162,20 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         public Builder withTicker(Ticker ticker) {
             this.ticker = ticker;
+            return this;
+        }
+
+        /**
+         * The maximum total sum of {@link StreamRecord#getSizeBytes()} the cache may hold. This is an approximation for
+         * heap size. The actual {@link GetRecordsResult} objects stored in the cache carry additional overhead, so this
+         * value should be used as a rough guideline.
+         *
+         * @param maxRecordsByteSize Maximum cache size in sum of record bytes.
+         * @return This Builder.
+         */
+        public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
+            checkArgument(maxRecordsByteSize >= 0);
+            this.maxRecordsByteSize = maxRecordsByteSize;
             return this;
         }
 
@@ -253,13 +264,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return this;
         }
 
-        /** MeterRegistry to record metrics to.
+        /**
+         * The time mappings from trim horizon iterators to sequence number iterators should be cached.
          *
-         * @param meterRegistry Meter registry to report metrics to.
+         * @param trimHorizonIteratorCacheTtlInSeconds Time in seconds to cache trim horizon iterator mappings.
          * @return This Builder.
          */
-        public Builder withMeterRegistry(MeterRegistry meterRegistry) {
-            this.meterRegistry = meterRegistry;
+        public Builder withTrimHorizonIteratorCacheTtlInSeconds(long trimHorizonIteratorCacheTtlInSeconds) {
+            this.trimHorizonIteratorCacheTtlInSeconds = trimHorizonIteratorCacheTtlInSeconds;
             return this;
         }
 
@@ -304,6 +316,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 CacheBuilder.newBuilder()
                     .maximumSize(maxIteratorCacheSize)
                     .recordStats()
+                    .build(),
+                CacheBuilder.newBuilder()
+                    .expireAfterWrite(trimHorizonIteratorCacheTtlInSeconds, TimeUnit.SECONDS)
+                    .ticker(ticker)
+                    .recordStats()
                     .build()
             );
         }
@@ -325,9 +342,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         static CachingShardIterator fromRequest(GetShardIteratorRequest request, @Nullable String dynamoDbIterator) {
             return new CachingShardIterator(
+                ShardIteratorType.fromValue(request.getShardIteratorType()),
                 request.getStreamArn(),
                 request.getShardId(),
-                ShardIteratorType.fromValue(request.getShardIteratorType()),
                 request.getSequenceNumber(),
                 dynamoDbIterator
             );
@@ -374,7 +391,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 throw new IllegalArgumentException("Invalid position segment in shard iterator string " + value);
             }
 
-            return new CachingShardIterator(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
+            return new CachingShardIterator(type, streamArn, shardId, sequenceNumber, dynamoDbIterator);
         }
 
         private static String getSequenceNumber(String pointer, ShardIteratorType type) {
@@ -387,24 +404,27 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         @Nonnull
         private final ShardIteratorType type;
         @Nonnull
-        private final String streamArn;
-        @Nonnull
-        private final String shardId;
+        private final StreamShardId streamShardId;
         @Nullable
         private final String sequenceNumber;
         @Nullable
-        private final String dynamoDbIterator;
+        private final String dynamoDbIterator;  // note: excluded from equality and hash code
+
+        private CachingShardIterator(@Nonnull ShardIteratorType type,
+                                     @Nonnull String streamArn,
+                                     @Nonnull String shardId,
+                                     @Nullable String sequenceNumber,
+                                     @Nullable String dynamoDbIterator) {
+            this(type, new StreamShardId(streamArn, shardId), sequenceNumber, dynamoDbIterator);
+        }
 
         private CachingShardIterator(
-            @Nonnull String streamArn,
-            @Nonnull String shardId,
             @Nonnull ShardIteratorType type,
+            @Nonnull StreamShardId streamShardId,
             @Nullable String sequenceNumber,
             @Nullable String dynamoDbIterator) {
-            this.streamArn = checkNotNull(streamArn);
-            this.shardId = checkNotNull(shardId);
-            this.type = type;
-
+            this.streamShardId = checkNotNull(streamShardId);
+            this.type = checkNotNull(type);
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
@@ -425,6 +445,16 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             }
         }
 
+        @Nonnull
+        public ShardIteratorType getType() {
+            return type;
+        }
+
+        @Nonnull
+        public StreamShardId getStreamShardId() {
+            return streamShardId;
+        }
+
         /**
          * Resolves the absolute position of this iterator. Only non-empty if iterator is immutable, i.e., refers to
          * fixed sequence number in the stream shard.
@@ -437,9 +467,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 case LATEST:
                     return Optional.empty();
                 case AT_SEQUENCE_NUMBER:
-                    return Optional.of(StreamShardPosition.at(streamArn, shardId, sequenceNumber));
+                    return Optional.of(StreamShardPosition.at(streamShardId, sequenceNumber));
                 case AFTER_SEQUENCE_NUMBER:
-                    return Optional.of(StreamShardPosition.after(streamArn, shardId, sequenceNumber));
+                    return Optional.of(StreamShardPosition.after(streamShardId, sequenceNumber));
                 default:
                     throw new RuntimeException("Unhandled switch case");
             }
@@ -452,7 +482,19 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return Position of record.
          */
         StreamShardPosition resolvePosition(Record record) {
-            return StreamShardPosition.at(streamArn, shardId, record);
+            return StreamShardPosition.at(streamShardId, record);
+        }
+
+        /**
+         * Returns a new virtual shard iterator positioned at the sequence number of the first record in the list.
+         *
+         * @param records Record list. Must not be empty.
+         * @return New shard iterator positioned at the first record in the list.
+         */
+        CachingShardIterator resolvePositionIterator(List<Record> records) {
+            assert !records.isEmpty();
+            return new CachingShardIterator(AT_SEQUENCE_NUMBER, streamShardId,
+                records.get(0).getDynamodb().getSequenceNumber(), null);
         }
 
         /**
@@ -471,7 +513,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return A new iterator.
          */
         CachingShardIterator withDynamoDbIterator(String dynamoDbIterator) {
-            return new CachingShardIterator(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
+            return new CachingShardIterator(type, streamShardId, sequenceNumber, dynamoDbIterator);
         }
 
         /**
@@ -483,7 +525,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         CachingShardIterator nextShardIterator(List<Record> records) {
             assert !records.isEmpty();
-            return new CachingShardIterator(streamArn, shardId, AFTER_SEQUENCE_NUMBER,
+            return new CachingShardIterator(AFTER_SEQUENCE_NUMBER, streamShardId,
                 getLast(records).getDynamodb().getSequenceNumber(), null);
         }
 
@@ -517,8 +559,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         GetShardIteratorRequest toRequest() {
             return new GetShardIteratorRequest()
-                .withStreamArn(streamArn)
-                .withShardId(shardId)
+                .withStreamArn(streamShardId.getStreamArn())
+                .withShardId(streamShardId.getShardId())
                 .withShardIteratorType(type)
                 .withSequenceNumber(sequenceNumber);
         }
@@ -530,7 +572,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         String toExternalString() {
             List<String> fields = new ArrayList<>(4);
-            fields.add(shardId);
+            fields.add(streamShardId.getShardId());
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
@@ -543,7 +585,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 default:
                     throw new RuntimeException("Unhandled case in switch statement");
             }
-            return Objects.requireNonNullElse(dynamoDbIterator, streamArn)
+            return Objects.requireNonNullElse(dynamoDbIterator, streamShardId.getStreamArn())
                 + ITERATOR_SEPARATOR + compositeStrings.join(fields);
         }
 
@@ -561,16 +603,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 return false;
             }
             final CachingShardIterator that = (CachingShardIterator) o;
-            return Objects.equals(streamArn, that.streamArn)
-                && Objects.equals(shardId, that.shardId)
-                && type == that.type
-                && Objects.equals(sequenceNumber, that.sequenceNumber)
-                && Objects.equals(dynamoDbIterator, that.dynamoDbIterator);
+            return type == that.type
+                && Objects.equals(streamShardId, that.streamShardId)
+                && Objects.equals(sequenceNumber, that.sequenceNumber);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(streamArn, shardId, type, sequenceNumber, dynamoDbIterator);
+            return Objects.hash(type, streamShardId, sequenceNumber);
         }
     }
 
@@ -635,6 +675,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     // getShardIterator cache
     private final Cache<CachingShardIterator, String> iteratorCache;
+    private final Cache<StreamShardId, CachingShardIterator> trimHorizonCache;
 
     // meters for observability
     private final Timer getRecordsTime;
@@ -662,7 +703,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                  Striped<Lock> getRecordsLocks,
                                  int getRecordsMaxRetries,
                                  long getRecordsBackoffInMillis,
-                                 Cache<CachingShardIterator, String> iteratorCache) {
+                                 Cache<CachingShardIterator, String> iteratorCache,
+                                 Cache<StreamShardId, CachingShardIterator> trimHorizonCache) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.describeStreamCache = describeStreamCache;
@@ -673,6 +715,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsMaxRetries = getRecordsMaxRetries;
         this.getRecordsBackoffInMillis = getRecordsBackoffInMillis;
         this.iteratorCache = iteratorCache;
+        this.trimHorizonCache = trimHorizonCache;
 
         // eagerly create various meters
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
@@ -692,6 +735,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, cn + ".GetShardIterator");
         GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, cn + ".EmptyResult");
         GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, cn + ".DescribeStream");
+        GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, cn + ".TrimHorizon");
     }
 
     @VisibleForTesting
@@ -783,6 +827,28 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         String dynamoDbIterator;
         switch (ShardIteratorType.fromValue(request.getShardIteratorType())) {
             case TRIM_HORIZON:
+                /*
+                 * Check first if we recently found records at TRIM_HORIZON and if so, return a virtual iterator at the
+                 * sequence number of the first record. There is a risk with this approach that the TRIM_HORIZON moves
+                 * by the time the iterator is used, i.e., what we returned as the offset to use is now trimmed. If we
+                 * do not have records cached at the returned offset, the call to load records will result in a
+                 * TrimmedDataAccessException. This case should be rather unlikely, because we only cache the mapping
+                 * for a short time (so the likelihood that records are trimmed is low and the likelihood that records
+                 * are cached is high), AFAIK, DynamoDB currently trims by deleting shards (not by removing records from
+                 * shards), and KCL retries when it hits this exception (it's common to encounter it in local DynamoDB
+                 * due to a similar situation). Nevertheless, if we run into unexpected problems, we may need to remove
+                 * this cache or store some more information in the virtual iterator that allows us to retry
+                 * transparently when encountering a TrimmedDataAccessException.
+                 */
+                CachingShardIterator cachedIterator =
+                    trimHorizonCache.getIfPresent(new StreamShardId(request.getStreamArn(), request.getShardId()));
+                if (cachedIterator != null) {
+                    return new GetShardIteratorResult().withShardIterator(cachedIterator.toExternalString());
+                } else {
+                    dynamoDbIterator = loadShardIterator(request);
+                    getShardIteratorUncached.increment();
+                }
+                break;
             case LATEST:
                 dynamoDbIterator = loadShardIterator(request);
                 getShardIteratorUncached.increment();
@@ -815,7 +881,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             checkArgument(limit > 0 && limit <= GET_RECORDS_LIMIT);
 
             // parse iterator
-            final CachingShardIterator iterator = CachingShardIterator.fromExternalString(request.getShardIterator());
+            final CachingShardIterator parsed = CachingShardIterator.fromExternalString(request.getShardIterator());
+            final CachingShardIterator iterator = parsed.type == TRIM_HORIZON
+                ? Optional.ofNullable(trimHorizonCache.getIfPresent(parsed.getStreamShardId())).orElse(parsed)
+                : parsed;
+
             final Optional<StreamShardPosition> positionOpt = iterator.resolvePosition();
             final GetRecordsResult result;
             if (positionOpt.isPresent()) {
@@ -1003,6 +1073,11 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 final StreamShardPosition location = iterator.resolvePosition()
                     .orElseGet(() -> iterator.resolvePosition(loadedRecords.get(0)));
                 recordCache.putRecords(location, loadedRecords);
+
+                // remember TRIM_HORIZON location for a short time, so subsequent requests can leverage the cache
+                if (iterator.getType() == TRIM_HORIZON) {
+                    trimHorizonCache.put(iterator.getStreamShardId(), iterator.resolvePositionIterator(loadedRecords));
+                }
             }
 
             getRecordsLoadRetries.record(getRecordsRetries);
