@@ -10,7 +10,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 
 /**
- * Interface for managing table metadata of multi-tenant virtual tables within mt-dynamo.
+ * Interface for managing table metadata of multitenant virtual tables within mt-dynamo.
  *
  * @author msgroi
  */
@@ -20,34 +20,33 @@ interface MtTableDescriptionRepo {
      * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given
      * multitenant context's namespace.
      *
-     * @param createTableRequest specs of table to create
-     * @return the table description of said table
+     * @param createTableRequest specs of the table to create
+     * @return the table's description
      */
     fun createTable(createTableRequest: CreateTableRequest): TableDescription
 
     /**
-     * @param tableName to look up
-     * @return the table description of the given virtual table under the current multi-tenant context
+     * @param tableName name of the table to look up
+     * @return the table description of the given virtual table under the current multitenant context
      */
     fun getTableDescription(tableName: String): TableDescription
 
     /**
      * Delete the designated virtual table metadata.
-     * @param tableName tpo de.lete
-     * @return the table description of the virtual table deleted
+     *
+     * @param tableName name of the table to delete
+     * @return the table description of the virtual table to be deleted
      */
     fun deleteTable(tableName: String): TableDescription
 
     /**
-     * Utility to enumerate all virtual table metadata managed by this instance. Return up to @param limit results,
-     * starting after @param exclusiveStartTableMetadata if specified.
+     * Utility to enumerate all virtual table metadata managed by this instance. Return up to {@code limit} results,
+     * starting after {@code exclusiveStartTableMetadata} if specified.
      *
-     * @return a list of TenantTableMetadata objects, with a lastEvaluatedTable populated to the last table name if the
-     * result set fully populated @param limit results, null otherwise.
+     * @return a list of {@code TenantTableMetadata{ objects, with {@code lastEvaluatedTable} populated with the last
+     * table name if the result set is fully populated with {@code limit} results, otherwise null.
      */
-    fun listVirtualTableMetadata(
-        listMetadataRequest: ListMetadataRequest
-    ): ListMetadataResult
+    fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
 
     data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
     data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: TenantTableMetadata? = null) {
@@ -63,6 +62,3 @@ interface MtTableDescriptionRepo {
     }
     data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
 }
-
-const val DEFAULT_RESULT_LIMIT = 10
-@JvmField val DEFAULT_START_KEY: MtTableDescriptionRepo.TenantTableMetadata? = null
