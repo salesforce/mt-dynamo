@@ -598,6 +598,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * TODO: Make this an async operation that properly uses an on-demand dynamo backup/restored table to run scans
+     * against with a callback hook to monitor progress and wait for backup completion like the existing dynamo backup
+     * APIs. For now, this is a synchronous call that operates the scan against all live table that may be taking
+     * writes, so proceed with caution.
+     */
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         CreateMtBackupRequest createMtBackupRequest = new CreateMtBackupRequest(createBackupRequest.getBackupName());

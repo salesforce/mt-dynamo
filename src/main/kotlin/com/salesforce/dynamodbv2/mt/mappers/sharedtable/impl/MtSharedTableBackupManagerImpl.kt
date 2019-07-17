@@ -135,11 +135,6 @@ open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: Stri
      * tenant-table onto S3 organized such that restoring a single tenant-table is a simple S3 directory listFiles
      * operation providing full row dumps to insert|restore back into dynamo under a different tenant-table space.
      *
-     * TODO: Make this an async operation that properly uses an on-demand dynamo backup/restored table to run scans
-     * against with a callback hook to monitor progress and wait for backup completion like the existing dynamo backup
-     * APIs. For now, this is a synchronous call that operates the scan against a live table that may be taking writes,
-     * so proceed with caution.
-     *
      * @return an {@link MtBackupMetadata} object describing current metadata of backup with backed up tenant-tables.
      */
     override fun backupPhysicalMtTable(
