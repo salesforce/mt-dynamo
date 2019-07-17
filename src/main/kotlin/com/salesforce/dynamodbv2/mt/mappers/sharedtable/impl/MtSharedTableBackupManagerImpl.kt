@@ -6,7 +6,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
-import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
@@ -33,7 +32,6 @@ import com.google.gson.reflect.TypeToken
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupException
@@ -44,17 +42,16 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.Status
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantTableBackupMetadata
 import org.slf4j.LoggerFactory
-import java.lang.UnsupportedOperationException
 import java.nio.charset.Charset
 import java.util.stream.Collectors
 
 /**
- * Take an mt-dynamo set of tables, and using relatively naive scans across each table, build a set of backups
- * per tenant.
+ * Take an instance of {@link MtAmazonDynamoDbBySharedTable}, and using relatively naive scans across each table,
+ * build a set of backups per tenant.
  */
-open class MtBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
+open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
 
-    private val logger = LoggerFactory.getLogger(MtBackupManagerImpl::class.java)
+    private val logger = LoggerFactory.getLogger(MtSharedTableBackupManagerImpl::class.java)
     val s3: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
 
     /**

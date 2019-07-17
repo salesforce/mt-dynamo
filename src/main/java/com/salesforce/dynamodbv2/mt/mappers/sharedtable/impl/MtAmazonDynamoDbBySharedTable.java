@@ -58,6 +58,8 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager;
@@ -569,7 +571,22 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
-        throw new UnsupportedOperationException();
+        if (backupManager.isPresent()) {
+            if (!(restoreTableFromBackupRequest instanceof RestoreMtBackupRequest)) {
+                throw new ContinuousBackupsUnavailableException("Unexpected restore request found, must be an instance"
+                    + " of MtRestoreTableFromBackupRequest.");
+            }
+            TenantRestoreMetadata restoreMetadata = backupManager.get().restoreTenantTableBackup(
+                (RestoreMtBackupRequest)restoreTableFromBackupRequest,
+                this,
+                getMtContext());
+
+            return new RestoreTableFromBackupResult().withTableDescription(
+                mtTableDescriptionRepo.getTableDescription(restoreMetadata.getVirtualTableName()));
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
     }
 
     @Override
@@ -596,7 +613,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
-
         }
     }
 

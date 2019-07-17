@@ -7,6 +7,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable
 import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
@@ -114,12 +115,16 @@ data class TenantTableBackupMetadata(
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
 data class CreateMtBackupRequest(val backupId: String)
-data class RestoreMtBackupRequest(
+class RestoreMtBackupRequest(
     val backupId: String,
     val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
     val newTenantTable: MtAmazonDynamoDb.TenantTable
-)
-
+): RestoreTableFromBackupRequest() {
+    init {
+        backupArn = backupId
+        targetTableName = newTenantTable.virtualTableName
+    }
+}
 class MtBackupException(message: String): AmazonDynamoDBException(message)
 
 enum class Status {

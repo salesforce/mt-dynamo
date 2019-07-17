@@ -46,8 +46,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtBackupManagerImpl;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerImpl;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
@@ -229,7 +228,7 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     public SharedTableBuilder withBackupSupport(String region, String backupS3BucketName) {
-        this.backupManager = new MtBackupManagerImpl(region, backupS3BucketName);
+        this.backupManager = new MtSharedTableBackupManagerImpl(region, backupS3BucketName);
         return this;
     }
 
