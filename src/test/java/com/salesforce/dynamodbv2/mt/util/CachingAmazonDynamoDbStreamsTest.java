@@ -601,7 +601,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         // first thread looks up records: no mapping cached, so results in call to DynamoDB
         assertGetRecords(cachingStreams, iterator, null, records);
-        // second thread looks up records: mapping should be cached now, so even though first thread obtained phsyical
+        // second thread looks up records: mapping should be cached now, so even though first thread obtained physical
         // iterator, its mapped to cached records without call to DynamoDB (limit so it doesn't try to look beyond)
         assertGetRecords(cachingStreams, iterator2, 10, records);
 

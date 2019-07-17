@@ -235,7 +235,7 @@
                         </goals>
                         <configuration>
                             <failOnWarning>true</failOnWarning>
-                            <dUnusedDeclaredDependencies>ch.qos.logback:logback-classic</dUnusedDeclaredDependencies>
+                            <ignoredUnusedDeclaredDependencies>ch.qos.logback:logback-classic</ignoredUnusedDeclaredDependencies>
                             <ignoredUnusedDeclaredDependencies>org.junit.jupiter:junit-jupiter-engine</ignoredUnusedDeclaredDependencies>
                         </configuration>
                     </execution>
