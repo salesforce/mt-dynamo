@@ -355,8 +355,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
             List<String> tableNames = Lists.newArrayList();
             String innerExclusiveStartTableName = exclusiveStartTableName;
 
-            // filter out any physical tables on this account that this mt-dynamo instance does not manage
-            // and eagerly pull more pages until we fill up a full result set or run out of tables
+            // filter out any physical tables on this account that this mt-dynamo instance does not manage and eagerly
+            // pull more pages until we fill up a full result set or run out of tables
             do {
                 ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName, limit);
                 tableNames.addAll(
@@ -364,8 +364,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
                 innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
             } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
 
-            // if there's more results left to go through, populate the lastEvaluatedTableName so the client can
-            // page through for more results.
+            // if there are more results left to go through, populate the lastEvaluatedTableName so the client can page
+            // through for more results.
             if (tableNames.size() > limit || innerExclusiveStartTableName != null) {
                 List<String> retTableNames = tableNames.size() > limit ? tableNames.subList(0, limit) : tableNames;
                 return new ListTablesResult()

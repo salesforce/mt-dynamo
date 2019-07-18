@@ -127,7 +127,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
         // Verify cache lookup result contains the expected shard id
         assertNotNull(cacheLookupResult.getStreamDescription().getShards());
-        assertTrue(cacheLookupResult.getStreamDescription().getShards().size() > 0);
+        assertFalse(cacheLookupResult.getStreamDescription().getShards().isEmpty());
         assertEquals(expectedShardIdForIterator.get(),
             cacheLookupResult.getStreamDescription().getShards().get(0).getShardId());
     }

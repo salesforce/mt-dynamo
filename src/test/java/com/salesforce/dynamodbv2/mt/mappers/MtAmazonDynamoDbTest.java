@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
@@ -22,7 +23,7 @@ public class MtAmazonDynamoDbTest {
     public void testListTables_noContext(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
-        assertTrue(allTables.size() > 0);
+        assertFalse(allTables.isEmpty());
     }
 
     @ParameterizedTest(name = "{arguments}")
