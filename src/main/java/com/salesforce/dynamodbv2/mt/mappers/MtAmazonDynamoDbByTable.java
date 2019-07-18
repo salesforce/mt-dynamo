@@ -119,8 +119,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Create a physical table within dynamo with the given @param createTableRequest table name
-     * prefixed by the tenant context.
+     * Create a physical dynamo table with {@code createTableRequest}'s table name prefixed by the current tenant
+     * context.
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -142,7 +142,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Delete the physical dynamo table with the deleteTableRequest's table name prefixed by the current tenant
+     * Delete the physical dynamo table with {@code deleteTableRequest}'s table name prefixed by the current tenant
      * context.
      */
     @Override
@@ -156,7 +156,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Describe the table with describeTableRequest's table name prefixed by the current tenant context.
+     * Describe the table with {@code describeTableRequest}'s table name prefixed by the current tenant context.
      */
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
@@ -202,8 +202,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Run a scan on the given table specified scanRequest's table name prefixed by the current tenant context.
-     * If the context is not specified, run a scan against the @param scanRequest raw table name, with tenant context
+     * Run a scan on the given table specified {@code scanRequest}'s table name prefixed by the current tenant context.
+     * If the context is not specified, run a scan against the {@code scanRequest}'s raw table name, with tenant context
      * info encoded into the result item map keyed by {@link scanTenantKey} and {@link scanVirtualTableKey}.
      */
     @Override
@@ -290,10 +290,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         }
 
         /**
-         * Useful comment.
-         *
-         * @return a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
-         * {@code MtAmazonDynamoDbBuilder}
+         * Returns a newly created {@code MtAmazonDynamoDbByTable} based on the contents of the
+         * {@code MtAmazonDynamoDbBuilder}.
          */
         public MtAmazonDynamoDbByTable build() {
             setDefaults();

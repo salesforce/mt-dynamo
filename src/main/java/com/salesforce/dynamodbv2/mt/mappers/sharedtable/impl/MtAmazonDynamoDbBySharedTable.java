@@ -94,7 +94,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final String scanVirtualTableKey;
 
     /**
-     * Shared table constructor.
+     * Shared-table constructor.
      *
      * @param name                   the name of the multitenant AmazonDynamoDB instance
      * @param mtContext              the multitenant context provider
@@ -257,11 +257,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Create a virtual table configured with createTableRequest. Really, this is not creating a physical table
-     * in Dynamo, but inserting a row into a metadata table, thus creating a virtual table, for the given mt_context
-     * tenant to insert data into.
+     * Create a virtual table configured by {@code createTableRequest}. This does not create a physical table in dynamo,
+     * rather it inserts a row into a metadata table, thus creating a virtual table, for the given mt_context tenant to
+     * insert data into.
      *
-     * @return a CreateTableResult object with the description of the table created.
+     * @return a {@code CreateTableResult} object with the description of the table created
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
@@ -270,9 +270,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Delete a row for the given virtual table configured with deleteItemRequest.
+     * Delete a row for the given virtual table configured with {@code deleteItemRequest}.
      *
-     * @return a DeleteItemResult containing the data of the row deleted from Dynamo.
+     * @return a {@code DeleteItemResult} containing the data of the row deleted from dynamo
      */
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
@@ -292,16 +292,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Delete the given virtual table for the given mt_context tenant configured with @param deleteTableRequest.
-     * Bear in mind, this is a virtual table, where actual data for said table lives shared amongst other tenants data.
-     * Therefore this command is a relatively [or extraordinarily] expensive operation requiring running a full scan
-     * the shared table to find relevant rows for the given tenant-table to delete before table metadata can be deleted.
+     * Delete the given virtual table for the given mt_context tenant configured with {@code deleteTableRequest}. Note
+     * that this is a virtual table, where actual data for the table lives among other tenants' data. Therefore, this
+     * command is a relatively (or extraordinarily) expensive operation requiring running a full scan of the shared
+     * table to find relevant rows for the given tenant-table pair to delete before table metadata can be deleted.
      *
-     * <p>Additionally, for asynchronous deletes, there is no support for this JVM crashing during the delete,
-     * in which case, although a successful delete response my be handed back to the client,
-     * the virtual table and its relevant data may not actually be properly deleted. Therefore, use with caution.
+     * <p>Additionally, for asynchronous deletes, there is no support for this JVM crashing during the delete, in which
+     * case, although a successful delete response my be handed back to the client, the virtual table and its relevant
+     * data may not actually be properly deleted. Therefore, use with caution.
      *
-     * @return a DeleteTableResult with the description of the virtual table deleted.
+     * @return a DeleteTableResult with the description of the virtual table deleted
      */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
@@ -417,19 +417,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     /**
      * Execute a scan meeting the specs of {@link AmazonDynamoDB}, but scoped to single tenants within a shared table.
-     * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table.
-     * Scans scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table,
-     * i.e., not great.
+     * If no tenant context is specified, a multitenant scan is performed over the multitenant shared table. Scans
+     * scoped to single tenants are inefficient. Multitenant scans are as bad as scans on any other dynamo table, i.e.,
+     * not great.
      *
      * <p>This should rarely, if ever, be exposed for tenants to run, given how expensive scans on a shared table are.
-     * If used, it needs to be on a non-web request, as this makes several repeat callouts to dynamo to fill a single
-     * result set. Performance of this call degrades with data size of all other tenant table data stored, and will
+     * If used, it needs to be on a non-web request, since this makes several repeat callouts to dynamo to fill a single
+     * result set. Performance of this call degrades with data size of all other tenant-table data stored, and will
      * likely time out a synchronous web request if querying a sparse table-tenant in the shared table.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
-            // if we're here, we're doing a multitenant scan on a shared table
+            // if we are here, we are doing a multitenant scan on a shared table
             return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
@@ -475,15 +475,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
-        // given the shared table we're working with,
+        // given the shared table we are working with,
         // get the function to map the primary key back to
-        // tuple (tenant, virtual table name, and primary attributes)
+        // tuple (tenant, virtual table name, primary attributes)
         Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
             getFieldValueFunction(scanRequest.getTableName());
         List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
-            // go through each row in the scan, and pull out the tenant and table information from the primary key
-            // to separate attributes in each items map
+            // go through each row in the scan and pull out the tenant and table information from the primary key to
+            // separate attributes in each item's map
             FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
             TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
@@ -531,9 +531,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * Update a given row with primary key defined in updateItemRequest.
+     * Update a given row with primary key defined in {@code updateItemRequest}.
      *
-     * @return UpdateItemResult of the updated row.
+     * @return {@code UpdateItemResult} of the updated row
      */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
@@ -557,8 +557,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
 
     /**
-     * See class level Javadoc for explanation of why the use of addAttributeUpdateEntry and withAttributeUpdates is
-     * not supported.
+     * See class-level Javadoc for explanation of why the use of {@code addAttributeUpdateEntry} and
+     * {@code withAttributeUpdates} is not supported.
      */
     private static void validateUpdateItemRequest(UpdateItemRequest updateItemRequest) {
         checkArgument(updateItemRequest.getAttributeUpdates() == null,

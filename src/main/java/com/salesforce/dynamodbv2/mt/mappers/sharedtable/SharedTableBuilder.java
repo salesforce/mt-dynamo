@@ -436,11 +436,10 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     /**
-     * Based on input throughput, billing mode is set accordingly.
+     * Set billing mode based on input throughput.
      *
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput     the throughput to assign to the request.
-     *                                  If 0, billing mode is set to PPR.
+     * @param provisionedThroughput     the throughput to assign to the request (if 0, billing mode is set to PPR)
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {

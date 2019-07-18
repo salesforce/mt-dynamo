@@ -4,8 +4,8 @@ import com.amazonaws.services.dynamodbv2.model.BillingMode;
 
 /**
  * Simple interface to represent a TableBuilder.
- * Note that since the implementation of the classes that implement this interface already existed before this interface
- * was created, other methods can also be added.  It was added when BillingMode support was added.
+ * Note that since the implementation of the classes that implement this interface predate the creation of this
+ * interface was created, other methods can also be added. (It was added when BillingMode support was added.)
  */
 public interface TableBuilder {
     TableBuilder withBillingMode(BillingMode billingMode);

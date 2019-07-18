@@ -478,7 +478,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
     private CachingAmazonDynamoDbStreams.Builder mockDynamoDescribeStream(AmazonDynamoDBStreams mockStreams,
                                                                           List<DescribeStreamResult> expectedResults) {
-        assertTrue(expectedResults.size() >= 1);
+        assertFalse(expectedResults.isEmpty());
         when(mockStreams.describeStream(any(DescribeStreamRequest.class)))
             .thenReturn(expectedResults.get(0),
                 expectedResults.subList(1, expectedResults.size()).toArray(new DescribeStreamResult[] {}));

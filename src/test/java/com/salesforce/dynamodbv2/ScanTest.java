@@ -15,6 +15,7 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -146,8 +147,8 @@ class ScanTest {
         ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
         List<String> tableNames = listTablesResult.getTableNames();
 
-        assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
-        // go through every table, and issue at least one successful scan request.
+        assertFalse(tableNames.isEmpty(), "No managed tables found to scan, strange...");
+        // go through every table and issue at least one successful scan request.
         // validate that at least one table is populated
         boolean isFound = false;
         for (String tableName : tableNames) {
