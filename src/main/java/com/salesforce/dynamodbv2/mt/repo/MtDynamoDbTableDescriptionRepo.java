@@ -179,7 +179,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
 
         adminUtils.createTableIfNotExists(
-                createTableRequest.withTableName(prefixedTableDescriptionTableName)
+            createTableRequest.withTableName(prefixedTableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
                 .withAttributeDefinitions(new AttributeDefinition()
@@ -202,13 +202,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private static List<GlobalSecondaryIndex> getGlobalIndexes(
         Collection<GlobalSecondaryIndexDescription> descriptions) {
-        return descriptions == null ?  null : descriptions
+        return descriptions == null ? null : descriptions
             .stream()
             .map(s ->
                 new GlobalSecondaryIndex().withIndexName(s.getIndexName())
-                .withKeySchema(s.getKeySchema())
-                .withProjection(s.getProjection())
-                .withProvisionedThroughput(getProvisionedThroughput(s.getProvisionedThroughput())))
+                    .withKeySchema(s.getKeySchema())
+                    .withProjection(s.getProjection())
+                    .withProvisionedThroughput(getProvisionedThroughput(s.getProvisionedThroughput())))
             .collect(Collectors.toList());
     }
 
@@ -237,17 +237,17 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
         TableDescription tableDescription = new TableDescription()
-                .withTableName(createTableRequest.getTableName())
-                .withKeySchema(createTableRequest.getKeySchema())
-                .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
-                .withStreamSpecification(createTableRequest.getStreamSpecification())
-                .withProvisionedThroughput(getProvisionedThroughputDesc(createTableRequest.getProvisionedThroughput()));
+            .withTableName(createTableRequest.getTableName())
+            .withKeySchema(createTableRequest.getKeySchema())
+            .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
+            .withStreamSpecification(createTableRequest.getStreamSpecification())
+            .withProvisionedThroughput(getProvisionedThroughputDesc(createTableRequest.getProvisionedThroughput()));
 
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
                 new LocalSecondaryIndexDescription().withIndexName(lsi.getIndexName())
-                        .withKeySchema(lsi.getKeySchema())
-                        .withProjection(lsi.getProjection())).collect(Collectors.toList()));
+                    .withKeySchema(lsi.getKeySchema())
+                    .withProjection(lsi.getProjection())).collect(Collectors.toList()));
         }
 
         if (createTableRequest.getGlobalSecondaryIndexes() != null) {
@@ -258,12 +258,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withKeySchema(gsi.getKeySchema())
                         .withProjection(gsi.getProjection())
                         .withProvisionedThroughput(getProvisionedThroughputDesc(gsi.getProvisionedThroughput()))
-                ).collect(Collectors.toList()));
+            ).collect(Collectors.toList()));
         }
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
-                tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
-                tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
+            tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
+            tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
     private static String tableDataToJson(TableDescription tableDescription) {
@@ -382,7 +382,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
          * Builder. Build!
          *
          * @return a newly created {@code MtDynamoDbTableDescriptionRepo} based on the contents of the
-         *     {@code MtDynamoDbTableDescriptionRepoBuilder}
+         * {@code MtDynamoDbTableDescriptionRepoBuilder}
          */
         public MtDynamoDbTableDescriptionRepo build() {
             setDefaults();

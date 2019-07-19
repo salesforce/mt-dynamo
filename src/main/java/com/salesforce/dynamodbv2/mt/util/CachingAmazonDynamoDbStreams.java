@@ -133,7 +133,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             this.amazonDynamoDbStreams = amazonDynamoDbStreams;
         }
 
-        /** MeterRegistry to record metrics to.
+        /**
+         * MeterRegistry to record metrics to.
          *
          * @param meterRegistry Meter registry to report metrics to.
          * @return This Builder.
@@ -255,7 +256,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * The time empty results should be cached and returned before attempting to load records from the stream at the
          * given position again.
          *
-         * @param emptyResultCacheTtlInMillis   Time in milliseconds for how long to cache and return empty results.
+         * @param emptyResultCacheTtlInMillis Time in milliseconds for how long to cache and return empty results.
          * @return This Builder
          */
         public Builder withEmptyResultCacheTtlInMillis(long emptyResultCacheTtlInMillis) {
@@ -642,9 +643,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * Concatenates the two lists into one.
      *
-     * @param l1    First list. Must not be null, but may be empty.
-     * @param l2    Second list. Must not be null, but may be empty.
-     * @param <T>   Type of elements stored in lists
+     * @param l1  First list. Must not be null, but may be empty.
+     * @param l2  Second list. Must not be null, but may be empty.
+     * @param <T> Type of elements stored in lists
      * @return Combined list
      */
     private static <T> List<T> concat(List<T> l1, List<T> l2) {
@@ -746,15 +747,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     /**
      * Gets the {@code DescribeStreamResult} from the DescribeStream API.
-     * @param describeStreamRequest Describe stream request.
      *
-     * @return Stream details for the given request with all the shards currently available.
-     *      Throws exceptions that AmazonDynamoDBStreams describeStream could potentially throw.
-     * @throws ResourceNotFoundException
-     *         The requested resource could not be found. The stream might not be specified correctly.
-     * @throws LimitExceededException
-     *         The requested resource exceeds the maximum number allowed, or the number of concurrent stream requests
-     *         exceeds the maximum number allowed (5).
+     * @param describeStreamRequest Describe stream request
+     * @return Stream details for the given request with all the shards currently available
+     * @throws ResourceNotFoundException The requested resource could not be found. The stream might not be specified
+     *                                   correctly
+     * @throws LimitExceededException    The requested resource exceeds the maximum number allowed, or the number of
+     *                                   concurrent stream requests exceeds the maximum number allowed (5)
      */
     protected DescribeStreamResult loadStreamDescriptionForAllShards(DescribeStreamRequest describeStreamRequest)
         throws AmazonDynamoDBException, ResourceNotFoundException {
@@ -801,8 +800,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 return describeStreamCache.get(key,
                     () -> this.loadStreamDescriptionForAllShards(describeStreamRequest));
             } catch (UncheckedExecutionException | ExecutionException | InvalidCacheLoadException e) {
-                // Catch exceptions thrown on cache lookup or cache loader and try load method once more. (get call
-                // will throw UncheckedExecutionException before aws exception (i.e. AmazonDynamoDBException)).
+                // Catch exceptions thrown on cache lookup or cache loader and try load method once more. (Get call
+                // will throw UncheckedExecutionException before AWS exception (i.e., AmazonDynamoDBException)).
                 LOG.warn("Failed getting DescribeStreamResult for all shards from cache lookup or load method.  "
                     + "Retrying describeStream call. " + e.getMessage());
                 return this.loadStreamDescriptionForAllShards(describeStreamRequest);

@@ -271,7 +271,7 @@ public class SharedTableBuilder implements TableBuilder {
      * TODO: write Javadoc.
      *
      * @return a newly created {@code MtAmazonDynamoDbBySharedTable} based on the contents of the
-     *     {@code SharedTableBuilder}
+     * {@code SharedTableBuilder}
      */
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
@@ -321,12 +321,12 @@ public class SharedTableBuilder implements TableBuilder {
         }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                    this.billingMode, this.streamsEnabled, this.binaryHashKey);
+                this.billingMode, this.streamsEnabled, this.binaryHashKey);
         } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             this.createTableRequests = createTableRequests.stream()
-                    .map(createTableRequest ->
-                            createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
-                    .collect(Collectors.toList());
+                .map(createTableRequest ->
+                    createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
+                .collect(Collectors.toList());
         }
         withBillingMode(this.billingMode);
         if (name == null) {
@@ -391,7 +391,9 @@ public class SharedTableBuilder implements TableBuilder {
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
     private static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
-        BillingMode billingMode, boolean streamsEnabled, boolean binaryHashKey) {
+                                                                            BillingMode billingMode,
+                                                                            boolean streamsEnabled,
+                                                                            boolean binaryHashKey) {
 
         ScalarAttributeType hashKeyType = binaryHashKey ? B : S;
 
@@ -434,10 +436,10 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     /**
-     * Based on input throughput, billing mode is set accordingly.
+     * Set billing mode based on input throughput.
+     *
      * @param createTableRequestBuilder the {@code CreateTableRequestBuilder} defines the table creation definition
-     * @param provisionedThroughput the throughput to assign to the request.
-     *                              If 0, billing mode is set to PPR.
+     * @param provisionedThroughput     the throughput to assign to the request (if 0, billing mode is set to PPR)
      */
     private static void setBillingMode(CreateTableRequestBuilder createTableRequestBuilder, BillingMode billingMode,
                                        long provisionedThroughput) {
@@ -464,18 +466,18 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     private static void addStreamSpecification(CreateTableRequestBuilder createTableRequestBuilder,
-        boolean streamsEnabled) {
+                                               boolean streamsEnabled) {
         createTableRequestBuilder.withStreamSpecification(streamsEnabled
-                ? new StreamSpecification().withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
-                                           .withStreamEnabled(true)
-                : new StreamSpecification().withStreamEnabled(false));
+            ? new StreamSpecification().withStreamViewType(StreamViewType.NEW_AND_OLD_IMAGES)
+            .withStreamEnabled(true)
+            : new StreamSpecification().withStreamEnabled(false));
     }
 
     private static void addSi(CreateTableRequestBuilder createTableRequestBuilder,
-                       DynamoSecondaryIndexType indexType,
-                       ScalarAttributeType hashKeyType,
-                       Optional<ScalarAttributeType> rangeKeyType,
-                       long defaultProvisionedThroughput) {
+                              DynamoSecondaryIndexType indexType,
+                              ScalarAttributeType hashKeyType,
+                              Optional<ScalarAttributeType> rangeKeyType,
+                              long defaultProvisionedThroughput) {
         String indexName = indexType.name().toLowerCase() + "_"
             + hashKeyType.name().toLowerCase()
             + rangeKeyType.map(type -> "_" + type.name().toLowerCase()).orElse("").toLowerCase();
