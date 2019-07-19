@@ -52,7 +52,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     public static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
-            new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+        new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
     private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
 
@@ -88,7 +88,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
         // TODO get-bug: remove the filter and fix the tests that fail when RK is Binary
         return Arrays.stream(ScalarAttributeType.values()).filter(scalarAttributeType ->
-                !scalarAttributeType.equals(ScalarAttributeType.B)).collect(Collectors.toList());
+            !scalarAttributeType.equals(ScalarAttributeType.B)).collect(Collectors.toList());
     }
 
     /*

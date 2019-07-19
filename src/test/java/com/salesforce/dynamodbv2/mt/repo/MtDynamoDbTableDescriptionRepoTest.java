@@ -50,7 +50,7 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     /**
-     * Verifies that changing provisioned throughput on the metadata table doesn't cause comparison to fail on restart.
+     * Verifies that changing provisioned throughput on the metadata table does not cause comparison to fail on restart.
      */
     @Test
     void testMetadataTableProvisioningThroughputChange() {

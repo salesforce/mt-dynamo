@@ -15,6 +15,7 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueTo
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -66,8 +67,8 @@ class ScanTest {
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build(),
                 executeScan(exclusiveStartKey -> testArgument.getAmazonDynamoDb()
                     .scan(scanRequest.withExclusiveStartKey(exclusiveStartKey))).get(0));
             assertEquals(TABLE1, scanRequest.getTableName());
@@ -105,8 +106,8 @@ class ScanTest {
                 .withExpressionAttributeNames(expressionAttrNames)
                 .withExpressionAttributeValues(expressionAttrValues);
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build(),
                 executeScan(exclusiveStartKey ->
                     testArgument.getAmazonDynamoDb().scan(scanRequest).withLastEvaluatedKey(exclusiveStartKey))
                     .get(0));
@@ -126,13 +127,13 @@ class ScanTest {
                     .withExclusiveStartKey(exclusiveStartKey)));
             assertEquals(2, items.size());
             final Map<String, AttributeValue> someValue = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                        HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                    .build();
+                HASH_KEY_VALUE)
+                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                .build();
             final Map<String, AttributeValue> someOtherValue = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                        HASH_KEY_OTHER_VALUE)
-                    .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
-                    .build();
+                HASH_KEY_OTHER_VALUE)
+                .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
+                .build();
             final ImmutableSet<Map<String, AttributeValue>> expectedSet = ImmutableSet.of(someValue, someOtherValue);
             assertEquals(expectedSet, new HashSet<>(items));
         });
@@ -146,11 +147,11 @@ class ScanTest {
         ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
         List<String> tableNames = listTablesResult.getTableNames();
 
-        assertTrue(tableNames.size() > 0, "No managed tables found to scan, strange..");
-        // go through every table, and issue at least one successful scan request.
+        assertFalse(tableNames.isEmpty(), "No managed tables found to scan, strange...");
+        // go through every table and issue at least one successful scan request.
         // validate that at least one table is populated
         boolean isFound = false;
-        for (String tableName: tableNames) {
+        for (String tableName : tableNames) {
             ScanResult scanResult = testArgument.getAmazonDynamoDb().scan(new ScanRequest().withTableName(tableName));
 
             List<Map<String, AttributeValue>> items = scanResult.getItems();
@@ -217,7 +218,7 @@ class ScanTest {
 
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,
-            CreateTableRequest createTableRequest) {
+                                   CreateTableRequest createTableRequest) {
             getMtContext().setContext(org);
             Set<Integer> itemKeys = new HashSet<>();
             orgItemKeys.put(org, itemKeys);
