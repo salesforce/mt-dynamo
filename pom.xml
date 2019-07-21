@@ -450,9 +450,6 @@
                                     <alias>s3mock</alias>
                                     <name>adobe/s3mock</name>
                                     <run>
-                                        <log>
-                                            <enabled>true</enabled>
-                                        </log>
                                         <ports>
                                             <port>9090:9090</port>
                                             <port>9191:9191</port>

@@ -3,8 +3,8 @@ build:
 
 test:
 	mvn test -B jacoco:report
-	# dont treat this as an integration test,
-	# as this starts mock s3 similar to local dynamo, and runs as quick
+	# treat s3 integration tests as unit tests as these tests starts a mock s3 docker image,
+	# not dissimilar to starting local dynamo in most existing unit tests, and runs as quick
 	mvn verify -Ps3-integration-tests -Dskip.surefire.tests
 
 
