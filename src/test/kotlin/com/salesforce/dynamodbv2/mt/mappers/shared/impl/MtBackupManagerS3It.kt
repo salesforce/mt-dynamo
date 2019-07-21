@@ -38,7 +38,13 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 
-internal class MtBackupManagerIt {
+/**
+ * Integration tests for mt-dynamo backup logic, integrated with mock s3. To run this, there are two options:
+ *  - run `mvn verify -Ps3-integration-tests -Dskip.surefire.tests` from command line
+ *  - run `docker run -p 9090:9090 -p 9191:9191 -e initialBuckets=test-basic-backup-create -t adobe/s3mock:latest`
+ *      to start mock s3 sidecar docker container, and kick of these tests from an IDE
+ */
+internal class MtBackupManagerS3It {
 
     companion object {
         val REGION = "us-east-1"
