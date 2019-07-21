@@ -132,14 +132,14 @@ internal class MtBackupManagerIt {
         backupManager =
                 object : MtSharedTableBackupManagerImpl(s3!!, bucket) {
 
-            // don't actually scan and backup metadata
-            override fun backupVirtualTableMetadata(
-                createMtBackupRequest: CreateMtBackupRequest,
-                mtDynamo: MtAmazonDynamoDbBySharedTable
-            ): List<MtTableDescriptionRepo.TenantTableMetadata> {
-                return ImmutableList.of()
-            }
-        }
+                    // don't actually scan and backup metadata
+                    override fun backupVirtualTableMetadata(
+                        createMtBackupRequest: CreateMtBackupRequest,
+                        mtDynamo: MtAmazonDynamoDbBySharedTable
+                    ): List<MtTableDescriptionRepo.TenantTableMetadata> {
+                        return ImmutableList.of()
+                    }
+                }
         try {
             for (i in 1..3) {
                 val backupId = "testListBackup-$i"
