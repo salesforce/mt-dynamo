@@ -5,7 +5,7 @@ test:
 	mvn test -B jacoco:report
 
 integration:
-	mvn -Dskip.surefire.tests -DskipITs=false failsafe:integration-test@failsafe-execution
+	mvn verify -Pintegration-tests -Dskip.surefire.tests
 
 validate:
 	mvn checkstyle:check@checkstyle-execution dependency:analyze@analyze

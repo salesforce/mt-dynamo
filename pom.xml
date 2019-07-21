@@ -161,6 +161,7 @@
                         <configuration>
                             <sources>
                                 <source>src/integration/java</source>
+                                <source>src/integration/kotlin</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -191,29 +192,7 @@
                     </properties>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.22.2</version>
-                <configuration>
-                    <!-- Overriding the default pattern is necessary because all of the plugin's default patterns
-                         contain 'IT' which is disallowed by our checkstyle. -->
-                    <includes>
-                        <include>**/*It.java</include>
-                    </includes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <!-- To run integration tests without the rest of targets associated with the 'verify' goal ...
-                             mvn -Dskip.surefire.tests -DskipITs=false failsafe:integration-test@failsafe-execution -->
-                        <id>failsafe-execution</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
@@ -340,6 +319,7 @@
                                 <source>${project.basedir}/src/integration/java</source>
                                 <source>${project.basedir}/src/test/java</source>
                                 <source>${project.basedir}/src/test/kotlin</source>
+                                <source>${project.basedir}/src/integration/kotlin</source>
                             </sourceDirs>
                         </configuration>
                     </execution>
@@ -408,6 +388,143 @@
 
     <profiles>
         <profile>
+            <id>integration-tests</id>
+            <activation>
+                <property>
+                    <name>skip.surefire.tests</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-failsafe-plugin</artifactId>
+                        <version>2.22.2</version>
+                        <configuration>
+                            <!-- Overriding the default pattern is necessary because all of the plugin's default patterns
+                                 contain 'IT' which is disallowed by our checkstyle. -->
+                            <includes>
+                                <include>**/*It</include>
+                                <include>**/*It</include>
+                            </includes>
+                            <skipITs>false</skipITs>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.fabric8</groupId>
+                        <artifactId>docker-maven-plugin</artifactId>
+                        <configuration combine.self="override">
+                            <verbose>true</verbose>
+                            <images>
+                                <image>
+                                    <alias>s3mock</alias>
+                                    <name>adobe/s3mock</name>
+                                    <run>
+                                        <log>
+                                            <enabled>true</enabled>
+                                        </log>
+                                        <ports>
+                                            <port>9090:9090</port>
+                                            <port>9191:9191</port>
+                                        </ports>
+                                        <wait>
+                                            <http>
+                                                <url>
+                                                    http://127.0.0.1:9090/favicon.ico
+                                                </url>
+                                            </http>
+                                            <time>30000</time>
+                                        </wait>
+                                        <env>
+                                            <initialBuckets>test-basic-backup-create</initialBuckets>
+                                        </env>
+                                    </run>
+                                </image>
+                            </images>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>start</id>
+                                <phase>pre-integration-test</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+                <pluginManagement>
+                    <plugins>
+                        <plugin>
+                            <groupId>io.fabric8</groupId>
+                            <artifactId>docker-maven-plugin</artifactId>
+                            <configuration combine.self="override">
+                                <verbose>true</verbose>
+                                <images>
+                                    <image>
+                                        <alias>s3mock</alias>
+                                        <name>adobe/s3Mock</name>
+                                        <run>
+                                            <log>
+                                                <enabled>true</enabled>
+                                            </log>
+                                            <ports>
+                                                <port>9090:9090</port>
+                                                <port>9191:9191</port>
+                                            </ports>
+                                            <wait>
+                                                <http>
+                                                    <url>
+                                                        http://127.0.0.1:9090/favicon.ico
+                                                    </url>
+                                                </http>
+                                                <time>30000</time>
+                                            </wait>
+                                            <env>
+                                                <initialBuckets>test-basic-backup-create</initialBuckets>
+                                            </env>
+                                        </run>
+                                    </image>
+                                </images>
+                            </configuration>
+                            <executions>
+                                <execution>
+                                    <id>start</id>
+                                    <phase>pre-integration-test</phase>
+                                    <goals>
+                                        <goal>start</goal>
+                                    </goals>
+                                </execution>
+                                <execution>
+                                    <id>stop</id>
+                                    <phase>post-integration-test</phase>
+                                    <goals>
+                                        <goal>stop</goal>
+                                    </goals>
+                                </execution>
+                            </executions>
+                        </plugin>
+                    </plugins>
+                </pluginManagement>
+            </build>
+        </profile>
+        <profile>
             <!-- These tests are separated because they just be run with forkCount=1/reuseForks=false. -->
             <id>isolated-tests</id>
             <build>
@@ -453,5 +570,4 @@
             </build>
         </profile>
     </profiles>
-
 </project>

@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.s3.AmazonS3;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
@@ -227,8 +228,8 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withBackupSupport(String region, String backupS3BucketName) {
-        this.backupManager = new MtSharedTableBackupManagerImpl(region, backupS3BucketName);
+    public SharedTableBuilder withBackupSupport(AmazonS3 s3Client, String backupS3BucketName) {
+        this.backupManager = new MtSharedTableBackupManagerImpl(s3Client, backupS3BucketName);
         return this;
     }
 

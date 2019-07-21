@@ -10,7 +10,6 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.s3.AmazonS3
-import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.amazonaws.services.s3.model.AmazonS3Exception
 import com.amazonaws.services.s3.model.DeleteObjectRequest
 import com.amazonaws.services.s3.model.DeleteObjectsRequest
@@ -49,10 +48,9 @@ import java.util.stream.Collectors
  * Take an instance of {@link MtAmazonDynamoDbBySharedTable}, and using relatively naive scans across each table,
  * build a set of backups per tenant.
  */
-open class MtSharedTableBackupManagerImpl(region: String, val s3BucketName: String) : MtBackupManager {
+open class MtSharedTableBackupManagerImpl(val s3: AmazonS3, val s3BucketName: String) : MtBackupManager {
 
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManagerImpl::class.java)
-    val s3: AmazonS3 = AmazonS3ClientBuilder.standard().withRegion(region).build()
 
     /**
      * At the moment, a naive (json) serializer is used to write and read backup snapshots.
