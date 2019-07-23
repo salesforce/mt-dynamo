@@ -43,7 +43,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerImpl;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
@@ -180,7 +180,7 @@ public class SharedTableBuilder implements TableBuilder {
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
-    private MtBackupManager backupManager;
+    private MtSharedTableBackupManagerBuilder backupManagerBuilder;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
@@ -229,7 +229,7 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     public SharedTableBuilder withBackupSupport(AmazonS3 s3Client, String backupS3BucketName) {
-        this.backupManager = new MtSharedTableBackupManagerImpl(s3Client, backupS3BucketName);
+        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName);
         return this;
     }
 
@@ -311,7 +311,7 @@ public class SharedTableBuilder implements TableBuilder {
             clock,
             tableMappingCache,
             meterRegistry,
-            Optional.ofNullable(backupManager),
+            Optional.ofNullable(backupManagerBuilder),
             scanTenantKey,
             scanVirtualTableKey);
     }

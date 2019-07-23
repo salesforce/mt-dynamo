@@ -28,6 +28,8 @@ import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupsResult
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest
@@ -37,6 +39,7 @@ import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import java.util.stream.Collectors
 
 /**
  * Integration tests for mt-dynamo backup logic, integrated with mock s3. To run this, there are two options:
@@ -134,28 +137,65 @@ internal class MtBackupManagerS3It {
 
     @Test
     fun testListBackups() {
-        val backupIds = Lists.newArrayList<String>()
+        val backupIds = createJustBackupMetadatas(3)
+        try {
+
+            val listBackupResult: ListMtBackupsResult = backupManager!!.listMtBackups(ListMtBackupRequest())
+            assertTrue(listBackupResult.backupSummaries.size == 3)
+        } finally {
+            for (backup in backupIds) {
+                backupManager!!.deleteBackup(backup)
+                assertNull(backupManager!!.getBackup(backup))
+            }
+        }
+    }
+
+    /**
+     * Create just backup metadatas used to validate list backup tests, and return List of backup ids created.
+     */
+    private fun createJustBackupMetadatas(numBackups: Int): List<String> {
+        val ret = Lists.newArrayList<String>()
         backupManager =
-                object : MtSharedTableBackupManagerImpl(s3!!, bucket) {
+                object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!) {
 
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(
-                        createMtBackupRequest: CreateMtBackupRequest,
-                        mtDynamo: MtAmazonDynamoDbBySharedTable
+                            createMtBackupRequest: CreateMtBackupRequest
                     ): List<MtTableDescriptionRepo.TenantTableMetadata> {
                         return ImmutableList.of()
                     }
                 }
-        try {
-            for (i in 1..3) {
-                val backupId = "testListBackup-$i"
-                backupIds.add(backupId)
-                backupManager!!.createMtBackup(
-                        CreateMtBackupRequest(backupId), sharedTableBinaryHashKey!!)
-            }
+        for (i in 1..numBackups) {
+            val backupId = "testListBackup-$i"
+            ret.add(backupId)
+            backupManager!!.createMtBackup(
+                    CreateMtBackupRequest(backupId))
+        }
+        return ret
+    }
 
-            val allBackups: List<MtBackupMetadata> = backupManager!!.listMtBackups()
-            assertTrue(allBackups.size >= 3)
+    @Test
+    fun testListBackups_empty() {
+        val listBackupResult: ListMtBackupsResult = backupManager!!.listMtBackups(ListMtBackupRequest())
+        assertTrue(listBackupResult.backupSummaries.size == 0)
+        assertNull(listBackupResult.lastEvaluatedBackupArn)
+    }
+
+    @Test
+    fun testListBackups_pagination() {
+        val backupIds : List<String> = createJustBackupMetadatas(7)
+        try {
+            val firstResult = backupManager!!.listMtBackups(ListMtBackupRequest(backupLimit = 5))
+            assertEquals(4, firstResult.backupSummaries.size)
+            assertEquals(backupIds.subList(0,4),
+                    firstResult.backupSummaries.stream().map {s->s.backupName}.collect(Collectors.toList()))
+            assertNotNull(firstResult.lastEvaluatedBackup)
+            val theRest = backupManager!!.listMtBackups(
+                    ListMtBackupRequest(backupLimit = 4, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
+            assertEquals(3, theRest.backupSummaries.size)
+            assertEquals(backupIds.subList(4,7),
+                    theRest.backupSummaries.stream().map { s->s.backupName }.collect(Collectors.toList()))
+
         } finally {
             for (backup in backupIds) {
                 backupManager!!.deleteBackup(backup)

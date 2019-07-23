@@ -138,7 +138,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Clock clock,
                                          Cache<Object, TableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry,
-                                         Optional<MtBackupManager> backupManager,
+                                         Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
                                          String scanVirtualTableKey) {
         super(mtContext, amazonDynamoDb, meterRegistry);
@@ -154,7 +154,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.clock = clock;
         this.scanTenantKey = scanTenantKey;
         this.scanVirtualTableKey = scanVirtualTableKey;
-        this.backupManager = backupManager;
+        this.backupManager = backupManager.map(b->b.build(this));
     }
 
     long getGetRecordsTimeLimit() {
@@ -612,9 +612,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         CreateMtBackupRequest createMtBackupRequest = new CreateMtBackupRequest(createBackupRequest.getBackupName());
         if (backupManager.isPresent()) {
-            backupManager.get().createMtBackup(createMtBackupRequest, this);
+            backupManager.get().createMtBackup(createMtBackupRequest);
             for (String tableName : mtTables.keySet()) {
-                backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName, this);
+                backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName);
             }
             MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createMtBackupRequest);
             return new CreateBackupResult().withBackupDetails(
