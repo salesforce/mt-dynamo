@@ -182,14 +182,14 @@ internal class MtSharedTableBackupManagerS3It {
     fun testListBackups_pagination() {
         val backupIds: List<String> = createJustBackupMetadatas(7)
         try {
-            val firstResult = backupManager!!.listMtBackups(ListMtBackupRequest(backupLimit = 5))
-            assertEquals(4, firstResult.backupSummaries.size)
-            assertEquals(backupIds.subList(0, 4),
+            val firstResult = backupManager!!.listMtBackups(ListMtBackupRequest(backupLimit = 4))
+            assertTrue(firstResult.backupSummaries.size <= 4)
+            assertEquals(backupIds.subList(0, firstResult.backupSummaries.size),
                     firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
             assertNotNull(firstResult.lastEvaluatedBackup)
             val theRest = backupManager!!.listMtBackups(
-                    ListMtBackupRequest(backupLimit = 4, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
-            assertEquals(3, theRest.backupSummaries.size)
+                    ListMtBackupRequest(backupLimit = 5, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
+            assertEquals(7 - firstResult.backupSummaries.size, theRest.backupSummaries.size)
             assertEquals(backupIds.subList(4, 7),
                     theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         } finally {
