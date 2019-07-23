@@ -3,18 +3,14 @@
  * SPDX-License-Identifier: BSD-3-Clause.
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
-package com.salesforce.dynamodbv2.mt.mappers.sharedtable
+package com.salesforce.dynamodbv2.mt.mappers
 import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
-import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -66,11 +62,6 @@ interface MtBackupManager {
      */
     fun deleteBackup(id: String): MtBackupMetadata?
 
-    fun fromDynamoCreateBackupRequest(createBackupRequest: CreateBackupRequest): CreateMtBackupRequest =
-            CreateMtBackupRequest(createBackupRequest.backupName)
-
-    fun fromDescribeBackupRequest(describeBackupRequest: DescribeBackupRequest): MtBackupMetadata
-
     /**
      * Get details of a given table-tenant backup.
      */
@@ -120,13 +111,13 @@ data class MtBackupMetadata(
     }
 }
 
-class ListMtBackupRequest(backupLimit : Int = 5, val exclusiveStartBackup : BackupSummary? = null): ListBackupsRequest() {
+class ListMtBackupRequest(backupLimit: Int = 5, val exclusiveStartBackup: BackupSummary? = null) : ListBackupsRequest() {
     init {
         this.limit = backupLimit
     }
 }
 
-class ListMtBackupsResult(backups: List<BackupSummary>, val lastEvaluatedBackup: BackupSummary?): ListBackupsResult() {
+class ListMtBackupsResult(backups: List<BackupSummary>, val lastEvaluatedBackup: BackupSummary?) : ListBackupsResult() {
     init {
         setBackupSummaries(backups)
     }

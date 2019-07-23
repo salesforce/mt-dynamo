@@ -8,7 +8,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
-import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.AmazonS3Exception
@@ -34,17 +33,17 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupsResult
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupAwsAdaptor
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupException
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.Status
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantTableBackupMetadata
+import com.salesforce.dynamodbv2.mt.mappers.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupsResult
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupAwsAdaptor
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupException
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupManager
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.mappers.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.Status
+import com.salesforce.dynamodbv2.mt.mappers.TenantRestoreMetadata
+import com.salesforce.dynamodbv2.mt.mappers.TenantTableBackupMetadata
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.util.stream.Collectors
@@ -53,8 +52,11 @@ import java.util.stream.Collectors
  * Take an instance of {@link MtAmazonDynamoDbBySharedTable}, and using relatively naive scans across each table,
  * build a set of backups per tenant.
  */
-open class MtSharedTableBackupManager(val s3: AmazonS3, val s3BucketName: String,
-                                      val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable) : MtBackupManager {
+open class MtSharedTableBackupManager(
+    val s3: AmazonS3,
+    val s3BucketName: String,
+    val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable
+) : MtBackupManager {
 
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
@@ -238,7 +240,7 @@ open class MtSharedTableBackupManager(val s3: AmazonS3, val s3BucketName: String
 
     override fun listMtBackups(listMtBackupRequest: ListMtBackupRequest): ListMtBackupsResult {
         val ret = Lists.newArrayList<BackupSummary>()
-        val startAfter : String? = if (listMtBackupRequest.exclusiveStartBackup == null) null
+        val startAfter: String? = if (listMtBackupRequest.exclusiveStartBackup == null) null
             else getBackupMetadataFile(listMtBackupRequest.exclusiveStartBackup.backupName)
         val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
                 ListObjectsV2Request()
@@ -251,7 +253,7 @@ open class MtSharedTableBackupManager(val s3: AmazonS3, val s3BucketName: String
             val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
             ret.add(backup)
         }
-        var lastEvaluatedBackup : BackupSummary? = null
+        var lastEvaluatedBackup: BackupSummary? = null
         if (listBucketResult.isTruncated) {
             lastEvaluatedBackup = Iterables.getLast(ret)
         }
@@ -270,10 +272,6 @@ open class MtSharedTableBackupManager(val s3: AmazonS3, val s3BucketName: String
                 throw e
             }
         }
-    }
-
-    override fun fromDescribeBackupRequest(describeBackupRequest: DescribeBackupRequest): MtBackupMetadata {
-        return getBackup(describeBackupRequest.backupArn)!!
     }
 
     override fun deleteBackup(id: String): MtBackupMetadata? {
@@ -414,7 +412,6 @@ open class MtSharedTableBackupManager(val s3: AmazonS3, val s3BucketName: String
 }
 
 data class TenantTableRow(val attributeMap: Map<String, AttributeValue>)
-
 
 class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String) {
     fun build(sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable): MtSharedTableBackupManager {

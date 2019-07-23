@@ -10,7 +10,6 @@ import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
-import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
@@ -27,13 +26,12 @@ import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.ListMtBackupsResult
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.Status
+import com.salesforce.dynamodbv2.mt.mappers.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupsResult
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupManager
+import com.salesforce.dynamodbv2.mt.mappers.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.mappers.Status
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
@@ -47,7 +45,7 @@ import java.util.stream.Collectors
  *  - run `docker run -p 9090:9090 -p 9191:9191 -e initialBuckets=test-basic-backup-create -t adobe/s3mock:latest`
  *      to start mock s3 sidecar docker container, and kick of these tests from an IDE
  */
-internal class MtBackupManagerS3It {
+internal class MtSharedTableBackupManagerS3It {
 
     companion object {
         val REGION = "us-east-1"
@@ -104,14 +102,13 @@ internal class MtBackupManagerS3It {
 
         try {
             MT_CONTEXT.withContext(null) {
-                sharedTableBinaryHashKey!!.createBackup(CreateBackupRequest().withBackupName(backupId))
+                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(backupId))
                 val mtBackupMetadata = backupManager!!.getBackup(backupId)
                 assertNotNull(mtBackupMetadata)
                 assertEquals(backupId, mtBackupMetadata!!.mtBackupId)
                 assertEquals(Status.COMPLETE, mtBackupMetadata.status)
                 assertTrue(mtBackupMetadata.tenantTables.size > 0)
             }
-
             val newRestoreTableName = tableName + "-copy"
             MT_CONTEXT.withContext(tenant) {
                 val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
@@ -160,7 +157,7 @@ internal class MtBackupManagerS3It {
 
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(
-                            createMtBackupRequest: CreateMtBackupRequest
+                        createMtBackupRequest: CreateMtBackupRequest
                     ): List<MtTableDescriptionRepo.TenantTableMetadata> {
                         return ImmutableList.of()
                     }
@@ -183,19 +180,18 @@ internal class MtBackupManagerS3It {
 
     @Test
     fun testListBackups_pagination() {
-        val backupIds : List<String> = createJustBackupMetadatas(7)
+        val backupIds: List<String> = createJustBackupMetadatas(7)
         try {
             val firstResult = backupManager!!.listMtBackups(ListMtBackupRequest(backupLimit = 5))
             assertEquals(4, firstResult.backupSummaries.size)
-            assertEquals(backupIds.subList(0,4),
-                    firstResult.backupSummaries.stream().map {s->s.backupName}.collect(Collectors.toList()))
+            assertEquals(backupIds.subList(0, 4),
+                    firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
             assertNotNull(firstResult.lastEvaluatedBackup)
             val theRest = backupManager!!.listMtBackups(
                     ListMtBackupRequest(backupLimit = 4, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
             assertEquals(3, theRest.backupSummaries.size)
-            assertEquals(backupIds.subList(4,7),
-                    theRest.backupSummaries.stream().map { s->s.backupName }.collect(Collectors.toList()))
-
+            assertEquals(backupIds.subList(4, 7),
+                    theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         } finally {
             for (backup in backupIds) {
                 backupManager!!.deleteBackup(backup)

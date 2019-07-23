@@ -15,6 +15,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BackupDetails;
+import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
@@ -55,14 +56,16 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.mappers.CreateMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupAwsAdaptorKt;
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupException;
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.mappers.MtBackupMetadata;
+import com.salesforce.dynamodbv2.mt.mappers.RestoreMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.mappers.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateMtBackupRequest;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupManager;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.MtBackupMetadata;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.RestoreMtBackupRequest;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -154,7 +157,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.clock = clock;
         this.scanTenantKey = scanTenantKey;
         this.scanVirtualTableKey = scanVirtualTableKey;
-        this.backupManager = backupManager.map(b->b.build(this));
+        this.backupManager = backupManager.map(b -> b.build(this));
     }
 
     long getGetRecordsTimeLimit() {
@@ -599,7 +602,21 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
-        throw new UnsupportedOperationException();
+        if (backupManager.isPresent()) {
+            if (getMtContext().getContextOpt().isPresent()) {
+                throw new UnsupportedOperationException("TODO: Implement tenant table backup describe");
+            }
+            MtBackupMetadata backupMetadata = getBackupManager().getBackup(describeBackupRequest.getBackupArn());
+            if (backupMetadata != null) {
+                return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
+            } else {
+                throw new BackupNotFoundException("No backup with arn "
+                    + describeBackupRequest.getBackupArn() + "found");
+            }
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
     }
 
     /**
@@ -610,8 +627,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
-        CreateMtBackupRequest createMtBackupRequest = new CreateMtBackupRequest(createBackupRequest.getBackupName());
         if (backupManager.isPresent()) {
+            if (!(createBackupRequest instanceof CreateMtBackupRequest)) {
+                throw new MtBackupException("Create instance of {@link CreateMtBackupRequest} required");
+            }
+            CreateMtBackupRequest createMtBackupRequest = (CreateMtBackupRequest)createBackupRequest;
             backupManager.get().createMtBackup(createMtBackupRequest);
             for (String tableName : mtTables.keySet()) {
                 backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName);
