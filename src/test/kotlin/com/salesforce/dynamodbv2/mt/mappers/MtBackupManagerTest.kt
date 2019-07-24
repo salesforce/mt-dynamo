@@ -7,6 +7,10 @@ package com.salesforce.dynamodbv2.mt.mappers
 
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.google.common.collect.ImmutableSet
+import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
+import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.util.*

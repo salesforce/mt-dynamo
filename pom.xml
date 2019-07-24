@@ -399,8 +399,11 @@
                             <!-- Overriding the default pattern is necessary because all of the plugin's default patterns
                                  contain 'IT' which is disallowed by our checkstyle. -->
                             <includes>
-                                <include>**/*It.java</include>
+                                <include>**/*It</include>
                             </includes>
+                            <excludes>
+                                <exclude>**/*S3It</exclude>
+                            </excludes>
                             <skipITs>false</skipITs>
                         </configuration>
                         <executions>

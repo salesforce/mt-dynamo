@@ -26,12 +26,12 @@ import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.mappers.CreateMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.ListMtBackupsResult
-import com.salesforce.dynamodbv2.mt.mappers.MtBackupManager
-import com.salesforce.dynamodbv2.mt.mappers.RestoreMtBackupRequest
-import com.salesforce.dynamodbv2.mt.mappers.Status
+import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest
+import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest
+import com.salesforce.dynamodbv2.mt.backups.ListMtBackupsResult
+import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
+import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.backups.Status
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
@@ -102,7 +102,7 @@ internal class MtSharedTableBackupManagerS3It {
 
         try {
             MT_CONTEXT.withContext(null) {
-                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(backupId))
+                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(backupId, shouldSnapshotTables = false))
                 val mtBackupMetadata = backupManager!!.getBackup(backupId)
                 assertNotNull(mtBackupMetadata)
                 assertEquals(backupId, mtBackupMetadata!!.mtBackupId)
@@ -166,7 +166,7 @@ internal class MtSharedTableBackupManagerS3It {
             val backupId = "testListBackup-$i"
             ret.add(backupId)
             backupManager!!.createMtBackup(
-                    CreateMtBackupRequest(backupId))
+                    CreateMtBackupRequest(backupId, shouldSnapshotTables = false))
         }
         return ret
     }

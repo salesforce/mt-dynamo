@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause.
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
-package com.salesforce.dynamodbv2.mt.mappers
+package com.salesforce.dynamodbv2.mt.backups
 import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
@@ -11,6 +11,8 @@ import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -133,7 +135,7 @@ data class TenantTableBackupMetadata(
 
 data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
-data class CreateMtBackupRequest(val backupId: String) : CreateBackupRequest() {
+data class CreateMtBackupRequest(val backupId: String, val shouldSnapshotTables: Boolean) : CreateBackupRequest() {
     init {
         backupName = backupId
     }
@@ -153,6 +155,14 @@ class MtBackupException(message: String) : AmazonDynamoDBException(message)
 
 enum class Status {
     IN_PROGRESS,
+    COMPLETE,
+    FAILED
+}
+
+enum class StatusDetail {
+    METADATA_SNAPSHOT,
+    TABLE_SNAPSHOTTING,
+    SNAPSHOT_SCANNING,
     COMPLETE,
     FAILED
 }

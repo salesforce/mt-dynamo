@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: BSD-3-Clause.
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
-package com.salesforce.dynamodbv2.mt.mappers
+package com.salesforce.dynamodbv2.mt.backups
 
 import com.amazonaws.services.dynamodbv2.model.BackupDescription
 import com.amazonaws.services.dynamodbv2.model.BackupDetails

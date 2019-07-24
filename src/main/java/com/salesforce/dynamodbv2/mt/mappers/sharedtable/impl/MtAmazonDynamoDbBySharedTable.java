@@ -16,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BackupDetails;
 import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
+import com.amazonaws.services.dynamodbv2.model.BackupStatus;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
@@ -54,16 +55,17 @@ import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata;
+import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.CreateMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
-import com.salesforce.dynamodbv2.mt.mappers.MtBackupAwsAdaptorKt;
-import com.salesforce.dynamodbv2.mt.mappers.MtBackupException;
-import com.salesforce.dynamodbv2.mt.mappers.MtBackupManager;
-import com.salesforce.dynamodbv2.mt.mappers.MtBackupMetadata;
-import com.salesforce.dynamodbv2.mt.mappers.RestoreMtBackupRequest;
-import com.salesforce.dynamodbv2.mt.mappers.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
@@ -633,6 +635,57 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             }
             CreateMtBackupRequest createMtBackupRequest = (CreateMtBackupRequest)createBackupRequest;
             backupManager.get().createMtBackup(createMtBackupRequest);
+            List<CreateBackupResult> backups = Lists.newArrayList();
+            for (String tableName : mtTables.keySet()) {
+                CreateBackupResult backupResult = getAmazonDynamoDb().createBackup(
+                    new CreateBackupRequest()
+                        .withTableName(tableName)
+                        .withBackupName(createBackupRequest.getBackupName() + '-' + tableName));
+                backups.add(backupResult);
+            }
+
+            boolean finishedBackingUp = false;
+            do {
+                List<BackupDetails> backupDetails = Lists.newArrayList();
+                for (CreateBackupResult backup : backups) {
+                    backupDetails.add(getAmazonDynamoDb().describeBackup(
+                        new DescribeBackupRequest().withBackupArn(backup.getBackupDetails().getBackupArn())
+                    ).getBackupDescription().getBackupDetails());
+                }
+                int numBackupsReady = 0;
+                int numBackupsWaiting = 0;
+                for (BackupDetails backup : backupDetails) {
+                    if (backup.getBackupStatus().equals(BackupStatus.AVAILABLE.name())) {
+                        numBackupsReady++;
+                    } else {
+                        numBackupsWaiting++;
+                    }
+                }
+                log.info("Backup " + createBackupRequest.getBackupName() + " in progress. " + numBackupsReady
+                    + " ready for restore and " + numBackupsWaiting + " waiting. " + backupDetails);
+                if (numBackupsWaiting == 0 && numBackupsReady == backups.size()) {
+                    finishedBackingUp = true;
+                } else {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        log.info("Caught interrupt");
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            } while (!finishedBackingUp);
+
+
+            List<RestoreTableFromBackupResult> restoreResults = Lists.newArrayList();
+            for (CreateBackupResult backupResult : backups) {
+                RestoreTableFromBackupResult restoreResult = getAmazonDynamoDb().restoreTableFromBackup(
+                    new RestoreTableFromBackupRequest()
+                    .withBackupArn(backupResult.getBackupDetails().getBackupArn())
+                    .withTargetTableName(backupResult.getBackupDetails().getBackupName()));
+                restoreResults.add(restoreResult);
+            }
+
             for (String tableName : mtTables.keySet()) {
                 backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName);
             }
