@@ -29,10 +29,6 @@ import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
-import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.ListMtBackupsResult
@@ -44,6 +40,10 @@ import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.Status
 import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata
 import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.util.stream.Collectors
