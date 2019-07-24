@@ -64,7 +64,7 @@ public class CompositeStrings {
      * @return Sequence of keys contained in the given composite key
      */
     public Iterator<String> split(String composite) {
-        return new Iterator<>() {
+        return new Iterator<String>() {
 
             private int index = 0;
             private String value;
