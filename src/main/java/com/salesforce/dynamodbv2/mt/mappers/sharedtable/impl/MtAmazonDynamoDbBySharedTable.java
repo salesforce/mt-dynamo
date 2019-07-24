@@ -635,56 +635,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             }
             CreateMtBackupRequest createMtBackupRequest = (CreateMtBackupRequest)createBackupRequest;
             backupManager.get().createMtBackup(createMtBackupRequest);
-            List<CreateBackupResult> backups = Lists.newArrayList();
-            for (String tableName : mtTables.keySet()) {
-                CreateBackupResult backupResult = getAmazonDynamoDb().createBackup(
-                    new CreateBackupRequest()
-                        .withTableName(tableName)
-                        .withBackupName(createBackupRequest.getBackupName() + '-' + tableName));
-                backups.add(backupResult);
-            }
-
-            boolean finishedBackingUp = false;
-            do {
-                List<BackupDetails> backupDetails = Lists.newArrayList();
-                for (CreateBackupResult backup : backups) {
-                    backupDetails.add(getAmazonDynamoDb().describeBackup(
-                        new DescribeBackupRequest().withBackupArn(backup.getBackupDetails().getBackupArn())
-                    ).getBackupDescription().getBackupDetails());
-                }
-                int numBackupsReady = 0;
-                int numBackupsWaiting = 0;
-                for (BackupDetails backup : backupDetails) {
-                    if (backup.getBackupStatus().equals(BackupStatus.AVAILABLE.name())) {
-                        numBackupsReady++;
-                    } else {
-                        numBackupsWaiting++;
-                    }
-                }
-                log.info("Backup " + createBackupRequest.getBackupName() + " in progress. " + numBackupsReady
-                    + " ready for restore and " + numBackupsWaiting + " waiting. " + backupDetails);
-                if (numBackupsWaiting == 0 && numBackupsReady == backups.size()) {
-                    finishedBackingUp = true;
-                } else {
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException e) {
-                        log.info("Caught interrupt");
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            } while (!finishedBackingUp);
-
-
-            List<RestoreTableFromBackupResult> restoreResults = Lists.newArrayList();
-            for (CreateBackupResult backupResult : backups) {
-                RestoreTableFromBackupResult restoreResult = getAmazonDynamoDb().restoreTableFromBackup(
-                    new RestoreTableFromBackupRequest()
-                    .withBackupArn(backupResult.getBackupDetails().getBackupArn())
-                    .withTargetTableName(backupResult.getBackupDetails().getBackupName()));
-                restoreResults.add(restoreResult);
-            }
 
             for (String tableName : mtTables.keySet()) {
                 backupManager.get().backupPhysicalMtTable(createMtBackupRequest, tableName);

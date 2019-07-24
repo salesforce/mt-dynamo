@@ -190,7 +190,7 @@ internal class MtSharedTableBackupManagerS3It {
             val theRest = backupManager!!.listMtBackups(
                     ListMtBackupRequest(backupLimit = 5, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
             assertEquals(7 - firstResult.backupSummaries.size, theRest.backupSummaries.size)
-            assertEquals(backupIds.subList(4, 7),
+            assertEquals(backupIds.subList(3, 7),
                     theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         } finally {
             for (backup in backupIds) {
