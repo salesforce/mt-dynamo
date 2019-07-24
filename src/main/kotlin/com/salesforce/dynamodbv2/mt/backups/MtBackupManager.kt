@@ -12,7 +12,6 @@ import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
