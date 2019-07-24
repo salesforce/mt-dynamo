@@ -179,14 +179,13 @@ open class MtSharedTableBackupManager(
      */
     override fun restoreTenantTableBackup(
         restoreMtBackupRequest: RestoreMtBackupRequest,
-        mtDynamo: MtAmazonDynamoDbBase,
         mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
         val startTime = System.currentTimeMillis()
         // restore tenant-table metadata
         val createTableReq: CreateTableRequest = getTenantTableMetadata(restoreMtBackupRequest.backupId, restoreMtBackupRequest.tenantTableBackup)
         mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
-            mtDynamo.createTable(createTableReq.withTableName(restoreMtBackupRequest.newTenantTable.virtualTableName))
+            sharedTableMtDynamo.createTable(createTableReq.withTableName(restoreMtBackupRequest.newTenantTable.virtualTableName))
         }
 
         // restore tenant-table data
@@ -197,7 +196,7 @@ open class MtSharedTableBackupManager(
                     object : TypeToken<List<TenantTableRow>>() {}.type)
             for (row in rowsToInsert) {
                 mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
-                    mtDynamo.putItem(restoreMtBackupRequest.newTenantTable.virtualTableName, row.attributeMap)
+                    sharedTableMtDynamo.putItem(restoreMtBackupRequest.newTenantTable.virtualTableName, row.attributeMap)
                 }
             }
         }

@@ -591,7 +591,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             }
             TenantRestoreMetadata restoreMetadata = backupManager.get().restoreTenantTableBackup(
                 (RestoreMtBackupRequest)restoreTableFromBackupRequest,
-                this,
                 getMtContext());
 
             return new RestoreTableFromBackupResult().withTableDescription(

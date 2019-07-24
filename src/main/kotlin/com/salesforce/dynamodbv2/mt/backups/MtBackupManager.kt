@@ -74,7 +74,6 @@ interface MtBackupManager {
      */
     fun restoreTenantTableBackup(
         restoreMtBackupRequest: RestoreMtBackupRequest,
-        mtDynamo: MtAmazonDynamoDbBase,
         mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata
 
