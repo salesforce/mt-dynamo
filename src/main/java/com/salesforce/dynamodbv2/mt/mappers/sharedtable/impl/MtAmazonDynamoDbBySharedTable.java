@@ -686,6 +686,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             } finally {
                 for (SnapshotResult result : snapshotResults) {
                     backupManager.get().getMtBackupTableSnapshotter().cleanup(result, getAmazonDynamoDb());
+                    mtTables.remove(result.getTempSnapshotTable());
                 }
             }
         } else {
