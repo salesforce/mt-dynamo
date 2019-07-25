@@ -100,11 +100,11 @@ data class MtBackupMetadata(
             throw MtBackupException("Trying to merge a backup with a different backup id, " +
                     "this: $mtBackupName, other: ${newBackupMetadata.mtBackupName}")
         }
-        val tenantTableCount : HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
+        val tenantTableCount: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
         tenantTableCount.putAll(tenantTables)
         for (tenantTable in newBackupMetadata.tenantTables.keys) {
-            tenantTableCount.put(tenantTable, tenantTables.getOrDefault(tenantTable, 0L)
-                    + newBackupMetadata.tenantTables.get(tenantTable)!!)
+            tenantTableCount.put(tenantTable, tenantTables.getOrDefault(tenantTable, 0L) +
+                    newBackupMetadata.tenantTables.get(tenantTable)!!)
         }
         return MtBackupMetadata(mtBackupName,
                 newBackupMetadata.status, // use status of new metadata

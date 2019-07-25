@@ -7,7 +7,6 @@ package com.salesforce.dynamodbv2.mt.mappers
 
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.google.common.collect.ImmutableMap
-import com.google.common.collect.ImmutableSet
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
 import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.backups.Status

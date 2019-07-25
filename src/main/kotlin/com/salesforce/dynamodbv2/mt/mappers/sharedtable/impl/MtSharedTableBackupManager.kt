@@ -83,7 +83,6 @@ open class MtSharedTableBackupManager(
                 override fun shouldSkipField(field: FieldAttributes): Boolean {
                     return false
                 }
-
             }).enableComplexMapKeySerialization().create()
     val ignoreClassesOfCreateTableRequest: Set<String> = ImmutableSet.of(
             "com.amazonaws.RequestClientOptions",
@@ -103,7 +102,7 @@ open class MtSharedTableBackupManager(
                             createMtBackupRequest.backupName,
                             metadata.tenantTable.tenantName,
                             metadata.tenantTable.virtualTableName) }
-                    .associateBy({it}, {0L})
+                    .associateBy({ it }, { 0L })
             val newMetadata = MtBackupMetadata(createMtBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, System.currentTimeMillis())
             commitBackupMetadata(newMetadata)
@@ -302,7 +301,7 @@ open class MtSharedTableBackupManager(
         if (deleteCount > 0) {
             logger.info("$id: Deleted $deleteCount backup files for $id")
         }
-        //val ret = getBackup(id)
+        // val ret = getBackup(id)
         s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
         return null
     }
@@ -356,7 +355,7 @@ open class MtSharedTableBackupManager(
         mtDynamo: MtAmazonDynamoDbBase
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
-        val tenantTables : HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
+        val tenantTables: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
         var numPasses = 0
         do {
             val scanRequest: ScanRequest = ScanRequest(physicalTableName)
