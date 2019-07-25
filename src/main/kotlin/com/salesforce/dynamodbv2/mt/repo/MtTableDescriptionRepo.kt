@@ -7,7 +7,6 @@ package com.salesforce.dynamodbv2.mt.repo
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.TableDescription
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 
 /**
  * Interface for managing table metadata of multitenant virtual tables within mt-dynamo.
@@ -48,18 +47,23 @@ interface MtTableDescriptionRepo {
      */
     fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
 
-    data class ListMetadataResult(val metadataList: List<TenantTableMetadata>, val lastEvaluatedTable: TenantTableMetadata?)
-    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: TenantTableMetadata? = null) {
+    data class ListMetadataResult(
+        val createTableRequests: List<MtCreateTableRequest>,
+        val lastEvaluatedTable: MtCreateTableRequest?
+    )
+    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {
         fun withLimit(limit: Int): ListMetadataRequest {
             this.limit = limit
             return this
         }
 
-        fun withExclusiveStartKey(startKey: TenantTableMetadata?): ListMetadataRequest {
+        fun withExclusiveStartKey(startKey: MtCreateTableRequest?): ListMetadataRequest {
             exclusiveStartTableMetadata = startKey
             return this
         }
     }
-
-    data class TenantTableMetadata(val tenantTable: TenantTable, val createTableRequest: CreateTableRequest)
+    data class MtCreateTableRequest(
+        val tenantName: String,
+        val createTableRequest: CreateTableRequest
+    )
 }

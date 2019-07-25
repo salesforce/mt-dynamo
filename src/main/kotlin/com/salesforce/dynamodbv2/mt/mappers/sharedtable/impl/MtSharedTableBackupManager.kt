@@ -102,8 +102,8 @@ open class MtSharedTableBackupManager(
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
                     .map { metadata -> TenantTableBackupMetadata(
                             createMtBackupRequest.backupName,
-                            metadata.tenantTable.tenantName,
-                            metadata.tenantTable.virtualTableName) }
+                            metadata.tenantName,
+                            metadata.createTableRequest.tableName) }
                     .associateBy({ it }, { 0L })
             val newMetadata = MtBackupMetadata(createMtBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, System.currentTimeMillis())
@@ -115,13 +115,13 @@ open class MtSharedTableBackupManager(
 
     open fun backupVirtualTableMetadata(
         createMtBackupRequest: CreateMtBackupRequest
-    ): List<MtTableDescriptionRepo.TenantTableMetadata> {
+    ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
         val startTime = System.currentTimeMillis()
         // write out table metadata
-        val startKey: MtTableDescriptionRepo.TenantTableMetadata? = null
+        val startKey: MtTableDescriptionRepo.MtCreateTableRequest? = null
         val batchSize = 100
         var tenantTableCount = 0
-        val tenantTables = Lists.newArrayList<MtTableDescriptionRepo.TenantTableMetadata>()
+        val tenantTables = Lists.newArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
         do {
             val listTenantMetadataResult =
                     sharedTableMtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
@@ -129,8 +129,8 @@ open class MtSharedTableBackupManager(
                                 .withExclusiveStartKey(startKey)
                                 .withLimit(batchSize))
             commitTenantTableMetadata(createMtBackupRequest.backupName, listTenantMetadataResult)
-            tenantTables.addAll(listTenantMetadataResult.metadataList)
-            tenantTableCount += listTenantMetadataResult.metadataList.size
+            tenantTables.addAll(listTenantMetadataResult.createTableRequests)
+            tenantTableCount += listTenantMetadataResult.createTableRequests.size
         } while (listTenantMetadataResult.lastEvaluatedTable != null)
         logger.info("${createMtBackupRequest.backupName}: Finished generating backup metadata for " +
                 "${tenantTables.size} virtual table in ${System.currentTimeMillis() - startTime} ms")
@@ -317,13 +317,13 @@ open class MtSharedTableBackupManager(
         backupId: String,
         tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
     ) {
-        for (tenantTableMetadata in tenantTableMetadatas.metadataList) {
+        for (tenantTableMetadata in tenantTableMetadatas.createTableRequests) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
             objectMetadata.contentType = "application/json"
             val putObjectReq = PutObjectRequest(s3BucketName,
-                    getTenantTableMetadataFile(backupId, tenantTableMetadata.tenantTable),
+                    getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName)),
                     gson.toJson(tenantTableMetadata.createTableRequest).byteInputStream(charset),
                     objectMetadata)
             s3.putObject(putObjectReq)
@@ -376,8 +376,8 @@ open class MtSharedTableBackupManager(
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
             for (i in 0..(scanResult.items.size - 1)) {
                 val row = scanResult.items[i]
-                val tenant = row.get(MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY)!!.s
-                val virtualTable = row.get(MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY)!!.s
+                val tenant = row.get(sharedTableMtDynamo.scanTenantKey)!!.s
+                val virtualTable = row.get(sharedTableMtDynamo.scanVirtualTableKey)!!.s
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
                         TenantTableRow(scanResult.items[i]))
             }

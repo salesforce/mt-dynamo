@@ -31,7 +31,6 @@ import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
@@ -168,6 +167,13 @@ import java.util.stream.Collectors;
 public class SharedTableBuilder implements TableBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_table_metadata";
+
+    /**
+     * Special default "column" key returned to client on multitenant scans. Configurable by clients if needed.
+     */
+    private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
+    private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
+
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
@@ -194,8 +200,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Cache<Object, TableMapping> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
-    private String scanTenantKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_TENANT_KEY;
-    private String scanVirtualTableKey = MtAmazonDynamoDbBase.DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
+    private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
+    private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -389,7 +395,8 @@ public class SharedTableBuilder implements TableBuilder {
                 .withTableDescriptionCache(tableDescriptionCache)
                 .build();
 
-            ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo).createDefaultDescriptionTable();
+            ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo)
+                .createDefaultDescriptionTable();
         }
         if (getRecordsTimeLimit == null) {
             getRecordsTimeLimit = 5000L;

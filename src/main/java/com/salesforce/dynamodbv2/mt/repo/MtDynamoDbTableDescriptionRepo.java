@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
@@ -69,12 +70,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDbAdminUtils adminUtils;
-    private final String tableDescriptionTableName;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
     private final MtCache<TableDescription> cache;
+    private final String prefixedTableDescriptionTableName;
+    private final Supplier<TableDescription> tableDescriptionSupplier;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
                                            BillingMode billingMode,
@@ -90,12 +92,16 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.billingMode = billingMode;
         this.mtContext = mtContext;
         this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
-        this.tableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
+        this.prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
+        this.tableDescriptionSupplier = () -> {
+            createTableDescriptionTableIfNotExists(pollIntervalSeconds);
+            return new TableDescription().withTableName(prefixedTableDescriptionTableName);
+        };
     }
 
     @Override
@@ -135,7 +141,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 new AttributeValue(addPrefix(tableName)))))).getItem();
         if (item == null) {
             throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
-                + tableDescriptionTableName);
+                + getTableDescriptionTableName());
         }
         String tableDataJson = item.get(tableDescriptionTableDataField).getS();
         return jsonToTableData(tableDataJson);
@@ -161,15 +167,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private String getTableDescriptionTableName() {
-        try {
-            cache.get(tableDescriptionTableName, () -> {
-                createTableDescriptionTableIfNotExists(pollIntervalSeconds);
-                return new TableDescription().withTableName(tableDescriptionTableName);
-            });
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        return tableDescriptionTableName;
+        return tableDescriptionSupplier.get().getTableName();
     }
 
     public void createDefaultDescriptionTable() {
@@ -181,7 +179,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         DynamoDbCapacity.setBillingMode(createTableRequest, this.billingMode);
 
         adminUtils.createTableIfNotExists(
-            createTableRequest.withTableName(tableDescriptionTableName)
+            createTableRequest.withTableName(prefixedTableDescriptionTableName)
                 .withKeySchema(new KeySchemaElement().withAttributeName(tableDescriptionTableHashKeyField)
                     .withKeyType(KeyType.HASH))
                 .withAttributeDefinitions(new AttributeDefinition()
@@ -276,10 +274,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
-    private String getHashKey(TenantTableMetadata tenantTableMetadata) {
-        return tenantTableMetadata.getTenantTable().getTenantName()
+    private String getHashKey(MtCreateTableRequest tenantTableMetadata) {
+        return tenantTableMetadata.getTenantName()
             + delimiter
-            + tenantTableMetadata.getTenantTable().getVirtualTableName();
+            + tenantTableMetadata.getCreateTableRequest().getTableName();
     }
 
     private String addPrefix(String tableName) {
@@ -293,7 +291,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        ScanRequest scanReq = new ScanRequest(tableDescriptionTableName);
+        ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
         Map<String, AttributeValue> lastEvaluatedKey =
             Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
                 .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
@@ -304,14 +302,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
         scanReq.setLimit(listMetadataRequest.getLimit());
         scanResult = amazonDynamoDb.scan(scanReq);
-        List<TenantTableMetadata> metadataList = scanResult.getItems().stream()
+        List<MtCreateTableRequest> createTableRequests = scanResult.getItems().stream()
             .map(rowMap ->
-                new TenantTableMetadata(getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()),
+                new MtCreateTableRequest(
+                    getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
                     getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
             .collect(Collectors.toList());
-        TenantTableMetadata lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
-            metadataList.get(metadataList.size() - 1);
-        return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
+        MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
+            createTableRequests.get(createTableRequests.size() - 1);
+        return new ListMetadataResult(createTableRequests, lastEvaluatedMetadata);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {

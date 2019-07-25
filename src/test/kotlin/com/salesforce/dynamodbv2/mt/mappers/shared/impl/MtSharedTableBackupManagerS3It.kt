@@ -166,7 +166,7 @@ internal class MtSharedTableBackupManagerS3It {
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(
                         createMtBackupRequest: CreateMtBackupRequest
-                    ): List<MtTableDescriptionRepo.TenantTableMetadata> {
+                    ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
                         return ImmutableList.of()
                     }
                 }

@@ -116,8 +116,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Map<String, CreateTableRequest> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
-    private final String scanTenantKey;
-    private final String scanVirtualTableKey;
     private final Optional<MtBackupManager> backupManager;
 
     /**
@@ -153,7 +151,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
                                          String scanVirtualTableKey) {
-        super(mtContext, amazonDynamoDb, meterRegistry);
+        super(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
@@ -164,8 +162,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
-        this.scanTenantKey = scanTenantKey;
-        this.scanVirtualTableKey = scanVirtualTableKey;
         this.backupManager = backupManager.map(b -> b.build(this));
     }
 
