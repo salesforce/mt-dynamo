@@ -505,7 +505,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
-//        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
+        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we are working with,
@@ -650,12 +650,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 String snapshottedTable = tableName + "-copy";
                 snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
-                futures.add(executorService.submit(() -> backupManager.get().getMtBackupTableSnapshotter().snapshotTableToTarget(
-                    new SnapshotRequest(createMtBackupRequest.getBackupName(),
-                        tableName,
-                        snapshottedTable,
-                        getAmazonDynamoDb(),
-                        new ProvisionedThroughput(10L, 10L))
+                futures.add(executorService.submit(() ->
+                    backupManager.get()
+                        .getMtBackupTableSnapshotter()
+                        .snapshotTableToTarget(
+                            new SnapshotRequest(createMtBackupRequest.getBackupName(),
+                            tableName,
+                            snapshottedTable,
+                            getAmazonDynamoDb(),
+                            new ProvisionedThroughput(10L, 10L))
                 )));
             }
             List<SnapshotResult> snapshotResults = Lists.newArrayList();
@@ -670,7 +673,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             try {
                 backupManager.get().getMtBackupTableSnapshotter();
                 for (SnapshotResult snapshotResult : snapshotResults) {
-                    backupManager.get().backupPhysicalMtTable(createMtBackupRequest, snapshotResult.getTempSnapshotTable());
+                    backupManager.get().backupPhysicalMtTable(createMtBackupRequest,
+                        snapshotResult.getTempSnapshotTable());
                 }
                 MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createMtBackupRequest);
                 return new CreateBackupResult().withBackupDetails(

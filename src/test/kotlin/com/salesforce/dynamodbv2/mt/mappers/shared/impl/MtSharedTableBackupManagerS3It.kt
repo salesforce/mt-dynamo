@@ -12,10 +12,8 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
@@ -211,10 +209,14 @@ internal class MtSharedTableBackupManagerS3It {
         }
     }
 
+    /**
+     * A mock table snapshotter that relies on naively scanning and copying table versus using on-demand backup features
+     * unavailable on local dynamo.
+     */
     class MtScanningSnapshotter : MtBackupTableSnapshotter() {
         override fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
             val startTime = System.currentTimeMillis()
-            val sourceTableDescription : TableDescription = snapshotRequest.amazonDynamoDb
+            val sourceTableDescription: TableDescription = snapshotRequest.amazonDynamoDb
                 .describeTable(snapshotRequest.sourceTableName).table
             val createTableBuilder = CreateTableRequestBuilder.builder().withTableName(snapshotRequest.targetTableName)
                 .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
@@ -222,9 +224,9 @@ internal class MtSharedTableBackupManagerS3It {
                 .withProvisionedThroughput(
                     snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
                     snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
-                .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter{
+                .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter {
                     a -> sourceTableDescription.keySchema.stream().anyMatch {
-                        k -> a.attributeName.equals(k.attributeName)}}.collect(Collectors.toList()).toTypedArray())
+                        k -> a.attributeName.equals(k.attributeName) } }.collect(Collectors.toList()).toTypedArray())
             snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
 
             var exclusiveStartKey: Map<String, AttributeValue>? = null

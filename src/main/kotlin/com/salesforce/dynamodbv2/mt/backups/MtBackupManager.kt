@@ -5,7 +5,6 @@
  */
 package com.salesforce.dynamodbv2.mt.backups
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest

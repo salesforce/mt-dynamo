@@ -230,14 +230,15 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     public SharedTableBuilder withBackupSupport(AmazonS3 s3Client, String backupS3BucketName) {
-        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName, new MtBackupTableSnapshotter());
-        return this;
+        return this.withBackupSupport(s3Client, backupS3BucketName,
+            new MtBackupTableSnapshotter());
     }
 
     public SharedTableBuilder withBackupSupport(AmazonS3 s3Client,
                                                 String backupS3BucketName,
                                                 MtBackupTableSnapshotter tableSnapshotter) {
-        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName, tableSnapshotter);
+        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName,
+            tableSnapshotter);
         return this;
     }
 

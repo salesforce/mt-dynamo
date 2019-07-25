@@ -50,8 +50,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.charset.Charset
-import java.util.HashMap
-import java.util.concurrent.Executors
+import java.util.*
 import java.util.stream.Collectors
 
 /**
@@ -127,8 +126,8 @@ open class MtSharedTableBackupManager(
             val listTenantMetadataResult =
                     sharedTableMtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
                             MtTableDescriptionRepo.ListMetadataRequest()
-                                    .withExclusiveStartKey(startKey)
-                                    .withLimit(batchSize))
+                                .withExclusiveStartKey(startKey)
+                                .withLimit(batchSize))
             commitTenantTableMetadata(createMtBackupRequest.backupName, listTenantMetadataResult)
             tenantTables.addAll(listTenantMetadataResult.metadataList)
             tenantTableCount += listTenantMetadataResult.metadataList.size
@@ -309,7 +308,7 @@ open class MtSharedTableBackupManager(
         if (deleteCount > 0) {
             logger.info("$id: Deleted $deleteCount backup files for $id")
         }
-         val ret = getBackup(id)
+        val ret = getBackup(id)
         s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
         return ret
     }
