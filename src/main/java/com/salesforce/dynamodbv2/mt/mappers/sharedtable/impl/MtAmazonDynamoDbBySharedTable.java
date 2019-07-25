@@ -623,12 +623,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    /**
-     * TODO: Make this an async operation that properly uses an on-demand dynamo backup/restored table to run scans
-     * against with a callback hook to monitor progress and wait for backup completion like the existing dynamo backup
-     * APIs. For now, this is a synchronous call that operates the scan against all live table that may be taking
-     * writes, so proceed with caution.
-     */
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
@@ -639,6 +633,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             backupManager.get().createMtBackup(createMtBackupRequest);
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
+
             Set<String> snapshottedTables = Sets.newHashSet();
             List<Future<SnapshotResult>> futures = Lists.newArrayList();
             Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
@@ -651,21 +646,24 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                         .getMtBackupTableSnapshotter()
                         .snapshotTableToTarget(
                             new SnapshotRequest(createMtBackupRequest.getBackupName(),
-                            tableName,
-                            snapshottedTable,
-                            getAmazonDynamoDb(),
-                            new ProvisionedThroughput(10L, 10L))
-                )));
+                                tableName,
+                                snapshottedTable,
+                                getAmazonDynamoDb(),
+                                new ProvisionedThroughput(10L, 10L))
+                        )));
             }
             List<SnapshotResult> snapshotResults = Lists.newArrayList();
-            for (Future<SnapshotResult> future : futures) {
-                try {
-                    snapshotResults.add(future.get());
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new MtBackupException("Error snapshotting table", e);
+            try {
+                for (Future<SnapshotResult> future : futures) {
+                    try {
+                        snapshotResults.add(future.get());
+                    } catch (InterruptedException | ExecutionException e) {
+                        throw new MtBackupException("Error snapshotting table", e);
+                    }
                 }
+            } finally {
+                executorService.shutdown();
             }
-
             try {
                 backupManager.get().getMtBackupTableSnapshotter();
                 for (SnapshotResult snapshotResult : snapshotResults) {
