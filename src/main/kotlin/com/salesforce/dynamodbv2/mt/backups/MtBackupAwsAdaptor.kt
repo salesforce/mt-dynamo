@@ -19,8 +19,8 @@ class MtBackupAwsAdaptor {
 
     fun getBackupSummary(mtBackupMetadata: MtBackupMetadata): BackupSummary {
         return BackupSummary()
-                .withBackupName(mtBackupMetadata.mtBackupId)
-                .withBackupArn(mtBackupMetadata.mtBackupId)
+                .withBackupName(mtBackupMetadata.mtBackupName)
+                .withBackupArn(mtBackupMetadata.mtBackupName)
                 .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
                 .withBackupStatus(getBackupStatus(mtBackupMetadata.status))
     }
@@ -36,8 +36,8 @@ class MtBackupAwsAdaptor {
     fun getDescribeBackupResult(mtBackupMetadata: MtBackupMetadata): DescribeBackupResult {
         return DescribeBackupResult().withBackupDescription(
                 BackupDescription().withBackupDetails(BackupDetails()
-                        .withBackupName(mtBackupMetadata.mtBackupId)
-                        .withBackupArn(mtBackupMetadata.mtBackupId)
+                        .withBackupName(mtBackupMetadata.mtBackupName)
+                        .withBackupArn(mtBackupMetadata.mtBackupName)
                         .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
                         .withBackupStatus(getBackupStatus(mtBackupMetadata.status))))
     }

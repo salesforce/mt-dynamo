@@ -6,6 +6,7 @@
 package com.salesforce.dynamodbv2.mt.mappers
 
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
+import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
 import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
@@ -22,11 +23,10 @@ internal class MtBackupManagerTest {
         val backupId = "backup-id-1234"
         val tenant = "tenant-1234"
         val table = "table-1234"
-        val key = "fake-backup-file-key"
         val fakeDate = 10203040L
         val backupMetadata = MtBackupMetadata(backupId,
                 Status.IN_PROGRESS,
-                ImmutableSet.of(TenantTableBackupMetadata(backupId, Status.IN_PROGRESS, tenant, table, ImmutableSet.of(key))),
+                ImmutableMap.of(TenantTableBackupMetadata(backupId, tenant, table), 1L),
                 fakeDate)
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)

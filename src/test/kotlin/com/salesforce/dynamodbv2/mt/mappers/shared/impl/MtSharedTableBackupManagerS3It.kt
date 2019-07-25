@@ -98,21 +98,22 @@ internal class MtSharedTableBackupManagerS3It {
             sharedTableBinaryHashKey!!.putItem(PutItemRequest(tableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
         }
-        val backupId = "test-backup"
+        val backupName = "test-backup"
 
         try {
             MT_CONTEXT.withContext(null) {
-                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(backupId, shouldSnapshotTables = false))
-                val mtBackupMetadata = backupManager!!.getBackup(backupId)
+                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(shouldSnapshotTables = false)
+                        .withBackupName(backupName))
+                val mtBackupMetadata = backupManager!!.getBackup(backupName)
                 assertNotNull(mtBackupMetadata)
-                assertEquals(backupId, mtBackupMetadata!!.mtBackupId)
+                assertEquals(backupName, mtBackupMetadata!!.mtBackupName)
                 assertEquals(Status.COMPLETE, mtBackupMetadata.status)
                 assertTrue(mtBackupMetadata.tenantTables.size > 0)
             }
             val newRestoreTableName = tableName + "-copy"
             MT_CONTEXT.withContext(tenant) {
                 val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
-                        RestoreMtBackupRequest(backupId,
+                        RestoreMtBackupRequest(backupName,
                                 TenantTable(tenantName = tenant, virtualTableName = tableName),
                                 TenantTable(tenantName = tenant, virtualTableName = newRestoreTableName)))
 
@@ -127,8 +128,8 @@ internal class MtSharedTableBackupManagerS3It {
                 assertEquals("1", clonedRow.item.get("value")!!.s)
             }
         } finally {
-            backupManager!!.deleteBackup(backupId)
-            assertNull(backupManager!!.getBackup(backupId))
+            backupManager!!.deleteBackup(backupName)
+            assertNull(backupManager!!.getBackup(backupName))
         }
     }
 
@@ -163,10 +164,11 @@ internal class MtSharedTableBackupManagerS3It {
                     }
                 }
         for (i in 1..numBackups) {
-            val backupId = "testListBackup-$i"
-            ret.add(backupId)
-            backupManager!!.createMtBackup(
-                    CreateMtBackupRequest(backupId, shouldSnapshotTables = false))
+            val backupName = "testListBackup-$i"
+            ret.add(backupName)
+            val createBackupRequest = CreateMtBackupRequest(false)
+            createBackupRequest.backupName = backupName
+            backupManager!!.createMtBackup(createBackupRequest)
         }
         return ret
     }

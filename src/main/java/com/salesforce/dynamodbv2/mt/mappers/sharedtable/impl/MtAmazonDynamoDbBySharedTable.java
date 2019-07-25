@@ -640,9 +640,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             return new CreateBackupResult().withBackupDetails(
                 new BackupDetails()
                     // TODO: maybe this should be the ARN for the global S3 metadata file for this backup
-                    .withBackupArn(finishedMetadata.getMtBackupId())
+                    .withBackupArn(finishedMetadata.getMtBackupName())
                     .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
-                    .withBackupName(finishedMetadata.getMtBackupId()));
+                    .withBackupName(finishedMetadata.getMtBackupName()));
 
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "

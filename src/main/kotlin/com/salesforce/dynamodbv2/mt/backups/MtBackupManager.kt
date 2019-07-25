@@ -10,6 +10,7 @@ import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
+import com.google.common.collect.Maps
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 
@@ -64,11 +65,6 @@ interface MtBackupManager {
     fun deleteBackup(id: String): MtBackupMetadata?
 
     /**
-     * Get details of a given table-tenant backup.
-     */
-    fun getTenantTableBackup(id: String): TenantTableBackupMetadata
-
-    /**
      * Initiate a restore of a given table-tenant backup to a new table-tenant target.
      */
     fun restoreTenantTableBackup(
@@ -85,28 +81,34 @@ interface MtBackupManager {
 /**
  * Metadata of a multitenant backup.
  *
- * @param mtBackupId id of a backup configured by client.
+ * @param mtBackupName name of a backup configured by client.
  * @param status {@link Status} of backup
  * @param tenantTables tenant-tables contained within this given backup
  * @param creationTime timestamp this backup began processing in milliseconds since epoch
  */
 data class MtBackupMetadata(
-    val mtBackupId: String,
+    val mtBackupName: String,
     val status: Status,
-    val tenantTables: Set<TenantTableBackupMetadata>,
+    val tenantTables: Map<TenantTableBackupMetadata, Long>,
     val creationTime: Long = -1
 ) {
     /**
      * @return a new MtBackupMetadata object merging this backup metadata with {@code otherBackupMetadata}.
      */
     fun merge(newBackupMetadata: MtBackupMetadata): MtBackupMetadata {
-        if (!(newBackupMetadata.mtBackupId.equals(mtBackupId))) {
+        if (!(newBackupMetadata.mtBackupName.equals(mtBackupName))) {
             throw MtBackupException("Trying to merge a backup with a different backup id, " +
-                    "this: $mtBackupId, other: ${newBackupMetadata.mtBackupId}")
+                    "this: $mtBackupName, other: ${newBackupMetadata.mtBackupName}")
         }
-        return MtBackupMetadata(mtBackupId,
+        val tenantTableCount : HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
+        tenantTableCount.putAll(tenantTables)
+        for (tenantTable in newBackupMetadata.tenantTables.keys) {
+            tenantTableCount.put(tenantTable, tenantTables.getOrDefault(tenantTable, 0L)
+                    + newBackupMetadata.tenantTables.get(tenantTable)!!)
+        }
+        return MtBackupMetadata(mtBackupName,
                 newBackupMetadata.status, // use status of new metadata
-                newBackupMetadata.tenantTables.plus(tenantTables),
+                tenantTableCount,
                 creationTime) // maintain existing create time for all merges
     }
 }
@@ -124,28 +126,22 @@ class ListMtBackupsResult(backups: List<BackupSummary>, val lastEvaluatedBackup:
 }
 
 data class TenantTableBackupMetadata(
-    val backupId: String,
-    val status: Status,
+    val backupName: String,
     val tenantId: String,
-    val virtualTableName: String,
-    val backupKeys: Set<String>
+    val virtualTableName: String
 )
 
-data class TenantRestoreMetadata(val backupId: String, val status: Status, val tenantId: String, val virtualTableName: String)
+data class TenantRestoreMetadata(val backupName: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
-data class CreateMtBackupRequest(val backupId: String, val shouldSnapshotTables: Boolean) : CreateBackupRequest() {
-    init {
-        backupName = backupId
-    }
-}
+data class CreateMtBackupRequest(val shouldSnapshotTables: Boolean) : CreateBackupRequest()
 
 class RestoreMtBackupRequest(
-    val backupId: String,
+    val backupName: String,
     val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
     val newTenantTable: MtAmazonDynamoDb.TenantTable
 ) : RestoreTableFromBackupRequest() {
     init {
-        backupArn = backupId
+        backupArn = backupName
         targetTableName = newTenantTable.virtualTableName
     }
 }
