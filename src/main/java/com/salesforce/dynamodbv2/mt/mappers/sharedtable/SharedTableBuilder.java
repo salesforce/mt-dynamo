@@ -27,6 +27,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
@@ -229,7 +230,14 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     public SharedTableBuilder withBackupSupport(AmazonS3 s3Client, String backupS3BucketName) {
-        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName);
+        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName, new MtBackupTableSnapshotter());
+        return this;
+    }
+
+    public SharedTableBuilder withBackupSupport(AmazonS3 s3Client,
+                                                String backupS3BucketName,
+                                                MtBackupTableSnapshotter tableSnapshotter) {
+        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName, tableSnapshotter);
         return this;
     }
 

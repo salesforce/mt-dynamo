@@ -4,6 +4,7 @@
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
 package com.salesforce.dynamodbv2.mt.backups
+import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.model.AmazonDynamoDBException
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
@@ -53,6 +54,11 @@ interface MtBackupManager {
      * Internal function to mark an in progress backup to completed state.
      */
     fun markBackupComplete(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata
+
+    /**
+     * Return the utility to snapshot tables.
+     */
+    fun getMtBackupTableSnapshotter(): MtBackupTableSnapshotter
 
     /**
      * Get the status of a given multi-tenant backup.
@@ -145,7 +151,7 @@ class RestoreMtBackupRequest(
         targetTableName = newTenantTable.virtualTableName
     }
 }
-class MtBackupException(message: String) : AmazonDynamoDBException(message)
+class MtBackupException(message: String, parent: Exception? = null) : AmazonServiceException(message, parent)
 
 enum class Status {
     IN_PROGRESS,

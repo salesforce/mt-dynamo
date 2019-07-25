@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory
  * as fast as, or as slow as needed.
  *
  */
-class MtBackupTableSnapshotter {
+open class MtBackupTableSnapshotter {
 
     private val logger = LoggerFactory.getLogger(MtBackupTableSnapshotter::class.java)
     /**
@@ -41,7 +41,7 @@ class MtBackupTableSnapshotter {
      * table space location. This is a time consuming operation, and should be done asyncronously, and potentially
      * resumed if interrupted.
      */
-    fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
+    open fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
         val startTime = System.currentTimeMillis()
         logger.info("Snapshot of ${snapshotRequest.sourceTableName} to ${snapshotRequest.targetTableName} beginning")
         // generate backup of table
@@ -90,7 +90,7 @@ class MtBackupTableSnapshotter {
                 System.currentTimeMillis() - startTime)
     }
 
-    fun cleanup(snapshotResult: SnapshotResult, amazonDynamoDb: AmazonDynamoDB) {
+    open fun cleanup(snapshotResult: SnapshotResult, amazonDynamoDb: AmazonDynamoDB) {
         amazonDynamoDb.deleteBackup(DeleteBackupRequest().withBackupArn(snapshotResult.backupArn))
         amazonDynamoDb.deleteTable(DeleteTableRequest().withTableName(snapshotResult.tempSnapshotTable))
     }
@@ -108,7 +108,7 @@ class MtBackupTableSnapshotter {
 }
 
 data class SnapshotRequest(
-    val mtBackupId: String,
+    val mtBackupName: String,
     val sourceTableName: String,
     val targetTableName: String,
     val amazonDynamoDb: AmazonDynamoDB,

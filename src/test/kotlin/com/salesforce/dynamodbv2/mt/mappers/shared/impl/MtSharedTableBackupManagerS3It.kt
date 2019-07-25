@@ -8,13 +8,18 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.client.builder.AwsClientBuilder
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
+import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
+import com.amazonaws.services.dynamodbv2.model.ScanRequest
+import com.amazonaws.services.dynamodbv2.model.TableDescription
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.google.common.collect.ImmutableList
@@ -30,7 +35,10 @@ import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.ListMtBackupsResult
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
+import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
+import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest
+import com.salesforce.dynamodbv2.mt.backups.SnapshotResult
 import com.salesforce.dynamodbv2.mt.backups.Status
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
@@ -73,7 +81,7 @@ internal class MtSharedTableBackupManagerS3It {
             sharedTableBinaryHashKey = SharedTableBuilder.builder()
                     .withAmazonDynamoDb(dynamo)
                     .withContext(MT_CONTEXT)
-                    .withBackupSupport(s3, bucket)
+                    .withBackupSupport(s3, bucket, MtScanningSnapshotter())
                     .withTruncateOnDeleteTable(true)
                     .withBinaryHashKey(true)
                     .build()
@@ -154,7 +162,8 @@ internal class MtSharedTableBackupManagerS3It {
     private fun createJustBackupMetadatas(numBackups: Int): List<String> {
         val ret = Lists.newArrayList<String>()
         backupManager =
-                object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!) {
+                object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!,
+                        MtBackupTableSnapshotter()) {
 
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(
@@ -199,6 +208,43 @@ internal class MtSharedTableBackupManagerS3It {
                 backupManager!!.deleteBackup(backup)
                 assertNull(backupManager!!.getBackup(backup))
             }
+        }
+    }
+
+    class MtScanningSnapshotter : MtBackupTableSnapshotter() {
+        override fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
+            val startTime = System.currentTimeMillis()
+            val sourceTableDescription : TableDescription = snapshotRequest.amazonDynamoDb
+                .describeTable(snapshotRequest.sourceTableName).table
+            val createTableBuilder = CreateTableRequestBuilder.builder().withTableName(snapshotRequest.targetTableName)
+                .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
+
+                .withProvisionedThroughput(
+                    snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
+                    snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
+                .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter{
+                    a -> sourceTableDescription.keySchema.stream().anyMatch {
+                        k -> a.attributeName.equals(k.attributeName)}}.collect(Collectors.toList()).toTypedArray())
+            snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
+
+            var exclusiveStartKey: Map<String, AttributeValue>? = null
+
+            do {
+                var oldTableScanRequest: ScanRequest = ScanRequest().withTableName(snapshotRequest.sourceTableName)
+                        .withExclusiveStartKey(exclusiveStartKey)
+                val scanResult = snapshotRequest.amazonDynamoDb.scan(oldTableScanRequest)
+                for (item in scanResult.items) {
+                    snapshotRequest.amazonDynamoDb.putItem(snapshotRequest.targetTableName, item)
+                }
+                exclusiveStartKey = scanResult.lastEvaluatedKey
+            } while (exclusiveStartKey != null)
+            return SnapshotResult(snapshotRequest.mtBackupName,
+                    snapshotRequest.targetTableName,
+                    System.currentTimeMillis() - startTime)
+        }
+
+        override fun cleanup(snapshotResult: SnapshotResult, amazonDynamoDb: AmazonDynamoDB) {
+            amazonDynamoDb.deleteTable(snapshotResult.tempSnapshotTable)
         }
     }
 }

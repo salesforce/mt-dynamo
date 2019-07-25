@@ -38,6 +38,7 @@ import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
 import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.Status
 import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata
@@ -50,6 +51,7 @@ import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.charset.Charset
 import java.util.HashMap
+import java.util.concurrent.Executors
 import java.util.stream.Collectors
 
 /**
@@ -59,7 +61,8 @@ import java.util.stream.Collectors
 open class MtSharedTableBackupManager(
     val s3: AmazonS3,
     val s3BucketName: String,
-    val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable
+    val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
+    val tableSnapshotter: MtBackupTableSnapshotter
 ) : MtBackupManager {
 
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
@@ -105,6 +108,7 @@ open class MtSharedTableBackupManager(
                     .associateBy({ it }, { 0L })
             val newMetadata = MtBackupMetadata(createMtBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, System.currentTimeMillis())
+
             commitBackupMetadata(newMetadata)
             return getBackup(newMetadata.mtBackupName)!!
         }
@@ -163,6 +167,10 @@ open class MtSharedTableBackupManager(
         logger.info("${createMtBackupRequest.backupName}: Finished generating backup for " +
                 "$physicalTableName in ${System.currentTimeMillis() - startTime} ms")
         return backupMetadata
+    }
+
+    override fun getMtBackupTableSnapshotter(): MtBackupTableSnapshotter {
+        return tableSnapshotter
     }
 
     override fun markBackupComplete(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata {
@@ -416,8 +424,8 @@ open class MtSharedTableBackupManager(
 
 data class TenantTableRow(val attributeMap: Map<String, AttributeValue>)
 
-class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String) {
+class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String, val tableSnapshotter: MtBackupTableSnapshotter) {
     fun build(sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable): MtSharedTableBackupManager {
-        return MtSharedTableBackupManager(s3, s3BucketName, sharedTableMtDynamo)
+        return MtSharedTableBackupManager(s3, s3BucketName, sharedTableMtDynamo, tableSnapshotter)
     }
 }
