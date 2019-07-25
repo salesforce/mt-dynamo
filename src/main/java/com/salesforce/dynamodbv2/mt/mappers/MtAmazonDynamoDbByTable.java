@@ -68,19 +68,15 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     private final String delimiter;
     private final Optional<String> tablePrefix;
     private final BillingMode billingMode;
-    private final String scanTenantKey;
-    private final String scanVirtualTableKey;
 
     private MtAmazonDynamoDbByTable(MtAmazonDynamoDbContextProvider mtContext, AmazonDynamoDB amazonDynamoDb,
                                     MeterRegistry meterRegistry, BillingMode billingMode, String delimiter,
                                     Optional<String> tablePrefix, String scanTenantKey, String scanVirtualTableKey) {
-        super(mtContext, amazonDynamoDb, meterRegistry);
+        super(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey);
         this.billingMode = billingMode;
         // TODO add billingMode support
         this.delimiter = delimiter;
         this.tablePrefix = tablePrefix;
-        this.scanTenantKey = scanTenantKey;
-        this.scanVirtualTableKey = scanVirtualTableKey;
     }
 
     @Override
@@ -242,8 +238,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
         private MeterRegistry meterRegistry;
         private BillingMode billingMode;
         private String delimiter;
-        private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
-        private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
+        private String scanTenantKey;
+        private String scanVirtualTableKey;
         private Optional<String> tablePrefix = Optional.empty();
 
         public MtAmazonDynamoDbBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {

@@ -177,7 +177,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
     private MtAmazonDynamoDbByAccount(MtAmazonDynamoDbContextProvider mtContext,
                                       MeterRegistry meterRegistry,
                                       MtAccountMapper accountMapper) {
-        super(mtContext, null, meterRegistry);
+        super(mtContext, null, meterRegistry, null, null);
         this.accountMapper = accountMapper;
     }
 
@@ -185,7 +185,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
                                       MeterRegistry meterRegistry,
                                       AmazonDynamoDBClientBuilder amazonDynamoDbClientBuilder,
                                       MtAccountCredentialsMapper credentialsMapper) {
-        super(mtContext, null, meterRegistry);
+        super(mtContext, null, meterRegistry, null, null);
         this.accountMapper = new CredentialBasedAccountMapperImpl(amazonDynamoDbClientBuilder, credentialsMapper);
     }
 
