@@ -110,12 +110,6 @@ import java.util.stream.Collectors;
  */
 public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
-    /**
-     * Special default "column" key returned to client on multitenant scans. Configurable by clients if needed.
-     */
-    private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
-    private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
-
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final AmazonDynamoDB amazonDynamoDb;
     private final MeterRegistry meterRegistry;
@@ -130,8 +124,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
         this.meterRegistry = meterRegistry;
-        this.scanVirtualTableKey = scanVirtualTableKey == null ? DEFAULT_SCAN_VIRTUAL_TABLE_KEY : scanVirtualTableKey;
-        this.scanTenantKey = scanTenantKey == null ? DEFAULT_SCAN_TENANT_KEY : scanTenantKey;
+        this.scanVirtualTableKey = scanVirtualTableKey;
+        this.scanTenantKey = scanTenantKey;
     }
 
     public AmazonDynamoDB getAmazonDynamoDb() {

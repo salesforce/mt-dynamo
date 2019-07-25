@@ -164,6 +164,13 @@ import java.util.stream.Collectors;
 public class SharedTableBuilder implements TableBuilder {
 
     private static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_table_metadata";
+
+    /**
+     * Special default "column" key returned to client on multitenant scans. Configurable by clients if needed.
+     */
+    private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
+    private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
+
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
@@ -189,8 +196,8 @@ public class SharedTableBuilder implements TableBuilder {
     private Cache<Object, TableMapping> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
-    private String scanTenantKey;
-    private String scanVirtualTableKey;
+    private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
+    private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();

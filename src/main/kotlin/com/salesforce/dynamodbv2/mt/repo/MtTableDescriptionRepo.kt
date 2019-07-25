@@ -48,7 +48,7 @@ interface MtTableDescriptionRepo {
     fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
 
     data class ListMetadataResult(
-        val metadataList: List<MtCreateTableRequest>,
+        val createTableRequests: List<MtCreateTableRequest>,
         val lastEvaluatedTable: MtCreateTableRequest?
     )
     data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {

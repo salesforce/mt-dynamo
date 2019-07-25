@@ -302,15 +302,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         scanReq.setExclusiveStartKey(lastEvaluatedKey);
         scanReq.setLimit(listMetadataRequest.getLimit());
         scanResult = amazonDynamoDb.scan(scanReq);
-        List<MtCreateTableRequest> metadataList = scanResult.getItems().stream()
+        List<MtCreateTableRequest> createTableRequests = scanResult.getItems().stream()
             .map(rowMap ->
                 new MtCreateTableRequest(
                     getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
                     getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
             .collect(Collectors.toList());
         MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
-            metadataList.get(metadataList.size() - 1);
-        return new ListMetadataResult(metadataList, lastEvaluatedMetadata);
+            createTableRequests.get(createTableRequests.size() - 1);
+        return new ListMetadataResult(createTableRequests, lastEvaluatedMetadata);
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {
