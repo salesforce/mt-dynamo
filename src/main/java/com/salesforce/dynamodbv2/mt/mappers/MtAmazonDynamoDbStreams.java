@@ -9,7 +9,6 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
-import java.util.Date;
 import java.util.Objects;
 
 /**
