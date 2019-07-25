@@ -4,6 +4,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.copyOf;
 import static com.google.common.collect.Iterables.getLast;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
@@ -60,6 +61,7 @@ class StreamsRecordCache {
         @Nonnull
         private final List<Record> records;
         private final long byteSize;
+        private final long createTime;
 
         /**
          * Convenience constructor that initializes {@link #end} to the sequence number following that of the last
@@ -86,6 +88,7 @@ class StreamsRecordCache {
             this.end = checkNotNull(end);
             this.records = copyOf(checkNotNull(records));
             this.byteSize = records.stream().map(Record::getDynamodb).mapToLong(StreamRecord::getSizeBytes).sum();
+            this.createTime = System.nanoTime();
         }
 
         /**
@@ -206,6 +209,14 @@ class StreamsRecordCache {
         }
 
         /**
+         * Returns the time this segment was created.
+         * @return Creation time of this segment.
+         */
+        long getCreateTime() {
+            return createTime;
+        }
+
+        /**
          * Returns whether this segment is empty. Note that non-empty segments may still have an empty records
          * collections if the corresponding segment in the underlying stream contains no records for the sequence number
          * range.
@@ -265,6 +276,7 @@ class StreamsRecordCache {
     private final DistributionSummary putRecordsDiscardedSize;
     private final Timer evictRecordsTimer;
     private final DistributionSummary evictRecordsSize;
+    private final Timer evictRecordsAge;
 
     StreamsRecordCache(long maxRecordsByteSize) {
         this(new CompositeMeterRegistry(), maxRecordsByteSize);
@@ -286,6 +298,7 @@ class StreamsRecordCache {
         this.putRecordsDiscardedSize = meterRegistry.summary(className + ".PutRecords.Discarded.Size");
         this.evictRecordsTimer = meterRegistry.timer(className + ".EvictRecords.Time");
         this.evictRecordsSize = meterRegistry.summary(className + ".EvictRecords.Size");
+        this.evictRecordsAge = meterRegistry.timer(className + ".EvictRecords.Age");
         meterRegistry.gauge(className + ".size", size);
         meterRegistry.gauge(className + ".byteSize", byteSize);
     }
@@ -426,6 +439,7 @@ class StreamsRecordCache {
                                 numEvicted += evicted.getRecords().size();
                                 size.addAndGet(-evicted.getRecords().size());
                                 byteSize.addAndGet(-evicted.getByteSize());
+                                evictRecordsAge.record(System.nanoTime() - evicted.getCreateTime(), NANOSECONDS);
                                 if (shard.isEmpty()) {
                                     segments.remove(streamShardId);
                                 }
