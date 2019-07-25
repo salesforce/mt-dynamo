@@ -301,9 +301,9 @@ open class MtSharedTableBackupManager(
         if (deleteCount > 0) {
             logger.info("$id: Deleted $deleteCount backup files for $id")
         }
-        // val ret = getBackup(id)
+         val ret = getBackup(id)
         s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
-        return null
+        return ret
     }
 
     private fun commitTenantTableMetadata(
