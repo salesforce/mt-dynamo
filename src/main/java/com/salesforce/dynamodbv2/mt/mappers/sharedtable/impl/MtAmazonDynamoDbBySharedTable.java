@@ -36,6 +36,8 @@ import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
+import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest;
+import com.amazonaws.services.dynamodbv2.model.ListBackupsResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
@@ -59,6 +61,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
@@ -582,6 +585,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
+    }
+
+    @Override
+    public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
+        if (backupManager.isPresent()) {
+            ListMtBackupRequest req = (ListMtBackupRequest)new ListMtBackupRequest()
+                .withLimit(listBackupsRequest.getLimit());
+            return backupManager.get().listMtBackups(req);
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
     }
 
     @Override
