@@ -5,7 +5,6 @@
  */
 package com.salesforce.dynamodbv2.mt.backups
 import com.amazonaws.AmazonServiceException
-import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
@@ -36,8 +35,8 @@ interface MtBackupManager {
      * @return a new multitenant backup job, with status {@link Status.IN_PROGRESS} if none exists with
      * specified backupId.
      */
-    fun createMtBackup(
-        createMtBackupRequest: CreateMtBackupRequest
+    fun createBackup(
+        createBackupRequest: CreateBackupRequest
     ): MtBackupMetadata
 
     /**
@@ -45,14 +44,14 @@ interface MtBackupManager {
      * data on S3 with said data.
      */
     fun backupPhysicalMtTable(
-        createMtBackupRequest: CreateMtBackupRequest,
+        createBackupRequest: CreateBackupRequest,
         physicalTableName: String
     ): MtBackupMetadata
 
     /**
      * Internal function to mark an in progress backup to completed state.
      */
-    fun markBackupComplete(createMtBackupRequest: CreateMtBackupRequest): MtBackupMetadata
+    fun markBackupComplete(createBackupRequest: CreateBackupRequest): MtBackupMetadata
 
     /**
      * Return the utility to snapshot tables.
@@ -80,7 +79,7 @@ interface MtBackupManager {
     /**
      * List all multi-tenant backups known to us on S3.
      */
-    fun listMtBackups(listMtBackupRequest: ListMtBackupRequest): ListMtBackupsResult
+    fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult
 }
 
 /**
@@ -118,18 +117,6 @@ data class MtBackupMetadata(
     }
 }
 
-class ListMtBackupRequest(backupLimit: Int = 5, val exclusiveStartBackup: BackupSummary? = null) : ListBackupsRequest() {
-    init {
-        this.limit = backupLimit
-    }
-}
-
-class ListMtBackupsResult(backups: List<BackupSummary>, val lastEvaluatedBackup: BackupSummary?) : ListBackupsResult() {
-    init {
-        setBackupSummaries(backups)
-    }
-}
-
 data class TenantTableBackupMetadata(
     val backupName: String,
     val tenantId: String,
@@ -138,30 +125,18 @@ data class TenantTableBackupMetadata(
 
 data class TenantRestoreMetadata(val backupName: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
-data class CreateMtBackupRequest(val shouldSnapshotTables: Boolean) : CreateBackupRequest()
-
 class RestoreMtBackupRequest(
-    val backupName: String,
-    val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
-    val newTenantTable: MtAmazonDynamoDb.TenantTable
+    val sourceTenantTableBackup: MtAmazonDynamoDb.TenantTable,
+    val targetTenantTable: MtAmazonDynamoDb.TenantTable
 ) : RestoreTableFromBackupRequest() {
     init {
-        backupArn = backupName
-        targetTableName = newTenantTable.virtualTableName
+        targetTableName = targetTenantTable.virtualTableName
     }
 }
 class MtBackupException(message: String, parent: Exception? = null) : AmazonServiceException(message, parent)
 
 enum class Status {
     IN_PROGRESS,
-    COMPLETE,
-    FAILED
-}
-
-enum class StatusDetail {
-    METADATA_SNAPSHOT,
-    TABLE_SNAPSHOTTING,
-    SNAPSHOT_SCANNING,
     COMPLETE,
     FAILED
 }

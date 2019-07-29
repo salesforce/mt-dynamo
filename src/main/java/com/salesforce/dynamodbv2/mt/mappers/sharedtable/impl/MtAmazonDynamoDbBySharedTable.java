@@ -60,8 +60,6 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest;
-import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
@@ -590,9 +588,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
         if (backupManager.isPresent()) {
-            ListMtBackupRequest req = (ListMtBackupRequest)new ListMtBackupRequest()
-                .withLimit(listBackupsRequest.getLimit());
-            return backupManager.get().listMtBackups(req);
+            return backupManager.get().listBackups(listBackupsRequest);
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
@@ -641,11 +637,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
-            if (!(createBackupRequest instanceof CreateMtBackupRequest)) {
-                throw new MtBackupException("Create instance of {@link CreateMtBackupRequest} required", null);
-            }
-            CreateMtBackupRequest createMtBackupRequest = (CreateMtBackupRequest)createBackupRequest;
-            backupManager.get().createMtBackup(createMtBackupRequest);
+            backupManager.get().createBackup(createBackupRequest);
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
 
@@ -660,7 +652,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                     backupManager.get()
                         .getMtBackupTableSnapshotter()
                         .snapshotTableToTarget(
-                            new SnapshotRequest(createMtBackupRequest.getBackupName(),
+                            new SnapshotRequest(createBackupRequest.getBackupName(),
                                 tableName,
                                 snapshottedTable,
                                 getAmazonDynamoDb(),
@@ -682,10 +674,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             try {
                 backupManager.get().getMtBackupTableSnapshotter();
                 for (SnapshotResult snapshotResult : snapshotResults) {
-                    backupManager.get().backupPhysicalMtTable(createMtBackupRequest,
+                    backupManager.get().backupPhysicalMtTable(createBackupRequest,
                         snapshotResult.getTempSnapshotTable());
                 }
-                MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createMtBackupRequest);
+                MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
                 return new CreateBackupResult().withBackupDetails(
                     new BackupDetails()
                         // TODO: maybe this should be the ARN for the global S3 metadata file for this backup

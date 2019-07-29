@@ -11,9 +11,12 @@ import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
+import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
+import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
+import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
@@ -29,9 +32,6 @@ import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.backups.CreateMtBackupRequest
-import com.salesforce.dynamodbv2.mt.backups.ListMtBackupRequest
-import com.salesforce.dynamodbv2.mt.backups.ListMtBackupsResult
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
 import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
@@ -88,7 +88,7 @@ internal class MtSharedTableBackupManagerS3It {
     }
 
     @Test
-    fun testBasicBackupCreate() {
+    fun testBasicBackupCreate_sameTenantNewTable() {
         val tenant = "org1"
         val tableName = "dummy-table"
 
@@ -108,7 +108,7 @@ internal class MtSharedTableBackupManagerS3It {
 
         try {
             MT_CONTEXT.withContext(null) {
-                sharedTableBinaryHashKey!!.createBackup(CreateMtBackupRequest(shouldSnapshotTables = false)
+                sharedTableBinaryHashKey!!.createBackup(CreateBackupRequest()
                         .withBackupName(backupName))
                 val mtBackupMetadata = backupManager!!.getBackup(backupName)
                 assertNotNull(mtBackupMetadata)
@@ -119,9 +119,10 @@ internal class MtSharedTableBackupManagerS3It {
             val newRestoreTableName = tableName + "-copy"
             MT_CONTEXT.withContext(tenant) {
                 val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
-                        RestoreMtBackupRequest(backupName,
-                                TenantTable(tenantName = tenant, virtualTableName = tableName),
-                                TenantTable(tenantName = tenant, virtualTableName = newRestoreTableName)))
+                        RestoreMtBackupRequest(
+                            TenantTable(tenantName = tenant, virtualTableName = tableName),
+                            TenantTable(tenantName = tenant, virtualTableName = newRestoreTableName))
+                            .withBackupArn(backupName))
 
                 assertEquals(createdTableRequest.keySchema, restoreResult.tableDescription.keySchema)
                 assertEquals(createdTableRequest.attributeDefinitions, restoreResult.tableDescription.attributeDefinitions)
@@ -144,7 +145,7 @@ internal class MtSharedTableBackupManagerS3It {
         val backupIds = createJustBackupMetadatas(3)
         try {
 
-            val listBackupResult: ListMtBackupsResult = backupManager!!.listMtBackups(ListMtBackupRequest())
+            val listBackupResult: ListBackupsResult = backupManager!!.listBackups(ListBackupsRequest())
             assertTrue(listBackupResult.backupSummaries.size == 3)
         } finally {
             for (backup in backupIds) {
@@ -165,7 +166,7 @@ internal class MtSharedTableBackupManagerS3It {
 
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(
-                        createMtBackupRequest: CreateMtBackupRequest
+                        createBackupRequest: CreateBackupRequest
                     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
                         return ImmutableList.of()
                     }
@@ -173,16 +174,16 @@ internal class MtSharedTableBackupManagerS3It {
         for (i in 1..numBackups) {
             val backupName = "testListBackup-$i"
             ret.add(backupName)
-            val createBackupRequest = CreateMtBackupRequest(false)
+            val createBackupRequest = CreateBackupRequest()
             createBackupRequest.backupName = backupName
-            backupManager!!.createMtBackup(createBackupRequest)
+            backupManager!!.createBackup(createBackupRequest)
         }
         return ret
     }
 
     @Test
     fun testListBackups_empty() {
-        val listBackupResult: ListMtBackupsResult = backupManager!!.listMtBackups(ListMtBackupRequest())
+        val listBackupResult: ListBackupsResult = backupManager!!.listBackups(ListBackupsRequest())
         assertTrue(listBackupResult.backupSummaries.size == 0)
         assertNull(listBackupResult.lastEvaluatedBackupArn)
     }
@@ -191,16 +192,18 @@ internal class MtSharedTableBackupManagerS3It {
     fun testListBackups_pagination() {
         val backupIds: List<String> = createJustBackupMetadatas(7)
         try {
-            val firstResult = backupManager!!.listMtBackups(ListMtBackupRequest(backupLimit = 4))
+            val firstResult = backupManager!!.listBackups(ListBackupsRequest().withLimit(4))
             assertTrue(firstResult.backupSummaries.size <= 4)
             assertEquals(backupIds.subList(0, firstResult.backupSummaries.size),
                     firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
-            assertNotNull(firstResult.lastEvaluatedBackup)
-            val theRest = backupManager!!.listMtBackups(
-                    ListMtBackupRequest(backupLimit = 5, exclusiveStartBackup = firstResult.lastEvaluatedBackup))
+            assertNotNull(firstResult.lastEvaluatedBackupArn)
+            val theRest = backupManager!!.listBackups(ListBackupsRequest()
+                    .withLimit(5)
+                    .withExclusiveStartBackupArn(firstResult.lastEvaluatedBackupArn))
             assertEquals(7 - firstResult.backupSummaries.size, theRest.backupSummaries.size)
             assertEquals(backupIds.subList(firstResult.backupSummaries.size, 7),
                     theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
+            assertNull(theRest.lastEvaluatedBackupArn)
         } finally {
             for (backup in backupIds) {
                 backupManager!!.deleteBackup(backup)
