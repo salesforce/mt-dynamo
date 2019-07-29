@@ -315,7 +315,7 @@ class DocGeneratorRunner {
                 getAccounts()).runAll();
     }
 
-    class DocGenerator {
+    static class DocGenerator {
 
         private final Map<String, List<String>> targetColumnOrderMap = ImmutableMap.<String, List<String>>builder()
                 .put("_table_metadata", ImmutableList.of("table", "data"))

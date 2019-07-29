@@ -124,22 +124,22 @@ class MtDynamoDbTableDescriptionRepoTest {
     void testListVirtualTables() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
-        ListMetadataResult returnedMetadatas =
-            ((MtTableDescriptionRepo)repo).listVirtualTableMetadata(new ListMetadataRequest());
-        assertEquals(new ListMetadataResult(tablesCreated, null), returnedMetadatas);
+        ListMetadataResult listMetadataResult =
+            ((MtTableDescriptionRepo) repo).listVirtualTableMetadata(new ListMetadataRequest());
+        assertEquals(new ListMetadataResult(tablesCreated, null), listMetadataResult);
     }
 
     @Test
     void testListVirtualTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
-        ListMetadataResult returnedMetadatas = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
-        ListMetadataResult expected = new ListMetadataResult(tablesCreated.subList(0,1), tablesCreated.get(0));
-        assertEquals(expected, returnedMetadatas);
+        ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
+        ListMetadataResult expected = new ListMetadataResult(tablesCreated.subList(0, 1), tablesCreated.get(0));
+        assertEquals(expected, listMetadataResult);
 
-        returnedMetadatas =
+        listMetadataResult =
             repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tablesCreated.get(0)));
-        assertEquals(returnedMetadatas,
+        assertEquals(listMetadataResult,
             repo.listVirtualTableMetadata(new ListMetadataRequest()
                 .withExclusiveStartKey(tablesCreated.get(0))
                 .withLimit(5)));
@@ -151,8 +151,8 @@ class MtDynamoDbTableDescriptionRepoTest {
     @Test
     void testListVirtualTables_empty() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        ListMetadataResult returnedMetadatas = repo.listVirtualTableMetadata(new ListMetadataRequest());
-        assertEquals(new ListMetadataResult(ImmutableList.of(), null), returnedMetadatas);
+        ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest());
+        assertEquals(new ListMetadataResult(ImmutableList.of(), null), listMetadataResult);
     }
 
     private List<MtCreateTableRequest> createPairOfVirtualTables(MtDynamoDbTableDescriptionRepo repo) {
