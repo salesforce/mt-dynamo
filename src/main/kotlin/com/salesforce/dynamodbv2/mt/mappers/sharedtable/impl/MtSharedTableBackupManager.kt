@@ -21,6 +21,7 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
+import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
 import com.google.common.collect.Lists
@@ -253,6 +254,11 @@ open class MtSharedTableBackupManager(
 
     override fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult {
         val ret = Lists.newArrayList<BackupSummary>()
+
+        Preconditions.checkArgument(listBackupRequest.backupType == null, "Listing backups by backupType unsupported")
+        Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multi tenant backups")
+        Preconditions.checkArgument(listBackupRequest.timeRangeLowerBound == null, "Listing backups filtered by time range unsupported [currently]")
+        Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
         val startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null

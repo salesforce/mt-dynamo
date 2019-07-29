@@ -637,6 +637,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
+            Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
+            Preconditions.checkArgument(createBackupRequest.getTableName() == null,
+                "Multitenant backups cannot backup individual tables, table name arguments are disallowed.");
             backupManager.get().createBackup(createBackupRequest);
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
