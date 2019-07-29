@@ -12,7 +12,6 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
-import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
@@ -116,68 +115,55 @@ internal class MtSharedTableBackupManagerS3It {
     }
 
     private fun basicBackupTest(sourceTenantTable: TenantTable, targetTenantTable: TenantTable) {
-        val createdTableRequest = createTableAndBackup(sourceTenantTable)
+        // create dummy virtual table and dummy data to backup
+        val createdTableRequest = CreateTableRequestBuilder.builder()
+                .withTableName(sourceTenantTable.virtualTableName)
+                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withProvisionedThroughput(1L, 1L).build()
+        MtSharedTableBackupManagerS3It.MT_CONTEXT.withContext(sourceTenantTable.tenantName) {
+            sharedTableBinaryHashKey!!.createTable(createdTableRequest)
+            sharedTableBinaryHashKey!!.putItem(PutItemRequest(sourceTenantTable.virtualTableName,
+                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"), "value", AttributeValue("1"))))
+            sharedTableBinaryHashKey!!.putItem(PutItemRequest(sourceTenantTable.virtualTableName,
+                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
+        }
+
+        // create backup of dummy data
         val backupName = "test-backup"
         try {
-            createBackup(backupName)
-            validateBasicBackupRestore(backupName, sourceTenantTable, targetTenantTable, createdTableRequest)
+            MT_CONTEXT.withContext(null) {
+                sharedTableBinaryHashKey!!.createBackup(CreateBackupRequest()
+                        .withBackupName(backupName))
+                val mtBackupMetadata = backupManager!!.getBackup(backupName)
+                assertNotNull(mtBackupMetadata)
+                assertEquals(backupName, mtBackupMetadata!!.mtBackupName)
+                assertEquals(Status.COMPLETE, mtBackupMetadata.status)
+                assertTrue(mtBackupMetadata.tenantTables.isNotEmpty())
+            }
+
+            // now try restoring backed up data to new target table and validate data appears on target
+            MT_CONTEXT.withContext(targetTenantTable.tenantName) {
+                val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
+                        RestoreMtBackupRequest(
+                                sourceTenantTable,
+                                targetTenantTable)
+                                .withBackupArn(backupName))
+
+                assertEquals(createdTableRequest.keySchema, restoreResult.tableDescription.keySchema)
+                assertEquals(createdTableRequest.attributeDefinitions, restoreResult.tableDescription.attributeDefinitions)
+                assertEquals(targetTenantTable.virtualTableName, restoreResult.tableDescription.tableName)
+
+                val clonedRow = sharedTableBinaryHashKey!!.getItem(
+                        GetItemRequest(targetTenantTable.virtualTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
+                assertNotNull(clonedRow)
+                assertNotNull(clonedRow.item)
+                assertEquals("1", clonedRow.item.get("value")!!.s)
+            }
         } finally {
             backupManager!!.deleteBackup(backupName)
             assertNull(backupManager!!.getBackup(backupName))
         }
-    }
-
-    private fun createBackup(backupName: String) {
-        MT_CONTEXT.withContext(null) {
-            sharedTableBinaryHashKey!!.createBackup(CreateBackupRequest()
-                    .withBackupName(backupName))
-            val mtBackupMetadata = backupManager!!.getBackup(backupName)
-            assertNotNull(mtBackupMetadata)
-            assertEquals(backupName, mtBackupMetadata!!.mtBackupName)
-            assertEquals(Status.COMPLETE, mtBackupMetadata.status)
-            assertTrue(mtBackupMetadata.tenantTables.isNotEmpty())
-        }
-    }
-
-    private fun validateBasicBackupRestore(
-        backupName: String,
-        srcTenantTable: TenantTable,
-        targetTenantTable: TenantTable,
-        tenantTableMetadata: CreateTableRequest
-    ) {
-        MT_CONTEXT.withContext(targetTenantTable.tenantName) {
-            val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
-                    RestoreMtBackupRequest(
-                            srcTenantTable,
-                            targetTenantTable)
-                            .withBackupArn(backupName))
-
-            assertEquals(tenantTableMetadata.keySchema, restoreResult.tableDescription.keySchema)
-            assertEquals(tenantTableMetadata.attributeDefinitions, restoreResult.tableDescription.attributeDefinitions)
-            assertEquals(targetTenantTable.virtualTableName, restoreResult.tableDescription.tableName)
-
-            val clonedRow = sharedTableBinaryHashKey!!.getItem(
-                    GetItemRequest(targetTenantTable.virtualTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"))))
-            assertNotNull(clonedRow)
-            assertNotNull(clonedRow.item)
-            assertEquals("1", clonedRow.item.get("value")!!.s)
-        }
-    }
-
-    private fun createTableAndBackup(tenantTable: TenantTable): CreateTableRequest {
-        val createdTableRequest = CreateTableRequestBuilder.builder()
-                .withTableName(tenantTable.virtualTableName)
-                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
-                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(1L, 1L).build()
-        MtSharedTableBackupManagerS3It.MT_CONTEXT.withContext(tenantTable.tenantName) {
-            sharedTableBinaryHashKey!!.createTable(createdTableRequest)
-            sharedTableBinaryHashKey!!.putItem(PutItemRequest(tenantTable.virtualTableName,
-                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row1"), "value", AttributeValue("1"))))
-            sharedTableBinaryHashKey!!.putItem(PutItemRequest(tenantTable.virtualTableName,
-                    ImmutableMap.of(HASH_KEY_FIELD, AttributeValue("row2"), "value", AttributeValue("2"))))
-        }
-        return createdTableRequest
     }
 
     @Test
