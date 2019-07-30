@@ -163,6 +163,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
+
+        // a reference to this object is leaked to the backup manager in order to run multitenant scans, is this
+        // the best way? We need a reference to the backup manager here to serve createBackup and other backup API
+        // requests, and the backup manager needs a reference back to this object to run multitenant scans to build
+        // the physical backup off of mt-dynamo data.
         this.backupManager = backupManager.map(b -> b.build(this));
     }
 

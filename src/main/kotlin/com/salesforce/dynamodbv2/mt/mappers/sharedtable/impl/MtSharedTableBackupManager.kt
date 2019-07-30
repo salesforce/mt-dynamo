@@ -99,6 +99,7 @@ open class MtSharedTableBackupManager(
         if (backup != null) {
             throw MtBackupException("Backup with that ID already exists: $backup")
         } else {
+            val startTime = System.currentTimeMillis()
             val virtualMetadata = backupVirtualTableMetadata(createBackupRequest)
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
                     .map { metadata -> TenantTableBackupMetadata(
@@ -107,7 +108,7 @@ open class MtSharedTableBackupManager(
                             metadata.createTableRequest.tableName) }
                     .associateBy({ it }, { 0L })
             val newMetadata = MtBackupMetadata(createBackupRequest.backupName,
-                    Status.IN_PROGRESS, tenantTableCounts, System.currentTimeMillis())
+                    Status.IN_PROGRESS, tenantTableCounts, startTime)
 
             commitBackupMetadata(newMetadata)
             return getBackup(newMetadata.mtBackupName)!!
@@ -394,10 +395,9 @@ open class MtSharedTableBackupManager(
                         TenantTableRow(scanResult.items[i]))
             }
 
+            flushScanResult(createBackupRequest.backupName, numPasses, rowsPerTenant)
             logger.info("Flushed ${rowsPerTenant.values().size} rows for " +
                     "${rowsPerTenant.keySet().size} tenants.")
-
-            flushScanResult(createBackupRequest.backupName, numPasses, rowsPerTenant)
             for (tenantTable in rowsPerTenant.keySet()) {
                 val tenantTableMetadata = TenantTableBackupMetadata(tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
                 tenantTables[tenantTableMetadata] = tenantTables.getOrDefault(tenantTableMetadata, 1L)

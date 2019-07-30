@@ -20,7 +20,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
  * be restored. Tenant-table backups must be restored to a different tenant-table target. Additionally, a tenant-table
  * backup may be restored  onto either the same environment, or migrated into different environments, with say,
  * different multitenant strategies (ie: moving a tenant-table from a table per tenant setup
- * onto a shared table setup, or vice versa.
+ * onto a shared table setup, or vice versa).
  *
  * One more dimension of value added by these backups are, they should be mt-dynamo version agnostic. So if a backup
  * was generated at v0.10.5 of mt-dynamo, and imagine the physical representation of tenant to table mapping strategy
@@ -61,12 +61,12 @@ interface MtBackupManager {
     /**
      * Get the status of a given multi-tenant backup.
      */
-    fun getBackup(id: String): MtBackupMetadata?
+    fun getBackup(backupName: String): MtBackupMetadata?
 
     /**
-     * Delete the give multi-tenant backup.
+     * Delete the given multi-tenant backup, including all metadata and data files related.
      */
-    fun deleteBackup(id: String): MtBackupMetadata?
+    fun deleteBackup(backupName: String): MtBackupMetadata?
 
     /**
      * Initiate a restore of a given table-tenant backup to a new table-tenant target.
