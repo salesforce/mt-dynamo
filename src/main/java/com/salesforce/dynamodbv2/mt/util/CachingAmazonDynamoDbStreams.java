@@ -34,6 +34,7 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.binder.cache.GuavaCacheMetrics;
@@ -72,6 +73,14 @@ import org.slf4j.LoggerFactory;
  * </ol>
  */
 public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
+
+    public MeterRegistry getMeterRegistry() {
+        return meterRegistry;
+    }
+
+    public void setMeterRegistry(MeterRegistry meterRegistry) {
+        this.meterRegistry = meterRegistry;
+    }
 
     /**
      * Replace with com.amazonaws.services.dynamodbv2.streamsadapter.utils.Sleeper when we upgrade.
@@ -117,6 +126,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private MeterRegistry meterRegistry;
         private Sleeper sleeper;
         private Ticker ticker;
+        private Cache describeStreamCache;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int getRecordsMaxRetries = DEFAULT_GET_RECORDS_MAX_RETRIES;
@@ -229,6 +239,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Enables or disables the describe stream cache.
+         *
+         * @param describeStreamCache The cache to use for describe stream
+         * @return this Builder.
+         */
+        public Builder withDescribeStreamCache(Cache describeStreamCache) {
+            this.describeStreamCache = describeStreamCache;
+            return this;
+        }
+
+        /**
          * Time to live for describe stream cache entries.
          *
          * @param describeStreamCacheTtl Duration to wait before refreshing describe stream cache on writes.
@@ -296,14 +317,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 amazonDynamoDbStreams,
                 sleeper,
                 meterRegistry,
-                CacheBuilder
-                    .newBuilder()
-                    .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
-                    .maximumWeight(maxDescribeStreamCacheWeight)
-                    .<String, DescribeStreamResult>weigher((s, r) -> r.getStreamDescription().getShards().size())
-                    .ticker(ticker)
-                    .recordStats()
-                    .build(),
+                describeStreamCache == null ? CacheBuilder
+                        .newBuilder()
+                        .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
+                        .maximumWeight(maxDescribeStreamCacheWeight)
+                        .<String, DescribeStreamResult>weigher((s, r) -> r.getStreamDescription().getShards().size())
+                        .ticker(ticker)
+                        .recordStats()
+                        .build() : this.describeStreamCache,
                 describeStreamCacheEnabled,
                 new StreamsRecordCache(meterRegistry, maxRecordsByteSize),
                 CacheBuilder.newBuilder()
@@ -693,6 +714,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final Timer getShardIteratorLoadTime;
     private final Counter getShardIteratorUncached;
 
+    private MeterRegistry meterRegistry;
+
     @VisibleForTesting
     CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
                                  Sleeper sleeper,
@@ -709,6 +732,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.describeStreamCache = describeStreamCache;
+
         this.describeStreamCacheEnabled = describeStreamCacheEnabled;
         this.recordCache = recordCache;
         this.getRecordsEmptyResultCache = getRecordsEmptyResultCache;
@@ -717,6 +741,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsBackoffInMillis = getRecordsBackoffInMillis;
         this.iteratorCache = iteratorCache;
         this.trimHorizonCache = trimHorizonCache;
+
+
+        System.out.println("metrics registry mt-dynamo address: " + meterRegistry);
+
+        this.meterRegistry = meterRegistry;
+
+        this.meterRegistry.counter("new.metric").increment();
 
         // eagerly create various meters
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
@@ -737,6 +768,33 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, cn + ".EmptyResult");
         GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, cn + ".DescribeStream");
         GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, cn + ".TrimHorizon");
+
+        registerCacheMetrics(describeStreamCache);
+    }
+
+    private void registerCacheMetrics(Cache cache) {
+
+        FunctionCounter.builder(CachingAmazonDynamoDbStreams.class.getSimpleName()
+                + ".DescribeStream" + ".cache.misses", cache,
+            c -> {
+                Long misses = cache.stats().missCount();
+                return misses == null ? 0 : misses;
+            })
+            .tag("result", "miss").tag("cache", CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
+            .description("the number of times cache lookup methods have returned an uncached (newly loaded) value, or"
+                + " null")
+            .register(meterRegistry);
+
+        FunctionCounter.builder(CachingAmazonDynamoDbStreams.class.getSimpleName()
+                + ".DescribeStream" + ".cache.hit", cache,
+            c -> {
+                Long hitCount = cache.stats().hitCount();
+                return hitCount == null ? 0 : hitCount;
+            })
+            .tag("result", "hit").tag("cache", CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
+            .description("the number of times cache lookup methods have returned an uncached (newly loaded) value, or"
+                + " null")
+            .register(meterRegistry);
     }
 
     @VisibleForTesting
@@ -795,6 +853,24 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         if (describeStreamCacheEnabled) {
+            System.out.println("mtdynamo meter registry: " + this.getMeterRegistry());
+            System.out.println("mtdynamo meter count: " + this.getMeterRegistry().getMeters().size());
+            System.out.println("mtdynamo describe stream cache: " + this.getDescribeStreamCache());
+
+            this.getMeterRegistry().getMeters().stream().filter(m -> m.getId().getName().contains("cache")
+                && m.getId().getTag("cache") != null
+                && m.getId().getTag("cache").equals("CachingAmazonDynamoDbStreams.DescribeStream")).forEach(
+                    m -> System.out.println("\t*****mt-dynamo " + m.getId() + " -> " + m.measure()));
+
+            System.out.println();
+            meterRegistry.counter("new.metric").increment();
+
+            System.out.println("describeStream stats are: " + describeStreamCache.stats().toString());
+
+            System.out.println("describe stream hit count: " + describeStreamCache.stats().hitCount());
+
+            System.out.println("describe stream hash code: " + System.identityHashCode(describeStreamCache.stats()));
+
             String key = describeStreamRequest.getStreamArn();
             try {
                 return describeStreamCache.get(key,

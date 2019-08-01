@@ -65,7 +65,12 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.core.instrument.util.HierarchicalNameMapper;
+import io.micrometer.graphite.GraphiteConfig;
+import io.micrometer.graphite.GraphiteMeterRegistry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1721,6 +1726,61 @@ class CachingAmazonDynamoDbStreamsTest {
         }
 
         verify(mockStreams, times(2)).describeStream(any(DescribeStreamRequest.class));
+    }
+
+    /**
+     * Verifies that the describeStreamCache with monitoring enabled reports expected cache metrics.
+     */
+    @Test
+    public void testDescribeStreamCacheMonitoring() {
+
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2")
+        );
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards));
+
+        final GraphiteConfig graphiteConfig = new GraphiteConfig() {
+            // we are already managing the lifecycle of reporters separately, so don't start again via micrometer
+            @Override
+            public boolean enabled() {
+                return false;
+            }
+
+            // for other properties: accept defaults
+            @Override
+            public String get(String s) {
+                return null;
+            }
+        };
+
+        MeterRegistry meterRegistry = new GraphiteMeterRegistry(graphiteConfig,
+            Clock.SYSTEM,
+            HierarchicalNameMapper.DEFAULT);
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
+            .withMeterRegistry(meterRegistry).build();
+
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+        for (int i = 0; i < 4; i++) {
+            cachingStreams.describeStream(request);
+        }
+
+        // Ensures describeStream is only called once
+        verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
+
+        // Expect first call to processDefiningQuery to have a cache miss
+        System.out.println("monitoring cache: " + cachingStreams.getDescribeStreamCache().stats().toString());
+
+        assertEquals(1L, cachingStreams.getDescribeStreamCache().stats().loadSuccessCount());
+        // Expect calls afterwards to have cache hits
+        assertEquals(3L, cachingStreams.getDescribeStreamCache().stats().hitCount());
+        assertEquals(3L, meterRegistry.get("cache.gets").tags("cache",
+            "CachingAmazonDynamoDbStreams.DescribeStream").functionCounter().count());
+
+        System.out.println(meterRegistry.get("cache.gets").tags("cache",
+            "CachingAmazonDynamoDbStreams.DescribeStream").functionCounter().count());
     }
 
     /**
