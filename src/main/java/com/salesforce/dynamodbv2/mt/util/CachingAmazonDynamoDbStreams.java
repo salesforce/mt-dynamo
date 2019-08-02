@@ -73,14 +73,6 @@ import org.slf4j.LoggerFactory;
  */
 public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStreams {
 
-    public MeterRegistry getMeterRegistry() {
-        return meterRegistry;
-    }
-
-    public void setMeterRegistry(MeterRegistry meterRegistry) {
-        this.meterRegistry = meterRegistry;
-    }
-
     /**
      * Replace with com.amazonaws.services.dynamodbv2.streamsadapter.utils.Sleeper when we upgrade.
      */
@@ -125,7 +117,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private MeterRegistry meterRegistry;
         private Sleeper sleeper;
         private Ticker ticker;
-        private Cache describeStreamCache;
+        private Cache<String, DescribeStreamResult> describeStreamCache;
+        private Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache;
+        private Cache<CachingShardIterator, String> iteratorCache;
+        private Cache<StreamShardId, CachingShardIterator> trimHorizonCache;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int getRecordsMaxRetries = DEFAULT_GET_RECORDS_MAX_RETRIES;
@@ -191,6 +186,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Cache to use for getting records on an empty result.
+         *
+         * @param getRecordsEmptyResultCache The cache to use for getting records on an empty result.
+         * @return this Builder.
+         */
+        public Builder withGetRecordsEmptyResultCache(Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache) {
+            this.getRecordsEmptyResultCache = getRecordsEmptyResultCache;
+            return this;
+        }
+
+        /**
          * Maximum number of retries if {@link LimitExceededException}s are encountered when loading records from the
          * underlying stream into the cache.
          *
@@ -228,6 +234,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Cache to use for stream iterators.
+         *
+         * @param iteratorCache The cache to use stream iterators.
+         * @return this Builder.
+         */
+        public Builder withIteratorCache(Cache<CachingShardIterator, String> iteratorCache) {
+            this.iteratorCache = iteratorCache;
+            return this;
+        }
+
+        /**
          * Cache metrics are not registered in the MeterRegistry.
          * A client should call this when managing metric registration on the client side.
          *
@@ -250,7 +267,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Enables or disables the describe stream cache.
+         * Cache to use for describe stream calls.
          *
          * @param describeStreamCache The cache to use for describe stream
          * @return this Builder.
@@ -308,6 +325,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return this;
         }
 
+        /**
+         * Cache to use for tracking trim horizon.
+         *
+         * @param trimHorizonCache The cache to use for tracking trim horizon.
+         * @return this Builder.
+         */
+        public Builder withTrimHorizonCache(Cache<StreamShardId, CachingShardIterator> trimHorizonCache) {
+            this.trimHorizonCache = trimHorizonCache;
+            return this;
+        }
+
         @VisibleForTesting
         Builder withGetRecordsLocks(Striped<Lock> getRecordsLocks) {
             this.getRecordsLocks = getRecordsLocks;
@@ -339,23 +367,23 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                         .build() : this.describeStreamCache,
                 describeStreamCacheEnabled,
                 new StreamsRecordCache(meterRegistry, maxRecordsByteSize),
-                CacheBuilder.newBuilder()
+                getRecordsEmptyResultCache == null ? CacheBuilder.newBuilder()
                     .expireAfterWrite(emptyResultCacheTtlInMillis, TimeUnit.MILLISECONDS)
                     .ticker(ticker)
                     .recordStats()
-                    .build(),
+                    .build() : this.getRecordsEmptyResultCache,
                 getRecordsLocks == null ? Striped.lazyWeakLock(16384) : getRecordsLocks,
                 getRecordsMaxRetries,
                 getRecordsBackoffInMillis,
-                CacheBuilder.newBuilder()
+                iteratorCache == null ? CacheBuilder.newBuilder()
                     .maximumSize(maxIteratorCacheSize)
                     .recordStats()
-                    .build(),
-                CacheBuilder.newBuilder()
+                    .build() : this.iteratorCache,
+                trimHorizonCache == null ? CacheBuilder.newBuilder()
                     .expireAfterWrite(trimHorizonIteratorCacheTtlInSeconds, TimeUnit.SECONDS)
                     .ticker(ticker)
                     .recordStats()
-                    .build(),
+                    .build() : this.trimHorizonCache,
                 registerCacheMetrics
             );
         }
@@ -364,7 +392,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * A logical shard iterator that optionally wraps an underlying DynamoDB iterator.
      */
-    private static final class CachingShardIterator {
+    public static final class CachingShardIterator {
 
         private static final CompositeStrings compositeStrings = new CompositeStrings('/', '\\');
 
