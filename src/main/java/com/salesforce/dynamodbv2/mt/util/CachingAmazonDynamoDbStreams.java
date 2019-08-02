@@ -34,7 +34,6 @@ import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.DelegatingAmazonDynamoDbStreams;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
-import io.micrometer.core.instrument.FunctionCounter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.binder.cache.GuavaCacheMetrics;
@@ -136,6 +135,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private long getRecordsBackoffInMillis = DEFAULT_GET_RECORDS_BACKOFF_IN_MILLIS;
         private long emptyResultCacheTtlInMillis = DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS;
         private long trimHorizonIteratorCacheTtlInSeconds = DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS;
+        private boolean registerCacheMetrics = true;
         // for testing
         private Striped<Lock> getRecordsLocks;
 
@@ -228,6 +228,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
+         * Cache metrics are not registered in the MeterRegistry.
+         * A client should call this when managing metric registration on the client side.
+         *
+         * @return This Builder.
+         */
+        public Builder withCustomCacheMetricRegistration() {
+            this.registerCacheMetrics = false;
+            return this;
+        }
+
+        /**
          * Enables or disables the describe stream cache.
          *
          * @param describeStreamCacheEnabled Disable or enable the describe stream cache.
@@ -313,6 +324,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             final Ticker ticker = this.ticker == null ? Ticker.systemTicker() : this.ticker;
             final MeterRegistry meterRegistry = this.meterRegistry == null ? new CompositeMeterRegistry()
                 : this.meterRegistry;
+
             return new CachingAmazonDynamoDbStreams(
                 amazonDynamoDbStreams,
                 sleeper,
@@ -343,7 +355,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     .expireAfterWrite(trimHorizonIteratorCacheTtlInSeconds, TimeUnit.SECONDS)
                     .ticker(ticker)
                     .recordStats()
-                    .build()
+                    .build(),
+                registerCacheMetrics
             );
         }
     }
@@ -728,7 +741,8 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                  int getRecordsMaxRetries,
                                  long getRecordsBackoffInMillis,
                                  Cache<CachingShardIterator, String> iteratorCache,
-                                 Cache<StreamShardId, CachingShardIterator> trimHorizonCache) {
+                                 Cache<StreamShardId, CachingShardIterator> trimHorizonCache,
+                                 boolean registerCacheMetrics) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.describeStreamCache = describeStreamCache;
@@ -741,13 +755,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsBackoffInMillis = getRecordsBackoffInMillis;
         this.iteratorCache = iteratorCache;
         this.trimHorizonCache = trimHorizonCache;
-
-
-        System.out.println("metrics registry mt-dynamo address: " + meterRegistry);
-
         this.meterRegistry = meterRegistry;
-
-        this.meterRegistry.counter("new.metric").increment();
 
         // eagerly create various meters
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
@@ -764,44 +772,20 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsUncached = meterRegistry.counter(cn + ".GetRecords.Uncached");
         this.getShardIteratorLoadTime = meterRegistry.timer(cn + ".GetShardIterator.Load.Time");
         this.getShardIteratorUncached = meterRegistry.counter(cn + ".GetShardIterator.Uncached");
-        GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, cn + ".GetShardIterator");
-        GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, cn + ".EmptyResult");
-        GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, cn + ".DescribeStream");
-        GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, cn + ".TrimHorizon");
 
-        registerCacheMetrics(describeStreamCache);
-    }
-
-    private void registerCacheMetrics(Cache cache) {
-
-        FunctionCounter.builder(CachingAmazonDynamoDbStreams.class.getSimpleName()
-                + ".DescribeStream" + ".cache.misses", cache,
-            c -> {
-                Long misses = cache.stats().missCount();
-                return misses == null ? 0 : misses;
-            })
-            .tag("result", "miss").tag("cache", CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
-            .description("the number of times cache lookup methods have returned an uncached (newly loaded) value, or"
-                + " null")
-            .register(meterRegistry);
-
-        FunctionCounter.builder(CachingAmazonDynamoDbStreams.class.getSimpleName()
-                + ".DescribeStream" + ".cache.hit", cache,
-            c -> {
-                Long hitCount = cache.stats().hitCount();
-                return hitCount == null ? 0 : hitCount;
-            })
-            .tag("result", "hit").tag("cache", CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
-            .description("the number of times cache lookup methods have returned an uncached (newly loaded) value, or"
-                + " null")
-            .register(meterRegistry);
+        if (registerCacheMetrics) {
+            GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, cn + ".GetShardIterator");
+            GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, cn + ".EmptyResult");
+            GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, cn + ".DescribeStream");
+            GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, cn + ".TrimHorizon");
+        }
     }
 
     @VisibleForTesting
     // TODO: introduce builder/constructor variant that allows passing in cache reference
-    public Cache<String, DescribeStreamResult> getDescribeStreamCache() {
-        return describeStreamCache;
-    }
+    // public Cache<String, DescribeStreamResult> getDescribeStreamCache() {
+    //     return describeStreamCache;
+    // }
 
     /**
      * Gets the {@code DescribeStreamResult} from the DescribeStream API.
@@ -853,24 +837,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         if (describeStreamCacheEnabled) {
-            System.out.println("mtdynamo meter registry: " + this.getMeterRegistry());
-            System.out.println("mtdynamo meter count: " + this.getMeterRegistry().getMeters().size());
-            System.out.println("mtdynamo describe stream cache: " + this.getDescribeStreamCache());
-
-            this.getMeterRegistry().getMeters().stream().filter(m -> m.getId().getName().contains("cache")
-                && m.getId().getTag("cache") != null
-                && m.getId().getTag("cache").equals("CachingAmazonDynamoDbStreams.DescribeStream")).forEach(
-                    m -> System.out.println("\t*****mt-dynamo " + m.getId() + " -> " + m.measure()));
-
-            System.out.println();
-            meterRegistry.counter("new.metric").increment();
-
-            System.out.println("describeStream stats are: " + describeStreamCache.stats().toString());
-
-            System.out.println("describe stream hit count: " + describeStreamCache.stats().hitCount());
-
-            System.out.println("describe stream hash code: " + System.identityHashCode(describeStreamCache.stats()));
-
             String key = describeStreamRequest.getStreamArn();
             try {
                 return describeStreamCache.get(key,

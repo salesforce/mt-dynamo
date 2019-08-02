@@ -16,7 +16,9 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.Stream;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
+import com.google.common.base.Ticker;
 import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
@@ -61,8 +63,12 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
+
+            Cache<String, DescribeStreamResult> indexMtDynamoDbDescribeStreamCache = CacheBuilder.newBuilder().ticker(
+                Ticker.systemTicker()).recordStats().build();
             CachingAmazonDynamoDbStreams indexMtDynamoDbStreamsCache =
-                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build();
+                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
+                    .withDescribeStreamCache(indexMtDynamoDbDescribeStreamCache).build();
             MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
                 indexMtDynamoDbStreamsCache);
 
@@ -74,8 +80,11 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
+            Cache<String, DescribeStreamResult> indexBinaryHkMtDynamoDbDescribeStreamCache
+                = CacheBuilder.newBuilder().ticker(Ticker.systemTicker()).recordStats().build();
             CachingAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreamsCache =
-                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal()).build();
+                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
+                    .withDescribeStreamCache(indexBinaryHkMtDynamoDbDescribeStreamCache).build();
             MtAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(
                 indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreamsCache);
 
@@ -88,10 +97,11 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
             return java.util.stream.Stream.of(
-                Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams, indexMtDynamoDbStreamsCache),
+                Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams, indexMtDynamoDbStreamsCache,
+                    indexMtDynamoDbDescribeStreamCache),
                 Arguments.of(indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreams,
-                    indexBinaryHkMtDynamoDbStreamsCache),
-                Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams, null)
+                    indexBinaryHkMtDynamoDbStreamsCache, indexBinaryHkMtDynamoDbDescribeStreamCache),
+                Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams, null, null)
             );
         }
     }
@@ -101,12 +111,12 @@ public class MtAmazonDynamoDbStreamsBaseTest {
      */
     private void assertDescribeStreamCache(MtAmazonDynamoDbStreams mtDynamoDbStreams,
                                            CachingAmazonDynamoDbStreams cachingStreams,
+                                           Cache<String, DescribeStreamResult> describeStreamCache,
                                            Stream stream,
                                            boolean expectedCacheHit,
                                            DescribeStreamResult expectedResult) {
         // Setup
         String key = stream.getStreamArn();
-        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
 
         // Verify cache hit/miss based on expected result
         StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, key, expectedCacheHit, expectedResult);
@@ -315,7 +325,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     @ParameterizedTest
     @ArgumentsSource(Args.class)
     void testDescribeStreamCache(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams,
-                                 CachingAmazonDynamoDbStreams cachingStreams) {
+                                 CachingAmazonDynamoDbStreams cachingStreams, Cache<String, DescribeStreamResult>
+                                 describeStreamCache) {
 
         // Some of the parameterized inputs don't use a CachingAmazonDynamoDbStreams instance
         if (cachingStreams == null) {
@@ -331,8 +342,10 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 DescribeStreamResult expectedResult =
                     new DescribeStreamResult().withStreamDescription(new StreamDescription().withStreamArn(key));
 
-                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, stream, false, expectedResult);
-                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, stream, true, expectedResult);
+                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, describeStreamCache, stream,
+                    false, expectedResult);
+                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, describeStreamCache, stream,
+                    true, expectedResult);
             }
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
