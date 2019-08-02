@@ -1221,13 +1221,20 @@ class CachingAmazonDynamoDbStreamsTest {
         final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
         final String dynamoDbIterator = mockGetShardIterator(streams, request);
         final String nextDynamoDbIterator = mockShardIterator(request);
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
         mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
         mockGetRecords(streams, nextDynamoDbIterator, 0, 1);
 
         final MockTicker ticker = new MockTicker();
+        Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache = CacheBuilder.newBuilder()
+            .expireAfterWrite(1, TimeUnit.MILLISECONDS)
+            .ticker(ticker)
+            .recordStats()
+            .build();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
-            .withEmptyResultCacheTtlInMillis(1)
+            .withMeterRegistry(meterRegistry)
+            .withGetRecordsEmptyResultCache(getRecordsEmptyResultCache)
             .build();
 
         // first request should retrieve empty result and then cache it
@@ -1242,6 +1249,15 @@ class CachingAmazonDynamoDbStreamsTest {
         ticker.increment(1, TimeUnit.MILLISECONDS);
         assertGetRecords(cachingStreams, request, null, 0, 1);
         assertCacheMisses(streams, 1, 2);
+
+        // verify monitoring
+        assertEquals(4L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".EmptyResult")
+            .tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".EmptyResult")
+            .tags("result", "hit").functionCounter().count());
     }
 
     /**
@@ -1803,7 +1819,8 @@ class CachingAmazonDynamoDbStreamsTest {
         // Expect calls afterwards to have cache hits
         assertEquals(3L, describeStreamCache.stats().hitCount());
         assertEquals(3L, meterRegistry.get("cache.gets").tags("cache",
-            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream").functionCounter().count());
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
+            .tags("result", "hit").functionCounter().count());
     }
 
     /**
