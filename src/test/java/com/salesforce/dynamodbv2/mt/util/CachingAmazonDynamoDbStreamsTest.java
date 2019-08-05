@@ -63,6 +63,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.util.concurrent.Striped;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.CachingShardIterator;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
@@ -398,17 +399,37 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams) {
-        return mockTrimHorizonStream(streams, new MockTicker());
+        return mockTrimHorizonStream(streams, new MockTicker(), new SimpleMeterRegistry(), null);
     }
 
-    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker) {
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
+                                                                      Ticker ticker) {
+        return mockTrimHorizonStream(streams, ticker, new SimpleMeterRegistry(), null);
+    }
+
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
+                                                                      MeterRegistry meterRegistry,
+                                                                      Cache<StreamShardId,
+                                                                          CachingShardIterator> trimHorizonCache) {
+        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry, trimHorizonCache);
+    }
+
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker,
+                                                                      MeterRegistry meterRegistry,
+                                                                      Cache<StreamShardId,
+                                                                          CachingShardIterator> trimHorizonCache) {
         GetShardIteratorRequest iteratorRequest = mockTrimHorizonRequest(streams, streamArn, shardId);
 
         // get exact overlapping records with and without limit
-        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams
+        CachingAmazonDynamoDbStreams.Builder builder = new CachingAmazonDynamoDbStreams
             .Builder(streams)
-            .withTicker(ticker)
-            .build();
+            .withMeterRegistry(meterRegistry)
+            .withTicker(ticker);
+
+        if (trimHorizonCache != null) {
+            builder.withTrimHorizonCache(trimHorizonCache);
+        }
+        CachingAmazonDynamoDbStreams cachingStreams = builder.build();
 
         assertGetRecords(cachingStreams, iteratorRequest, null, 0, 10);
 
@@ -573,13 +594,27 @@ class CachingAmazonDynamoDbStreamsTest {
     @Test
     void testTrimHorizonCached() {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
+        Cache<StreamShardId, CachingShardIterator> trimHorizonCache = CacheBuilder.newBuilder()
+            .expireAfterWrite(60, TimeUnit.SECONDS)
+            .recordStats()
+            .build();
 
-        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
+        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams, meterRegistry, trimHorizonCache);
 
         assertGetRecords(cachingStreams, newTrimHorizonRequest(), 10, 0, 10);
 
         // verify that no iterator or records were requested from underlying stream
         assertCacheMisses(streams, 1, 1);
+
+        //Verify monitoring is enabled for trim horizon cache
+        assertEquals(2L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".TrimHorizon")
+            .tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".TrimHorizon")
+            .tags("result", "hit").functionCounter().count());
     }
 
     /**
