@@ -1285,13 +1285,21 @@ class CachingAmazonDynamoDbStreamsTest {
         assertGetRecords(cachingStreams, request, null, 0, 1);
         assertCacheMisses(streams, 1, 2);
 
-        // verify monitoring
+        // Verify monitoring for EmptyResult cache and GetShardIterator caches
         assertEquals(4L, meterRegistry.get("cache.gets").tags("cache",
             CachingAmazonDynamoDbStreams.class.getSimpleName() + ".EmptyResult")
             .tags("result", "miss").functionCounter().count());
 
         assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
             CachingAmazonDynamoDbStreams.class.getSimpleName() + ".EmptyResult")
+            .tags("result", "hit").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".GetShardIterator")
+            .tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".GetShardIterator")
             .tags("result", "hit").functionCounter().count());
     }
 
