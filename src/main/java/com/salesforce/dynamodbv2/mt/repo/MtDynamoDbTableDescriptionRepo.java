@@ -106,9 +106,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     @Override
     public TableDescription createTable(CreateTableRequest createTableRequest) {
-        amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName())
-            .withItem(createItem(createTableRequest)));
-        return getTableDescription(createTableRequest.getTableName());
+        Map<String, AttributeValue> item = createItem(createTableRequest);
+        amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName()).withItem(item));
+        return itemToDescription(item);
     }
 
     @Override
@@ -143,8 +143,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
                 + getTableDescriptionTableName());
         }
-        String tableDataJson = item.get(tableDescriptionTableDataField).getS();
-        return jsonToTableData(tableDataJson);
+        return itemToDescription(item);
+    }
+
+    private TableDescription itemToDescription(Map<String, AttributeValue> item) {
+        return jsonToTableData(item.get(tableDescriptionTableDataField).getS());
     }
 
     @Override
