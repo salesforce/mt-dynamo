@@ -11,7 +11,7 @@ import javax.annotation.Nonnull;
  * A stream shard position is a pointer to a sequence number within a stream shard that uniquely identifies the
  * position of an iterator or record.
  */
-public final class StreamShardPosition {
+final class StreamShardPosition {
 
     static StreamShardPosition at(String streamArn, String shardId, Record record) {
         return at(new StreamShardId(streamArn, shardId), record);

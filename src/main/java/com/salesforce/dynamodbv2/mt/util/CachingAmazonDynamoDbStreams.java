@@ -347,7 +347,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     /**
      * A logical shard iterator that optionally wraps an underlying DynamoDB iterator.
      */
-    public static final class CachingShardIterator {
+    private static final class CachingShardIterator {
 
         private static final CompositeStrings compositeStrings = new CompositeStrings('/', '\\');
 
@@ -710,8 +710,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final Timer getShardIteratorLoadTime;
     private final Counter getShardIteratorUncached;
 
-    private MeterRegistry meterRegistry;
-
     @VisibleForTesting
     CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
                                  Sleeper sleeper,
@@ -738,7 +736,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getRecordsBackoffInMillis = getRecordsBackoffInMillis;
         this.iteratorCache = iteratorCache;
         this.trimHorizonCache = trimHorizonCache;
-        this.meterRegistry = meterRegistry;
 
         // eagerly create various meters
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
@@ -763,12 +760,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, prefix + ".DescribeStream");
         GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, prefix + ".TrimHorizon");
     }
-
-    @VisibleForTesting
-    // TODO: introduce builder/constructor variant that allows passing in cache reference
-    // public Cache<String, DescribeStreamResult> getDescribeStreamCache() {
-    //     return describeStreamCache;
-    // }
 
     /**
      * Gets the {@code DescribeStreamResult} from the DescribeStream API.
