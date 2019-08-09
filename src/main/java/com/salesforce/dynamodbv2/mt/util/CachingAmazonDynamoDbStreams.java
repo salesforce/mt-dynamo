@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.Shard;
 import com.amazonaws.services.dynamodbv2.model.ShardIteratorType;
+import com.amazonaws.util.StringUtils;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Throwables;
 import com.google.common.base.Ticker;
@@ -115,12 +116,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
+        private String metricPrefix;
         private Sleeper sleeper;
         private Ticker ticker;
         private Cache<String, DescribeStreamResult> describeStreamCache;
-        private Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache;
-        private Cache<CachingShardIterator, String> iteratorCache;
-        private Cache<StreamShardId, CachingShardIterator> trimHorizonCache;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int getRecordsMaxRetries = DEFAULT_GET_RECORDS_MAX_RETRIES;
@@ -130,7 +129,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private long getRecordsBackoffInMillis = DEFAULT_GET_RECORDS_BACKOFF_IN_MILLIS;
         private long emptyResultCacheTtlInMillis = DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS;
         private long trimHorizonIteratorCacheTtlInSeconds = DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS;
-        private boolean registerCacheMetrics = true;
         // for testing
         private Striped<Lock> getRecordsLocks;
 
@@ -144,8 +142,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param meterRegistry Meter registry to report metrics to.
          * @return This Builder.
          */
-        public Builder withMeterRegistry(MeterRegistry meterRegistry) {
+        public Builder withMeterRegistry(MeterRegistry meterRegistry, String metricPrefix) {
             this.meterRegistry = meterRegistry;
+            this.metricPrefix = metricPrefix;
             return this;
         }
 
@@ -182,17 +181,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         public Builder withMaxRecordsByteSize(long maxRecordsByteSize) {
             checkArgument(maxRecordsByteSize >= 0);
             this.maxRecordsByteSize = maxRecordsByteSize;
-            return this;
-        }
-
-        /**
-         * Cache to use for getting records on an empty result.
-         *
-         * @param getRecordsEmptyResultCache The cache to use for getting records on an empty result.
-         * @return this Builder.
-         */
-        public Builder withGetRecordsEmptyResultCache(Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache) {
-            this.getRecordsEmptyResultCache = getRecordsEmptyResultCache;
             return this;
         }
 
@@ -234,24 +222,13 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Cache to use for stream iterators.
+         * Cache to use for describe stream calls.
          *
-         * @param iteratorCache The cache to use stream iterators.
+         * @param describeStreamCache The cache to use for describe stream
          * @return this Builder.
          */
-        public Builder withIteratorCache(Cache<CachingShardIterator, String> iteratorCache) {
-            this.iteratorCache = iteratorCache;
-            return this;
-        }
-
-        /**
-         * Cache metrics are not registered in the MeterRegistry.
-         * A client should call this when managing metric registration on the client side.
-         *
-         * @return This Builder.
-         */
-        public Builder withCustomCacheMetricRegistration() {
-            this.registerCacheMetrics = false;
+        public Builder withDescribeStreamCache(Cache describeStreamCache) {
+            this.describeStreamCache = describeStreamCache;
             return this;
         }
 
@@ -263,17 +240,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          */
         public Builder withDescribeStreamCacheEnabled(boolean describeStreamCacheEnabled) {
             this.describeStreamCacheEnabled = describeStreamCacheEnabled;
-            return this;
-        }
-
-        /**
-         * Cache to use for describe stream calls.
-         *
-         * @param describeStreamCache The cache to use for describe stream
-         * @return this Builder.
-         */
-        public Builder withDescribeStreamCache(Cache describeStreamCache) {
-            this.describeStreamCache = describeStreamCache;
             return this;
         }
 
@@ -325,17 +291,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return this;
         }
 
-        /**
-         * Cache to use for tracking trim horizon.
-         *
-         * @param trimHorizonCache The cache to use for tracking trim horizon.
-         * @return this Builder.
-         */
-        public Builder withTrimHorizonCache(Cache<StreamShardId, CachingShardIterator> trimHorizonCache) {
-            this.trimHorizonCache = trimHorizonCache;
-            return this;
-        }
-
         @VisibleForTesting
         Builder withGetRecordsLocks(Striped<Lock> getRecordsLocks) {
             this.getRecordsLocks = getRecordsLocks;
@@ -357,34 +312,34 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 amazonDynamoDbStreams,
                 sleeper,
                 meterRegistry,
+                metricPrefix,
                 describeStreamCache == null ? CacheBuilder
-                        .newBuilder()
-                        .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
-                        .maximumWeight(maxDescribeStreamCacheWeight)
-                        .<String, DescribeStreamResult>weigher((s, r) -> r.getStreamDescription().getShards().size())
-                        .ticker(ticker)
-                        .recordStats()
-                        .build() : this.describeStreamCache,
+                    .newBuilder()
+                    .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
+                    .maximumWeight(maxDescribeStreamCacheWeight)
+                    .<String, DescribeStreamResult>weigher((s, r) -> r.getStreamDescription().getShards().size())
+                    .ticker(ticker)
+                    .recordStats()
+                    .build() : this.describeStreamCache,
                 describeStreamCacheEnabled,
                 new StreamsRecordCache(meterRegistry, maxRecordsByteSize),
-                getRecordsEmptyResultCache == null ? CacheBuilder.newBuilder()
+                CacheBuilder.newBuilder()
                     .expireAfterWrite(emptyResultCacheTtlInMillis, TimeUnit.MILLISECONDS)
                     .ticker(ticker)
                     .recordStats()
-                    .build() : this.getRecordsEmptyResultCache,
+                    .build(),
                 getRecordsLocks == null ? Striped.lazyWeakLock(16384) : getRecordsLocks,
                 getRecordsMaxRetries,
                 getRecordsBackoffInMillis,
-                iteratorCache == null ? CacheBuilder.newBuilder()
+                CacheBuilder.newBuilder()
                     .maximumSize(maxIteratorCacheSize)
                     .recordStats()
-                    .build() : this.iteratorCache,
-                trimHorizonCache == null ? CacheBuilder.newBuilder()
+                    .build(),
+                CacheBuilder.newBuilder()
                     .expireAfterWrite(trimHorizonIteratorCacheTtlInSeconds, TimeUnit.SECONDS)
                     .ticker(ticker)
                     .recordStats()
-                    .build() : this.trimHorizonCache,
-                registerCacheMetrics
+                    .build()
             );
         }
     }
@@ -761,6 +716,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
                                  Sleeper sleeper,
                                  MeterRegistry meterRegistry,
+                                 String metricPrefix,
                                  Cache<String, DescribeStreamResult> describeStreamCache,
                                  boolean describeStreamCacheEnabled,
                                  StreamsRecordCache recordCache,
@@ -769,8 +725,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                  int getRecordsMaxRetries,
                                  long getRecordsBackoffInMillis,
                                  Cache<CachingShardIterator, String> iteratorCache,
-                                 Cache<StreamShardId, CachingShardIterator> trimHorizonCache,
-                                 boolean registerCacheMetrics) {
+                                 Cache<StreamShardId, CachingShardIterator> trimHorizonCache) {
         super(amazonDynamoDbStreams);
         this.sleeper = sleeper;
         this.describeStreamCache = describeStreamCache;
@@ -787,26 +742,26 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         // eagerly create various meters
         final String cn = CachingAmazonDynamoDbStreams.class.getSimpleName();
-        this.getRecordsTime = meterRegistry.timer(cn + ".GetRecords.Time");
-        this.getRecordsSize = meterRegistry.summary(cn + ".GetRecords.Size");
-        this.getRecordsLoadTime = meterRegistry.timer(cn + ".GetRecords.Load.Time");
-        this.getRecordsLoadSize = meterRegistry.summary(cn + ".GetRecords.Load.Size");
-        this.getRecordsLoadLockWaitTime = meterRegistry.timer(cn + ".GetRecords.Load.Lock.Time");
-        this.getRecordsLoadLockTimeouts = meterRegistry.counter(cn + ".GetRecords.Load.Lock.Timeouts");
-        this.getRecordsLoadLockTimeoutsFailures = meterRegistry.counter(cn + ".GetRecords.Load.Lock.Timeouts.Failures");
-        this.getRecordsLoadRetries = meterRegistry.summary(cn + ".GetRecords.Load.Retries");
-        this.getRecordsLoadMaxRetries = meterRegistry.counter(cn + ".GetRecords.Load.MaxRetries");
-        this.getRecordsLoadExpiredIterator = meterRegistry.counter(cn + ".GetRecords.Load.ExpiredIterator");
-        this.getRecordsUncached = meterRegistry.counter(cn + ".GetRecords.Uncached");
-        this.getShardIteratorLoadTime = meterRegistry.timer(cn + ".GetShardIterator.Load.Time");
-        this.getShardIteratorUncached = meterRegistry.counter(cn + ".GetShardIterator.Uncached");
+        final String prefix = StringUtils.isNullOrEmpty(metricPrefix) ? cn : cn + "." + metricPrefix;
+        this.getRecordsTime = meterRegistry.timer(prefix + ".GetRecords.Time");
+        this.getRecordsSize = meterRegistry.summary(prefix + ".GetRecords.Size");
+        this.getRecordsLoadTime = meterRegistry.timer(prefix + ".GetRecords.Load.Time");
+        this.getRecordsLoadSize = meterRegistry.summary(prefix + ".GetRecords.Load.Size");
+        this.getRecordsLoadLockWaitTime = meterRegistry.timer(prefix + ".GetRecords.Load.Lock.Time");
+        this.getRecordsLoadLockTimeouts = meterRegistry.counter(prefix + ".GetRecords.Load.Lock.Timeouts");
+        this.getRecordsLoadLockTimeoutsFailures = meterRegistry.counter(prefix
+            + ".GetRecords.Load.Lock.Timeouts.Failures");
+        this.getRecordsLoadRetries = meterRegistry.summary(prefix + ".GetRecords.Load.Retries");
+        this.getRecordsLoadMaxRetries = meterRegistry.counter(prefix + ".GetRecords.Load.MaxRetries");
+        this.getRecordsLoadExpiredIterator = meterRegistry.counter(prefix + ".GetRecords.Load.ExpiredIterator");
+        this.getRecordsUncached = meterRegistry.counter(prefix + ".GetRecords.Uncached");
+        this.getShardIteratorLoadTime = meterRegistry.timer(prefix + ".GetShardIterator.Load.Time");
+        this.getShardIteratorUncached = meterRegistry.counter(prefix + ".GetShardIterator.Uncached");
 
-        if (registerCacheMetrics) {
-            GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, cn + ".GetShardIterator");
-            GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, cn + ".EmptyResult");
-            GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, cn + ".DescribeStream");
-            GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, cn + ".TrimHorizon");
-        }
+        GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, prefix + ".GetShardIterator");
+        GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, prefix + ".EmptyResult");
+        GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, prefix + ".DescribeStream");
+        GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, prefix + ".TrimHorizon");
     }
 
     @VisibleForTesting
