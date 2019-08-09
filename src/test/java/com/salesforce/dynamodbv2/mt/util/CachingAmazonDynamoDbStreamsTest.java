@@ -409,7 +409,7 @@ class CachingAmazonDynamoDbStreamsTest {
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
                                                                       MeterRegistry meterRegistry,
                                                                       String dataType) {
-        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry, "data");
+        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry, dataType);
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker,
@@ -418,12 +418,11 @@ class CachingAmazonDynamoDbStreamsTest {
         GetShardIteratorRequest iteratorRequest = mockTrimHorizonRequest(streams, streamArn, shardId);
 
         // get exact overlapping records with and without limit
-        CachingAmazonDynamoDbStreams.Builder builder = new CachingAmazonDynamoDbStreams
+        CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams
             .Builder(streams)
             .withMeterRegistry(meterRegistry, dataType)
-            .withTicker(ticker);
-
-        CachingAmazonDynamoDbStreams cachingStreams = builder.build();
+            .withTicker(ticker)
+            .build();
 
         assertGetRecords(cachingStreams, iteratorRequest, null, 0, 10);
 
