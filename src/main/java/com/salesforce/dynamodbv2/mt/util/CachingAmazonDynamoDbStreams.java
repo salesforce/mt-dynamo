@@ -1070,11 +1070,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                         // use new physical iterator next time to continue to progress
                         nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
                     }
+                    // update record cache: record empty result (to avoid concurrent requests)
+                    iterator.resolvePosition()
+                        .ifPresent(position -> getRecordsEmptyResultCache.put(position, Boolean.TRUE));
                 }
-
-                // update record cache: record empty result (to avoid concurrent requests)
-                iterator.resolvePosition()
-                    .ifPresent(position -> getRecordsEmptyResultCache.put(position, Boolean.TRUE));
             } else {
                 // update iterator cache
                 if (loadedNextIterator == null) {

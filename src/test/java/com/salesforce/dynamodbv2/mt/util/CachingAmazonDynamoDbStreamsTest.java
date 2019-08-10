@@ -1214,6 +1214,23 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
+     * Verifies that empty results at the end of a shard are not cached.
+     */
+    @Test
+    void testShardEnd() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest afterLastRequest = newAfterSequenceNumberRequest(9);
+        final String afterLastIterator = mockGetShardIterator(streams, afterLastRequest);
+        mockGetRecords(streams, afterLastIterator, 10, 10);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams).build();
+
+        final String iterator = cachingStreams.getShardIterator(afterLastRequest).getShardIterator();
+        assertNull(assertGetRecords(cachingStreams, iterator, null, Collections.emptyList()));
+        assertNull(assertGetRecords(cachingStreams, iterator, null, Collections.emptyList()));
+    }
+
+    /**
      * Verifies that {@link ResourceNotFoundException} is thrown when attempting to retrieve nonexistent shard.
      */
     @Test
