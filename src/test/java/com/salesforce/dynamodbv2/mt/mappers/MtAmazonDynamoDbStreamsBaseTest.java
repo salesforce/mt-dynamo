@@ -61,7 +61,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             MeterRegistry indexMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
             CachingAmazonDynamoDbStreams indexMtDynamoDbStreamsCache =
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withMeterRegistry(indexMtDynamoDbStreamsMeterRegistry, "")
+                    .withMeterRegistry(indexMtDynamoDbStreamsMeterRegistry)
                     .build();
             MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
                 indexMtDynamoDbStreamsCache);
@@ -77,7 +77,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
             MeterRegistry indexBinaryHkMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
             CachingAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreamsCache =
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withMeterRegistry(indexBinaryHkMtDynamoDbStreamsMeterRegistry, "")
+                    .withMeterRegistry(indexBinaryHkMtDynamoDbStreamsMeterRegistry)
                     .build();
             MtAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(
                 indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreamsCache);

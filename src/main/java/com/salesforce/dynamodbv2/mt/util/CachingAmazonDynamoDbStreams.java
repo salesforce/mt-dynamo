@@ -116,7 +116,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
         private MeterRegistry meterRegistry;
-        private String metricPrefix;
+        private String metricPrefix = "";
         private Sleeper sleeper;
         private Ticker ticker;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
@@ -141,7 +141,19 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @param meterRegistry Meter registry to report metrics to.
          * @return This Builder.
          */
-        public Builder withMeterRegistry(MeterRegistry meterRegistry, String metricPrefix) {
+        public Builder withMeterRegistry(MeterRegistry meterRegistry) {
+            this.meterRegistry = meterRegistry;
+            return this;
+        }
+
+        /**
+         * MeterRegistry to record metrics to.
+         *
+         * @param meterRegistry Meter registry to report metrics to.
+         * @param metricPrefix Prefix for Meter registry metrics.
+         * @return This Builder.
+         */
+        public Builder withMeterRegistryAndMetricPrefix(MeterRegistry meterRegistry, String metricPrefix) {
             this.meterRegistry = meterRegistry;
             this.metricPrefix = metricPrefix;
             return this;
