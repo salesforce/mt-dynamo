@@ -298,7 +298,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             for (Stream stream : streams) {
                 assertEquals(expectedHits, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
-                    .tags("result", "hit").functionCounter().count());
+                        .tags("result", "hit").functionCounter().count());
 
                 // Trigger flow that interacts with the describe stream cache (miss)
                 MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, stream);
@@ -308,10 +308,10 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 expectedHits++;
 
                 assertEquals(expectedMisses, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
-                    .tags("result", "miss").functionCounter().count());
+                        .tags("result", "miss").functionCounter().count());
 
                 assertEquals(expectedHits, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
-                   .tags("result", "hit").functionCounter().count());
+                        .tags("result", "hit").functionCounter().count());
             }
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
