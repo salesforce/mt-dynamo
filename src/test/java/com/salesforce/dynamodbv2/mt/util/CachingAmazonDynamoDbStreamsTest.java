@@ -65,7 +65,9 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams.Sleeper;
 import com.salesforce.dynamodbv2.testsupport.CountingAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -395,15 +397,29 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams) {
-        return mockTrimHorizonStream(streams, new MockTicker());
+        return mockTrimHorizonStream(streams, new MockTicker(), new SimpleMeterRegistry(), null);
     }
 
-    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker) {
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
+                                                                      Ticker ticker) {
+        return mockTrimHorizonStream(streams, ticker, new SimpleMeterRegistry(), null);
+    }
+
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
+                                                                      MeterRegistry meterRegistry,
+                                                                      String prefix) {
+        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry, prefix);
+    }
+
+    private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker,
+                                                                      MeterRegistry meterRegistry,
+                                                                      String prefix) {
         GetShardIteratorRequest iteratorRequest = mockTrimHorizonRequest(streams, streamArn, shardId);
 
         // get exact overlapping records with and without limit
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams
             .Builder(streams)
+            .withMeterRegistryAndMetricPrefix(meterRegistry, prefix)
             .withTicker(ticker)
             .build();
 
@@ -446,12 +462,11 @@ class CachingAmazonDynamoDbStreamsTest {
      * Verifies the describeStreamCache is utilized when describeStream is called.
      */
     private long assertDescribeStreamCache(CachingAmazonDynamoDbStreams cachingStreams,
+                                           Cache<String, DescribeStreamResult>  describeStreamCache,
                                            String key,
                                            DescribeStreamRequest request,
                                            boolean expectedCacheHit,
                                            DescribeStreamResult expectedResult) {
-        // Setup
-        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
 
         // Verify cache hit based on expected result
         StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, key, expectedCacheHit, expectedResult);
@@ -548,13 +563,22 @@ class CachingAmazonDynamoDbStreamsTest {
     @Test
     void testTrimHorizonCached() {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams);
+        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams, meterRegistry, "prefix");
 
         assertGetRecords(cachingStreams, newTrimHorizonRequest(), 10, 0, 10);
 
         // verify that no iterator or records were requested from underlying stream
         assertCacheMisses(streams, 1, 1);
+
+        //Verify monitoring is enabled for trim horizon cache
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        assertEquals(2L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".TrimHorizon").tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".TrimHorizon").tags("result", "hit").functionCounter().count());
     }
 
     /**
@@ -1130,7 +1154,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMaxIteratorCacheSize(0)
-            .withMeterRegistry(new CompositeMeterRegistry())
+            .withMeterRegistryAndMetricPrefix(new CompositeMeterRegistry(), "prefix")
             .build();
 
         doAnswer(invocation -> {
@@ -1213,12 +1237,14 @@ class CachingAmazonDynamoDbStreamsTest {
         final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
         final String dynamoDbIterator = mockGetShardIterator(streams, request);
         final String nextDynamoDbIterator = mockShardIterator(request);
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
         mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
         mockGetRecords(streams, nextDynamoDbIterator, 0, 1);
 
         final MockTicker ticker = new MockTicker();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
+            .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
             .withEmptyResultCacheTtlInMillis(1)
             .build();
 
@@ -1234,6 +1260,20 @@ class CachingAmazonDynamoDbStreamsTest {
         ticker.increment(1, TimeUnit.MILLISECONDS);
         assertGetRecords(cachingStreams, request, null, 0, 1);
         assertCacheMisses(streams, 1, 2);
+
+        // Verify monitoring for EmptyResult cache and GetShardIterator caches
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        assertEquals(4L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".EmptyResult").tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".EmptyResult").tags("result", "hit").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".GetShardIterator").tags("result", "miss").functionCounter().count());
+
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".GetShardIterator").tags("result", "hit").functionCounter().count());
     }
 
     /**
@@ -1431,11 +1471,12 @@ class CachingAmazonDynamoDbStreamsTest {
         DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
             new StreamDescription().withStreamArn(streamArn).withShards(shards));
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult).build();
+        Cache<String, DescribeStreamResult>  describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResult);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false, expectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true, expectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true, expectedResult);
 
         // Ensures describeStream is only called once
         verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
@@ -1458,12 +1499,13 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
             .withDescribeStreamCacheEnabled(false).build();
+        Cache<String, DescribeStreamResult>  describeStreamCache = cachingStreams.getDescribeStreamCache();
 
         cachingStreams.describeStream(request);
-        assertNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn));
+        assertNull(describeStreamCache.getIfPresent(streamArn));
 
         cachingStreams.describeStream(request);
-        assertNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn));
+        assertNull(describeStreamCache.getIfPresent(streamArn));
 
         verify(mockStreams, times(2)).describeStream(any(DescribeStreamRequest.class));
     }
@@ -1482,11 +1524,13 @@ class CachingAmazonDynamoDbStreamsTest {
             DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
                 new StreamDescription().withStreamArn(streamArn).withShards(shards));
             CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult).build();
+            Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
             DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
-            assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
+            assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request,
+                false, expectedResult);
 
-            StreamDescription streamDesc = Objects.requireNonNull(cachingStreams.getDescribeStreamCache()
+            StreamDescription streamDesc = Objects.requireNonNull(describeStreamCache
                 .getIfPresent(streamArn)).getStreamDescription();
             assertNotNull(streamDesc.getShards());
             assertTrue(streamDesc.getShards().isEmpty());
@@ -1528,13 +1572,16 @@ class CachingAmazonDynamoDbStreamsTest {
 
             CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams,
                 expectedResults).build();
+            Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
             DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
             DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
                 new StreamDescription().withStreamArn(streamArn).withShards(shards));
 
-            assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
-            assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
+            assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false,
+                combinedExpectedResult);
+            assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true,
+                combinedExpectedResult);
 
             verify(mockStreams, times(expectedResults.size())).describeStream(any(DescribeStreamRequest.class));
 
@@ -1569,15 +1616,17 @@ class CachingAmazonDynamoDbStreamsTest {
             new StreamDescription().withStreamArn(streamArn).withShards(
                 shards.subList(2, 3)).withLastEvaluatedShardId("B")));
 
-        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams,
-            expectedResults).build();
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults).build();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
             new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(0, 2)));
 
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false,
+            combinedExpectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true,
+            combinedExpectedResult);
 
         verify(mockStreams, times(expectedResults.size() - 1)).describeStream(any(DescribeStreamRequest.class));
     }
@@ -1610,14 +1659,15 @@ class CachingAmazonDynamoDbStreamsTest {
             new StreamDescription().withStreamArn(streamArn2).withShards(shards)));
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults).build();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request1 = new DescribeStreamRequest().withStreamArn(streamArn1);
         DescribeStreamRequest request2 = new DescribeStreamRequest().withStreamArn(streamArn2);
 
-        assertDescribeStreamCache(cachingStreams, streamArn1, request1, false, expectedResult1);
-        assertDescribeStreamCache(cachingStreams, streamArn1, request1, true, expectedResult1);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn1, request1, false, expectedResult1);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn1, request1, true, expectedResult1);
 
-        assertDescribeStreamCache(cachingStreams, streamArn2, request2, false, expectedResult2);
-        assertDescribeStreamCache(cachingStreams, streamArn2, request2, true, expectedResult2);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn2, request2, false, expectedResult2);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn2, request2, true, expectedResult2);
 
         verify(mockStreams, times(expectedResults.size())).describeStream(any(DescribeStreamRequest.class));
     }
@@ -1649,13 +1699,16 @@ class CachingAmazonDynamoDbStreamsTest {
             new StreamDescription().withStreamArn(streamArn).withShards(shards.subList(4, 5))));
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults).build();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         DescribeStreamResult combinedExpectedResult = new DescribeStreamResult().withStreamDescription(
             new StreamDescription().withStreamArn(streamArn).withShards(shards));
 
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, combinedExpectedResult);
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, combinedExpectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false,
+            combinedExpectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true,
+            combinedExpectedResult);
 
         verify(mockStreams, times(expectedResults.size())).describeStream(any(DescribeStreamRequest.class));
     }
@@ -1683,7 +1736,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults)
             .withMaxDescribeStreamCacheWeight(2).build();
-        Cache describeStreamCache = cachingStreams.getDescribeStreamCache();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         // The number of shards > max number of shards allowed. The result should not be added to the cache
@@ -1718,26 +1771,91 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResults)
             .withDescribeStreamCacheTtl(1).build();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         // Describe the stream which should return the first shard, second call should return value from the cache
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResults.get(0));
-        assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResults.get(0));
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false,
+            expectedResults.get(0));
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true,
+            expectedResults.get(0));
 
         try {
             // Wait until the cache is refreshed (when the cache lookup returns null)
             await().atMost(TWO_SECONDS).pollInterval(ONE_HUNDRED_MILLISECONDS).until(() ->
-                isNull(cachingStreams.getDescribeStreamCache().getIfPresent(streamArn)));
+                isNull(describeStreamCache.getIfPresent(streamArn)));
 
             // Validate the cache return value is updated with both shards now (describeStream call will force a cache
             // update with the full shards list)
-            assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResults.get(1));
-            assertDescribeStreamCache(cachingStreams, streamArn, request, true, expectedResults.get(1));
+            assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false,
+                expectedResults.get(1));
+            assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, true,
+                expectedResults.get(1));
         } catch (ConditionTimeoutException e) {
             fail(e.getMessage());
         }
 
         verify(mockStreams, times(2)).describeStream(any(DescribeStreamRequest.class));
+    }
+
+    /**
+     * Verifies that the describeStreamCache with monitoring enabled reports expected cache metrics.
+     */
+    @Test
+    public void testDescribeStreamCacheMonitoring() {
+
+        List<Shard> shards = ImmutableList.of(
+            newShard("A", null, "1", "2")
+        );
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(shards));
+
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
+            .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
+            .build();
+
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+        for (int i = 0; i < 4; i++) {
+            cachingStreams.describeStream(request);
+        }
+
+        // Ensures describeStream is only called once
+        verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
+
+        assertEquals(1L, cachingStreams.getDescribeStreamCache().stats().loadSuccessCount());
+        // Expect calls afterwards to have cache hits
+        assertEquals(3L, cachingStreams.getDescribeStreamCache().stats().hitCount());
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        assertEquals(3L, meterRegistry.get("cache.gets").tags("cache",
+            prefix + ".DescribeStream").tags("result", "hit").functionCounter().count());
+    }
+
+    /**
+     * Verifies that the describeStreamCache with monitoring enabled reports expected cache metrics without a prefix.
+     */
+    @Test
+    public void testMetricRegistryWithoutPrefix() {
+
+        AmazonDynamoDBStreams mockStreams = mock(AmazonDynamoDBStreams.class);
+        DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
+            new StreamDescription().withStreamArn(streamArn).withShards(Collections.emptyList()));
+
+        MeterRegistry meterRegistry = new SimpleMeterRegistry();
+        CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
+            .withMeterRegistry(meterRegistry)
+            .build();
+
+        DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
+        cachingStreams.describeStream(request);
+        cachingStreams.describeStream(request);
+
+        verify(mockStreams, times(1)).describeStream(any(DescribeStreamRequest.class));
+        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+            CachingAmazonDynamoDbStreams.class.getSimpleName() + ".DescribeStream")
+            .tags("result", "hit").functionCounter().count());
     }
 
     /**
@@ -1751,11 +1869,12 @@ class CachingAmazonDynamoDbStreamsTest {
         DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(new StreamDescription()
             .withStreamArn(streamArn));
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult).build();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
-        assertDescribeStreamCache(cachingStreams, streamArn, request, false, expectedResult);
+        assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false, expectedResult);
 
-        DescribeStreamResult cacheLookupResult = cachingStreams.getDescribeStreamCache().getIfPresent(streamArn);
+        DescribeStreamResult cacheLookupResult = describeStreamCache.getIfPresent(streamArn);
         assertTrue(Objects.requireNonNull(cacheLookupResult).getStreamDescription().getShards().isEmpty());
 
         // Ensures describeStream is only called once
