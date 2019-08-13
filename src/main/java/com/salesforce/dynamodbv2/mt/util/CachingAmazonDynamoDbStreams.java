@@ -180,9 +180,9 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * The maximum total sum of {@link StreamRecord#getSizeBytes()} the cache may hold. This is an approximation for
-         * heap size. The actual {@link GetRecordsResult} objects stored in the cache carry additional overhead, so this
-         * value should be used as a rough guideline.
+         * The maximum total sum of {@link com.amazonaws.services.dynamodbv2.model.StreamRecord#getSizeBytes()} the
+         * cache may hold. This is an approximation for heap size. The actual {@link GetRecordsResult} objects stored in
+         * the cache carry additional overhead, so this value should be used as a rough guideline.
          *
          * @param maxRecordsByteSize Maximum cache size in sum of record bytes.
          * @return This Builder.
