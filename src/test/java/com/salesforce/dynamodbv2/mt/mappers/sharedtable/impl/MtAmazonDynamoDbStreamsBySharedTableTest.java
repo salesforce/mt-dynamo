@@ -169,8 +169,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
                     .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
 
-            // once per fetch (since they are all trim horizon)
-            assertEquals(2, dynamoDbStreams.getRecordsCount);
+            // fetched for cross-tenant call. Tenant calls should be served from cache.
+            assertEquals(1, dynamoDbStreams.getRecordsCount);
             assertEquals(1, dynamoDbStreams.getShardIteratorCount);
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);

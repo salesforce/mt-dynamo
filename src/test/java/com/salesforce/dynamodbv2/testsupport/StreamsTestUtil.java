@@ -11,6 +11,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.google.common.cache.Cache;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,6 +24,10 @@ public class StreamsTestUtil {
      * @return  Mock Streams record.
      */
     public static Record mockRecord(int sequenceNumber) {
+        return mockRecord(sequenceNumber, sequenceNumber);
+    }
+
+    public static Record mockRecord(int sequenceNumber, long creationTime) {
         return new Record()
             .withEventID(String.valueOf(sequenceNumber))
             .withEventSource("aws:dynamodb")
@@ -32,6 +37,7 @@ public class StreamsTestUtil {
             .withDynamodb(new StreamRecord()
                 .withSequenceNumber(mockSequenceNumber(sequenceNumber))
                 .withSizeBytes(1L)
+                .withApproximateCreationDateTime(new Date(creationTime))
             );
     }
 
