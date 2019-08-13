@@ -208,10 +208,10 @@ class CachingAmazonDynamoDbStreamsTest {
             nextShardIteratorClient2 = result.getNextShardIterator();
             assertNotNull(nextShardIteratorClient2);
             records = result.getRecords();
-            // we expect that second client will get all records asked for (some from first, some from second segment)
-            assertEquals(limit, records.size());
-            // the records count should now be 2, since we fetched the second page
-            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
+            // we expect that second client will get subset of records up to loaded limit
+            assertEquals(GET_RECORDS_LIMIT - limit, records.size());
+            // the records count should still be 1, since we only returned records in first page
+            assertEquals(1, countingDynamoDbStreams.getRecordsCount);
             // the shard iterator count should still be 1, since we cached 'next iterator' of first page
             assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
 
@@ -234,9 +234,9 @@ class CachingAmazonDynamoDbStreamsTest {
             nextShardIteratorClient2 = result.getNextShardIterator();
             assertNotNull(nextShardIteratorClient2);
             records = result.getRecords();
-            assertEquals(200, records.size()); // only 200 left
-            // One more call to see if there are new records
-            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(GET_RECORDS_LIMIT - limit, records.size());
+            // completely served from cache, so caches should be unchanged
+            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
             // the shard iterator count should still be 1, since we cached 'next iterator' of first page
             assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
 
@@ -247,7 +247,7 @@ class CachingAmazonDynamoDbStreamsTest {
             assertNotNull(nextShardIterator);
             records = result.getRecords();
             assertEquals(GET_RECORDS_LIMIT, records.size());
-            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(2, countingDynamoDbStreams.getRecordsCount);
             assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
 
             // first client now tries to go beyond second page which has no records yet
@@ -269,7 +269,7 @@ class CachingAmazonDynamoDbStreamsTest {
             records = result.getRecords();
             assertEquals(0, records.size());
             // another getRecords call to fetch empty page
-            assertEquals(3, countingDynamoDbStreams.getRecordsCount);
+            assertEquals(4, countingDynamoDbStreams.getRecordsCount);
             assertEquals(1, countingDynamoDbStreams.getShardIteratorCount);
         } finally {
             // cleanup after ourselves (want to be able to run against hosted DynamoDB as well)
@@ -552,9 +552,8 @@ class CachingAmazonDynamoDbStreamsTest {
         assertGetRecords(cachingStreams, atRequest, null, 0, 8);
 
         // the two latest calls load iterators and records, but the loaded records should be cached and merged, so that
-        // the call should be satisfied from the cache. However, since it's a partial cache hit, there will be one extra
-        // call to see if there are new records.
-        assertCacheMisses(streams, 2, 3);
+        // the call should be satisfied from the cache.
+        assertCacheMisses(streams, 2, 2);
     }
 
     /**
@@ -643,9 +642,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10);
 
-        // verify that underlying stream was still accessed only once for initial trim horizon load and once again
-        // to check for records beyond what was initially loaded
-        assertCacheMisses(streams, 2, 2);
+        // verify that underlying stream was still accessed only once for initial trim horizon load
+        assertCacheMisses(streams, 1, 1);
     }
 
     /**
@@ -673,9 +671,9 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(4), 10, 5, 10);
 
-        // verify that underlying stream was still accessed only once for initial trim horizon load and once again
-        //         // to check for records beyond what was initially loaded
-        assertCacheMisses(streams, 2, 2);
+        // verify that underlying stream was accessed only once for initial trim horizon load and that partial load
+        // was serviced completely from cache
+        assertCacheMisses(streams, 1, 1);
     }
 
     /**
@@ -689,9 +687,8 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertGetRecords(cachingStreams, newAtSequenceNumberRequest(5), 10, 5, 10);
 
-        // verify that underlying stream was still accessed only once for initial trim horizon load and once again
-        //         //         // to check for records beyond what was initially loaded
-        assertCacheMisses(streams, 2, 2);
+        // verify that underlying stream was accessed only once for initial trim horizon and not again for partial
+        assertCacheMisses(streams, 1, 1);
     }
 
     /**
@@ -722,8 +719,8 @@ class CachingAmazonDynamoDbStreamsTest {
         assertCacheMisses(streams, 2, 2);
 
         // now retrieve a page and make sure requests serviced from cache (implying ranges were merged)
-        assertNull(assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(2), null, 3, 10));
-        assertCacheMisses(streams, 3, 3);
+        assertGetRecords(cachingStreams, newAfterSequenceNumberRequest(2), null, 3, 10);
+        assertCacheMisses(streams, 2, 2);
     }
 
     /**
@@ -758,13 +755,13 @@ class CachingAmazonDynamoDbStreamsTest {
 
         assertCacheMisses(streams, 2, 2);
 
-        // now if we the first segment, it will retrieve from cache and lookup the additional record
-        assertGetRecords(cachingStreams, afterSnIteratorRequest, null, 6, 10);
-        assertCacheMisses(streams, 2, 3);
+        // now if we the first segment, it will retrieve from cache (without looking up the additional record)
+        assertGetRecords(cachingStreams, afterSnIteratorRequest, null, 6, 9);
+        assertCacheMisses(streams, 2, 2);
 
-        // and if we look up the second segment, it will retrieve all records from cache and check for more at the end
-        assertGetRecords(cachingStreams, afterRecordIteratorRequest, null, 6, 10);
-        assertCacheMisses(streams, 3, 4);
+        // and if we look up the second segment, it will retrieve all records from cache
+        assertGetRecords(cachingStreams, afterRecordIteratorRequest, null, 6, 9);
+        assertCacheMisses(streams, 2, 2);
     }
 
     /**
@@ -798,7 +795,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertGetRecords(cachingStreams, afterRequest, null, 5, 10);
         assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10);
 
-        assertCacheMisses(streams, 3, 4);
+        assertCacheMisses(streams, 2, 3);
     }
 
     /**
@@ -847,10 +844,10 @@ class CachingAmazonDynamoDbStreamsTest {
             .build();
 
         assertNull(assertGetRecords(cachingStreams, thIteratorRequest, null, 0, 10));
-        assertNull(assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10));
+        assertNotNull(assertGetRecords(cachingStreams, newAtSequenceNumberRequest(0), null, 0, 10));
 
         // trim horizon shard iterators should not be cached, so 2 calls expected
-        assertCacheMisses(streams, 2, 3);
+        assertCacheMisses(streams, 1, 2);
 
         // one backoff with specified interval
         verify(sleeper, times(1)).sleep(eq(10000L));
@@ -1229,7 +1226,7 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that empty results are cached for a while.
+     * Verifies that empty results are not cached.
      */
     @Test
     void testEmptyRecordsCache() {
@@ -1237,15 +1234,15 @@ class CachingAmazonDynamoDbStreamsTest {
         final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
         final String dynamoDbIterator = mockGetShardIterator(streams, request);
         final String nextDynamoDbIterator = mockShardIterator(request);
-        MeterRegistry meterRegistry = new SimpleMeterRegistry();
-        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
-        mockGetRecords(streams, nextDynamoDbIterator, 0, 1);
+        final String nextNextDynamoDbIterator = mockShardIterator(request);
+        final MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-        final MockTicker ticker = new MockTicker();
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
+        mockGetRecords(streams, nextDynamoDbIterator, Collections.emptyList(), nextNextDynamoDbIterator);
+        mockGetRecords(streams, nextNextDynamoDbIterator, 0, 1);
+
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withTicker(ticker)
             .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
-            .withEmptyResultCacheTtlInMillis(1)
             .build();
 
         // first request should retrieve empty result and then cache it
@@ -1254,26 +1251,18 @@ class CachingAmazonDynamoDbStreamsTest {
 
         // so second request should not try to fetch again
         assertGetRecords(cachingStreams, request, null, 0, 0);
-        assertCacheMisses(streams, 1, 1);
+        assertCacheMisses(streams, 1, 2);
 
         // after clock advances, empty result should get evicted
-        ticker.increment(1, TimeUnit.MILLISECONDS);
         assertGetRecords(cachingStreams, request, null, 0, 1);
-        assertCacheMisses(streams, 1, 2);
 
         // Verify monitoring for EmptyResult cache and GetShardIterator caches
         String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
-        assertEquals(4L, meterRegistry.get("cache.gets").tags("cache",
-            prefix + ".EmptyResult").tags("result", "miss").functionCounter().count());
-
-        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
-            prefix + ".EmptyResult").tags("result", "hit").functionCounter().count());
-
         assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".GetShardIterator").tags("result", "miss").functionCounter().count());
-
-        assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
+        assertEquals(2L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".GetShardIterator").tags("result", "hit").functionCounter().count());
+        assertCacheMisses(streams, 1, 3);
     }
 
     /**
@@ -1293,7 +1282,6 @@ class CachingAmazonDynamoDbStreamsTest {
         final MockTicker ticker = new MockTicker();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
-            .withEmptyResultCacheTtlInMillis(1)
             .withGetRecordsLocks(getRecordsLocks)
             .build();
 
@@ -1309,16 +1297,10 @@ class CachingAmazonDynamoDbStreamsTest {
             })
             .thenReturn(true);
 
-        // while this thread waits for the lock, another thread loads empty result, so this one should not load again
-        assertGetRecords(cachingStreams, request, null, 0, 0);
-        assertCacheMisses(streams, 1, 1);
-        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
-
-        // after clock advances, next thread should load results
-        ticker.increment(1, TimeUnit.MILLISECONDS);
+        // while this thread waits for the lock, another thread loads empty result, so this one should load again
         assertGetRecords(cachingStreams, request, null, 0, 1);
         assertCacheMisses(streams, 1, 2);
-        assertEquals(1, callCount.get());
+        assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
     }
 
     /**
@@ -1356,7 +1338,8 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that if a thread times out waiting for a lock, it still returns concurrently loaded empty result.
+     * Verifies that if a thread times out waiting for a lock, and an empty result was loaded concurrently, it still
+     * throws a LimitExceededException.
      */
     @Test
     void testConcurrentEmptyGetRecordsResultWithTimeout() throws InterruptedException {
@@ -1370,7 +1353,6 @@ class CachingAmazonDynamoDbStreamsTest {
         final MockTicker ticker = new MockTicker();
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withTicker(ticker)
-            .withEmptyResultCacheTtlInMillis(1)
             .withGetRecordsLocks(getRecordsLocks)
             .build();
 
@@ -1387,7 +1369,9 @@ class CachingAmazonDynamoDbStreamsTest {
             .thenReturn(true);
 
         // while this thread waits for the lock, another thread loads empty result, so this one should not load again
-        assertGetRecords(cachingStreams, request, null, 0, 0);
+        String iterator = cachingStreams.getShardIterator(request).getShardIterator();
+        assertThrows(LimitExceededException.class,
+            () -> cachingStreams.getRecords(new GetRecordsRequest().withShardIterator(iterator)));
         assertCacheMisses(streams, 1, 1);
         assertEquals(1, callCount.get()); // make simulation behaves correctly (Mockito sanity check)
     }
