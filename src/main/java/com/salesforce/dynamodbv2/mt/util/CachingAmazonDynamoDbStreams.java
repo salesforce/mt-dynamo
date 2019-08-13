@@ -111,7 +111,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private static final long DEFAULT_DESCRIBE_STREAM_CACHE_TTL = 5L;
         private static final long DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT = 5000L;
         private static final boolean DESCRIBE_STREAM_CACHE_ENABLED = true;
-        private static final long DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS = 1000L;
         private static final long DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS = 60;
 
         private final AmazonDynamoDBStreams amazonDynamoDbStreams;
@@ -126,7 +125,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private boolean describeStreamCacheEnabled = DESCRIBE_STREAM_CACHE_ENABLED;
         private long maxDescribeStreamCacheWeight = DEFAULT_MAX_DESCRIBE_STREAM_CACHE_SHARD_COUNT;
         private long getRecordsBackoffInMillis = DEFAULT_GET_RECORDS_BACKOFF_IN_MILLIS;
-        private long emptyResultCacheTtlInMillis = DEFAULT_EMPTY_RESULT_CACHE_TTL_IN_MILLIS;
         private long trimHorizonIteratorCacheTtlInSeconds = DEFAULT_TRIM_HORIZON_ITERATOR_CACHE_TTL_IN_SECONDS;
         // for testing
         private Striped<Lock> getRecordsLocks;
@@ -268,19 +266,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * The time empty results should be cached and returned before attempting to load records from the stream at the
-         * given position again.
-         *
-         * @param emptyResultCacheTtlInMillis Time in milliseconds for how long to cache and return empty results.
-         * @return This Builder
-         */
-        public Builder withEmptyResultCacheTtlInMillis(long emptyResultCacheTtlInMillis) {
-            checkArgument(emptyResultCacheTtlInMillis > 0);
-            this.emptyResultCacheTtlInMillis = emptyResultCacheTtlInMillis;
-            return this;
-        }
-
-        /**
          * The time mappings from trim horizon iterators to sequence number iterators should be cached.
          *
          * @param trimHorizonIteratorCacheTtlInSeconds Time in seconds to cache trim horizon iterator mappings.
@@ -323,11 +308,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                     .build(),
                 describeStreamCacheEnabled,
                 new StreamsRecordCache(meterRegistry, maxRecordsByteSize),
-                CacheBuilder.newBuilder()
-                    .expireAfterWrite(emptyResultCacheTtlInMillis, TimeUnit.MILLISECONDS)
-                    .ticker(ticker)
-                    .recordStats()
-                    .build(),
                 getRecordsLocks == null ? Striped.lazyWeakLock(16384) : getRecordsLocks,
                 getRecordsMaxRetries,
                 getRecordsBackoffInMillis,
@@ -562,15 +542,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Returns an empty result object with this as the next shard iterator.
-         *
-         * @return Empty result object
-         */
-        GetRecordsResult emptyResult() {
-            return new GetRecordsResult().withRecords().withNextShardIterator(toExternalString());
-        }
-
-        /**
          * Returns an iterator request that can be used to retrieve an iterator from DynamoDB.
          *
          * @return Iterator request.
@@ -657,27 +628,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
     }
 
-    /**
-     * Concatenates the two lists into one.
-     *
-     * @param l1  First list. Must not be null, but may be empty.
-     * @param l2  Second list. Must not be null, but may be empty.
-     * @param <T> Type of elements stored in lists
-     * @return Combined list
-     */
-    private static <T> List<T> concat(List<T> l1, List<T> l2) {
-        if (l1.isEmpty()) {
-            return l2;
-        }
-        if (l2.isEmpty()) {
-            return l1;
-        }
-        final List<T> l = new ArrayList<>(l1.size() + l2.size());
-        l.addAll(l1);
-        l.addAll(l2);
-        return l;
-    }
-
     private final Sleeper sleeper;
 
     // describeStream cache
@@ -686,7 +636,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
     // getRecords caches and configuration
     private final StreamsRecordCache recordCache;
-    private final Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache;
     private final Striped<Lock> getRecordsLocks;
     private final int getRecordsMaxRetries;
     private final long getRecordsBackoffInMillis;
@@ -722,7 +671,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                                  Cache<String, DescribeStreamResult> describeStreamCache,
                                  boolean describeStreamCacheEnabled,
                                  StreamsRecordCache recordCache,
-                                 Cache<StreamShardPosition, Boolean> getRecordsEmptyResultCache,
                                  Striped<Lock> getRecordsLocks,
                                  int getRecordsMaxRetries,
                                  long getRecordsBackoffInMillis,
@@ -734,7 +682,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
         this.describeStreamCacheEnabled = describeStreamCacheEnabled;
         this.recordCache = recordCache;
-        this.getRecordsEmptyResultCache = getRecordsEmptyResultCache;
         this.getRecordsLocks = getRecordsLocks;
         this.getRecordsMaxRetries = getRecordsMaxRetries;
         this.getRecordsBackoffInMillis = getRecordsBackoffInMillis;
@@ -760,7 +707,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         this.getShardIteratorUncached = meterRegistry.counter(prefix + ".GetShardIterator.Uncached");
 
         GuavaCacheMetrics.monitor(meterRegistry, iteratorCache, prefix + ".GetShardIterator");
-        GuavaCacheMetrics.monitor(meterRegistry, getRecordsEmptyResultCache, prefix + ".EmptyResult");
         GuavaCacheMetrics.monitor(meterRegistry, describeStreamCache, prefix + ".DescribeStream");
         GuavaCacheMetrics.monitor(meterRegistry, trimHorizonCache, prefix + ".TrimHorizon");
     }
@@ -909,27 +855,50 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             final GetRecordsResult result;
             if (positionOpt.isPresent()) {
                 final StreamShardPosition position = positionOpt.get();
-
-                // first check if we got an empty result recently for this position
-                if (Boolean.TRUE == getRecordsEmptyResultCache.getIfPresent(position)) {
-                    result = iterator.emptyResult();
-                } else {
-                    // then check the record cache
-                    final List<Record> cachedRecords = recordCache.getRecords(position, limit);
-                    if (cachedRecords.isEmpty()) {
-                        // cache miss: try to fetch records from stream
-                        result = loadRecordsAtPosition(iterator, limit);
-                    } else if (cachedRecords.size() < limit) {
-                        // partial cache hit: try to fetch more records
-                        final CachingShardIterator nextIterator = iterator.nextShardIterator(cachedRecords);
-                        final int remaining = limit - cachedRecords.size();
-                        final GetRecordsResult loadedResult = loadRecordsAtPosition(nextIterator, remaining);
-                        result = loadedResult.withRecords(concat(cachedRecords, loadedResult.getRecords()));
+                // if the iterator has an absolute position, check the record cache
+                List<Record> cachedRecords = recordCache.getRecords(position, limit);
+                if (cachedRecords.isEmpty()) {
+                    // cache miss: try to acquire load lock for position (to avoid concurrent loads). Limit the max
+                    // wait time, since we are accessing an external resource while holding the lock.
+                    final Lock lock = getRecordsLocks.get(position);
+                    if (getRecordsLoadLockWaitTime.record(() -> {
+                        try {
+                            return lock.tryLock(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("Thread interrupted waiting on load records lock");
+                        }
+                    })) {
+                        // got the lock: check again to see if caches have been updated in the meantime, otherwise load.
+                        try {
+                            cachedRecords = recordCache.getRecords(position, limit);
+                            result = cachedRecords.isEmpty()
+                                ? loadRecords(iterator, limit) // still nothing cached: load from the shard
+                                : iterator.nextResult(cachedRecords); // otherwise return what was concurrently loaded
+                        } finally {
+                            lock.unlock();
+                        }
                     } else {
-                        // full cache hit: return cached records (without fetching more from stream)
-                        assert cachedRecords.size() == limit;
-                        result = iterator.nextResult(cachedRecords);
+                        // failed to get load lock: check if caches have been updated, but don't attempt to load.
+                        if (LOG.isWarnEnabled()) {
+                            LOG.warn("Failed to obtain getRecords lock for iterator {}.", iterator);
+                        }
+                        getRecordsLoadLockTimeouts.increment();
+                        cachedRecords = recordCache.getRecords(position, limit);
+                        if (cachedRecords.isEmpty()) {
+                            getRecordsLoadLockTimeoutsFailures.increment();
+                            if (LOG.isWarnEnabled()) {
+                                LOG.warn("Failed to obtain getRecords lock or cached records for iterator {}.",
+                                    iterator);
+                            }
+                            throw new LimitExceededException("Failed to obtain getRecords lock in time");
+                        } else {
+                            return iterator.nextResult(cachedRecords);
+                        }
                     }
+                } else {
+                    // (partial) cache hit: return records from cache
+                    result = iterator.nextResult(cachedRecords);
                 }
             } else {
                 // not currently caching iterators without fixed position: fetch records
@@ -945,58 +914,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
 
             return result;
         });
-    }
-
-    private GetRecordsResult loadRecordsAtPosition(CachingShardIterator iterator, int limit) {
-        final GetRecordsResult result;
-        final StreamShardPosition position = iterator.resolvePosition().orElseThrow();
-        final Lock lock = getRecordsLocks.get(position);
-        // try to acquire a lock for the given shard position (to avoid redundant concurrent load attempts)
-        // since we are accessing an external resource while holding the lock, limit the max wait time
-        if (getRecordsLoadLockWaitTime.record(() -> {
-            try {
-                return lock.tryLock(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Thread interrupted waiting on load records lock");
-            }
-        })) {
-            // got the lock: check again to see if caches have been updated in the meantime, otherwise load
-            try {
-                if (Boolean.TRUE == getRecordsEmptyResultCache.getIfPresent(position)) {
-                    // another thread loaded an empty result while this one was waiting on lock
-                    result = iterator.emptyResult();
-                } else {
-                    final List<Record> cachedRecords = recordCache.getRecords(position, limit);
-                    result = cachedRecords.isEmpty()
-                        ? loadRecords(iterator, limit) // still nothing cached: load from the shard
-                        : iterator.nextResult(cachedRecords); // otherwise return what was loaded while waiting on lock
-                }
-            } finally {
-                lock.unlock();
-            }
-        } else {
-            // failed to get load lock: check caches again to see if anything was loaded while waiting, but don't load.
-            if (LOG.isWarnEnabled()) {
-                LOG.warn("Failed to obtain getRecords lock for iterator {}.", iterator);
-            }
-            getRecordsLoadLockTimeouts.increment();
-            if (Boolean.TRUE == getRecordsEmptyResultCache.getIfPresent(position)) {
-                result = iterator.emptyResult();
-            } else {
-                final List<Record> cachedRecords = recordCache.getRecords(position, limit);
-                if (cachedRecords.isEmpty()) {
-                    getRecordsLoadLockTimeoutsFailures.increment();
-                    if (LOG.isWarnEnabled()) {
-                        LOG.warn("Failed to obtain getRecords lock or cached records for iterator {}.", iterator);
-                    }
-                    throw new LimitExceededException("Failed to obtain getRecords lock in time");
-                } else {
-                    return iterator.nextResult(cachedRecords);
-                }
-            }
-        }
-        return result;
     }
 
     /**
@@ -1074,9 +991,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                         // use new physical iterator next time to continue to progress
                         nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
                     }
-                    // update record cache: record empty result (to avoid concurrent requests)
-                    iterator.resolvePosition()
-                        .ifPresent(position -> getRecordsEmptyResultCache.put(position, Boolean.TRUE));
                 }
             } else {
                 // update iterator cache
