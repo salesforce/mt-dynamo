@@ -5,26 +5,20 @@ import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeStreamResult;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.Stream;
-import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
-import com.google.common.base.Ticker;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
-import com.salesforce.dynamodbv2.testsupport.StreamsTestUtil;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -64,11 +58,11 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
 
-            Cache<String, DescribeStreamResult> indexMtDynamoDbDescribeStreamCache = CacheBuilder.newBuilder().ticker(
-                Ticker.systemTicker()).recordStats().build();
+            MeterRegistry indexMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
             CachingAmazonDynamoDbStreams indexMtDynamoDbStreamsCache =
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withDescribeStreamCache(indexMtDynamoDbDescribeStreamCache).build();
+                    .withMeterRegistry(indexMtDynamoDbStreamsMeterRegistry, "")
+                    .build();
             MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
                 indexMtDynamoDbStreamsCache);
 
@@ -80,11 +74,11 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
-            Cache<String, DescribeStreamResult> indexBinaryHkMtDynamoDbDescribeStreamCache
-                = CacheBuilder.newBuilder().ticker(Ticker.systemTicker()).recordStats().build();
+            MeterRegistry indexBinaryHkMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
             CachingAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreamsCache =
                 new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withDescribeStreamCache(indexBinaryHkMtDynamoDbDescribeStreamCache).build();
+                    .withMeterRegistry(indexBinaryHkMtDynamoDbStreamsMeterRegistry, "")
+                    .build();
             MtAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(
                 indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreamsCache);
 
@@ -98,49 +92,12 @@ public class MtAmazonDynamoDbStreamsBaseTest {
 
             return java.util.stream.Stream.of(
                 Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams, indexMtDynamoDbStreamsCache,
-                    indexMtDynamoDbDescribeStreamCache),
+                    indexMtDynamoDbStreamsMeterRegistry),
                 Arguments.of(indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreams,
-                    indexBinaryHkMtDynamoDbStreamsCache, indexBinaryHkMtDynamoDbDescribeStreamCache),
+                    indexBinaryHkMtDynamoDbStreamsCache, indexBinaryHkMtDynamoDbStreamsMeterRegistry),
                 Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams, null, null)
             );
         }
-    }
-
-    /**
-     * Verifies describeStreamCache results match what's expected for a given key.
-     */
-    private void assertDescribeStreamCache(MtAmazonDynamoDbStreams mtDynamoDbStreams,
-                                           CachingAmazonDynamoDbStreams cachingStreams,
-                                           Cache<String, DescribeStreamResult> describeStreamCache,
-                                           Stream stream,
-                                           boolean expectedCacheHit,
-                                           DescribeStreamResult expectedResult) {
-        // Setup
-        String key = stream.getStreamArn();
-
-        // Verify cache hit/miss based on expected result
-        StreamsTestUtil.verifyDescribeStreamCacheResult(describeStreamCache, key, expectedCacheHit, expectedResult);
-
-        // Trigger flow that interacts with the describe stream cache
-        Optional<String> shardIterator = MtAmazonDynamoDbStreamsBaseTestUtils
-            .getShardIterator(mtDynamoDbStreams, stream);
-        assertTrue(shardIterator.isPresent());
-
-        // Get expected shard id for the stream (expecting 1 shard) to compare to cached DescribeStreamResult's shard
-        Optional<String> expectedShardIdForIterator = MtAmazonDynamoDbStreamsBaseTestUtils
-            .getShardId(mtDynamoDbStreams, stream.getStreamArn());
-        assertTrue(expectedShardIdForIterator.isPresent());
-        assertTrue(shardIterator.get().contains(expectedShardIdForIterator.get()));
-
-        // Verify cache hit and expected result matches the result returned from cache lookup
-        DescribeStreamResult cacheLookupResult = StreamsTestUtil
-            .verifyDescribeStreamCacheResult(describeStreamCache, key, true, expectedResult);
-
-        // Verify cache lookup result contains the expected shard id
-        assertNotNull(cacheLookupResult.getStreamDescription().getShards());
-        assertFalse(cacheLookupResult.getStreamDescription().getShards().isEmpty());
-        assertEquals(expectedShardIdForIterator.get(),
-            cacheLookupResult.getStreamDescription().getShards().get(0).getShardId());
     }
 
     // work-around for command-line build: some previous tests don't seem to be clearing the mt context
@@ -325,8 +282,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
     @ParameterizedTest
     @ArgumentsSource(Args.class)
     void testDescribeStreamCache(MtAmazonDynamoDbBase mtDynamoDb, MtAmazonDynamoDbStreams mtDynamoDbStreams,
-                                 CachingAmazonDynamoDbStreams cachingStreams, Cache<String, DescribeStreamResult>
-                                 describeStreamCache) {
+                                 CachingAmazonDynamoDbStreams cachingStreams, MeterRegistry meterRegistry) {
 
         // Some of the parameterized inputs don't use a CachingAmazonDynamoDbStreams instance
         if (cachingStreams == null) {
@@ -336,16 +292,26 @@ public class MtAmazonDynamoDbStreamsBaseTest {
         try {
             MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
             List<Stream> streams = mtDynamoDbStreams.listStreams(new ListStreamsRequest()).getStreams();
+            String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName();
+            long expectedHits = 0L;
+            long expectedMisses = 1L;
 
             for (Stream stream : streams) {
-                String key = stream.getStreamArn();
-                DescribeStreamResult expectedResult =
-                    new DescribeStreamResult().withStreamDescription(new StreamDescription().withStreamArn(key));
+                assertEquals(expectedHits, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
+                    .tags("result", "hit").functionCounter().count());
 
-                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, describeStreamCache, stream,
-                    false, expectedResult);
-                assertDescribeStreamCache(mtDynamoDbStreams, cachingStreams, describeStreamCache, stream,
-                    true, expectedResult);
+                // Trigger flow that interacts with the describe stream cache (miss)
+                MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, stream);
+
+                // Trigger cache hit
+                MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, stream);
+                expectedHits++;
+
+                assertEquals(expectedMisses, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
+                    .tags("result", "miss").functionCounter().count());
+
+                assertEquals(expectedHits, meterRegistry.get("cache.gets").tags("cache", prefix + ".DescribeStream")
+                   .tags("result", "hit").functionCounter().count());
             }
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);

@@ -119,7 +119,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         private String metricPrefix;
         private Sleeper sleeper;
         private Ticker ticker;
-        private Cache<String, DescribeStreamResult> describeStreamCache;
         private long maxRecordsByteSize = DEFAULT_MAX_RECORD_BYTES_CACHED;
         private int maxIteratorCacheSize = DEFAULT_MAX_ITERATOR_CACHE_SIZE;
         private int getRecordsMaxRetries = DEFAULT_GET_RECORDS_MAX_RETRIES;
@@ -222,17 +221,6 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
         }
 
         /**
-         * Cache to use for describe stream calls.
-         *
-         * @param describeStreamCache The cache to use for describe stream
-         * @return this Builder.
-         */
-        public Builder withDescribeStreamCache(Cache describeStreamCache) {
-            this.describeStreamCache = describeStreamCache;
-            return this;
-        }
-
-        /**
          * Enables or disables the describe stream cache.
          *
          * @param describeStreamCacheEnabled Disable or enable the describe stream cache.
@@ -313,14 +301,14 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 sleeper,
                 meterRegistry,
                 metricPrefix,
-                describeStreamCache == null ? CacheBuilder
+                CacheBuilder
                     .newBuilder()
                     .expireAfterWrite(describeStreamCacheTtl, TimeUnit.SECONDS)
                     .maximumWeight(maxDescribeStreamCacheWeight)
                     .<String, DescribeStreamResult>weigher((s, r) -> r.getStreamDescription().getShards().size())
                     .ticker(ticker)
                     .recordStats()
-                    .build() : this.describeStreamCache,
+                    .build(),
                 describeStreamCacheEnabled,
                 new StreamsRecordCache(meterRegistry, maxRecordsByteSize),
                 CacheBuilder.newBuilder()
@@ -709,6 +697,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
     private final Counter getRecordsUncached;
     private final Timer getShardIteratorLoadTime;
     private final Counter getShardIteratorUncached;
+
+    Cache<String, DescribeStreamResult> getDescribeStreamCache() {
+        return describeStreamCache;
+    }
 
     @VisibleForTesting
     CachingAmazonDynamoDbStreams(AmazonDynamoDBStreams amazonDynamoDbStreams,
