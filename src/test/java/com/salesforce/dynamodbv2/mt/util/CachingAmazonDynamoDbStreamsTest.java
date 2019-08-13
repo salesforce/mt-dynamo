@@ -431,8 +431,7 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private Striped<Lock> mockStripedLock(Lock lock) {
-        @SuppressWarnings("unchecked")
-        final Striped<Lock> mockStripedLock = (Striped<Lock>) mock(Striped.class);
+        @SuppressWarnings("unchecked") final Striped<Lock> mockStripedLock = (Striped<Lock>) mock(Striped.class);
         when(mockStripedLock.get(any())).thenReturn(lock);
         return mockStripedLock;
     }
@@ -983,7 +982,7 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that a virtual iterator, rather than physical iterator is returned as the next shard iterator.
+     * Verifies that a virtual iterator is returned from getShardIterator call whereas next iterator includes physical.
      */
     @Test
     void testVirtualIteratorReturned() {
@@ -1005,7 +1004,7 @@ class CachingAmazonDynamoDbStreamsTest {
         String secondIterator = mockGetShardIterator(streams, secondRequest);
         mockGetRecords(streams, secondIterator, 5, 9);
 
-        assert (nextShardIterator.equals(cachingStreams.getShardIterator(secondRequest).getShardIterator()));
+        assertNotEquals(nextShardIterator, cachingStreams.getShardIterator(secondRequest).getShardIterator());
 
         assertGetRecords(cachingStreams, secondRequest, null, 5, 9);
 
@@ -1226,12 +1225,38 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     /**
-     * Verifies that empty results are not cached.
+     * Verifies that we don't look up an iterator for subsequent getRecords call even if next iterator is evicted.
      */
     @Test
-    void testEmptyRecordsCache() {
+    void testIteratorCacheEviction() {
         final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
-        final GetShardIteratorRequest request = newAfterSequenceNumberRequest(0);
+        final GetShardIteratorRequest request = newAtSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        final String nextDynamoDbIterator = mockShardIterator(newAfterSequenceNumberRequest(5));
+        mockGetRecords(streams, dynamoDbIterator, records.subList(0, 5), nextDynamoDbIterator);
+        mockGetRecords(streams, nextDynamoDbIterator, records.subList(5, 10), null);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .withMaxIteratorCacheSize(0)
+            .build();
+
+        // first call should load iterator and records
+        String nextIterator = assertGetRecords(cachingStreams, request, null, 0, 5);
+        assertCacheMisses(streams, 1, 1);
+
+        // next call should only load records, since returned iterator should include physical iterator
+        assertNull(assertGetRecords(cachingStreams, nextIterator, null, records.subList(5, 10)));
+        assertCacheMisses(streams, 1, 2);
+    }
+
+    /**
+     * DynamoDB streams occasionally return empty pages. Verifies that we can progress past empty pages even if iterator
+     * cache evicts physical iterators.
+     */
+    @Test
+    void testIteratorCacheEvictionEmptyResults() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAtSequenceNumberRequest(0);
         final String dynamoDbIterator = mockGetShardIterator(streams, request);
         final String nextDynamoDbIterator = mockShardIterator(request);
         final String nextNextDynamoDbIterator = mockShardIterator(request);
@@ -1243,26 +1268,61 @@ class CachingAmazonDynamoDbStreamsTest {
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
+            .withMaxIteratorCacheSize(0)
             .build();
 
-        // first request should retrieve empty result and then cache it
-        assertGetRecords(cachingStreams, request, null, 0, 0);
+        // first request should retrieve empty result and return next iterator
+        String nextIterator = assertGetRecords(cachingStreams, request, null, 0, 0);
         assertCacheMisses(streams, 1, 1);
 
-        // so second request should not try to fetch again
-        assertGetRecords(cachingStreams, request, null, 0, 0);
+        // second request should retrieve next empty page with new iterator
+        String nextNextIterator = assertGetRecords(cachingStreams, nextIterator, null, Collections.emptyList());
         assertCacheMisses(streams, 1, 2);
 
-        // after clock advances, empty result should get evicted
-        assertGetRecords(cachingStreams, request, null, 0, 1);
+        // and finally third request should return non-empty page
+        assertGetRecords(cachingStreams, nextNextIterator, null, records.subList(0, 1));
+        assertCacheMisses(streams, 1, 3);
 
         // Verify monitoring for EmptyResult cache and GetShardIterator caches
         String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
         assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".GetShardIterator").tags("result", "miss").functionCounter().count());
-        assertEquals(2L, meterRegistry.get("cache.gets").tags("cache",
+        assertEquals(0L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".GetShardIterator").tags("result", "hit").functionCounter().count());
+    }
+
+    /**
+     * Verifies that if one client advances beyond an empty page, the next client doesn't start from 0.
+     */
+    @Test
+    void testEmptyResultIteratorCache() {
+        final AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
+        final GetShardIteratorRequest request = newAtSequenceNumberRequest(0);
+        final String dynamoDbIterator = mockGetShardIterator(streams, request);
+        final String nextDynamoDbIterator = mockShardIterator(request);
+        final String nextNextDynamoDbIterator = mockShardIterator(request);
+        mockGetRecords(streams, dynamoDbIterator, Collections.emptyList(), nextDynamoDbIterator);
+        mockGetRecords(streams, nextDynamoDbIterator, Collections.emptyList(), nextNextDynamoDbIterator);
+        mockGetRecords(streams, nextNextDynamoDbIterator, 0, 1);
+
+        final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
+            .build();
+
+        // first request should retrieve empty result and return next iterator
+        String nextIterator = assertGetRecords(cachingStreams, request, null, 0, 0);
+        assertCacheMisses(streams, 1, 1);
+
+        // second request should retrieve next empty page with new iterator
+        String nextNextIterator = assertGetRecords(cachingStreams, nextIterator, null, Collections.emptyList());
+        assertCacheMisses(streams, 1, 2);
+
+        // and finally third request should return non-empty page
+        assertGetRecords(cachingStreams, nextNextIterator, null, records.subList(0, 1));
         assertCacheMisses(streams, 1, 3);
+
+        // if another client now comes to fetch records with a new request, it should get latest cached iterator right
+        // away and, therefore, skip over empty pages
+        assertGetRecords(cachingStreams, request, null, 0, 1);
     }
 
     /**
