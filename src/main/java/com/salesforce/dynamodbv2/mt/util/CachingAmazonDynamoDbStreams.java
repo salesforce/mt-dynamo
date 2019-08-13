@@ -423,20 +423,17 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             @Nullable String dynamoDbIterator) {
             this.streamShardId = checkNotNull(streamShardId);
             this.type = checkNotNull(type);
+            this.dynamoDbIterator = dynamoDbIterator;
             switch (type) {
                 case TRIM_HORIZON:
                 case LATEST:
                     checkArgument(sequenceNumber == null);
-                    checkArgument(dynamoDbIterator != null);
                     this.sequenceNumber = null;
-                    this.dynamoDbIterator = dynamoDbIterator;
                     break;
                 case AT_SEQUENCE_NUMBER:
                 case AFTER_SEQUENCE_NUMBER:
                     checkArgument(sequenceNumber != null);
-                    checkArgument(dynamoDbIterator == null);
                     this.sequenceNumber = sequenceNumber;
-                    this.dynamoDbIterator = null;
                     break;
                 default:
                     throw new RuntimeException("Missing case statement for ShardIteratorType");
@@ -522,9 +519,21 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * @return New shard iterator that starts after the last record in the list.
          */
         CachingShardIterator nextShardIterator(List<Record> records) {
+            return nextShardIterator(records, null);
+        }
+
+        /**
+         * Returns a new shard iterator that starts at the sequence number immediately after the last record in
+         * the given records list.
+         *
+         * @param records          Records list. Must not be empty.
+         * @param dynamoDbIterator DynamoDB iterator. May be null.
+         * @return New shard iterator that starts after the last record in the list.
+         */
+        CachingShardIterator nextShardIterator(List<Record> records, String dynamoDbIterator) {
             assert !records.isEmpty();
             return new CachingShardIterator(AFTER_SEQUENCE_NUMBER, streamShardId,
-                getLast(records).getDynamodb().getSequenceNumber(), null);
+                getLast(records).getDynamodb().getSequenceNumber(), dynamoDbIterator);
         }
 
         /**
@@ -583,6 +592,10 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
             return toExternalString();
         }
 
+        /**
+         * Identity for {@link CachingShardIterator#iteratorCache}. Does not include {@link #dynamoDbIterator}, since
+         * the cache key is the logical position of the iterator.
+         */
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -983,21 +996,19 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
                 if (loadedNextIterator == null) {
                     nextIterator = null;
                 } else {
-                    if (iterator.getDynamoDbIterator().isEmpty()) {
-                        // update cache with new physical iterator to increase chances of making progress
-                        nextIterator = iterator;
-                        iteratorCache.put(nextIterator, loadedNextIterator);
-                    } else {
-                        // use new physical iterator next time to continue to progress
-                        nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
-                    }
+                    // DynamoDB occasionally returns empty pages between records (due to how streams are stored). If we
+                    // iterate past such an empty page, update the cache, so that subsequent calls do not start from 0.
+                    iterator.resolvePosition().ifPresent(position -> iteratorCache.put(iterator, loadedNextIterator));
+                    // Also pass back an iterator that contains the new physical iterator to ensure we make progress
+                    // (since cache entries could get evicted between now and clients using the iterator)
+                    nextIterator = iterator.withDynamoDbIterator(loadedNextIterator);
                 }
             } else {
                 // update iterator cache
                 if (loadedNextIterator == null) {
                     nextIterator = null;
                 } else {
-                    nextIterator = iterator.nextShardIterator(loadedRecords);
+                    nextIterator = iterator.nextShardIterator(loadedRecords, loadedNextIterator);
                     iteratorCache.put(nextIterator, loadedNextIterator);
                 }
 
