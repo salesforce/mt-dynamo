@@ -461,7 +461,7 @@ class CachingAmazonDynamoDbStreamsTest {
      * Verifies the describeStreamCache is utilized when describeStream is called.
      */
     private long assertDescribeStreamCache(CachingAmazonDynamoDbStreams cachingStreams,
-                                           Cache<String, DescribeStreamResult>  describeStreamCache,
+                                           Cache<String, DescribeStreamResult> describeStreamCache,
                                            String key,
                                            DescribeStreamRequest request,
                                            boolean expectedCacheHit,
@@ -1515,7 +1515,7 @@ class CachingAmazonDynamoDbStreamsTest {
         DescribeStreamResult expectedResult = new DescribeStreamResult().withStreamDescription(
             new StreamDescription().withStreamArn(streamArn).withShards(shards));
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult).build();
-        Cache<String, DescribeStreamResult>  describeStreamCache = cachingStreams.getDescribeStreamCache();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
 
         assertDescribeStreamCache(cachingStreams, describeStreamCache, streamArn, request, false, expectedResult);
@@ -1543,7 +1543,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
             .withDescribeStreamCacheEnabled(false).build();
-        Cache<String, DescribeStreamResult>  describeStreamCache = cachingStreams.getDescribeStreamCache();
+        Cache<String, DescribeStreamResult> describeStreamCache = cachingStreams.getDescribeStreamCache();
 
         cachingStreams.describeStream(request);
         assertNull(describeStreamCache.getIfPresent(streamArn));
