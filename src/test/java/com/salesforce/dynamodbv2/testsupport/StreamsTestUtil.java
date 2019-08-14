@@ -21,7 +21,7 @@ public class StreamsTestUtil {
      * Creates a mock streams record for unit testing purposes.
      *
      * @param sequenceNumber integer representation of sequence number to assign.
-     * @return  Mock Streams record.
+     * @return mock streams record.
      */
     public static Record mockRecord(int sequenceNumber) {
         return mockRecord(sequenceNumber, sequenceNumber);

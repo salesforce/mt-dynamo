@@ -148,7 +148,7 @@ public class CachingAmazonDynamoDbStreams extends DelegatingAmazonDynamoDbStream
          * MeterRegistry to record metrics to.
          *
          * @param meterRegistry Meter registry to report metrics to.
-         * @param metricPrefix Prefix for Meter registry metrics.
+         * @param metricPrefix  Prefix for meter-registry metrics.
          * @return This Builder.
          */
         public Builder withMeterRegistryAndMetricPrefix(MeterRegistry meterRegistry, String metricPrefix) {
