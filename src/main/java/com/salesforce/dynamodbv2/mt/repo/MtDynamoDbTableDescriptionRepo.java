@@ -138,7 +138,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         Map<String, AttributeValue> item = amazonDynamoDb.getItem(new GetItemRequest()
             .withTableName(getTableDescriptionTableName())
             .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(addPrefix(tableName)))))).getItem();
+                new AttributeValue(addPrefix(tableName)))))
+            .withConsistentRead(true)).getItem();
         if (item == null) {
             throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
                 + getTableDescriptionTableName());

@@ -19,36 +19,43 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class StreamsRecordCacheTest {
 
+
     private static BigInteger sn(int sn) {
         return at(mockSequenceNumber(sn));
     }
 
     static List<Arguments> subSegmentArgs() {
+        final StreamShardId ssid = new StreamShardId("stream1", "shard1");
         return Arrays.asList(
             Arguments.of(
-                new Segment(sn(1), sn(3), mockRecords(1, 2)),
-                null, null,
-                new Segment(sn(1), sn(3), mockRecords(1, 2))
+                new Segment(ssid, sn(1), sn(3), mockRecords(1, 2), 1L),
+                null,
+                null,
+                new Segment(ssid, sn(1), sn(3), mockRecords(1, 2), 1L)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(5), mockRecords(2, 3)),
-                sn(4), null,
-                new Segment(sn(4), sn(5), emptyList())
+                new Segment(ssid, sn(1), sn(5), mockRecords(2, 3), 1L),
+                new Segment(ssid, sn(0), sn(4), mockRecords(0, 2, 3), 2L),
+                null,
+                new Segment(ssid, sn(4), sn(5), emptyList(), 2L)
             ),
             Arguments.of(
-                new Segment(sn(2), sn(4), mockRecords(2, 3)),
-                null, sn(3),
-                new Segment(sn(2), sn(3), mockRecords(2))
+                new Segment(ssid, sn(2), sn(4), mockRecords(2, 3), 2L),
+                null,
+                new Segment(ssid, sn(3), sn(6), mockRecords(3, 5), 1L),
+                new Segment(ssid, sn(2), sn(3), mockRecords(2), 1L)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(5), mockRecords(2, 3)),
-                sn(3), sn(4),
-                new Segment(sn(3), sn(4), mockRecords(3))
+                new Segment(ssid, sn(1), sn(5), mockRecords(2, 3), 2L),
+                new Segment(ssid, sn(0), sn(3), mockRecords(0, 2), 1L),
+                new Segment(ssid, sn(4), sn(7), mockRecords(6), 3L),
+                new Segment(ssid, sn(3), sn(4), mockRecords(3), 3L)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(2), mockRecords(1)),
-                sn(1), sn(2),
-                new Segment(sn(1), sn(2), mockRecords(1))
+                new Segment(ssid, sn(1), sn(2), mockRecords(1), 1L),
+                new Segment(ssid, sn(0), sn(1), mockRecords(0), 2L),
+                new Segment(ssid, sn(2), sn(4), mockRecords(3), 2L),
+                new Segment(ssid, sn(1), sn(2), mockRecords(1), 2L)
             )
         );
     }
@@ -58,29 +65,31 @@ class StreamsRecordCacheTest {
      */
     @ParameterizedTest
     @MethodSource("subSegmentArgs")
-    void testSubSegment(Segment segment, BigInteger from, BigInteger to, Segment expected) {
-        assertEquals(expected, segment.subSegment(from, to));
+    void testSubSegment(Segment segment, Segment predecessor, Segment successor, Segment expected) {
+        assertEquals(expected, segment.subSegment(predecessor, successor));
     }
 
     static List<Arguments> getRecordsArgs() {
+        final StreamShardId ssid = new StreamShardId("stream1", "shard1");
+        final long ct = 1L;
         return Arrays.asList(
             Arguments.of(
-                new Segment(sn(1), sn(5), mockRecords(1, 2, 3, 4)),
+                new Segment(ssid, sn(1), sn(5), mockRecords(1, 2, 3, 4), ct),
                 sn(1),
                 mockRecords(1, 2, 3, 4)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(5), mockRecords(1, 2, 3, 4)),
+                new Segment(ssid, sn(1), sn(5), mockRecords(1, 2, 3, 4), ct),
                 sn(2),
                 mockRecords(2, 3, 4)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(5), mockRecords(1, 3, 4)),
+                new Segment(ssid, sn(1), sn(5), mockRecords(1, 3, 4), ct),
                 sn(2),
                 mockRecords(3, 4)
             ),
             Arguments.of(
-                new Segment(sn(1), sn(5), emptyList()),
+                new Segment(ssid, sn(1), sn(5), emptyList(), ct),
                 sn(2),
                 emptyList()
             )
@@ -183,13 +192,25 @@ class StreamsRecordCacheTest {
         sut.putRecords(position1, records1);
         assertEquals(records1, sut.getRecords(position1, 10));
 
-        // second segment overlaps with first, expect to adjust to fix, then evict first
+        // second segment overlaps with first, expect to adjust size, then evict itself (since it comes before first)
         final StreamShardPosition position2 = at("stream1", "shard1", "0");
         final List<Record> records2 = Arrays.asList(mockRecord(1), mockRecord(3), mockRecord(5));
         sut.putRecords(position2, records2);
 
+        assertEquals(records1, sut.getRecords(position1, 10));
+        assertEquals(emptyList(), sut.getRecords(position2, 10));
+
+        // third segment overlaps with first, expect to adjust size, then evict first
+        final StreamShardPosition position3 = at("stream1", "shard1", "7");
+        final List<Record> records3 = Arrays.asList(mockRecord(8), mockRecord(9), mockRecord(11));
+        sut.putRecords(position3, records3);
+
         assertEquals(emptyList(), sut.getRecords(position1, 10));
-        assertEquals(records2.subList(0, 2), sut.getRecords(position2, 10));
+        assertEquals(emptyList(), sut.getRecords(position2, 10));
+        assertEquals(emptyList(), sut.getRecords(position3, 10));
+        final StreamShardPosition position3afterFirst =
+            StreamShardPosition.after("stream1", "shard1", records3.get(0).getDynamodb().getSequenceNumber());
+        assertEquals(records3.subList(1, 3), sut.getRecords(position3afterFirst, 10));
     }
 
     /**

@@ -42,7 +42,7 @@ interface MtTableDescriptionRepo {
      * Utility to enumerate all virtual table metadata managed by this instance. Return up to {@code limit} results,
      * starting after {@code exclusiveStartTableMetadata} if specified.
      *
-     * @return a list of {@code TenantTableMetadata{ objects, with {@code lastEvaluatedTable} populated with the last
+     * @return a list of {@code TenantTableMetadata} objects, with {@code lastEvaluatedTable} populated with the last
      * table name if the result set is fully populated with {@code limit} results, otherwise null.
      */
     fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
@@ -51,6 +51,7 @@ interface MtTableDescriptionRepo {
         val createTableRequests: List<MtCreateTableRequest>,
         val lastEvaluatedTable: MtCreateTableRequest?
     )
+
     data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {
         fun withLimit(limit: Int): ListMetadataRequest {
             this.limit = limit
@@ -62,6 +63,7 @@ interface MtTableDescriptionRepo {
             return this
         }
     }
+
     data class MtCreateTableRequest(
         val tenantName: String,
         val createTableRequest: CreateTableRequest

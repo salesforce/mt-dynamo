@@ -4,7 +4,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.copyOf;
 import static com.google.common.collect.Iterables.getLast;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
@@ -22,18 +22,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Function;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * A cache for DynamoDB Streams Record. Optimizes for scanning adjacent stream records by splitting shards into segments
@@ -52,8 +54,10 @@ class StreamsRecordCache {
      * collection fall into the segment sequence number range.
      */
     @VisibleForTesting
-    static final class Segment {
+    static final class Segment implements Comparable<Segment> {
 
+        @Nonnull
+        private final StreamShardId streamShardId;
         @Nonnull
         private final BigInteger start;
         @Nonnull
@@ -61,17 +65,17 @@ class StreamsRecordCache {
         @Nonnull
         private final List<Record> records;
         private final long byteSize;
-        private final long createTime;
+        private final long creationTime;
 
         /**
          * Convenience constructor that initializes {@link #end} to the sequence number following that of the last
          * record.
          *
          * @param start   Starting point of this segment.
-         * @param records Collection of records contained in this segment.
+         * @param records Collection of records contained in this segment. Must not be empty.
          */
-        Segment(BigInteger start, List<Record> records) {
-            this(start, StreamShardPosition.after(getLast(records)), records);
+        Segment(StreamShardId streamShardId, BigInteger start, List<Record> records) {
+            this(streamShardId, start, getLastSequenceNumber(records), records, getApproximateCreationTime(records));
         }
 
         /**
@@ -82,13 +86,20 @@ class StreamsRecordCache {
          * @param end     Ending point of this segment (exclusive).
          * @param records Set of records contained in the stream for the given range.
          */
-        Segment(BigInteger start, BigInteger end, List<Record> records) {
+        Segment(@NotNull StreamShardId streamShardId, BigInteger start, BigInteger end, List<Record> records,
+                long creationTime) {
             assert start.compareTo(end) <= 0;
+            this.creationTime = creationTime;
+            this.streamShardId = streamShardId;
             this.start = checkNotNull(start);
             this.end = checkNotNull(end);
             this.records = copyOf(checkNotNull(records));
             this.byteSize = records.stream().map(Record::getDynamodb).mapToLong(StreamRecord::getSizeBytes).sum();
-            this.createTime = System.nanoTime();
+        }
+
+        @Nonnull
+        StreamShardId getStreamShardId() {
+            return streamShardId;
         }
 
         /**
@@ -139,47 +150,70 @@ class StreamsRecordCache {
         }
 
         /**
-         * Returns a new segment that starts at the larger of {@link #start} or {@param from} and ends at the smaller of
-         * {@link #end} or {@param to}. Both {@param from} and {@param to} may be null. If both are null, this segment
-         * is returned. If both are not null, {@param from} must be less than or equal to {@param to}. The set of
-         * records in the returned sub-segment are the sub-set of records that fall into the range of the new segment.
+         * Returns the byte size (in the stream) of all records in this segment.
          *
-         * @param from Starting offset of the new segment, may be null.
-         * @param to   Ending offset of the new segment, may be null.
-         * @return Sub-segment
+         * @return Byte size of all records in this segment.
          */
-        Segment subSegment(BigInteger from, BigInteger to) {
-            assert from == null || to == null || from.compareTo(to) <= 0;
+        long getByteSize() {
+            return byteSize;
+        }
 
-            if (from == null && to == null) {
+        /**
+         * Returns the approximate creation time of records in this segment.
+         *
+         * @return Approximate creation time.
+         */
+        long getCreationTime() {
+            return creationTime;
+        }
+
+        /**
+         * Returns a new segment that has no overlap with the given predecessor or successor, i.e., its {@link #start}
+         * sequence number is greater or equal to {@link #end} of the predecessor and its {@link #end} is smaller or
+         * equal to {@link #start} of the successor. Any records outside of those bounds are discarded. The timestamp
+         * of the new segment is guaranteed to be greater or equal to the timestamp of the predecessor and smaller or
+         * equal to the timestamp of the successor.
+         *
+         * @param predecessor Segment immediately preceding this one in the shard.
+         * @param successor   Segment immediately succeeding this one in the shard. Must not overlap with predecessor.
+         * @return Sub-segment  That has no overlap with predecessor or successor.
+         */
+        Segment subSegment(@Nullable Segment predecessor, @Nullable Segment successor) {
+            // if this is the first record
+            if (predecessor == null && successor == null) {
                 return this;
             }
 
-            int cf = from == null ? 1 : start.compareTo(from);
-            int cl = to == null ? -1 : end.compareTo(to);
+            // if predecessor range overlaps with this range, adjust start point
+            final BigInteger start = predecessor != null && predecessor.getEnd().compareTo(this.start) > 0
+                ? predecessor.getEnd() : this.start;
+            // if successor range overlaps with this range, adjust end point
+            final BigInteger end = successor != null && successor.getStart().compareTo(this.end) < 0
+                ? successor.getStart() : this.end;
 
-            if (cf >= 0) {
-                // "start" sequence number of this segment is after "from": start with "start"
-                if (cl <= 0) {
-                    // "end" sequence number of this segment is before "to": end with "end"
-                    return this;
-                } else {
-                    // "end" sequence number of this segment is after "to": end with "to"
-                    final List<Record> newRecords = copyOf(records.subList(0, getIndex(to)));
-                    return new Segment(start, to, newRecords);
-                }
-            } else {
-                // "start" sequence number of this segment if before "from": start with "from"
-                if (cl <= 0) {
-                    // "end" sequence number of this segment is before "to": end with "end"
-                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), records.size()));
-                    return new Segment(from, end, newRecords);
-                } else {
-                    // "end" sequence number of this segment is after "to": end with "to"
-                    final List<Record> newRecords = copyOf(records.subList(getIndex(from), getIndex(to)));
-                    return new Segment(from, to, newRecords);
-                }
+            // discard records if we have adjusted start or end point
+            final List<Record> records = start.equals(this.start)
+                ? (end.equals(this.end)
+                // neither predecessor nor successor overlaps: keep records
+                ? this.records
+                // successor overlaps: drop trailing records
+                : copyOf(this.records.subList(0, getIndex(end))))
+                : (end.equals(this.end)
+                // predecessor overlaps: drop leading records
+                ? copyOf(this.records.subList(getIndex(start), this.records.size()))
+                // both successor and predecessor overlap: drop leading and trailing records
+                : copyOf(this.records.subList(getIndex(start), getIndex(end))));
+
+            // make sure creation time smaller than predecessor's and larger than successor's to evict in correct order
+            long creationTime = records.isEmpty() ? this.creationTime : getApproximateCreationTime(records);
+            if (predecessor != null) {
+                creationTime = Math.max(creationTime, predecessor.creationTime);
             }
+            if (successor != null) {
+                creationTime = Math.min(creationTime, successor.creationTime);
+            }
+
+            return new Segment(streamShardId, start, end, records, creationTime);
         }
 
         /**
@@ -200,23 +234,6 @@ class StreamsRecordCache {
         }
 
         /**
-         * Returns the byte size (in the stream) of all records in this segment.
-         *
-         * @return Byte size of all records in this segment.
-         */
-        long getByteSize() {
-            return byteSize;
-        }
-
-        /**
-         * Returns the time this segment was created.
-         * @return Creation time of this segment.
-         */
-        long getCreateTime() {
-            return createTime;
-        }
-
-        /**
          * Returns whether this segment is empty. Note that non-empty segments may still have an empty records
          * collections if the corresponding segment in the underlying stream contains no records for the sequence number
          * range.
@@ -227,6 +244,36 @@ class StreamsRecordCache {
             return start.equals(end);
         }
 
+        /**
+         * Establishes order over segments across streams and shards by approximate creation time. The method
+         * {@link #subSegment(Segment, Segment)} ensures that {@link #creationTime} of segments for a given shard is
+         * monotonically increasing. Tiebreakers are broken by starting sequence number. Since those are guaranteed to
+         * be strictly monotonically increasing for a given stream shard, we guarantee that segments within a shard are
+         * evicted in order of sequence numbers, i.e., oldest-out-first. Across stream shards, the order is roughly
+         * based on the age of segments, though given that we potentially adjust creationTime with adjacent segments,
+         * it's not perfect. The idea is similar to hybrid clocks:
+         * http://users.ece.utexas.edu/~garg/pdslab/david/hybrid-time-tech-report-01.pdf
+         *
+         * @param o Other segment to compare to.
+         * @return a negative, zero, or positive as first is less than, equal to, or greater than the second.
+         */
+        @Override
+        public int compareTo(@NotNull StreamsRecordCache.Segment o) {
+            int c = Long.compare(this.creationTime, o.creationTime);
+            if (c != 0) {
+                return c;
+            }
+            c = start.compareTo(o.start);
+            if (c != 0) {
+                return c;
+            }
+            c = streamShardId.getShardId().compareTo(o.streamShardId.getShardId());
+            if (c != 0) {
+                return c;
+            }
+            return streamShardId.getStreamArn().compareTo(o.streamShardId.getStreamArn());
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) {
@@ -235,24 +282,51 @@ class StreamsRecordCache {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            final Segment segment = (Segment) o;
-            return start.equals(segment.start) && end.equals(segment.end) && records.equals(segment.records);
+            Segment segment = (Segment) o;
+            return creationTime == segment.creationTime
+                && streamShardId.equals(segment.streamShardId)
+                && start.equals(segment.start)
+                && end.equals(segment.end)
+                && records.equals(segment.records);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(start, end, records);
+            return Objects.hash(streamShardId, start, end, records, creationTime);
         }
 
         @Override
         public String toString() {
             return MoreObjects.toStringHelper(this)
+                .add("streamShardId", streamShardId)
                 .add("start", start)
                 .add("end", end)
                 .add("records", records)
                 .add("byteSize", byteSize)
+                .add("creationTime", creationTime)
                 .toString();
         }
+
+        /**
+         * Returns the approximate creation time of the first record in the collection.
+         *
+         * @param records Collection of records. Must not be empty.
+         * @return Approximate creation time of first record.
+         */
+        private static long getApproximateCreationTime(List<Record> records) {
+            return records.get(0).getDynamodb().getApproximateCreationDateTime().getTime();
+        }
+
+        /**
+         * Returns the sequence number of the last record in the collection.
+         *
+         * @param records Collection of records. Must not be empty.
+         * @return Sequence number of last record.
+         */
+        private static BigInteger getLastSequenceNumber(List<Record> records) {
+            return StreamShardPosition.after(getLast(records));
+        }
+
     }
 
     // config parameter
@@ -260,8 +334,9 @@ class StreamsRecordCache {
 
     // cached record segments sorted by sequence number within each shard
     private final ConcurrentMap<StreamShardId, NavigableMap<BigInteger, Segment>> segments;
-    // Insertion order of cache segments for eviction purposes
-    private final Queue<StreamShardPosition> insertionOrder;
+    // Eviction order of cache segments
+    private final NavigableSet<Segment> evictionQueue;
+    // private final Queue<StreamShardPosition> insertionOrder;
     // locks for accessing shard caches
     private final Striped<ReadWriteLock> shardLocks;
     // size of cache in terms of number of records
@@ -285,7 +360,7 @@ class StreamsRecordCache {
     StreamsRecordCache(MeterRegistry meterRegistry, long maxRecordsByteSize) {
         this.maxRecordsByteSize = maxRecordsByteSize;
         this.segments = new ConcurrentHashMap<>();
-        this.insertionOrder = new ConcurrentLinkedQueue<>();
+        this.evictionQueue = new ConcurrentSkipListSet<>();
         this.shardLocks = Striped.lazyWeakReadWriteLock(1024);
         this.size = new AtomicLong(0L);
         this.byteSize = new AtomicLong(0L);
@@ -375,11 +450,11 @@ class StreamsRecordCache {
         putRecordsTime.record(() -> {
             checkArgument(iteratorPosition != null && records != null && !records.isEmpty());
 
+            final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
             final BigInteger sequenceNumber = iteratorPosition.getSequenceNumber();
-            final Segment segment = new Segment(sequenceNumber, records);
+            final Segment segment = new Segment(streamShardId, sequenceNumber, records);
             final Segment cacheSegment;
 
-            final StreamShardId streamShardId = iteratorPosition.getStreamShardId();
             final ReadWriteLock lock = shardLocks.get(streamShardId);
             final Lock writeLock = lock.writeLock();
             writeLock.lock();
@@ -389,14 +464,14 @@ class StreamsRecordCache {
 
                 // lookup segments that immediately precede and succeed new segment to drop overlapping records
                 cacheSegment = segment.subSegment(
-                    getValue(shardCache::floorEntry, sequenceNumber).map(Segment::getEnd).orElse(null),
-                    getValue(shardCache::higherEntry, sequenceNumber).map(Segment::getStart).orElse(null)
+                    getValue(shardCache::floorEntry, sequenceNumber),
+                    getValue(shardCache::higherEntry, sequenceNumber)
                 );
 
                 // add new segment to the cache, unless it is empty
                 if (!cacheSegment.isEmpty()) {
                     shardCache.put(cacheSegment.getStart(), cacheSegment); // log warning if previous element not null?
-                    insertionOrder.add(iteratorPosition);
+                    evictionQueue.add(cacheSegment);
                     size.addAndGet(cacheSegment.getRecords().size());
                     byteSize.addAndGet(cacheSegment.getByteSize());
                 }
@@ -419,7 +494,7 @@ class StreamsRecordCache {
         evictRecordsTimer.record(() -> {
             int numEvicted = 0;
             while (byteSize.get() > maxRecordsByteSize) {
-                final StreamShardPosition oldest = insertionOrder.poll();
+                final Segment oldest = evictionQueue.pollFirst();
                 // note: it's possible that the oldest position is null, since multiple threads may be trying to evict
                 // segments concurrently and checking the size and pulling the oldest record are not atomic operations.
                 if (oldest != null) {
@@ -433,13 +508,14 @@ class StreamsRecordCache {
                         final NavigableMap<BigInteger, Segment> shard = segments.get(streamShardId);
                         // Could log a warning if there is no shard cache
                         if (shard != null) {
-                            final Segment evicted = shard.remove(oldest.getSequenceNumber());
+                            final Segment evicted = shard.remove(oldest.getStart());
                             // Could log a warning if there is no segment
                             if (evicted != null) {
                                 numEvicted += evicted.getRecords().size();
                                 size.addAndGet(-evicted.getRecords().size());
                                 byteSize.addAndGet(-evicted.getByteSize());
-                                evictRecordsAge.record(System.nanoTime() - evicted.getCreateTime(), NANOSECONDS);
+                                evictRecordsAge.record(System.currentTimeMillis() - evicted.getCreationTime(),
+                                    MILLISECONDS);
                                 if (shard.isEmpty()) {
                                     segments.remove(streamShardId);
                                 }
@@ -455,8 +531,8 @@ class StreamsRecordCache {
     }
 
     // helper for getting nullable value from map entry
-    private static <K, V> Optional<V> getValue(Function<K, Entry<K, V>> f, K key) {
-        return Optional.ofNullable(f.apply(key)).map(Entry::getValue);
+    private static <K, V> V getValue(Function<K, Entry<K, V>> f, K key) {
+        return Optional.ofNullable(f.apply(key)).map(Entry::getValue).orElse(null);
     }
 
     // helper for adding to list up to specified limit
