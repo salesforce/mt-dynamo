@@ -8,11 +8,9 @@ import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
-import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.google.common.collect.Maps
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
-import java.lang.IllegalArgumentException
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -82,7 +80,7 @@ interface MtBackupManager {
      * backup. For example, if backupName is "foo", and a backup for "tenant-a" and "table-a" would be encoded as:
      * "foo:tenant-a:table-a"
      */
-    fun getTenantTableBackupFromArn(backupArn: String) : TenantTableBackupMetadata
+    fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata
 
     /**
      * Reverse the function from {@link #getTenantTableBackupFromArn(String)} to convert a backupArn to a
@@ -164,4 +162,3 @@ enum class StatusDetail {
 }
 
 data class TenantBackupMetadata(val tenantTable: MtAmazonDynamoDb.TenantTable, val backupName: String)
-

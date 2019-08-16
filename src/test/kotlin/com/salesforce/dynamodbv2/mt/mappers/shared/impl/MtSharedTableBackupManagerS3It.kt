@@ -35,7 +35,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
 import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
-import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult
 import com.salesforce.dynamodbv2.mt.backups.Status
