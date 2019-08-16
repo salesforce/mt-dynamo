@@ -49,6 +49,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
+import java.lang.IllegalArgumentException
 import java.nio.charset.Charset
 import java.util.*
 import java.util.stream.Collectors
@@ -312,6 +313,19 @@ open class MtSharedTableBackupManager(
         s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
         return ret
     }
+
+    override fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata {
+        if (!isTenantTableArn(backupArn)) {
+            throw IllegalArgumentException("${backupArn} does not include tenant-table specifier.")
+        }
+        val tenantTableParts = backupArn.split(':')
+        return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2])
+    }
+
+    private fun isTenantTableArn(backupArn: String): Boolean = backupArn.split(':').size == 3
+
+    override fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String =
+            "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
 
     private fun commitTenantTableMetadata(
         backupId: String,

@@ -67,6 +67,7 @@ import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
 import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata;
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
@@ -588,12 +589,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         if (backupManager.isPresent()) {
-            if (!(restoreTableFromBackupRequest instanceof RestoreMtBackupRequest)) {
-                throw new ContinuousBackupsUnavailableException("Unexpected restore request found, must be an instance"
-                    + " of MtRestoreTableFromBackupRequest.");
-            }
+
+            TenantTableBackupMetadata backupMetadata = ((MtSharedTableBackupManager) backupManager.get())
+                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
+            RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
+                new TenantTable(backupMetadata.getVirtualTableName(), backupMetadata.getTenantId()),
+                new TenantTable(restoreTableFromBackupRequest.getTargetTableName(), getMtContext().getContext()));
             TenantRestoreMetadata restoreMetadata = backupManager.get().restoreTenantTableBackup(
-                (RestoreMtBackupRequest)restoreTableFromBackupRequest,
+                mtRestoreRequest,
                 getMtContext());
 
             return new RestoreTableFromBackupResult().withTableDescription(

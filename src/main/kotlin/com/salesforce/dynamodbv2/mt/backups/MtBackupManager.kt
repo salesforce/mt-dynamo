@@ -13,6 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.google.common.collect.Maps
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
+import java.lang.IllegalArgumentException
 
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
@@ -81,6 +82,19 @@ interface MtBackupManager {
      * List all multi-tenant backups known to us on S3.
      */
     fun listMtBackups(listMtBackupRequest: ListMtBackupRequest): ListMtBackupsResult
+
+    /**
+     * The backupArn encodes both the tenantTable, and the backup name for clients to use to restore a tenant-table
+     * backup. For example, if backupName is "foo", and a backup for "tenant-a" and "table-a" would be encoded as:
+     * "foo:tenant-a:table-a"
+     */
+    fun getTenantTableBackupFromArn(backupArn: String) : TenantTableBackupMetadata
+
+    /**
+     * Reverse the function from {@link #getTenantTableBackupFromArn(String)} to convert a backupArn to a
+     * {@link TenantTableBackupMetadata}
+     */
+    fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String
 }
 
 /**
@@ -144,12 +158,8 @@ class RestoreMtBackupRequest(
     val backupName: String,
     val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
     val newTenantTable: MtAmazonDynamoDb.TenantTable
-) : RestoreTableFromBackupRequest() {
-    init {
-        backupArn = backupName
-        targetTableName = newTenantTable.virtualTableName
-    }
-}
+)
+
 class MtBackupException(message: String, parent: Exception? = null) : AmazonServiceException(message, parent)
 
 enum class Status {
@@ -165,3 +175,5 @@ enum class StatusDetail {
     COMPLETE,
     FAILED
 }
+
+data class TenantBackupMetadata(val tenantTable: MtAmazonDynamoDb.TenantTable, val backupName: String)

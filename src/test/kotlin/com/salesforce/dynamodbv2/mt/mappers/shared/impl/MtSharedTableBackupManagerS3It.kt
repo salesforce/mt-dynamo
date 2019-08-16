@@ -15,6 +15,7 @@ import com.amazonaws.services.dynamodbv2.model.GetItemRequest
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement
 import com.amazonaws.services.dynamodbv2.model.KeyType
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
 import com.amazonaws.services.dynamodbv2.model.ScanRequest
 import com.amazonaws.services.dynamodbv2.model.TableDescription
@@ -38,6 +39,7 @@ import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult
 import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
@@ -84,6 +86,9 @@ internal class MtSharedTableBackupManagerS3It {
                     .withBinaryHashKey(true)
                     .build()
             backupManager = sharedTableBinaryHashKey!!.backupManager
+            assertNotNull(backupManager!!.listMtBackups(ListMtBackupRequest()), "Start local s3 with either " +
+                    "`mvn verify -Ps3-integration-tests -Dskip.surefire.tests` from command line\n or " +
+                    "`docker run -p 9090:9090 -p 9191:9191 -e initialBuckets=test-basic-backup-create -t adobe/s3mock:latest`")
         }
     }
 
@@ -118,11 +123,9 @@ internal class MtSharedTableBackupManagerS3It {
             }
             val newRestoreTableName = tableName + "-copy"
             MT_CONTEXT.withContext(tenant) {
-                val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(
-                        RestoreMtBackupRequest(backupName,
-                                TenantTable(tenantName = tenant, virtualTableName = tableName),
-                                TenantTable(tenantName = tenant, virtualTableName = newRestoreTableName)))
-
+                val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(RestoreTableFromBackupRequest()
+                        .withTargetTableName(newRestoreTableName)
+                        .withBackupArn(backupManager!!.getBackupArnForTenantTableBackup(TenantTableBackupMetadata(backupName, tenant, tableName))))
                 assertEquals(createdTableRequest.keySchema, restoreResult.tableDescription.keySchema)
                 assertEquals(createdTableRequest.attributeDefinitions, restoreResult.tableDescription.attributeDefinitions)
                 assertEquals(newRestoreTableName, restoreResult.tableDescription.tableName)
