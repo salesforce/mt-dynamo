@@ -594,6 +594,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
         if (backupManager.isPresent()) {
+            if (getMtContext().getContextOpt().isPresent()) {
+                return backupManager.get().listTenantTableBackups(listBackupsRequest, getMtContext().getContext());
+            }
             return backupManager.get().listBackups(listBackupsRequest);
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
@@ -605,8 +608,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         if (backupManager.isPresent()) {
+            //validate we have a backup for this tenant-table and we're under the same context
+            try {
+                TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
+                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
+                checkArgument(tenantBackupMetadata.getTenantId().equals(getMtContext().getContext()),
+                    "Current context does not match ARN context");
+            } catch (IllegalArgumentException e) {
+                throw new MtBackupException("Error restoring table, invalid input.", e);
+            }
 
-            TenantTableBackupMetadata backupMetadata = ((MtSharedTableBackupManager) backupManager.get())
+            TenantTableBackupMetadata backupMetadata = backupManager.get()
                     .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
             RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
                 new TenantTable(backupMetadata.getVirtualTableName(), backupMetadata.getTenantId()),
@@ -691,7 +703,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
                 return new CreateBackupResult().withBackupDetails(
                     new BackupDetails()
-                        // TODO: maybe this should be the ARN for the global S3 metadata file for this backup
                         .withBackupArn(finishedMetadata.getMtBackupName())
                         .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
                         .withBackupName(finishedMetadata.getMtBackupName()));

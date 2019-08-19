@@ -42,6 +42,7 @@ import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
 import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
 import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantBackupMetadata
 import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata
 import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
@@ -65,7 +66,6 @@ open class MtSharedTableBackupManager(
     val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
     val tableSnapshotter: MtBackupTableSnapshotter
 ) : MtBackupManager {
-
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
     private val mtBackupAwsAdaptor = MtBackupAwsAdaptor()
@@ -285,9 +285,35 @@ open class MtSharedTableBackupManager(
                 .withLastEvaluatedBackupArn(lastEvaluatedBackupArn)
     }
 
-    override fun getBackup(id: String): MtBackupMetadata? {
+    override fun listTenantTableBackups(listBackupRequest: ListBackupsRequest, tenantId: String): ListBackupsResult {
+        Preconditions.checkNotNull(tenantId, "Must pass tenant identifier")
+        Preconditions.checkNotNull(listBackupRequest.tableName, "Must pass virtual table name")
+        val mtBackupRequest = ListBackupsRequest().withLimit(listBackupRequest.limit)
+        if (listBackupRequest.exclusiveStartBackupArn != null) {
+            mtBackupRequest.withExclusiveStartBackupArn(getTenantTableBackupFromArn(listBackupRequest.exclusiveStartBackupArn).backupName)
+        }
+        var mtBackups: ListBackupsResult
+        val ret = ArrayList<BackupSummary>()
+        do {
+            mtBackups = listBackups(mtBackupRequest)
+            for (backup in mtBackups.backupSummaries) {
+                val tenantTableBackup = getTenantTableBackup(backup.backupName, TenantTable(listBackupRequest.tableName, tenantId))
+                if (tenantTableBackup != null) {
+                    val tenantTableBackupArn = getBackupArnForTenantTableBackup(
+                            TenantTableBackupMetadata(tenantTableBackup.backupName, tenantTableBackup.tenantTable.tenantName, tenantTableBackup.tenantTable.virtualTableName))
+                    ret.add(mtBackupAwsAdaptor.getBackupSummary(tenantTableBackup, tenantTableBackupArn))
+                    if (ret.size == listBackupRequest.limit) break
+                }
+            }
+            mtBackupRequest.withExclusiveStartBackupArn(mtBackups.lastEvaluatedBackupArn)
+        } while (mtBackups.lastEvaluatedBackupArn != null && ret.size < listBackupRequest.limit)
+        val listEvaluatedBackupArn: String? = if (mtBackups.lastEvaluatedBackupArn != null || ret.size == listBackupRequest.limit) Iterables.getLast(ret).backupArn else null
+        return ListBackupsResult().withBackupSummaries(ret).withLastEvaluatedBackupArn(listEvaluatedBackupArn)
+    }
+
+    override fun getBackup(backupName: String): MtBackupMetadata? {
         try {
-            val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(id))
+            val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(backupName))
             val backupFileString = CharStreams.toString(
                     InputStreamReader(backupFile.objectContent.delegateStream, charset))
             return gson.fromJson(backupFileString,
@@ -301,7 +327,16 @@ open class MtSharedTableBackupManager(
         }
     }
 
-    override fun deleteBackup(id: String): MtBackupMetadata? {
+    override fun getTenantTableBackup(backupName: String, tenantTable: TenantTable): TenantBackupMetadata? {
+        val mtBackup = getBackup(backupName)
+        val tenantTableBackupMetadata = TenantTableBackupMetadata(backupName, tenantTable.tenantName, tenantTable.virtualTableName)
+        if (mtBackup != null && mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
+            return TenantBackupMetadata(tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
+        }
+        return null
+    }
+
+    override fun deleteBackup(backupName: String): MtBackupMetadata? {
         var continuationToken: String? = null
         var deleteCount = 0
         do {
@@ -309,7 +344,7 @@ open class MtSharedTableBackupManager(
                     ListObjectsV2Request()
                             .withBucketName(s3BucketName)
                             .withContinuationToken(continuationToken)
-                            .withPrefix("$backupDir/$id/"))
+                            .withPrefix("$backupDir/$backupName/"))
             continuationToken = listBucketResult.continuationToken
             if (listBucketResult.objectSummaries.size > 0) {
                 deleteCount += listBucketResult.objectSummaries.size
@@ -320,10 +355,10 @@ open class MtSharedTableBackupManager(
             }
         } while (listBucketResult.isTruncated)
         if (deleteCount > 0) {
-            logger.info("$id: Deleted $deleteCount backup files for $id")
+            logger.info("$backupName: Deleted $deleteCount backup files for $backupName")
         }
-        val ret = getBackup(id)
-        s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(id)))
+        val ret = getBackup(backupName)
+        s3.deleteObject(DeleteObjectRequest(s3BucketName, getBackupMetadataFile(backupName)))
         return ret
     }
 

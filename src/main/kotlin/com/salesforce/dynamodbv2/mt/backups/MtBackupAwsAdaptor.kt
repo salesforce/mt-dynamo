@@ -17,6 +17,14 @@ import java.util.*
  */
 class MtBackupAwsAdaptor {
 
+    fun getBackupSummary(backupMetadata: TenantBackupMetadata, backupArn: String): BackupSummary {
+        return BackupSummary()
+                .withBackupArn(backupArn)
+                .withBackupName(backupMetadata.backupName)
+                .withBackupCreationDateTime(Date(backupMetadata.snapshotTime))
+                .withBackupStatus(getBackupStatus(backupMetadata.status))
+    }
+
     fun getBackupSummary(mtBackupMetadata: MtBackupMetadata): BackupSummary {
         return BackupSummary()
                 .withBackupName(mtBackupMetadata.mtBackupName)

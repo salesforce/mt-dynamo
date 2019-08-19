@@ -63,6 +63,11 @@ interface MtBackupManager {
     fun getBackup(backupName: String): MtBackupMetadata?
 
     /**
+     * Get the status of a tenant-table backup.
+     */
+    fun getTenantTableBackup(backupName: String, tenantTable: MtAmazonDynamoDb.TenantTable): TenantBackupMetadata?
+
+    /**
      * Delete the given multi-tenant backup, including all metadata and data files related.
      */
     fun deleteBackup(backupName: String): MtBackupMetadata?
@@ -92,6 +97,12 @@ interface MtBackupManager {
      * List all multi-tenant backups known to us on S3.
      */
     fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult
+
+    /**
+     * Return all backups generated for the specified tenant.
+     */
+    fun listTenantTableBackups(listBackupRequest: ListBackupsRequest, tenantId: String):
+            ListBackupsResult
 }
 
 /**
@@ -161,4 +172,4 @@ enum class StatusDetail {
     FAILED
 }
 
-data class TenantBackupMetadata(val tenantTable: MtAmazonDynamoDb.TenantTable, val backupName: String)
+data class TenantBackupMetadata(val tenantTable: MtAmazonDynamoDb.TenantTable, val backupName: String, val status: Status, val snapshotTime: Long)

@@ -5,6 +5,7 @@
  */
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl
 
+import com.amazonaws.SdkClientException
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.client.builder.AwsClientBuilder
@@ -28,6 +29,7 @@ import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.Lists
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
+import com.salesforce.dynamodbv2.mt.backups.MtBackupException
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
@@ -38,12 +40,12 @@ import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult
 import com.salesforce.dynamodbv2.mt.backups.Status
-import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import java.util.*
 import java.util.stream.Collectors
 
 /**
@@ -85,9 +87,13 @@ internal class MtSharedTableBackupManagerS3It {
                     .withBinaryHashKey(true)
                     .build()
             backupManager = sharedTableBinaryHashKey!!.backupManager
-            assertNotNull(backupManager!!.listBackups(ListBackupsRequest()), "Start local s3 with either " +
-                    "`mvn verify -Ps3-integration-tests -Dskip.surefire.tests` from command line\n or " +
-                    "`docker run -p 9090:9090 -p 9191:9191 -e initialBuckets=test-basic-backup-create -t adobe/s3mock:latest`")
+            try {
+                backupManager!!.listBackups(ListBackupsRequest())
+            } catch (e: SdkClientException) {
+                fail<Unit>("Start local s3 with either " +
+                        "`mvn verify -Ps3-integration-tests -Dskip.surefire.tests` from command line\n or " +
+                        "`docker run -p 9090:9090 -p 9191:9191 -e initialBuckets=test-basic-backup-create -t adobe/s3mock:latest`")
+            }
         }
     }
 
@@ -97,24 +103,6 @@ internal class MtSharedTableBackupManagerS3It {
         val targetTenantTable = TenantTable(
                 virtualTableName = srcTenantTable.virtualTableName + "-copy",
                 tenantName = srcTenantTable.tenantName)
-        basicBackupTest(srcTenantTable, targetTenantTable)
-    }
-
-    @Test
-    fun testBasicBackupCreate_newTenantNewTable() {
-        val srcTenantTable = TenantTable(virtualTableName = "dummy-table", tenantName = "org1")
-        val targetTenantTable = TenantTable(
-                virtualTableName = srcTenantTable.virtualTableName + "-copy",
-                tenantName = srcTenantTable.tenantName + "-copy")
-        basicBackupTest(srcTenantTable, targetTenantTable)
-    }
-
-    @Test
-    fun testBasicBackupCreate_newTenantSameTable() {
-        val srcTenantTable = TenantTable(virtualTableName = "dummy-table", tenantName = "org1")
-        val targetTenantTable = TenantTable(
-                virtualTableName = srcTenantTable.virtualTableName,
-                tenantName = srcTenantTable.tenantName + "-copy")
         basicBackupTest(srcTenantTable, targetTenantTable)
     }
 
@@ -144,12 +132,21 @@ internal class MtSharedTableBackupManagerS3It {
                 assertEquals(backupName, mtBackupMetadata!!.mtBackupName)
                 assertEquals(Status.COMPLETE, mtBackupMetadata.status)
                 assertTrue(mtBackupMetadata.tenantTables.isNotEmpty())
+
+                val tenantBackupMetadata = backupManager!!.getTenantTableBackup(backupName, sourceTenantTable)
+                assertNotNull(tenantBackupMetadata)
+                assertEquals(backupName, tenantBackupMetadata!!.backupName)
+                assertEquals(Status.COMPLETE, tenantBackupMetadata.status)
+                assertEquals(sourceTenantTable, tenantBackupMetadata.tenantTable)
             }
+
             // now try restoring backed up data to new target table and validate data appears on target
             MT_CONTEXT.withContext(targetTenantTable.tenantName) {
+                val tenantTableBackups = sharedTableBinaryHashKey!!.listBackups(ListBackupsRequest().withTableName(sourceTenantTable.virtualTableName))
+                assertEquals(1, tenantTableBackups.backupSummaries.size)
                 val restoreResult = sharedTableBinaryHashKey!!.restoreTableFromBackup(RestoreTableFromBackupRequest()
                         .withTargetTableName(targetTenantTable.virtualTableName)
-                        .withBackupArn(backupManager!!.getBackupArnForTenantTableBackup(TenantTableBackupMetadata(backupName, sourceTenantTable.tenantName, sourceTenantTable.virtualTableName))))
+                        .withBackupArn(tenantTableBackups.backupSummaries[0].backupArn))
 
                 assertEquals(createdTableRequest.keySchema, restoreResult.tableDescription.keySchema)
                 assertEquals(createdTableRequest.attributeDefinitions, restoreResult.tableDescription.attributeDefinitions)
@@ -168,12 +165,119 @@ internal class MtSharedTableBackupManagerS3It {
     }
 
     @Test
+    fun testDifferentTenantRestoreFail() {
+        val tenant = "tenant"
+        val table = "table"
+        val createdTableRequest = CreateTableRequestBuilder.builder()
+                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withTableName(table)
+                .withProvisionedThroughput(1L, 1L).build()
+        val backupIds = createJustBackupMetadatas("testDifferentTenantRestoreFail", 1, ImmutableList.of(MtTableDescriptionRepo.MtCreateTableRequest(tenant, createdTableRequest)))
+        try {
+            var tenantTableBackups: ListBackupsResult? = null
+            MT_CONTEXT.withContext(tenant) {
+                tenantTableBackups = sharedTableBinaryHashKey!!.listBackups(ListBackupsRequest().withTableName(table))
+                assertEquals(1, tenantTableBackups!!.backupSummaries.size)
+            }
+            MT_CONTEXT.withContext("$tenant-2") {
+                try {
+                    sharedTableBinaryHashKey!!.restoreTableFromBackup(RestoreTableFromBackupRequest()
+                            .withTargetTableName("$table-2")
+                            .withBackupArn(tenantTableBackups!!.backupSummaries[0].backupArn))
+                    fail("Should have failed trying to restore a different tenant context backup")
+                } catch (e: MtBackupException) {
+                    assertTrue(e.message!!.contains("Error restoring table, invalid input."))
+                }
+            }
+        } finally {
+            for (backup in backupIds) {
+                backupManager!!.deleteBackup(backup)
+                assertNull(backupManager!!.getBackup(backup))
+            }
+        }
+    }
+
+    @Test
     fun testListBackups() {
-        val backupIds = createJustBackupMetadatas(3)
+        val backupIds = createJustBackupMetadatas("testListBackup", 3)
         try {
 
             val listBackupResult: ListBackupsResult = backupManager!!.listBackups(ListBackupsRequest())
-            assertTrue(listBackupResult.backupSummaries.size == 3)
+            assertEquals(3, listBackupResult.backupSummaries.size)
+        } finally {
+            for (backup in backupIds) {
+                backupManager!!.deleteBackup(backup)
+                assertNull(backupManager!!.getBackup(backup))
+            }
+        }
+    }
+
+    @Test
+    fun testListTenantBackups() {
+        val tenant1 = "tenant-1"
+        val tenant2 = "tenant-2"
+        val table1 = "table-1"
+        val table2 = "table-2"
+        val createdTableRequestBuilder = CreateTableRequestBuilder.builder()
+                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withProvisionedThroughput(1L, 1L)
+        val tenantTableMetadataList = ArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
+        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant1, createTableRequest = createdTableRequestBuilder.withTableName(table1).build()))
+
+        val backupIds = createJustBackupMetadatas("testListBackup", 3, tenantTableMetadataList)
+        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant2, createTableRequest = createdTableRequestBuilder.withTableName(table2).build()))
+        backupIds.addAll(createJustBackupMetadatas("testListBackup-2", 3, tenantTableMetadataList))
+        try {
+
+            val listBackupResult1: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName(table1), tenant1)
+            assertEquals(6, listBackupResult1.backupSummaries.size)
+            val listBackupResult2: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName(table2), tenant2)
+            assertEquals(3, listBackupResult2.backupSummaries.size)
+        } finally {
+            for (backup in backupIds) {
+                backupManager!!.deleteBackup(backup)
+                assertNull(backupManager!!.getBackup(backup))
+            }
+        }
+    }
+
+    @Test
+    fun testListTenantBackups_empty() {
+        val listBackupResult: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName("bar"), "foo")
+        assertTrue(listBackupResult.backupSummaries.size == 0)
+        assertNull(listBackupResult.lastEvaluatedBackupArn)
+    }
+
+    @Test
+    fun testListTenantBackups_pagination() {
+        val tenant = "tenant"
+        val table = "table"
+        val createdTableRequestBuilder = CreateTableRequestBuilder.builder()
+                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withProvisionedThroughput(1L, 1L)
+        val tenantTableMetadataList = ArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
+        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant, createTableRequest = createdTableRequestBuilder.withTableName(table).build()))
+        val backupIds = createJustBackupMetadatas("testListBackups_pagination", 7, ImmutableList.of())
+        val expectedBackupIds = createJustBackupMetadatas("testListBackups_pagination2-", 7, tenantTableMetadataList)
+        backupIds.addAll(expectedBackupIds)
+        try {
+            val limit = 4
+            val firstResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withLimit(limit).withTableName(table), tenant)
+            assertEquals(limit, firstResult.backupSummaries.size)
+            assertEquals(expectedBackupIds.subList(0, firstResult.backupSummaries.size),
+                    firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
+            assertNotNull(firstResult.lastEvaluatedBackupArn)
+            val theRest = backupManager!!.listTenantTableBackups(ListBackupsRequest()
+                    .withLimit(limit)
+                    .withTableName(table)
+                    .withExclusiveStartBackupArn(firstResult.lastEvaluatedBackupArn), tenant)
+            assertEquals(7 - limit, theRest.backupSummaries.size)
+            assertEquals(expectedBackupIds.subList(firstResult.backupSummaries.size, 7),
+                    theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
+            assertNull(theRest.lastEvaluatedBackupArn)
         } finally {
             for (backup in backupIds) {
                 backupManager!!.deleteBackup(backup)
@@ -185,7 +289,7 @@ internal class MtSharedTableBackupManagerS3It {
     /**
      * Create just backup metadatas used to validate list backup tests, and return List of backup ids created.
      */
-    private fun createJustBackupMetadatas(numBackups: Int): List<String> {
+    private fun createJustBackupMetadatas(backupPrefix: String, numBackups: Int, tenantTableMetadatas: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of()): ArrayList<String> {
         val ret = Lists.newArrayList<String>()
         backupManager =
                 object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!,
@@ -195,14 +299,15 @@ internal class MtSharedTableBackupManagerS3It {
                     override fun backupVirtualTableMetadata(
                         createBackupRequest: CreateBackupRequest
                     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
-                        return ImmutableList.of()
+                        return tenantTableMetadatas
                     }
                 }
         for (i in 1..numBackups) {
-            val backupName = "testListBackup-$i"
+            val backupName = "$backupPrefix-$i"
             ret.add(backupName)
             val createBackupRequest = CreateBackupRequest()
             createBackupRequest.backupName = backupName
+
             backupManager!!.createBackup(createBackupRequest)
         }
         return ret
@@ -217,7 +322,7 @@ internal class MtSharedTableBackupManagerS3It {
 
     @Test
     fun testListBackups_pagination() {
-        val backupIds: List<String> = createJustBackupMetadatas(7)
+        val backupIds: List<String> = createJustBackupMetadatas("testListBackups_pagination", 7)
         try {
             val firstResult = backupManager!!.listBackups(ListBackupsRequest().withLimit(4))
             assertTrue(firstResult.backupSummaries.size <= 4)
