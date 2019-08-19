@@ -91,31 +91,33 @@ internal class MtBackupManagerTest {
                 .withTruncateOnDeleteTable(true)
                 .withBinaryHashKey(true)
                 .build()
-        try {
-            sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withBackupType("foo"))
-            fail("Should have failed trying to list backups of a particular type") as Unit
-        } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("Listing backups by backupType unsupported"))
-        }
+        mtContext.withContext(null) {
+            try {
+                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withBackupType("foo"))
+                fail("Should have failed trying to list backups of a particular type") as Unit
+            } catch (ex: IllegalArgumentException) {
+                assertTrue(ex.message!!.contains("Listing backups by backupType unsupported"))
+            }
 
-        try {
-            sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTableName("foo"))
-            fail("Should have failed trying to list backups of a particular table name") as Unit
-        } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("Listing backups by table name unsupported for multi tenant backups"))
-        }
+            try {
+                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTableName("foo"))
+                fail("Should have failed trying to list backups of a particular table name") as Unit
+            } catch (ex: IllegalArgumentException) {
+                assertTrue(ex.message!!.contains("Listing backups by table name unsupported for multi tenant backups"))
+            }
 
-        try {
-            sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date()))
-            fail("Should have failed trying to list backups with time ranges") as Unit
-        } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
-        }
-        try {
-            sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeUpperBound(Date()))
-            fail("Should have failed trying to list backups with time ranges") as Unit
-        } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
+            try {
+                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date()))
+                fail("Should have failed trying to list backups with time ranges") as Unit
+            } catch (ex: IllegalArgumentException) {
+                assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
+            }
+            try {
+                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeUpperBound(Date()))
+                fail("Should have failed trying to list backups with time ranges") as Unit
+            } catch (ex: IllegalArgumentException) {
+                assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
+            }
         }
     }
 }
