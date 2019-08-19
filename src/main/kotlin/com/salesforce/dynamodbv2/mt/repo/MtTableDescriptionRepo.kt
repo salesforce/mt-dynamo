@@ -67,5 +67,5 @@ interface MtTableDescriptionRepo {
     data class MtCreateTableRequest(
         val tenantName: String,
         val createTableRequest: CreateTableRequest
-    ) : CreateTableRequest()
+    )
 }

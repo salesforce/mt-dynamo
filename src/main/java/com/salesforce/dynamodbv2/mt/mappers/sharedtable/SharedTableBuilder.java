@@ -23,9 +23,11 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.s3.AmazonS3;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
@@ -41,6 +43,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
@@ -184,6 +187,7 @@ public class SharedTableBuilder implements TableBuilder {
     private TableMappingFactory tableMappingFactory;
     private CreateTableRequestFactory createTableRequestFactory;
     private DynamoSecondaryIndexMapper secondaryIndexMapper;
+    private MtSharedTableBackupManagerBuilder backupManagerBuilder;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
     private Boolean truncateOnDeleteTable;
@@ -228,6 +232,19 @@ public class SharedTableBuilder implements TableBuilder {
 
     public SharedTableBuilder withGetRecordsTimeLimit(long getRecordsTimeLimit) {
         this.getRecordsTimeLimit = getRecordsTimeLimit;
+        return this;
+    }
+
+    public SharedTableBuilder withBackupSupport(AmazonS3 s3Client, String backupS3BucketName) {
+        return this.withBackupSupport(s3Client, backupS3BucketName,
+            new MtBackupTableSnapshotter());
+    }
+
+    public SharedTableBuilder withBackupSupport(AmazonS3 s3Client,
+                                                String backupS3BucketName,
+                                                MtBackupTableSnapshotter tableSnapshotter) {
+        this.backupManagerBuilder = new MtSharedTableBackupManagerBuilder(s3Client, backupS3BucketName,
+            tableSnapshotter);
         return this;
     }
 
@@ -309,6 +326,7 @@ public class SharedTableBuilder implements TableBuilder {
             clock,
             tableMappingCache,
             meterRegistry,
+            Optional.ofNullable(backupManagerBuilder),
             scanTenantKey,
             scanVirtualTableKey);
     }

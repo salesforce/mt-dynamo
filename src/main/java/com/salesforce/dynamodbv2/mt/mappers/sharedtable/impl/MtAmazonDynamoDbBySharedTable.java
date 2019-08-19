@@ -14,25 +14,37 @@ import static java.util.stream.Collectors.toList;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BackupDetails;
+import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
+import com.amazonaws.services.dynamodbv2.model.ContinuousBackupsUnavailableException;
+import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.CreateBackupResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
+import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest;
+import com.amazonaws.services.dynamodbv2.model.ListBackupsResult;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
@@ -44,7 +56,19 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
+import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata;
+import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest;
+import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
+import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
+import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata;
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
@@ -55,12 +79,16 @@ import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -90,6 +118,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Map<String, CreateTableRequest> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
+    private final Optional<MtBackupManager> backupManager;
 
     /**
      * Shared-table constructor.
@@ -121,6 +150,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          Clock clock,
                                          Cache<Object, TableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry,
+                                         Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
                                          String scanVirtualTableKey) {
         super(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey);
@@ -134,6 +164,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
+
+        // a reference to this object is leaked to the backup manager in order to run multitenant scans, is this
+        // the best way? We need a reference to the backup manager here to serve createBackup and other backup API
+        // requests, and the backup manager needs a reference back to this object to run multitenant scans to build
+        // the physical backup off of mt-dynamo data.
+        this.backupManager = backupManager.map(b -> b.build(this));
     }
 
     long getGetRecordsTimeLimit() {
@@ -147,6 +183,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     protected boolean isMtTable(String tableName) {
         return mtTables.containsKey(tableName);
+    }
+
+    public MtTableDescriptionRepo getMtTableDescriptionRepo() {
+        return mtTableDescriptionRepo;
     }
 
     Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
@@ -484,8 +524,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
-            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getTableName()));
-            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getContext()));
+            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getContext()));
+            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getTableName()));
             unpackedItems.add(unpackedVirtualItem);
         }
 
@@ -551,6 +591,132 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getAmazonDynamoDb().updateItem(updateItemRequest);
     }
 
+    @Override
+    public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
+        if (backupManager.isPresent()) {
+            if (getMtContext().getContextOpt().isPresent()) {
+                return backupManager.get().listTenantTableBackups(listBackupsRequest, getMtContext().getContext());
+            }
+            return backupManager.get().listBackups(listBackupsRequest);
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
+    }
+
+    @Override
+    public RestoreTableFromBackupResult restoreTableFromBackup(
+        RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
+        if (backupManager.isPresent()) {
+            //validate we have a backup for this tenant-table and we're under the same context
+            try {
+                TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
+                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
+                checkArgument(tenantBackupMetadata.getTenantId().equals(getMtContext().getContext()),
+                    "Current context does not match ARN context");
+            } catch (IllegalArgumentException e) {
+                throw new MtBackupException("Error restoring table, invalid input.", e);
+            }
+
+            TenantTableBackupMetadata backupMetadata = backupManager.get()
+                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
+            RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
+                new TenantTable(backupMetadata.getVirtualTableName(), backupMetadata.getTenantId()),
+                new TenantTable(restoreTableFromBackupRequest.getTargetTableName(), getMtContext().getContext()));
+            TenantRestoreMetadata restoreMetadata = backupManager.get().restoreTenantTableBackup(
+                mtRestoreRequest,
+                getMtContext());
+
+            return new RestoreTableFromBackupResult().withTableDescription(
+                mtTableDescriptionRepo.getTableDescription(restoreMetadata.getVirtualTableName()));
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
+    }
+
+    @Override
+    public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
+        if (backupManager.isPresent()) {
+            if (getMtContext().getContextOpt().isPresent()) {
+                throw new UnsupportedOperationException("TODO: Implement tenant table backup describe");
+            }
+            MtBackupMetadata backupMetadata = getBackupManager().getBackup(describeBackupRequest.getBackupArn());
+            if (backupMetadata != null) {
+                return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
+            } else {
+                throw new BackupNotFoundException("No backup with arn "
+                    + describeBackupRequest.getBackupArn() + "found");
+            }
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
+    }
+
+    @Override
+    public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
+        if (backupManager.isPresent()) {
+            Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
+            Preconditions.checkArgument(createBackupRequest.getTableName() == null,
+                "Multitenant backups cannot backup individual tables, table name arguments are disallowed.");
+            backupManager.get().createBackup(createBackupRequest);
+
+            ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
+
+            Set<String> snapshottedTables = Sets.newHashSet();
+            List<Future<SnapshotResult>> futures = Lists.newArrayList();
+            Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
+            for (String tableName : origMtTables) {
+                String snapshottedTable = tableName + "-copy";
+                snapshottedTables.add(snapshottedTable);
+                mtTables.put(snapshottedTable, mtTables.get(tableName));
+                futures.add(executorService.submit(() ->
+                    backupManager.get()
+                        .getMtBackupTableSnapshotter()
+                        .snapshotTableToTarget(
+                            new SnapshotRequest(createBackupRequest.getBackupName(),
+                                tableName,
+                                snapshottedTable,
+                                getAmazonDynamoDb(),
+                                new ProvisionedThroughput(10L, 10L))
+                        )));
+            }
+            List<SnapshotResult> snapshotResults = Lists.newArrayList();
+            try {
+                for (Future<SnapshotResult> future : futures) {
+                    try {
+                        snapshotResults.add(future.get());
+                    } catch (InterruptedException | ExecutionException e) {
+                        throw new MtBackupException("Error snapshotting table", e);
+                    }
+                }
+            } finally {
+                executorService.shutdown();
+            }
+            try {
+                backupManager.get().getMtBackupTableSnapshotter();
+                for (SnapshotResult snapshotResult : snapshotResults) {
+                    backupManager.get().backupPhysicalMtTable(createBackupRequest,
+                        snapshotResult.getTempSnapshotTable());
+                }
+                MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
+                return new CreateBackupResult().withBackupDetails(
+                    new BackupDetails()
+                        .withBackupArn(finishedMetadata.getMtBackupName())
+                        .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
+                        .withBackupName(finishedMetadata.getMtBackupName()));
+            } finally {
+                for (SnapshotResult result : snapshotResults) {
+                    backupManager.get().getMtBackupTableSnapshotter().cleanup(result, getAmazonDynamoDb());
+                    mtTables.remove(result.getTempSnapshotTable());
+                }
+            }
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
+    }
 
     /**
      * See class-level Javadoc for explanation of why the use of {@code addAttributeUpdateEntry} and
@@ -607,6 +773,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return primaryKey.getRangeKey()
             .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
+    }
+
+    @VisibleForTesting MtBackupManager getBackupManager() {
+        return backupManager.orElse(null);
     }
 
     private static class PutItemRequestWrapper implements RequestWrapper {
