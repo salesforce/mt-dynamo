@@ -172,7 +172,6 @@ internal class MtSharedTableBackupManagerS3It {
             assertNotNull(clonedRow.item)
             assertEquals("1", clonedRow.item.get("value")!!.s)
         }
-
     }
 
     @Test
@@ -209,7 +208,6 @@ internal class MtSharedTableBackupManagerS3It {
 
         val listBackupResult: ListBackupsResult = backupManager!!.listBackups(ListBackupsRequest())
         assertEquals(3, listBackupResult.backupSummaries.size)
-
     }
 
     @Test
@@ -232,7 +230,6 @@ internal class MtSharedTableBackupManagerS3It {
         assertEquals(6, listBackupResult1.backupSummaries.size)
         val listBackupResult2: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName(table2), tenant2)
         assertEquals(3, listBackupResult2.backupSummaries.size)
-
     }
 
     @Test
@@ -323,7 +320,6 @@ internal class MtSharedTableBackupManagerS3It {
         assertEquals(backupIds.subList(firstResult.backupSummaries.size, 7),
                 theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         assertNull(theRest.lastEvaluatedBackupArn)
-
     }
 
     /**

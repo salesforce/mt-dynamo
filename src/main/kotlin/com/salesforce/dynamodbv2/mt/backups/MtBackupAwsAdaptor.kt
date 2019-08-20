@@ -10,7 +10,6 @@ import com.amazonaws.services.dynamodbv2.model.BackupDetails
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult
-import com.amazonaws.services.dynamodbv2.model.SourceTableDetails
 import java.util.*
 
 /**
@@ -47,13 +46,12 @@ class MtBackupAwsAdaptor {
                 .withBackupDetails(getBackupDetails(mtBackupMetadata))
     }
 
-
     fun getDescribeBackupResult(mtBackupMetadata: MtBackupMetadata): DescribeBackupResult {
         return DescribeBackupResult().withBackupDescription(
                 BackupDescription().withBackupDetails(getBackupDetails(mtBackupMetadata)))
     }
 
-    private fun getBackupDetails(mtBackupMetadata: MtBackupMetadata) : BackupDetails = BackupDetails()
+    private fun getBackupDetails(mtBackupMetadata: MtBackupMetadata): BackupDetails = BackupDetails()
             .withBackupName(mtBackupMetadata.mtBackupName)
             .withBackupArn(mtBackupMetadata.mtBackupName)
             .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
