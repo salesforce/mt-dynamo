@@ -397,29 +397,27 @@ class CachingAmazonDynamoDbStreamsTest {
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams) {
-        return mockTrimHorizonStream(streams, new MockTicker(), new SimpleMeterRegistry(), null);
+        return mockTrimHorizonStream(streams, new MockTicker(), new SimpleMeterRegistry());
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
                                                                       Ticker ticker) {
-        return mockTrimHorizonStream(streams, ticker, new SimpleMeterRegistry(), null);
+        return mockTrimHorizonStream(streams, ticker, new SimpleMeterRegistry());
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams,
-                                                                      MeterRegistry meterRegistry,
-                                                                      String prefix) {
-        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry, prefix);
+                                                                      MeterRegistry meterRegistry) {
+        return mockTrimHorizonStream(streams, new MockTicker(), meterRegistry);
     }
 
     private static CachingAmazonDynamoDbStreams mockTrimHorizonStream(AmazonDynamoDBStreams streams, Ticker ticker,
-                                                                      MeterRegistry meterRegistry,
-                                                                      String prefix) {
+                                                                      MeterRegistry meterRegistry) {
         GetShardIteratorRequest iteratorRequest = mockTrimHorizonRequest(streams, streamArn, shardId);
 
         // get exact overlapping records with and without limit
         CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams
             .Builder(streams)
-            .withMeterRegistryAndMetricPrefix(meterRegistry, prefix)
+            .withMeterRegistry(meterRegistry)
             .withTicker(ticker)
             .build();
 
@@ -563,7 +561,7 @@ class CachingAmazonDynamoDbStreamsTest {
         AmazonDynamoDBStreams streams = mock(AmazonDynamoDBStreams.class);
         MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
-        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams, meterRegistry, "prefix");
+        CachingAmazonDynamoDbStreams cachingStreams = mockTrimHorizonStream(streams, meterRegistry);
 
         assertGetRecords(cachingStreams, newTrimHorizonRequest(), 10, 0, 10);
 
@@ -571,7 +569,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertCacheMisses(streams, 1, 1);
 
         //Verify monitoring is enabled for trim horizon cache
-        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName();
         assertEquals(2L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".TrimHorizon").tags("result", "miss").functionCounter().count());
 
@@ -1150,7 +1148,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
             .withMaxIteratorCacheSize(0)
-            .withMeterRegistryAndMetricPrefix(new CompositeMeterRegistry(), "prefix")
+            .withMeterRegistry(new CompositeMeterRegistry())
             .build();
 
         doAnswer(invocation -> {
@@ -1267,7 +1265,7 @@ class CachingAmazonDynamoDbStreamsTest {
         mockGetRecords(streams, nextNextDynamoDbIterator, 0, 1);
 
         final CachingAmazonDynamoDbStreams cachingStreams = new CachingAmazonDynamoDbStreams.Builder(streams)
-            .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
+            .withMeterRegistry(meterRegistry)
             .withMaxIteratorCacheSize(0)
             .build();
 
@@ -1284,7 +1282,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertCacheMisses(streams, 1, 3);
 
         // Verify monitoring for EmptyResult cache and GetShardIterator caches
-        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName();
         assertEquals(1L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".GetShardIterator").tags("result", "miss").functionCounter().count());
         assertEquals(0L, meterRegistry.get("cache.gets").tags("cache",
@@ -1858,7 +1856,7 @@ class CachingAmazonDynamoDbStreamsTest {
 
         MeterRegistry meterRegistry = new SimpleMeterRegistry();
         CachingAmazonDynamoDbStreams cachingStreams = mockDynamoDescribeStream(mockStreams, expectedResult)
-            .withMeterRegistryAndMetricPrefix(meterRegistry, "prefix")
+            .withMeterRegistry(meterRegistry)
             .build();
 
         DescribeStreamRequest request = new DescribeStreamRequest().withStreamArn(streamArn);
@@ -1872,7 +1870,7 @@ class CachingAmazonDynamoDbStreamsTest {
         assertEquals(1L, cachingStreams.getDescribeStreamCache().stats().loadSuccessCount());
         // Expect calls afterwards to have cache hits
         assertEquals(3L, cachingStreams.getDescribeStreamCache().stats().hitCount());
-        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName() + ".prefix";
+        String prefix = CachingAmazonDynamoDbStreams.class.getSimpleName();
         assertEquals(3L, meterRegistry.get("cache.gets").tags("cache",
             prefix + ".DescribeStream").tags("result", "hit").functionCounter().count());
     }
