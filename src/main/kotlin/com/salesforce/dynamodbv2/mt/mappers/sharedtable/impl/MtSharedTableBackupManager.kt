@@ -51,7 +51,6 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
-import java.lang.IllegalArgumentException
 import java.nio.charset.Charset
 import java.util.*
 import java.util.stream.Collectors
@@ -61,22 +60,22 @@ import java.util.stream.Collectors
  * build a set of backups per tenant.
  */
 open class MtSharedTableBackupManager(
-    val s3: AmazonS3,
-    val s3BucketName: String,
-    val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
-    val tableSnapshotter: MtBackupTableSnapshotter
+        val s3: AmazonS3,
+        val s3BucketName: String,
+        val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
+        val tableSnapshotter: MtBackupTableSnapshotter
 ) : MtBackupManager {
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
     private val mtBackupAwsAdaptor = MtBackupAwsAdaptor()
     /**
-     * At the moment, a naive (json) serializer is used to write and read backup snapshots.
+     * At the moment, a naive (JSON) serializer is used to write and read backup snapshots.
      * This is wasteful in terms of space, but gets the job done.
-     * Given CreateTableRequest objects are serialized to save table-tenant metadata, certain fields within
-     * said object need to be filtered for GSON to deserialize the json back to a CreateTableRequest.
+     * Given CreateTableRequest objects are serialized to save table-tenant metadata, certain fields within those
+     * objects need to be filtered for Gson to deserialize the JSON back to a {@code CreateTableRequest}.
      *
-     * Eventually, this should be replaced with a smarter [de]serialization strategy that is not as wasteful
-     * in backup space cost.
+     * Eventually, this should be replaced with a smarter serialization/deserialization strategy that is not as wasteful
+     * in terms of backup-space cost.
      */
     val gson: Gson = GsonBuilder()
             .addDeserializationExclusionStrategy(object : ExclusionStrategy {
@@ -103,10 +102,12 @@ open class MtSharedTableBackupManager(
             val startTime = System.currentTimeMillis()
             val virtualMetadata = backupVirtualTableMetadata(createBackupRequest)
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
-                    .map { metadata -> TenantTableBackupMetadata(
-                            createBackupRequest.backupName,
-                            metadata.tenantName,
-                            metadata.createTableRequest.tableName) }
+                    .map { metadata ->
+                        TenantTableBackupMetadata(
+                                createBackupRequest.backupName,
+                                metadata.tenantName,
+                                metadata.createTableRequest.tableName)
+                    }
                     .associateBy({ it }, { 0L })
             val newMetadata = MtBackupMetadata(createBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, startTime)
@@ -117,7 +118,7 @@ open class MtSharedTableBackupManager(
     }
 
     open fun backupVirtualTableMetadata(
-        createBackupRequest: CreateBackupRequest
+            createBackupRequest: CreateBackupRequest
     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
         val startTime = System.currentTimeMillis()
         // write out table metadata
@@ -129,8 +130,8 @@ open class MtSharedTableBackupManager(
             val listTenantMetadataResult =
                     sharedTableMtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
                             MtTableDescriptionRepo.ListMetadataRequest()
-                                .withExclusiveStartKey(startKey)
-                                .withLimit(batchSize))
+                                    .withExclusiveStartKey(startKey)
+                                    .withLimit(batchSize))
             commitTenantTableMetadata(createBackupRequest.backupName, listTenantMetadataResult)
             tenantTables.addAll(listTenantMetadataResult.createTableRequests)
             tenantTableCount += listTenantMetadataResult.createTableRequests.size
@@ -139,6 +140,7 @@ open class MtSharedTableBackupManager(
                 "${tenantTables.size} virtual table in ${System.currentTimeMillis() - startTime} ms")
         return tenantTables
     }
+
     /**
      * Go through the shared data table and dump full row dumps into S3, segregated by tenant-table.
      *
@@ -151,15 +153,15 @@ open class MtSharedTableBackupManager(
      * ...
      * ${backupBucket}/backups/${tenantN}/${virtTableN}-${N}}.json
      *
-     * High level, the multitenant shared table is being scanned, and with each page of results, we write a file per
-     * tenant-table onto S3 organized such that restoring a single tenant-table is a simple S3 directory listFiles
+     * At a high level, the multitenant shared table is being scanned, and with each page of results, we write a file
+     * per tenant-table onto S3 organized such that restoring a single tenant-table is a simple S3 directory listFiles
      * operation providing full row dumps to insert|restore back into dynamo under a different tenant-table space.
      *
      * @return an {@link MtBackupMetadata} object describing current metadata of backup with backed up tenant-tables.
      */
     override fun backupPhysicalMtTable(
-        createBackupRequest: CreateBackupRequest,
-        physicalTableName: String
+            createBackupRequest: CreateBackupRequest,
+            physicalTableName: String
     ): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
         val backupMetadata = createBackupData(createBackupRequest, physicalTableName, sharedTableMtDynamo)
@@ -192,13 +194,13 @@ open class MtSharedTableBackupManager(
     /**
      * Pull down the backup for the given tenant-table snapshot and do the following:
      *  - Issue a CreateTable command with the metadata of the tenant-table snapshot to the new tenant-table context
-     *  - Go through each backup file, and insert each row serially into mt-dynamo with the new tenant-table context
+     *  - Go through each backup file and insert each row serially into mt-dynamo with the new tenant-table context
      *
-     *  There's a lot of room for improvement here, esp in parallelizing/bulkifying the restore operation.
+     *  There iss a lot of room for improvement here, especially in parallelizing/bulkifying the restore operation.
      */
     override fun restoreTenantTableBackup(
-        restoreMtBackupRequest: RestoreMtBackupRequest,
-        mtContext: MtAmazonDynamoDbContextProvider
+            restoreMtBackupRequest: RestoreMtBackupRequest,
+            mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
         val startTime = System.currentTimeMillis()
         // restore tenant-table metadata
@@ -233,7 +235,7 @@ open class MtSharedTableBackupManager(
     private fun getTenantTableMetadata(backupId: String, tenantTable: TenantTable): CreateTableRequest {
         val tenantTableMetadataS3Location = getTenantTableMetadataFile(backupId, tenantTable)
         val tenantTableMetadataFile: S3Object = s3.getObject(s3BucketName, tenantTableMetadataS3Location)
-        return gson.fromJson<CreateTableRequest>(tenantTableMetadataFile.objectContent.bufferedReader(),
+        return gson.fromJson(tenantTableMetadataFile.objectContent.bufferedReader(),
                 CreateTableRequest::class.java)
     }
 
@@ -258,13 +260,13 @@ open class MtSharedTableBackupManager(
         val ret = Lists.newArrayList<BackupSummary>()
 
         Preconditions.checkArgument(listBackupRequest.backupType == null, "Listing backups by backupType unsupported")
-        Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multi tenant backups")
+        Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multitenant backups")
         Preconditions.checkArgument(listBackupRequest.timeRangeLowerBound == null, "Listing backups filtered by time range unsupported [currently]")
         Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
         val startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
-            else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
+        else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
 
         val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
                 ListObjectsV2Request()
@@ -312,15 +314,15 @@ open class MtSharedTableBackupManager(
     }
 
     override fun getBackup(backupName: String): MtBackupMetadata? {
-        try {
+        return try {
             val backupFile: S3Object = s3.getObject(s3BucketName, getBackupMetadataFile(backupName))
             val backupFileString = CharStreams.toString(
                     InputStreamReader(backupFile.objectContent.delegateStream, charset))
-            return gson.fromJson(backupFileString,
+            gson.fromJson(backupFileString,
                     MtBackupMetadata::class.java)
         } catch (e: AmazonS3Exception) {
             if ("NoSuchKey".equals(e.errorCode)) {
-                return null
+                null
             } else {
                 throw e
             }
@@ -376,8 +378,8 @@ open class MtSharedTableBackupManager(
             "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
 
     private fun commitTenantTableMetadata(
-        backupId: String,
-        tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
+            backupId: String,
+            tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
     ) {
         for (tenantTableMetadata in tenantTableMetadatas.createTableRequests) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
@@ -396,14 +398,14 @@ open class MtSharedTableBackupManager(
         val currentBackupMetadata = getBackup(backupMetadata.mtBackupName)
 
         val newBackupMetadata: MtBackupMetadata
-        when (currentBackupMetadata) {
-            null -> newBackupMetadata = backupMetadata
+        newBackupMetadata = when (currentBackupMetadata) {
+            null -> backupMetadata
             else -> {
                 if (currentBackupMetadata.status != Status.IN_PROGRESS) {
                     throw MtBackupException("${backupMetadata.mtBackupName} cannot continue, " +
                             " status is: ${currentBackupMetadata.status}")
                 }
-                newBackupMetadata = currentBackupMetadata.merge(backupMetadata)
+                currentBackupMetadata.merge(backupMetadata)
             }
         }
 
@@ -419,9 +421,9 @@ open class MtSharedTableBackupManager(
     }
 
     protected open fun createBackupData(
-        createBackupRequest: CreateBackupRequest,
-        physicalTableName: String,
-        mtDynamo: MtAmazonDynamoDbBase
+            createBackupRequest: CreateBackupRequest,
+            physicalTableName: String,
+            mtDynamo: MtAmazonDynamoDbBase
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
         val tenantTables: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
@@ -463,6 +465,7 @@ open class MtSharedTableBackupManager(
     private fun getBackupMetadataFile(backupName: String) = "$backupMetadataDir/$backupName-metadata.json"
     private fun getBackupFile(backupName: String, tenantTable: TenantTable, scanCount: Int) =
             "$backupDir/$backupName/${tenantTable.tenantName}/${tenantTable.virtualTableName}-$scanCount.json"
+
     private fun getTenantTableMetadataFile(backupName: String, tenantTable: TenantTable) =
             "$backupMetadataDir/$backupName/${tenantTable.tenantName}/${tenantTable.virtualTableName}-metadata.json"
 

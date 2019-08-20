@@ -44,9 +44,9 @@ internal class MtBackupManagerTest {
     }
 
     /**
-     * Given create backup commands use the same pojo as AWS on demand backups, there are some params relevant to on-demand
-     * backups which are ignored with mt-dynamo's backup API, and thus, should throw an error if using params that
-     * are ignored.
+     * Given create-backup commands, use the same POJO as AWS on demand backups. There are some params relevant to
+     * on-demand backups which are ignored with mt-dynamo's backup API, and thus, should throw an error if using ignored
+     * params.
      */
     @Test
     fun testCreateBackupRequestInputValidation() {
@@ -77,7 +77,8 @@ internal class MtBackupManagerTest {
     }
 
     /**
-     * Validate params of list backup requests that are ignored in a multi tenant backup manager are explicitly disallowed.
+     * Validate params of list backup requests that are ignored in a multitenant backup manager are explicitly
+     * disallowed.
      */
     @Test
     fun testListBackupsRequestInputValidation() {
@@ -103,7 +104,7 @@ internal class MtBackupManagerTest {
                 sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTableName("foo"))
                 fail("Should have failed trying to list backups of a particular table name") as Unit
             } catch (ex: IllegalArgumentException) {
-                assertTrue(ex.message!!.contains("Listing backups by table name unsupported for multi tenant backups"))
+                assertTrue(ex.message!!.contains("Listing backups by table name unsupported for multitenant backups"))
             }
 
             try {

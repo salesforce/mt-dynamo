@@ -25,21 +25,20 @@ import org.slf4j.LoggerFactory
  * Utility to take correct backups of live production data with minimal risk.
  *
  * Instead of trying to operate against live tables taking traffic from production, backups operate against snapshotted
- * tables, to scan through at their own pace. These tables are snapshotted using DynamoDB's own on-demand backups,
- * which are leverage to generate single point in time snapshots of live data. This protects against any interleaved
- * writes customers may drive against a live table, given generating S3 tenant-table backups are a time consuming
- * operation. Additionally, it avoids competing with customer driven IOPs against prod dynamo tables, by getting a
- * queiesced table that the backup generator can exclusively consume all IOPs available to generate the backup either
- * as fast as, or as slow as needed.
- *
+ * tables, which are scanned through at the backup's own pace. These tables are snapshotted using DynamoDB's own
+ * on-demand backups, which are used to generate single point-in-time snapshots of live data. This protects against any
+ * interleaved writes customers may drive against a live table (note that generating S3 tenant-table backups can be a
+ * time-consuming operation). Additionally, it avoids competing with customer driven IOPs against prod dynamo tables by
+ * getting a quiesced table from which the backup generator can exclusively consume all IOPs available to generate the
+ * backup either as fast or as slow as needed.
  */
 open class MtBackupTableSnapshotter {
 
     private val logger = LoggerFactory.getLogger(MtBackupTableSnapshotter::class.java)
     /**
-     * Take a given dynamo table, and fire consecutive backup and restore requests to snapshot said table to a new
-     * table space location. This is a time consuming operation, and should be done asyncronously, and potentially
-     * resumed if interrupted.
+     * Take a dynamo table and fire consecutive backup and restore requests to snapshot the table to a new table-space
+     * location. This is a time consuming operation and should be done asynchronously (and potentially
+     * resumed if interrupted).
      */
     open fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
         val startTime = System.currentTimeMillis()
@@ -74,7 +73,7 @@ open class MtBackupTableSnapshotter {
         logger.info("Snapshotting ${snapshotRequest.sourceTableName} to ${snapshotRequest.targetTableName}, " +
                 "on-demand backup taken in ${System.currentTimeMillis() - startTime} ms")
         // restore table to new target
-        var restoreResult = snapshotRequest.amazonDynamoDb.restoreTableFromBackup(RestoreTableFromBackupRequest()
+        val restoreResult = snapshotRequest.amazonDynamoDb.restoreTableFromBackup(RestoreTableFromBackupRequest()
                 .withBackupArn(backupResult.backupDetails.backupArn)
                 .withTargetTableName(snapshotRequest.targetTableName))
         if (!restoreResult.tableDescription.restoreSummary.restoreInProgress) {
@@ -108,16 +107,16 @@ open class MtBackupTableSnapshotter {
 }
 
 data class SnapshotRequest(
-    val mtBackupName: String,
-    val sourceTableName: String,
-    val targetTableName: String,
-    val amazonDynamoDb: AmazonDynamoDB,
-    val targetTableProvisionedThroughput: ProvisionedThroughput =
-            ProvisionedThroughput(10, 10)
+        val mtBackupName: String,
+        val sourceTableName: String,
+        val targetTableName: String,
+        val amazonDynamoDb: AmazonDynamoDB,
+        val targetTableProvisionedThroughput: ProvisionedThroughput =
+                ProvisionedThroughput(10, 10)
 )
 
 data class SnapshotResult(
-    val backupArn: String,
-    val tempSnapshotTable: String,
-    val snapshotPrepareTime: Long
+        val backupArn: String,
+        val tempSnapshotTable: String,
+        val snapshotPrepareTime: Long
 )

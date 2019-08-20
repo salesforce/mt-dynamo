@@ -16,8 +16,8 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription
 interface MtTableDescriptionRepo {
 
     /**
-     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given
-     * multitenant context's namespace.
+     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given multitenant
+     * context's namespace.
      *
      * @param createTableRequest specs of the table to create
      * @return the table's description
@@ -48,8 +48,8 @@ interface MtTableDescriptionRepo {
     fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
 
     data class ListMetadataResult(
-        val createTableRequests: List<MtCreateTableRequest>,
-        val lastEvaluatedTable: MtCreateTableRequest?
+            val createTableRequests: List<MtCreateTableRequest>,
+            val lastEvaluatedTable: MtCreateTableRequest?
     )
 
     data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {
@@ -65,7 +65,7 @@ interface MtTableDescriptionRepo {
     }
 
     data class MtCreateTableRequest(
-        val tenantName: String,
-        val createTableRequest: CreateTableRequest
+            val tenantName: String,
+            val createTableRequest: CreateTableRequest
     )
 }
