@@ -107,16 +107,16 @@ open class MtBackupTableSnapshotter {
 }
 
 data class SnapshotRequest(
-        val mtBackupName: String,
-        val sourceTableName: String,
-        val targetTableName: String,
-        val amazonDynamoDb: AmazonDynamoDB,
-        val targetTableProvisionedThroughput: ProvisionedThroughput =
-                ProvisionedThroughput(10, 10)
+    val mtBackupName: String,
+    val sourceTableName: String,
+    val targetTableName: String,
+    val amazonDynamoDb: AmazonDynamoDB,
+    val targetTableProvisionedThroughput: ProvisionedThroughput =
+            ProvisionedThroughput(10, 10)
 )
 
 data class SnapshotResult(
-        val backupArn: String,
-        val tempSnapshotTable: String,
-        val snapshotPrepareTime: Long
+    val backupArn: String,
+    val tempSnapshotTable: String,
+    val snapshotPrepareTime: Long
 )

@@ -60,10 +60,10 @@ import java.util.stream.Collectors
  * build a set of backups per tenant.
  */
 open class MtSharedTableBackupManager(
-        val s3: AmazonS3,
-        val s3BucketName: String,
-        val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
-        val tableSnapshotter: MtBackupTableSnapshotter
+    val s3: AmazonS3,
+    val s3BucketName: String,
+    val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
+    val tableSnapshotter: MtBackupTableSnapshotter
 ) : MtBackupManager {
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
@@ -118,7 +118,7 @@ open class MtSharedTableBackupManager(
     }
 
     open fun backupVirtualTableMetadata(
-            createBackupRequest: CreateBackupRequest
+        createBackupRequest: CreateBackupRequest
     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
         val startTime = System.currentTimeMillis()
         // write out table metadata
@@ -160,8 +160,8 @@ open class MtSharedTableBackupManager(
      * @return an {@link MtBackupMetadata} object describing current metadata of backup with backed up tenant-tables.
      */
     override fun backupPhysicalMtTable(
-            createBackupRequest: CreateBackupRequest,
-            physicalTableName: String
+        createBackupRequest: CreateBackupRequest,
+        physicalTableName: String
     ): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
         val backupMetadata = createBackupData(createBackupRequest, physicalTableName, sharedTableMtDynamo)
@@ -199,8 +199,8 @@ open class MtSharedTableBackupManager(
      *  There iss a lot of room for improvement here, especially in parallelizing/bulkifying the restore operation.
      */
     override fun restoreTenantTableBackup(
-            restoreMtBackupRequest: RestoreMtBackupRequest,
-            mtContext: MtAmazonDynamoDbContextProvider
+        restoreMtBackupRequest: RestoreMtBackupRequest,
+        mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
         val startTime = System.currentTimeMillis()
         // restore tenant-table metadata
@@ -378,8 +378,8 @@ open class MtSharedTableBackupManager(
             "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
 
     private fun commitTenantTableMetadata(
-            backupId: String,
-            tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
+        backupId: String,
+        tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
     ) {
         for (tenantTableMetadata in tenantTableMetadatas.createTableRequests) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
@@ -421,9 +421,9 @@ open class MtSharedTableBackupManager(
     }
 
     protected open fun createBackupData(
-            createBackupRequest: CreateBackupRequest,
-            physicalTableName: String,
-            mtDynamo: MtAmazonDynamoDbBase
+        createBackupRequest: CreateBackupRequest,
+        physicalTableName: String,
+        mtDynamo: MtAmazonDynamoDbBase
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
         val tenantTables: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()

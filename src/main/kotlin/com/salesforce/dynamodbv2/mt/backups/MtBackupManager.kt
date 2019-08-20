@@ -36,7 +36,7 @@ interface MtBackupManager {
      * specified backupId.
      */
     fun createBackup(
-            createBackupRequest: CreateBackupRequest
+        createBackupRequest: CreateBackupRequest
     ): MtBackupMetadata
 
     /**
@@ -44,8 +44,8 @@ interface MtBackupManager {
      * data on S3 with the data from the physical row.
      */
     fun backupPhysicalMtTable(
-            createBackupRequest: CreateBackupRequest,
-            physicalTableName: String
+        createBackupRequest: CreateBackupRequest,
+        physicalTableName: String
     ): MtBackupMetadata
 
     /**
@@ -77,8 +77,8 @@ interface MtBackupManager {
      * Initiate a restore of a given table-tenant backup to a new table-tenant target.
      */
     fun restoreTenantTableBackup(
-            restoreMtBackupRequest: RestoreMtBackupRequest,
-            mtContext: MtAmazonDynamoDbContextProvider
+        restoreMtBackupRequest: RestoreMtBackupRequest,
+        mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata
 
     /**
@@ -115,10 +115,10 @@ interface MtBackupManager {
  * @param creationTime timestamp this backup began processing in milliseconds since epoch
  */
 data class MtBackupMetadata(
-        val mtBackupName: String,
-        val status: Status,
-        val tenantTables: Map<TenantTableBackupMetadata, Long>,
-        val creationTime: Long = -1
+    val mtBackupName: String,
+    val status: Status,
+    val tenantTables: Map<TenantTableBackupMetadata, Long>,
+    val creationTime: Long = -1
 ) {
     /**
      * @return a new MtBackupMetadata object merging this backup metadata with {@code otherBackupMetadata}.
@@ -142,17 +142,17 @@ data class MtBackupMetadata(
 }
 
 data class TenantTableBackupMetadata(
-        val backupName: String,
-        val tenantId: String,
-        val virtualTableName: String
+    val backupName: String,
+    val tenantId: String,
+    val virtualTableName: String
 )
 
 data class TenantRestoreMetadata(val backupName: String, val status: Status, val tenantId: String, val virtualTableName: String)
 
 class RestoreMtBackupRequest(
-        val backupName: String,
-        val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
-        val newTenantTable: MtAmazonDynamoDb.TenantTable
+    val backupName: String,
+    val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
+    val newTenantTable: MtAmazonDynamoDb.TenantTable
 )
 
 class MtBackupException(message: String, parent: Exception? = null) : AmazonServiceException(message, parent)
