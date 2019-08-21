@@ -65,14 +65,14 @@ internal class MtBackupManagerTest {
                     .withTableName("bar"))
             fail("Should have failed trying to create backup with table name specified") as Unit
         } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("table name arguments are disallowed"))
+            assertTrue(ex.message!!.contains("tablename arguments are disallowed"), ex.message)
         }
 
         try {
             sharedTableBinaryHashKey.createBackup(CreateBackupRequest())
             fail("Should have failed trying to create backup without configuring a backup name") as Unit
         } catch (ex: NullPointerException) {
-            assertTrue(ex.message!!.contains("Must pass backup name."))
+            assertTrue(ex.message!!.contains("Must pass backup name."), ex.message)
         }
     }
 

@@ -707,7 +707,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    private Callable<SnapshotResult> snapshotScanAndBackup(CreateBackupRequest createBackupRequest, String tableName, String snapshottedTable) {
+    private Callable<SnapshotResult> snapshotScanAndBackup(CreateBackupRequest createBackupRequest, String tableName,
+                                                           String snapshottedTable) {
         return () -> {
             SnapshotResult snapshotResult = backupManager.get()
                 .getMtBackupTableSnapshotter()
