@@ -401,7 +401,7 @@ open class MtSharedTableBackupManager(
      * By marking this synchronized, we're delaying the problem of moving this metadata to a database, like Dynamo,
      * instead of using a json file on S3 to manage state. This will enforce only a single thread is updating
      * a backup metadata at a time, and will work as long as only a single JVM is participating
-     * in updating a backups metadata. 
+     * in updating a backups metadata.
      */
     @Synchronized
     protected fun commitBackupMetadata(backupMetadata: MtBackupMetadata) {
