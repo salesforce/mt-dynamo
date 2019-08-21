@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test
 /**
  * Integration test of code leveraging DynamoDB's on-demand backups to facilitate taking tenant-table level backups.
  * Local Dynamo does not support taking on-demand backups, so this test lives as a proper integration test against
- * remote hosted dynamodb. Beware, the test creates real tables with real costs, and consequently takes a long time
+ * remote hosted dynamodb. Beware: the test creates real tables with real costs, and consequently takes a long time
  * to run.
  */
 internal class MtBackupTableSnapshotterIt {
@@ -95,7 +95,7 @@ internal class MtBackupTableSnapshotterIt {
         }
     }
 
-    private fun tableExists(tableName: String, remoteAmazonDynamoDB: AmazonDynamoDB) : Boolean {
+    private fun tableExists(tableName: String, remoteAmazonDynamoDB: AmazonDynamoDB): Boolean {
         try {
             return remoteAmazonDynamoDB.describeTable(tableName).table.tableName.equals(tableName)
         } catch (e: ResourceNotFoundException) {
