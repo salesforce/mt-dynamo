@@ -330,16 +330,16 @@ internal class MtSharedTableBackupManagerS3It {
         override fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
             val startTime = System.currentTimeMillis()
             val sourceTableDescription: TableDescription = snapshotRequest.amazonDynamoDb
-                .describeTable(snapshotRequest.sourceTableName).table
+                    .describeTable(snapshotRequest.sourceTableName).table
             val createTableBuilder = CreateTableRequestBuilder.builder().withTableName(snapshotRequest.targetTableName)
-                .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
+                    .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
 
-                .withProvisionedThroughput(
-                    snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
-                    snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
-                .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter {
-                    a -> sourceTableDescription.keySchema.stream().anyMatch {
-                        k -> a.attributeName.equals(k.attributeName) } }.collect(Collectors.toList()).toTypedArray())
+                    .withProvisionedThroughput(
+                            snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
+                            snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
+                    .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter { a ->
+                        sourceTableDescription.keySchema.stream().anyMatch { k -> a.attributeName.equals(k.attributeName) }
+                    }.collect(Collectors.toList()).toTypedArray())
             snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
 
             var exclusiveStartKey: Map<String, AttributeValue>? = null

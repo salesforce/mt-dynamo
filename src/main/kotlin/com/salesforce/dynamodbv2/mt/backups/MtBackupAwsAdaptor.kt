@@ -13,7 +13,7 @@ import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult
 import java.util.*
 
 /**
- * Convert simple pojos defined in {@link MtBackupManager} to and from AWS objects defined in AWS specs.
+ * Convert simple POJOs defined in {@link MtBackupManager} to and from AWS objects defined in AWS specs.
  */
 class MtBackupAwsAdaptor {
 

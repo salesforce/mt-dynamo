@@ -4,6 +4,7 @@
  * For full license text, see LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause.
  */
 package com.salesforce.dynamodbv2.mt.backups
+
 import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
@@ -15,19 +16,19 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 /**
  * Interface for grabbing backups of data managed by mt-dynamo.
  *
- * Backups are generated across all managed tables to sliced up, granular tenant-table backups, which may independently
+ * Backups are generated across all managed tables to sliced-up, granular tenant-table backups, which may independently
  * be restored. Tenant-table backups must be restored to a different tenant-table target. Additionally, a tenant-table
- * backup may be restored  onto either the same environment, or migrated into different environments, with say,
- * different multitenant strategies (ie: moving a tenant-table from a table per tenant setup
- * onto a shared table setup, or vice versa).
+ * backup may be restored onto either the same environment, or migrated into different environments with, say,
+ * different multitenant strategies (e.g., moving a tenant-table from a table per tenant setup onto a shared table
+ * setup, or vice versa).
  *
- * One more dimension of value added by these backups are, they should be mt-dynamo version agnostic. So if a backup
- * was generated at v0.10.5 of mt-dynamo, and imagine the physical representation of tenant to table mapping strategy
+ * One more dimension of value added by these backups is that they should be mt-dynamo version agnostic. So if a backup
+ * was generated at v0.10.5 of mt-dynamo, and imagine the physical representation of tenant-to-table-mapping strategy
  * changes at v0.11.0, that backup should be restorable at that later version, offering a path to preserve data when
  * we change table mappings as mt-dynamo evolves.
  *
- * At the moment, these backups are taking full snapshots of an mt-dynamo account, but there are plans to support PITR
- * style continuous backups, offering a time window of available restore points (versus choosing from N snapshots)
+ * Currently, these backups are taking full snapshots of an mt-dynamo account, but there are plans to support
+ * PITR-style continuous backups, offering a time window of available restore points (versus choosing from N snapshots).
  */
 interface MtBackupManager {
     /**
@@ -39,8 +40,8 @@ interface MtBackupManager {
     ): MtBackupMetadata
 
     /**
-     * Go through each physical row in {@code physicalTableName} in dynamo, and augment the current in progress backup
-     * data on S3 with said data.
+     * Go through each physical row in {@code physicalTableName} in dynamo and augment the current in-progress backup
+     * data on S3 with the data from the physical row.
      */
     fun backupPhysicalMtTable(
         createBackupRequest: CreateBackupRequest,
@@ -58,7 +59,7 @@ interface MtBackupManager {
     fun getMtBackupTableSnapshotter(): MtBackupTableSnapshotter
 
     /**
-     * Get the status of a given multi-tenant backup.
+     * Get the status of a given multitenant backup.
      */
     fun getBackup(backupName: String): MtBackupMetadata?
 
@@ -68,7 +69,7 @@ interface MtBackupManager {
     fun getTenantTableBackup(backupName: String, tenantTable: MtAmazonDynamoDb.TenantTable): TenantBackupMetadata?
 
     /**
-     * Delete the given multi-tenant backup, including all metadata and data files related.
+     * Delete the given multitenant backup, including all metadata and data files related.
      */
     fun deleteBackup(backupName: String): MtBackupMetadata?
 
@@ -81,20 +82,20 @@ interface MtBackupManager {
     ): TenantRestoreMetadata
 
     /**
-     * The backupArn encodes both the tenantTable, and the backup name for clients to use to restore a tenant-table
-     * backup. For example, if backupName is "foo", and a backup for "tenant-a" and "table-a" would be encoded as:
-     * "foo:tenant-a:table-a"
+     * The backupArn encodes both the tenantTable and the backup name for clients to use to restore a tenant-table
+     * backup. For example, if backupName is "foo" and a backup for "tenant-a" and "table-a", then the encoding would be
+     * "foo:tenant-a:table-a".
      */
     fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata
 
     /**
      * Reverse the function from {@link #getTenantTableBackupFromArn(String)} to convert a backupArn to a
-     * {@link TenantTableBackupMetadata}
+     * {@link TenantTableBackupMetadata}.
      */
     fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String
 
     /**
-     * List all multi-tenant backups known to us on S3.
+     * List all multitenant backups known to us on S3.
      */
     fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult
 
@@ -108,7 +109,7 @@ interface MtBackupManager {
 /**
  * Metadata of a multitenant backup.
  *
- * @param mtBackupName name of a backup configured by client.
+ * @param mtBackupName name of a backup configured by client
  * @param status {@link Status} of backup
  * @param tenantTables tenant-tables contained within this given backup
  * @param creationTime timestamp this backup began processing in milliseconds since epoch
@@ -153,6 +154,7 @@ class RestoreMtBackupRequest(
     val tenantTableBackup: MtAmazonDynamoDb.TenantTable,
     val newTenantTable: MtAmazonDynamoDb.TenantTable
 )
+
 class MtBackupException(message: String, parent: Exception? = null) : AmazonServiceException(message, parent)
 
 enum class Status {
