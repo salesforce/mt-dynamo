@@ -85,6 +85,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -671,16 +672,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 String snapshottedTable = tableName + "-copy";
                 snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
-                futures.add(executorService.submit(() ->
-                    backupManager.get()
-                        .getMtBackupTableSnapshotter()
-                        .snapshotTableToTarget(
-                            new SnapshotRequest(createBackupRequest.getBackupName(),
-                                tableName,
-                                snapshottedTable,
-                                getAmazonDynamoDb(),
-                                new ProvisionedThroughput(10L, 10L))
-                        )));
+                futures.add(executorService.submit(snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
             List<SnapshotResult> snapshotResults = Lists.newArrayList();
             try {
@@ -695,11 +687,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 executorService.shutdown();
             }
             try {
-                backupManager.get().getMtBackupTableSnapshotter();
-                for (SnapshotResult snapshotResult : snapshotResults) {
-                    backupManager.get().backupPhysicalMtTable(createBackupRequest,
-                        snapshotResult.getTempSnapshotTable());
-                }
+
                 MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
                 return new CreateBackupResult().withBackupDetails(
                     new BackupDetails()
@@ -717,6 +705,25 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
         }
     }
+
+    private Callable<SnapshotResult> snapshotScanAndBackup(CreateBackupRequest createBackupRequest, String tableName, String snapshottedTable) {
+        return () -> {
+            SnapshotResult snapshotResult = backupManager.get()
+                .getMtBackupTableSnapshotter()
+                .snapshotTableToTarget(
+                    new SnapshotRequest(createBackupRequest.getBackupName(),
+                        tableName,
+                        snapshottedTable,
+                        getAmazonDynamoDb(),
+                        new ProvisionedThroughput(10L, 10L))
+                );
+            backupManager.get().getMtBackupTableSnapshotter();
+            backupManager.get().backupPhysicalMtTable(createBackupRequest,
+                snapshotResult.getTempSnapshotTable());
+            return snapshotResult;
+        };
+    }
+
 
     /**
      * See class-level Javadoc for explanation of why the use of {@code addAttributeUpdateEntry} and
