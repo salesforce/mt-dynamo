@@ -23,6 +23,7 @@ public class MtAmazonDynamoDbTest {
     public void testListTables_noContext(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
+
         assertFalse(allTables.isEmpty());
     }
 

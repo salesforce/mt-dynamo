@@ -182,7 +182,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     protected boolean isMtTable(String tableName) {
-        return mtTables.containsKey(tableName);
+        return mtTables.containsKey(tableName) && !tableName.endsWith(BACKUP_TEMP_TABLE_SUFFIX);
     }
 
     public MtTableDescriptionRepo getMtTableDescriptionRepo() {
@@ -654,6 +654,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
+    static final String BACKUP_TEMP_TABLE_SUFFIX = "-copy";
+
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
@@ -668,7 +670,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             List<Future<SnapshotResult>> futures = Lists.newArrayList();
             Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
             for (String tableName : origMtTables) {
-                String snapshottedTable = tableName + "-copy";
+                String snapshottedTable = tableName + BACKUP_TEMP_TABLE_SUFFIX;
                 snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
                 futures.add(executorService.submit(() ->
