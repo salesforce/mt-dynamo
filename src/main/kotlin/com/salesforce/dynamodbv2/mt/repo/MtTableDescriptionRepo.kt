@@ -16,8 +16,8 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription
 interface MtTableDescriptionRepo {
 
     /**
-     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given
-     * multitenant context's namespace.
+     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given multitenant
+     * context's namespace.
      *
      * @param createTableRequest specs of the table to create
      * @return the table's description

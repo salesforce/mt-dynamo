@@ -620,7 +620,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             }
 
             TenantTableBackupMetadata backupMetadata = backupManager.get()
-                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
+                .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
             RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
                 new TenantTable(backupMetadata.getVirtualTableName(), backupMetadata.getTenantId()),
                 new TenantTable(restoreTableFromBackupRequest.getTargetTableName(), getMtContext().getContext()));
@@ -783,7 +783,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
 
-    @VisibleForTesting MtBackupManager getBackupManager() {
+    @VisibleForTesting MtBackupManager getBackupManager() { 
         return backupManager.orElse(null);
     }
 
