@@ -686,21 +686,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 }
             } finally {
                 executorService.shutdown();
-            }
-            try {
-
-                MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
-                return new CreateBackupResult().withBackupDetails(
-                    new BackupDetails()
-                        .withBackupArn(finishedMetadata.getMtBackupName())
-                        .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
-                        .withBackupName(finishedMetadata.getMtBackupName()));
-            } finally {
                 for (SnapshotResult result : snapshotResults) {
                     backupManager.get().getMtBackupTableSnapshotter().cleanup(result, getAmazonDynamoDb());
                     mtTables.remove(result.getTempSnapshotTable());
                 }
             }
+
+            MtBackupMetadata finishedMetadata = backupManager.get().markBackupComplete(createBackupRequest);
+            return new CreateBackupResult().withBackupDetails(
+                new BackupDetails()
+                    .withBackupArn(finishedMetadata.getMtBackupName())
+                    .withBackupCreationDateTime(new Date(finishedMetadata.getCreationTime()))
+                    .withBackupName(finishedMetadata.getMtBackupName()));
+
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
