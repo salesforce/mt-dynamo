@@ -204,6 +204,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         public AmazonDynamoDB getRootAmazonDynamoDb() {
             return rootAmazonDynamoDb;
         }
+
         public List<String> getOrgs() {
             return orgs;
         }
