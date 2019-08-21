@@ -17,7 +17,6 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BackupDescription;
 import com.amazonaws.services.dynamodbv2.model.BackupDetails;
 import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.BackupSummary;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.Condition;
