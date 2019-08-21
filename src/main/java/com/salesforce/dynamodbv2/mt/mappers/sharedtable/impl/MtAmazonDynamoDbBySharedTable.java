@@ -660,7 +660,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         if (backupManager.isPresent()) {
             Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
             Preconditions.checkArgument(createBackupRequest.getTableName() == null,
-                "Multitenant backups cannot backup individual tables, table name arguments are disallowed.");
+                "Multitenant backups cannot backup individual tables, tablename arguments are disallowed");
             backupManager.get().createBackup(createBackupRequest);
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
@@ -672,7 +672,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 String snapshottedTable = tableName + "-copy";
                 snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
-                futures.add(executorService.submit(snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
+                futures.add(executorService.submit(
+                    snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
             List<SnapshotResult> snapshotResults = Lists.newArrayList();
             try {
