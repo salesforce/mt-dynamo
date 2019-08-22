@@ -613,7 +613,7 @@ public class SharedTableBuilder implements TableBuilder {
 
         boolean tableCollidesWithBackupPrefix = createTableRequests
             .stream()
-            .map(c -> c.getTableName())
+            .map(CreateTableRequest::getTableName)
             .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
         Preconditions.checkState(!tableCollidesWithBackupPrefix,
             "Cannot suffix a physical table name with "
