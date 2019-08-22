@@ -125,6 +125,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>DynamoDBLocal</artifactId>
+            <version>1.11.477</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib</artifactId>
             <version>${kotlin.version}</version>
@@ -382,18 +388,6 @@
 
     <profiles>
         <profile>
-            <id>default</id>
-            <activation><activeByDefault>true</activeByDefault></activation>
-            <dependencies>
-                <dependency>
-                    <groupId>com.amazonaws</groupId>
-                    <artifactId>DynamoDBLocal</artifactId>
-                    <version>1.11.477</version>
-                    <scope>test</scope>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
             <id>noMtDynamoTests</id>
             <properties>
                 <maven.test.skip>true</maven.test.skip>
@@ -432,14 +426,6 @@
         </profile>
         <profile>
             <id>s3-integration-tests</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.amazonaws</groupId>
-                    <artifactId>DynamoDBLocal</artifactId>
-                    <version>1.11.477</version>
-                    <scope>test</scope>
-                </dependency>
-            </dependencies>
             <build>
                 <plugins>
                     <plugin>
