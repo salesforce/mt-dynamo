@@ -388,6 +388,12 @@
 
     <profiles>
         <profile>
+            <id>noMtDynamoTests</id>
+            <properties>
+                <maven.test.skip>true</maven.test.skip>
+            </properties>
+        </profile>
+        <profile>
             <id>aws-integration-tests</id>
             <build>
                 <plugins>
