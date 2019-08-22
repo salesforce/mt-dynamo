@@ -14,6 +14,7 @@ import static java.util.stream.Collectors.toList;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.BackupDescription;
 import com.amazonaws.services.dynamodbv2.model.BackupDetails;
 import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
@@ -24,6 +25,8 @@ import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateBackupResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateTableResult;
+import com.amazonaws.services.dynamodbv2.model.DeleteBackupRequest;
+import com.amazonaws.services.dynamodbv2.model.DeleteBackupResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemResult;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
@@ -649,6 +652,21 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 throw new BackupNotFoundException("No backup with arn "
                     + describeBackupRequest.getBackupArn() + "found");
             }
+        } else {
+            throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
+                + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
+        }
+    }
+
+    @Override
+    public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
+        if (backupManager.isPresent()) {
+            Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
+            MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
+            BackupDescription backupDescription = MtBackupAwsAdaptorKt.getBackupAdaptorSingleton()
+                .getBackupDescription(backupMetadata);
+            return new DeleteBackupResult()
+                .withBackupDescription(backupDescription);
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
