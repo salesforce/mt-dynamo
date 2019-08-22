@@ -107,12 +107,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>DynamoDBLocal</artifactId>
-            <version>1.11.477</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>3.0.0</version>
@@ -388,6 +382,18 @@
 
     <profiles>
         <profile>
+            <id>default</id>
+            <activation><activeByDefault>true</activeByDefault></activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.amazonaws</groupId>
+                    <artifactId>DynamoDBLocal</artifactId>
+                    <version>1.11.477</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
             <id>noMtDynamoTests</id>
             <properties>
                 <maven.test.skip>true</maven.test.skip>
@@ -426,6 +432,14 @@
         </profile>
         <profile>
             <id>s3-integration-tests</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.amazonaws</groupId>
+                    <artifactId>DynamoDBLocal</artifactId>
+                    <version>1.11.477</version>
+                    <scope>test</scope>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>
