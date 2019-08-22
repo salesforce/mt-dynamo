@@ -379,8 +379,8 @@ open class MtSharedTableBackupManager(
             "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
 
     private fun commitTenantTableMetadata(
-            backupId: String,
-            tenantTableMetadataList: MtTableDescriptionRepo.ListMetadataResult
+        backupId: String,
+        tenantTableMetadataList: MtTableDescriptionRepo.ListMetadataResult
     ) {
         for (tenantTableMetadata in tenantTableMetadataList.createTableRequests) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
