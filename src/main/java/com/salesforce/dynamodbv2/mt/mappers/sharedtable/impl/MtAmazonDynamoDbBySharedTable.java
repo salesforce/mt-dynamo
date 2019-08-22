@@ -119,6 +119,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final long getRecordsTimeLimit;
     private final Clock clock;
     private final Optional<MtBackupManager> backupManager;
+    private final String backupTablePrefix;
 
     /**
      * Shared-table constructor.
@@ -152,7 +153,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          MeterRegistry meterRegistry,
                                          Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
-                                         String scanVirtualTableKey) {
+                                         String scanVirtualTableKey,
+                                         String backupTablePrefix) {
         super(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey);
         this.name = name;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
@@ -170,6 +172,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // requests, and the backup manager needs a reference back to this object to run multitenant scans to build
         // the physical backup off of mt-dynamo data.
         this.backupManager = backupManager.map(b -> b.build(this));
+        this.backupTablePrefix = backupTablePrefix;
     }
 
     long getGetRecordsTimeLimit() {
@@ -182,7 +185,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     protected boolean isMtTable(String tableName) {
-        return mtTables.containsKey(tableName) && !tableName.endsWith(BACKUP_TEMP_TABLE_SUFFIX);
+        return mtTables.containsKey(tableName) && !tableName.startsWith(backupTablePrefix);
     }
 
     public MtTableDescriptionRepo getMtTableDescriptionRepo() {
@@ -654,7 +657,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    static final String BACKUP_TEMP_TABLE_SUFFIX = "-copy";
 
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
@@ -670,7 +672,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             List<Future<SnapshotResult>> futures = Lists.newArrayList();
             Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
             for (String tableName : origMtTables) {
-                String snapshottedTable = tableName + BACKUP_TEMP_TABLE_SUFFIX;
+                String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." +  tableName;
                 snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
                 futures.add(executorService.submit(() ->
@@ -718,6 +720,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");
         }
+    }
+
+    /**
+     * In order to generate tenant table granular virtual table snapshots, a temp table is used to snapshot all
+     * physical tables. These snapshot tables are prefixed with this client overrideable string.
+     */
+    public String getBackupTablePrefix() {
+        return backupTablePrefix;
     }
 
     /**
