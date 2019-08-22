@@ -18,11 +18,12 @@ import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerS3It
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
-import java.lang.IllegalArgumentException
-import java.util.*
+import java.util.Date
 
 internal class MtBackupManagerTest {
 
@@ -65,7 +66,7 @@ internal class MtBackupManagerTest {
                     .withTableName("bar"))
             fail("Should have failed trying to create backup with table name specified") as Unit
         } catch (ex: IllegalArgumentException) {
-            assertTrue(ex.message!!.contains("tablename arguments are disallowed"), ex.message)
+            assertTrue(ex.message!!.contains("table-name arguments are disallowed"), ex.message)
         }
 
         try {

@@ -68,10 +68,10 @@ class MtAmazonDynamoDbBySharedTableTest {
         try {
             for (String table : allTables) {
                 snapshots.add(tableSnapshotter.snapshotTableToTarget(new SnapshotRequest("fake-backup",
-                        table,
-                    ((MtAmazonDynamoDbBySharedTable)testArgument.getAmazonDynamoDb()).getBackupTablePrefix() + table,
-                        testArgument.getRootAmazonDynamoDb(),
-                        new ProvisionedThroughput(10L, 10L))));
+                    table,
+                    ((MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb()).getBackupTablePrefix() + table,
+                    testArgument.getRootAmazonDynamoDb(),
+                    new ProvisionedThroughput(10L, 10L))));
             }
             assertEquals(allTables, testArgument.getAmazonDynamoDb().listTables().getTableNames());
         } finally {
