@@ -687,12 +687,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
 
-            Set<String> snapshottedTables = Sets.newHashSet(); // TODO: is this ever read?
             List<Future<SnapshotResult>> futures = Lists.newArrayList();
             Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
             for (String tableName : origMtTables) {
                 String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." + tableName;
-                snapshottedTables.add(snapshottedTable);
                 mtTables.put(snapshottedTable, mtTables.get(tableName));
                 futures.add(executorService.submit(
                     snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
