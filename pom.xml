@@ -107,12 +107,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>DynamoDBLocal</artifactId>
-            <version>1.11.477</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
             <version>3.0.0</version>
@@ -128,6 +122,12 @@
             <groupId>com.massisframework</groupId>
             <artifactId>j-text-utils</artifactId>
             <version>0.3.4</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>DynamoDBLocal</artifactId>
+            <version>1.11.477</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -387,6 +387,12 @@
     </distributionManagement>
 
     <profiles>
+        <profile>
+            <id>noMtDynamoTests</id>
+            <properties>
+                <maven.test.skip>true</maven.test.skip>
+            </properties>
+        </profile>
         <profile>
             <id>aws-integration-tests</id>
             <build>
