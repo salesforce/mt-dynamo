@@ -52,7 +52,8 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.charset.Charset
-import java.util.*
+import java.util.ArrayList
+import java.util.HashMap
 import java.util.stream.Collectors
 
 /**
@@ -379,9 +380,9 @@ open class MtSharedTableBackupManager(
 
     private fun commitTenantTableMetadata(
         backupId: String,
-        tenantTableMetadatas: MtTableDescriptionRepo.ListMetadataResult
+        tenantTableMetadataList: MtTableDescriptionRepo.ListMetadataResult
     ) {
-        for (tenantTableMetadata in tenantTableMetadatas.createTableRequests) {
+        for (tenantTableMetadata in tenantTableMetadataList.createTableRequests) {
             val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
@@ -396,10 +397,10 @@ open class MtSharedTableBackupManager(
 
     /**
      * This method is a fragile component of this backup manager, as we are managing state of a backup
-     * from S3, losing transactionlity, and creating a file that is mutated from different threads.
+     * from S3, losing transactionality, and creating a file that is mutated from different threads.
      *
      * By marking this synchronized, we're delaying the problem of moving this metadata to a database, like Dynamo,
-     * instead of using a json file on S3 to manage state. This will enforce only a single thread is updating
+     * instead of using a JSON file on S3 to manage state. This will enforce only a single thread is updating
      * a backup metadata at a time, and will work as long as only a single JVM is participating
      * in updating a backups metadata.
      */

@@ -10,7 +10,7 @@ import com.amazonaws.services.dynamodbv2.model.BackupDetails
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult
-import java.util.*
+import java.util.Date
 
 /**
  * Convert simple POJOs defined in {@link MtBackupManager} to and from AWS objects defined in AWS specs.
