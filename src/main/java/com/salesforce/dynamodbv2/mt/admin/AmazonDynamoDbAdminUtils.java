@@ -20,7 +20,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
-import org.awaitility.Duration;
+import java.time.Duration;
 import org.awaitility.pollinterval.FixedPollInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +97,7 @@ public class AmazonDynamoDbAdminUtils {
         }
         log.info("awaiting " + pollIntervalSeconds + "s for table=" + tableName + " to delete ...");
         await().pollInSameThread()
-            .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
+            .pollInterval(new FixedPollInterval(Duration.ofSeconds(pollIntervalSeconds)))
             .atMost(timeoutSeconds, SECONDS)
             .until(() -> !tableExists(tableName, TableStatus.DELETING));
     }
@@ -106,7 +106,7 @@ public class AmazonDynamoDbAdminUtils {
         int timeoutSeconds = TABLE_DDL_OPERATION_TIMEOUT_SECONDS;
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
         await().pollInSameThread()
-            .pollInterval(new FixedPollInterval(new Duration(pollIntervalSeconds, SECONDS)))
+            .pollInterval(new FixedPollInterval(Duration.ofSeconds(pollIntervalSeconds)))
             .atMost(timeoutSeconds, SECONDS)
             .until(() -> tableActive(tableName));
     }
