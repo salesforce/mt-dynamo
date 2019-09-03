@@ -10,10 +10,10 @@ import com.amazonaws.services.dynamodbv2.model.BackupDetails
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.amazonaws.services.dynamodbv2.model.BackupSummary
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult
-import java.util.*
+import java.util.Date
 
 /**
- * Convert simple pojos defined in {@link MtBackupManager} to and from AWS objects defined in AWS specs.
+ * Convert simple POJOs defined in {@link MtBackupManager} to and from AWS objects defined in AWS specs.
  */
 class MtBackupAwsAdaptor {
 
@@ -41,14 +41,21 @@ class MtBackupAwsAdaptor {
         }
     }
 
+    fun getBackupDescription(mtBackupMetadata: MtBackupMetadata): BackupDescription {
+        return BackupDescription()
+                .withBackupDetails(getBackupDetails(mtBackupMetadata))
+    }
+
     fun getDescribeBackupResult(mtBackupMetadata: MtBackupMetadata): DescribeBackupResult {
         return DescribeBackupResult().withBackupDescription(
-                BackupDescription().withBackupDetails(BackupDetails()
-                        .withBackupName(mtBackupMetadata.mtBackupName)
-                        .withBackupArn(mtBackupMetadata.mtBackupName)
-                        .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
-                        .withBackupStatus(getBackupStatus(mtBackupMetadata.status))))
+                BackupDescription().withBackupDetails(getBackupDetails(mtBackupMetadata)))
     }
+
+    private fun getBackupDetails(mtBackupMetadata: MtBackupMetadata): BackupDetails = BackupDetails()
+            .withBackupName(mtBackupMetadata.mtBackupName)
+            .withBackupArn(mtBackupMetadata.mtBackupName)
+            .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
+            .withBackupStatus(getBackupStatus(mtBackupMetadata.status))
 }
 
 val backupAdaptorSingleton: MtBackupAwsAdaptor = MtBackupAwsAdaptor()

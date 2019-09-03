@@ -68,7 +68,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         List<TestArgument> ret = Lists.newArrayList();
         for (AmazonDynamoDB mtStrategy : getAmazonDynamoDbStrategies()) {
             for (ScalarAttributeType hashKeyAttributes : getHashKeyAttrTypes()) {
-                ret.add(new TestArgument(mtStrategy, getOrgs(), hashKeyAttributes));
+                ret.add(new TestArgument(mtStrategy, getOrgs(), hashKeyAttributes, rootAmazonDynamoDb));
             }
         }
         return ret;
@@ -182,6 +182,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      */
     public static class TestArgument {
         private final AmazonDynamoDB amazonDynamoDb;
+        private final AmazonDynamoDB rootAmazonDynamoDb;
         private final List<String> orgs;
         private final ScalarAttributeType hashKeyAttrType;
 
@@ -189,14 +190,19 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
          * Takes the arguments that make up the inputs to a test invocation.
          */
         TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
-                     ScalarAttributeType hashKeyAttrType) {
+                     ScalarAttributeType hashKeyAttrType, AmazonDynamoDB rootAmazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
             this.orgs = orgs;
             this.hashKeyAttrType = hashKeyAttrType;
+            this.rootAmazonDynamoDb = rootAmazonDynamoDb;
         }
 
         public AmazonDynamoDB getAmazonDynamoDb() {
             return amazonDynamoDb;
+        }
+
+        public AmazonDynamoDB getRootAmazonDynamoDb() {
+            return rootAmazonDynamoDb;
         }
 
         public List<String> getOrgs() {

@@ -24,6 +24,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.s3.AmazonS3;
+import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
@@ -174,6 +175,13 @@ public class SharedTableBuilder implements TableBuilder {
     private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
     private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
 
+
+    /**
+     * Special default prefix to a physical table name use for temp snapshots of tables to generate tenant backups.
+     *
+     */
+    private static final String DEFAULT_BACKUP_TABLE_PREFIX = "mt-table-snapshot-";
+
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
@@ -202,6 +210,7 @@ public class SharedTableBuilder implements TableBuilder {
     private MeterRegistry meterRegistry;
     private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
     private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
+    private String backupTablePrefix = DEFAULT_BACKUP_TABLE_PREFIX;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -276,6 +285,12 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withBackupTablePrefix(String backupPrefix) {
+        Preconditions.checkNotNull(backupPrefix);
+        this.backupTablePrefix = backupPrefix;
+        return this;
+    }
+
     public SharedTableBuilder withBinaryHashKey(boolean binaryHashKey) {
         this.binaryHashKey = binaryHashKey;
         return this;
@@ -328,7 +343,8 @@ public class SharedTableBuilder implements TableBuilder {
             meterRegistry,
             Optional.ofNullable(backupManagerBuilder),
             scanTenantKey,
-            scanVirtualTableKey);
+            scanVirtualTableKey,
+            backupTablePrefix);
     }
 
     private void setDefaults() {
@@ -594,6 +610,17 @@ public class SharedTableBuilder implements TableBuilder {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
         checkNotNull(createTableRequestFactory, "createTableRequestFactory is required");
+
+        boolean tableCollidesWithBackupPrefix = createTableRequests
+            .stream()
+            .map(CreateTableRequest::getTableName)
+            .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
+        Preconditions.checkState(!tableCollidesWithBackupPrefix,
+            "Cannot suffix a physical table name with "
+                + DEFAULT_BACKUP_TABLE_PREFIX
+                + ". Either change your table names or override the default backup suffix.");
+
+
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
