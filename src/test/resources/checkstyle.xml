@@ -23,6 +23,7 @@ Change log:
 - LineLength: 100 -> 120
 - Indentation.basicOffset|caseIndent|arrayInitIndent: 2 -> 4
 - add UnusedImports
+- move LineLength up from under TreeWalker to under Checker (as required by Checkstyle 8.24)
 
 -->
 
@@ -40,6 +41,11 @@ Change log:
 
     <module name="SuppressWarningsFilter"/>
 
+    <module name="LineLength">
+        <property name="max" value="120"/>
+        <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+    </module>
+
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
         <module name="OuterTypeFilename"/>
@@ -54,10 +60,6 @@ Change log:
             <property name="allowEscapesForControlCharacters" value="true"/>
             <property name="allowByTailComment" value="true"/>
             <property name="allowNonPrintableEscapes" value="true"/>
-        </module>
-        <module name="LineLength">
-            <property name="max" value="120"/>
-            <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
         </module>
         <module name="AvoidStarImport"/>
         <module name="OneTopLevelClass"/>
