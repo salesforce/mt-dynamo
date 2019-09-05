@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/salesforce/mt-dynamo.svg?branch=master)](https://travis-ci.org/salesforce/mt-dynamo)
-[![Coverage Status](https://coveralls.io/repos/github/salesforce/mt-dynamo/badge.svg)](https://coveralls.io/github/salesforce/mt-dynamo)
+[![Coverage Status](https://codecov.io/gh/salesforce/mt-dynamo/branch/master/graph/badge.svg)](https://codecov.io/gh/salesforce/mt-dynamo)
 
 
 
