@@ -14,8 +14,8 @@ integration:
 validate:
 	mvn checkstyle:check@checkstyle-execution dependency:analyze@analyze
 
-coveralls:
-	mvn coveralls:report
+codecov:
+    mvn cobertura:cobertura
 
 check-versions:
 	mvn versions:display-dependency-updates
