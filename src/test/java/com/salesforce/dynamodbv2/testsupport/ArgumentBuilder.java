@@ -32,11 +32,11 @@ import java.util.stream.IntStream;
 /**
  * Builds of a list of {@code TestArgument}s.  Each {@code TestArgument} consists of 3 elements:
  *
- * <p>- the {@code AmazonDynamoDB} instance to be tested
- * - the attribute type of the hash key of the table to be tested
- * - a list of orgs that have been designated to be used for the given test invocation
+ * <ul><li> the {@code AmazonDynamoDB} instance to be tested
+ * <li> the attribute type of the hash key of the table to be tested
+ * <li> a list of orgs that have been designated to be used for the given test invocation</ul>
  *
- * <p>The {@code ArgumentBuilder} is used by the {@code DefaultArgumentProvider} which can be referenced in a JUnit 5
+ * <p>{@code ArgumentBuilder} is used by the {@code DefaultArgumentProvider}, which can be referenced in a JUnit 5
  * {@code @ParameterizedTest} {@code @ArgumentSource} annotation.  See {@link DefaultArgumentProvider} for details.
  *
  * @author msgroi
@@ -74,7 +74,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         return ret;
     }
 
-    /*
+    /**
      * Returns a list of orgs to be used for a test.
      */
     private List<String> getOrgs() {
@@ -82,14 +82,14 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             Collectors.toList());
     }
 
-    /*
+    /**
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
         return Arrays.stream(ScalarAttributeType.values()).collect(Collectors.toList());
     }
 
-    /*
+    /**
      * Returns a list of AmazonDynamoDB instances to be tested.
      */
     private List<AmazonDynamoDB> getAmazonDynamoDbStrategies() {
