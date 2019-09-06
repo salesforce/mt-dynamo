@@ -86,9 +86,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        // TODO get-bug: remove the filter and fix the tests that fail when RK is Binary
-        return Arrays.stream(ScalarAttributeType.values()).filter(scalarAttributeType ->
-            !scalarAttributeType.equals(ScalarAttributeType.B)).collect(Collectors.toList());
+        return Arrays.stream(ScalarAttributeType.values()).collect(Collectors.toList());
     }
 
     /*
