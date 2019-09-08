@@ -250,7 +250,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             qualifiedBatchGetItemRequest.addRequestItemsEntry(
                 qualifiedTableName,
                 new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream().map(
-                    key -> tableMapping.getItemMapper().apply(key)).collect(Collectors.toList())));
+                    key -> tableMapping.getKeyMapper().apply(key)).collect(Collectors.toList())));
         });
 
         // batch get
