@@ -4,6 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
@@ -145,35 +146,44 @@ class DeleteTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     void deleteHkRkTable(TestArgument testArgument) {
+        runDeleteTestForHkRkTable(testArgument, TABLE3);
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void deleteHkRkTableWithPkFieldInGsi(TestArgument testArgument) {
+        runDeleteTestForHkRkTable(testArgument, TABLE5);
+    }
+
+    private void runDeleteTestForHkRkTable(TestArgument testArgument, String tableName) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
         Map<String, AttributeValue> deleteItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                HASH_KEY_VALUE)
-                .rangeKey(S, RANGE_KEY_S_VALUE)
-                .build();
+            HASH_KEY_VALUE)
+            .rangeKey(S, RANGE_KEY_S_VALUE)
+            .build();
         final Map<String, AttributeValue> originalDeleteItemKey = new HashMap<>(deleteItemKey);
-        DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(TABLE3).withKey(deleteItemKey);
+        DeleteItemRequest deleteItemRequest = new DeleteItemRequest().withTableName(tableName).withKey(deleteItemKey);
         testArgument.getAmazonDynamoDb().deleteItem(deleteItemRequest);
         assertNull(getItem(testArgument.getAmazonDynamoDb(),
-                TABLE3,
-                HASH_KEY_VALUE,
-                testArgument.getHashKeyAttrType(),
-                Optional.of(RANGE_KEY_S_VALUE)));
-        assertEquals(TABLE3, deleteItemRequest.getTableName()); // assert no side effects
+            tableName,
+            HASH_KEY_VALUE,
+            testArgument.getHashKeyAttrType(),
+            Optional.of(RANGE_KEY_S_VALUE)));
+        assertEquals(tableName, deleteItemRequest.getTableName()); // assert no side effects
         assertEquals(originalDeleteItemKey, deleteItemRequest.getKey()); // assert no side effects
         testArgument.getOrgs().stream().filter(otherOrg -> !otherOrg.equals(org)).forEach(otherOrg -> {
             MT_CONTEXT.setContext(otherOrg);
             // assert same table, different orgs
             assertEquals(getItem(testArgument.getAmazonDynamoDb(),
-                TABLE3,
+                tableName,
                 HASH_KEY_VALUE,
                 testArgument.getHashKeyAttrType(),
                 Optional.of(RANGE_KEY_S_VALUE)),
                 ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + TABLE3 + otherOrg)
+                    .someField(S, SOME_FIELD_VALUE + tableName + otherOrg)
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build());
         });
     }
-
 }
