@@ -250,7 +250,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             qualifiedBatchGetItemRequest.addRequestItemsEntry(
                 qualifiedTableName,
                 new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream().map(
-                    key -> tableMapping.getItemMapper().apply(key)).collect(Collectors.toList())));
+                    key -> tableMapping.getKeyMapper().apply(key)).collect(Collectors.toList())));
         });
 
         // batch get
@@ -324,7 +324,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         deleteItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        deleteItemRequest.setKey(tableMapping.getItemMapper().apply(deleteItemRequest.getKey()));
+        deleteItemRequest.setKey(tableMapping.getKeyMapper().apply(deleteItemRequest.getKey()));
 
         // map conditions
         tableMapping.getConditionMapper().apply(new DeleteItemRequestWrapper(deleteItemRequest));
@@ -588,7 +588,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         updateItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        updateItemRequest.setKey(tableMapping.getItemMapper().apply(updateItemRequest.getKey()));
+        updateItemRequest.setKey(tableMapping.getKeyMapper().apply(updateItemRequest.getKey()));
 
         // map conditions
         tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
