@@ -32,9 +32,9 @@ class RandomPartitioningRecordMapperTest {
     private final String virtualRk = "vrk";
     private final String physicalHk = "phk";
     private final String physicalRk = "prk";
-    private final RandomPartitioningItemMapper itemMapper = new RandomPartitioningItemMapper(
+    private final ItemMapper itemMapper = new ItemMapper(
         new StringFieldMapper(provider, tableName),
-        new RandomPartitioningTableMapping(new DynamoTableDescriptionImpl(
+        new TableMapping(new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema(virtualHk, S, virtualRk, S).build()),
             new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
@@ -46,7 +46,7 @@ class RandomPartitioningRecordMapperTest {
         ).getTablePrimaryKeyFieldMappings(),
         Collections.emptyMap());
     private final FieldMapper fieldMapper = new StringFieldMapper(provider, tableName);
-    private final RandomPartitioningRecordMapper sut = new RandomPartitioningRecordMapper(provider, tableName, itemMapper, fieldMapper, physicalHk);
+    private final RecordMapper sut = new RecordMapper(provider, tableName, itemMapper, fieldMapper, physicalHk);
 
     @ParameterizedTest
     @ValueSource(strings = { "context/table/abc", "context/table/0" })

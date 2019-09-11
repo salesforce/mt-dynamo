@@ -114,7 +114,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final String name;
 
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
-    private final Cache<Object, TableMapping> tableMappingCache;
+    private final Cache<Object, ITableMapping> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
@@ -152,7 +152,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
                                          Clock clock,
-                                         Cache<Object, TableMapping> tableMappingCache,
+                                         Cache<Object, ITableMapping> tableMappingCache,
                                          MeterRegistry meterRegistry,
                                          Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
@@ -238,12 +238,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         qualifiedBatchGetItemRequest.clearRequestItemsEntries();
 
         // create a map of physical table names to TableMapping for use when handling the request later
-        Map<String, TableMapping> tableMappingByPhysicalTableName = new HashMap<>();
+        Map<String, ITableMapping> tableMappingByPhysicalTableName = new HashMap<>();
 
         // for each table in the batch request, map table name and keys
         unqualifiedKeysByTable.forEach((unqualifiedTableName, unqualifiedKeys) -> {
             // map table name
-            TableMapping tableMapping = getTableMapping(unqualifiedTableName);
+            ITableMapping tableMapping = getTableMapping(unqualifiedTableName);
             String qualifiedTableName = tableMapping.getPhysicalTable().getTableName();
             tableMappingByPhysicalTableName.put(qualifiedTableName, tableMapping);
             // map key
@@ -264,7 +264,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
         unqualifiedBatchGetItemResult.clearResponsesEntries();
         qualifiedItemsByTable.forEach((qualifiedTableName, qualifiedItems) -> {
-            TableMapping tableMapping = tableMappingByPhysicalTableName.get(qualifiedTableName);
+            ITableMapping tableMapping = tableMappingByPhysicalTableName.get(qualifiedTableName);
             unqualifiedBatchGetItemResult.addResponsesEntry(
                 tableMapping.getVirtualTable().getTableName(),
                 qualifiedItems.stream().map(keysAndAttributes ->
@@ -274,7 +274,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 unqualifiedBatchGetItemResult.clearUnprocessedKeysEntries();
                 qualifiedBatchGetItemResult.getUnprocessedKeys()
                     .forEach((qualifiedTableNameUk, qualifiedUkKeysAndAttributes) -> {
-                        TableMapping tableMappingUk = tableMappingByPhysicalTableName.get(qualifiedTableNameUk);
+                        ITableMapping tableMappingUk = tableMappingByPhysicalTableName.get(qualifiedTableNameUk);
                         unqualifiedBatchGetItemResult.addUnprocessedKeysEntry(
                             tableMappingUk.getVirtualTable().getTableName(),
                             new KeysAndAttributes()
@@ -321,7 +321,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
         // map table name
         deleteItemRequest = deleteItemRequest.clone();
-        TableMapping tableMapping = getTableMapping(deleteItemRequest.getTableName());
+        ITableMapping tableMapping = getTableMapping(deleteItemRequest.getTableName());
         deleteItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
@@ -392,7 +392,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // map table name
         getItemRequest = getItemRequest.clone();
-        TableMapping tableMapping = getTableMapping(getItemRequest.getTableName());
+        ITableMapping tableMapping = getTableMapping(getItemRequest.getTableName());
         getItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
@@ -409,7 +409,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return getItemResult;
     }
 
-    TableMapping getTableMapping(String virtualTableName) {
+    ITableMapping getTableMapping(String virtualTableName) {
         try {
             return tableMappingCache.get(virtualTableName, () ->
                 tableMappingFactory.getTableMapping(
@@ -423,7 +423,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
         putItemRequest = putItemRequest.clone();
-        TableMapping tableMapping = getTableMapping(putItemRequest.getTableName());
+        ITableMapping tableMapping = getTableMapping(putItemRequest.getTableName());
         putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map conditions
@@ -438,7 +438,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     public QueryResult query(QueryRequest queryRequest) {
-        final TableMapping tableMapping = getTableMapping(queryRequest.getTableName());
+        final ITableMapping tableMapping = getTableMapping(queryRequest.getTableName());
 
         // map table name
         final QueryRequest clonedQueryRequest = queryRequest.clone();
@@ -475,7 +475,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             // if we are here, we are doing a multitenant scan on a shared table
             return scanAllTenants(scanRequest);
         }
-        TableMapping tableMapping = getTableMapping(scanRequest.getTableName());
+        ITableMapping tableMapping = getTableMapping(scanRequest.getTableName());
         PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
             : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
 
@@ -534,7 +534,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             // go through each row in the scan and pull out the tenant and table information from the primary key to
             // separate attributes in each item's map
             FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
-            TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
+            ITableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
             unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getContext()));
@@ -591,7 +591,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // map table name
         updateItemRequest = updateItemRequest.clone();
-        TableMapping tableMapping = getTableMapping(updateItemRequest.getTableName());
+        ITableMapping tableMapping = getTableMapping(updateItemRequest.getTableName());
         updateItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key

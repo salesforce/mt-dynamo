@@ -84,8 +84,8 @@ public class TableMappingFactory {
      * back onto the table mapping so it includes things that can only be determined after the physical
      * table is created, like the streamArn.
      */
-    TableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
-        RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(virtualTableDescription,
+    ITableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
+        TableMapping tableMapping = new TableMapping(virtualTableDescription,
             createTableRequestFactory,
             secondaryIndexMapper,
             mtContext);

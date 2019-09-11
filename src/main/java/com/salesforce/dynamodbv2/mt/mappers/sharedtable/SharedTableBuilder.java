@@ -45,7 +45,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ITableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
@@ -205,7 +205,7 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
-    private Cache<Object, TableMapping> tableMappingCache;
+    private Cache<Object, ITableMapping> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
     private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
@@ -592,7 +592,7 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTableMappingCache(Cache<Object, TableMapping> tableMappingCache) {
+    public SharedTableBuilder withTableMappingCache(Cache<Object, ITableMapping> tableMappingCache) {
         this.tableMappingCache = tableMappingCache;
         return this;
     }

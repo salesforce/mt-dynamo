@@ -29,9 +29,9 @@ import org.junit.jupiter.api.Test;
 class RandomPartitioningItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
-    private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
+    private static final ItemMapper SUT = new ItemMapper(
         new MockFieldMapper(),
-        new RandomPartitioningTableMapping(new DynamoTableDescriptionImpl(
+        new TableMapping(new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
             new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(

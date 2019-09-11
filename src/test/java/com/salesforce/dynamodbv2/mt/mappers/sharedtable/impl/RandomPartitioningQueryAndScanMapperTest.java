@@ -49,7 +49,7 @@ class RandomPartitioningQueryAndScanMapperTest {
             CreateTableRequestBuilder.builder()
                     .withTableKeySchema("physicalHk", S)
                     .addSi("physicalGsi", GSI, new PrimaryKey("physicalGsiHk", S), 1L).build());
-    private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(VIRTUAL_TABLE_DESCRIPTION,
+    private static final TableMapping TABLE_MAPPING = new TableMapping(VIRTUAL_TABLE_DESCRIPTION,
             new SingletonCreateTableRequestFactory(PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest()),
         new DynamoSecondaryIndexMapperByTypeImpl(),
         new MtAmazonDynamoDbContextProvider() {
@@ -64,8 +64,8 @@ class RandomPartitioningQueryAndScanMapperTest {
         }
     );
 
-    private RandomPartitioningQueryAndScanMapper getMockQueryMapper() {
-        return new RandomPartitioningQueryAndScanMapper(TABLE_MAPPING, null);
+    private QueryAndScanMapper getMockQueryMapper() {
+        return new QueryAndScanMapper(TABLE_MAPPING, null);
     }
 
     @Test
@@ -197,7 +197,7 @@ class RandomPartitioningQueryAndScanMapperTest {
 
         FieldMapper fieldMapper = mock(FieldMapper.class);
         when(fieldMapper.apply(any(), any())).thenReturn(new AttributeValue("prefixed"));
-        new RandomPartitioningQueryAndScanMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
+        new QueryAndScanMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
 
         assertEquals(new ScanRequest()
                         .withFilterExpression("begins_with(#___name___, :___value___)")
