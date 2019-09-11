@@ -85,7 +85,7 @@ public class TableMappingFactory {
      * table is created, like the streamArn.
      */
     TableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
-        TableMapping tableMapping = new TableMapping(virtualTableDescription,
+        RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(virtualTableDescription,
             createTableRequestFactory,
             secondaryIndexMapper,
             mtContext);
