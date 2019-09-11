@@ -6,7 +6,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 /**
  * Maps query and scan requests against virtual tables to their physical table counterparts.
  */
-interface IQueryAndScanMapper {
+interface QueryAndScanMapper {
 
     /*
      * Takes a QueryRequest representing a query against a virtual table and mutates it so it can be applied to its

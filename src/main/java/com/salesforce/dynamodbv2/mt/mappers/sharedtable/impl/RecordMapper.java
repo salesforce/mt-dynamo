@@ -9,7 +9,7 @@ import java.util.function.Predicate;
  * Maps physical stream records into virtual stream records. Also exposes a filter method to allow pushing tenant table
  * predicate as low as possible when traversing a shared stream.
  */
-public interface IRecordMapper extends Function<Record, MtRecord> {
+public interface RecordMapper extends Function<Record, MtRecord> {
 
     Predicate<Record> createFilter();
 

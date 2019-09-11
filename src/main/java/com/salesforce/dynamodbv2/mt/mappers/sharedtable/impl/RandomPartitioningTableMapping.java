@@ -36,7 +36,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * {@link ITableMapping} implementation for shared tables that use random partitioning. That is, where
+ * {@link TableMapping} implementation for shared tables that use random partitioning. That is, where
  * <pre>
  *     physicalHashKey = tenantId + virtualTableName + virtualHashKey
  *     phyiscalRangeKey = virtualRangeKey
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-public class TableMapping implements ITableMapping {
+public class RandomPartitioningTableMapping implements TableMapping {
 
     private final DynamoTableDescription virtualTable;
     private DynamoTableDescription physicalTable;
@@ -53,22 +53,22 @@ public class TableMapping implements ITableMapping {
     private final List<FieldMapping> tablePrimaryKeyFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings;
 
-    private final IItemMapper itemMapper;
-    private final IRecordMapper recordMapper;
-    private final IQueryAndScanMapper queryAndScanMapper;
-    private final IConditionMapper conditionMapper;
+    private final ItemMapper itemMapper;
+    private final RecordMapper recordMapper;
+    private final QueryAndScanMapper queryAndScanMapper;
+    private final ConditionMapper conditionMapper;
 
-    TableMapping(DynamoTableDescription virtualTable,
-                 CreateTableRequestFactory createTableRequestFactory,
-                 DynamoSecondaryIndexMapper secondaryIndexMapper,
-                 MtAmazonDynamoDbContextProvider mtContext) {
+    RandomPartitioningTableMapping(DynamoTableDescription virtualTable,
+                                   CreateTableRequestFactory createTableRequestFactory,
+                                   DynamoSecondaryIndexMapper secondaryIndexMapper,
+                                   MtAmazonDynamoDbContextProvider mtContext) {
         physicalTable = lookupPhysicalTable(virtualTable, createTableRequestFactory);
         validatePhysicalTable(physicalTable);
         this.secondaryIndexMapper = secondaryIndexMapper;
         this.virtualTable = virtualTable;
         validateMapping();
 
-        this.tablePrimaryKeyFieldMappings = getTablePrimaryKeyFieldMappings(virtualTable, physicalTable);
+        this.tablePrimaryKeyFieldMappings = buildTablePrimaryKeyFieldMappings(virtualTable, physicalTable);
         this.indexPrimaryKeyFieldMappings =
             buildIndexPrimaryKeyFieldMappings(virtualTable, physicalTable, secondaryIndexMapper);
 
@@ -76,11 +76,12 @@ public class TableMapping implements ITableMapping {
             ? new StringFieldMapper(mtContext, virtualTable.getTableName())
             : new BinaryFieldMapper(mtContext, virtualTable.getTableName());
 
-        itemMapper = new ItemMapper(fieldMapper, tablePrimaryKeyFieldMappings, indexPrimaryKeyFieldMappings);
-        recordMapper = new RecordMapper(mtContext, virtualTable.getTableName(), itemMapper, fieldMapper,
-            physicalTable.getPrimaryKey().getHashKey());
-        queryAndScanMapper = new QueryAndScanMapper(this, fieldMapper);
-        conditionMapper = new ConditionMapper(this, fieldMapper);
+        itemMapper = new RandomPartitioningItemMapper(fieldMapper, tablePrimaryKeyFieldMappings,
+            indexPrimaryKeyFieldMappings);
+        recordMapper = new RandomPartitioningRecordMapper(mtContext, virtualTable.getTableName(), itemMapper,
+            fieldMapper, physicalTable.getPrimaryKey().getHashKey());
+        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(this, fieldMapper);
+        conditionMapper = new RandomPartitioningConditionMapper(this, fieldMapper);
     }
 
     @Override
@@ -94,22 +95,22 @@ public class TableMapping implements ITableMapping {
     }
 
     @Override
-    public IItemMapper getItemMapper() {
+    public ItemMapper getItemMapper() {
         return itemMapper;
     }
 
     @Override
-    public IRecordMapper getRecordMapper() {
+    public RecordMapper getRecordMapper() {
         return recordMapper;
     }
 
     @Override
-    public IQueryAndScanMapper getQueryAndScanMapper() {
+    public QueryAndScanMapper getQueryAndScanMapper() {
         return queryAndScanMapper;
     }
 
     @Override
-    public IConditionMapper getConditionMapper() {
+    public ConditionMapper getConditionMapper() {
         return conditionMapper;
     }
 
@@ -138,8 +139,8 @@ public class TableMapping implements ITableMapping {
     /*
      * Returns a mapping of table-level primary key fields only, virtual to physical.
      */
-    private static List<FieldMapping> getTablePrimaryKeyFieldMappings(DynamoTableDescription virtualTable,
-                                                                      DynamoTableDescription physicalTable) {
+    private static List<FieldMapping> buildTablePrimaryKeyFieldMappings(DynamoTableDescription virtualTable,
+                                                                        DynamoTableDescription physicalTable) {
         List<FieldMapping> fieldMappings = new ArrayList<>();
         fieldMappings.add(new FieldMapping(new Field(virtualTable.getPrimaryKey().getHashKey(),
             virtualTable.getPrimaryKey().getHashKeyType()),

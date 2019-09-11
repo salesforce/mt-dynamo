@@ -14,7 +14,7 @@ import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.ConditionMapper.NAME_PLACEHOLDER;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningConditionMapper.NAME_PLACEHOLDER;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
@@ -44,7 +44,7 @@ import javax.annotation.Nullable;
  *
  * @author msgroi
  */
-class QueryAndScanMapper implements IQueryAndScanMapper {
+class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
 
     private static final String VALUE_PLACEHOLDER = ":___value___";
     private static final Map<ComparisonOperator, BiFunction<String, String, String>>
@@ -62,7 +62,7 @@ class QueryAndScanMapper implements IQueryAndScanMapper {
     private final FieldMapper fieldMapper;
     private final RandomPartitioningTableMapping tableMapping;
 
-    QueryAndScanMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
+    RandomPartitioningQueryAndScanMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
         this.fieldMapper = fieldMapper;
         this.tableMapping = tableMapping;
     }

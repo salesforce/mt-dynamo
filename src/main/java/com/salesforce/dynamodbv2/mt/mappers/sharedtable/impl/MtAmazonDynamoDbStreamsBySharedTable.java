@@ -112,7 +112,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withRecords(new ArrayList<>(limit))
                 .withNextShardIterator(request.getShardIterator());
 
-            final IRecordMapper recordMapper =
+            final RecordMapper recordMapper =
                 mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).getRecordMapper();
             final Predicate<Record> recordFilter = recordMapper.createFilter();
 

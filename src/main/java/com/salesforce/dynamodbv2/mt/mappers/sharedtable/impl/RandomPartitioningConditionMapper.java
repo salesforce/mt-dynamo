@@ -14,18 +14,18 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 
 /**
- * {@link IConditionMapper} implementation for shared tables using random partitioning.
+ * {@link ConditionMapper} implementation for shared tables using random partitioning.
  *
  * @author msgroi
  */
-class ConditionMapper implements IConditionMapper {
+class RandomPartitioningConditionMapper implements ConditionMapper {
 
     static final String NAME_PLACEHOLDER = "#___name___";
 
     private final RandomPartitioningTableMapping tableMapping;
     private final FieldMapper fieldMapper;
 
-    ConditionMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
+    RandomPartitioningConditionMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
         this.tableMapping = tableMapping;
         this.fieldMapper = fieldMapper;
     }

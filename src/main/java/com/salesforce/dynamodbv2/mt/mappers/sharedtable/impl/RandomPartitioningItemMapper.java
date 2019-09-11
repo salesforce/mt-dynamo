@@ -19,12 +19,12 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
- * {@link IItemMapper} implementation for shared tables using random partitioning, where each physical hash key
+ * {@link ItemMapper} implementation for shared tables using random partitioning, where each physical hash key
  * corresponds to its virtual counterpart prefixed according to the given FieldMapper.
  *
  * @author msgroi
  */
-class ItemMapper implements IItemMapper {
+class RandomPartitioningItemMapper implements ItemMapper {
 
     private final FieldMapper fieldMapper;
     private final List<FieldMapping> tableVirtualToPhysicalFieldMappings;
@@ -32,9 +32,9 @@ class ItemMapper implements IItemMapper {
     private final Map<String, List<FieldMapping>> allVirtualToPhysicalFieldMappings;
     private final Map<String, FieldMapping> physicalToVirtualFieldMappings;
 
-    ItemMapper(FieldMapper fieldMapper,
-               List<FieldMapping> tablePrimaryKeyFieldMappings,
-               Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings) {
+    RandomPartitioningItemMapper(FieldMapper fieldMapper,
+                                 List<FieldMapping> tablePrimaryKeyFieldMappings,
+                                 Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings) {
         this.fieldMapper = fieldMapper;
         this.tableVirtualToPhysicalFieldMappings = tablePrimaryKeyFieldMappings;
         this.indexVirtualToPhysicalFieldMappings = indexPrimaryKeyFieldMappings;
@@ -93,7 +93,7 @@ class ItemMapper implements IItemMapper {
     }
 
     /**
-     *  Converts a virtual item to a physical item, where we retain only the fields in the given list of field mappings
+     *  Converts a virtual item to a physical item, where we retain only the fields in the given list of field mappings.
      */
     private Map<String, AttributeValue> applySpecificMappings(Map<String, AttributeValue> virtualItem,
                                                               List<FieldMapping> fieldMappings) {

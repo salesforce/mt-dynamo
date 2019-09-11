@@ -11,19 +11,19 @@ import java.util.function.Predicate;
  * Maps physical stream records into virtual stream records. Also exposes a filter method to allow pushing tenant table
  * predicate as low as possible when traversing a shared stream.
  */
-class RecordMapper implements IRecordMapper {
+class RandomPartitioningRecordMapper implements RecordMapper {
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
-    private final IItemMapper itemMapper;
+    private final ItemMapper itemMapper;
     private final String hashKeyName;
     private final FieldMapper fieldMapper;
 
-    RecordMapper(MtAmazonDynamoDbContextProvider mtContext,
-                 String virtualTableName,
-                 IItemMapper itemMapper,
-                 FieldMapper fieldMapper,
-                 String hashKeyName) {
+    RandomPartitioningRecordMapper(MtAmazonDynamoDbContextProvider mtContext,
+                                   String virtualTableName,
+                                   ItemMapper itemMapper,
+                                   FieldMapper fieldMapper,
+                                   String hashKeyName) {
         this.mtContext = mtContext;
         this.virtualTableName = virtualTableName;
         this.itemMapper = itemMapper;

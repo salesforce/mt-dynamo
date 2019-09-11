@@ -9,7 +9,7 @@ import javax.annotation.Nullable;
  * Maps items representing records in virtual tables so they can be read from and written to their physical table
  * counterparts.
  */
-interface IItemMapper {
+interface ItemMapper {
 
     /**
      * Takes a virtual table record (not qualified with multitenant context) to be upserted and converts it into the

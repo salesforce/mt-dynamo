@@ -61,7 +61,7 @@ class RandomPartitioningTableMappingTest {
                     new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N),
                     1L)
             .build());
-    private final TableMapping sut = new TableMapping(virtualTable,
+    private final RandomPartitioningTableMapping sut = new RandomPartitioningTableMapping(virtualTable,
             new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
             new DynamoSecondaryIndexMapperByTypeImpl(),
             null
@@ -182,7 +182,7 @@ class RandomPartitioningTableMappingTest {
     @Test
     void validateSecondaryIndexes_lookupFailure() throws MappingException {
         DynamoSecondaryIndexMapper spyIndexMapper = spy(DynamoSecondaryIndexMapperByTypeImpl.class);
-        TableMapping tableMapping = new TableMapping(virtualTable,
+        RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(virtualTable,
                 new SingletonCreateTableRequestFactory(physicalTable.getCreateTableRequest()),
                 spyIndexMapper,
                 null

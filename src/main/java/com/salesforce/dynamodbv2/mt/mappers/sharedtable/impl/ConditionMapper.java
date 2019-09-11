@@ -6,7 +6,7 @@ import javax.annotation.Nullable;
 /**
  * Applies mapping and prefixing to condition query and conditional update expressions.
  */
-interface IConditionMapper {
+interface ConditionMapper {
 
     /**
      * Maps expressions in the given request for a virtual table to a request for the physical table,
