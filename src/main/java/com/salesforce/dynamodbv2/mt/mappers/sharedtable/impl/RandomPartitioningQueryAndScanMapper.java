@@ -14,6 +14,7 @@ import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.LT;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningConditionMapper.NAME_PLACEHOLDER;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -100,6 +101,8 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
         // if the key condition expression does not contain the table or index key being used, add begins_with clause
         addBeginsWithIfNeeded(request, virtualHashKey, fieldMappings);
 
+        checkNotNull(request.getPrimaryExpression(), "request expression is required");
+
         // map each field to its target name and apply field prefixing as appropriate
         tableMapping.getConditionMapper().apply(request, virtualSecondaryIndex);
 
@@ -148,7 +151,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
-        String hashKeyField) { // TODO look for hash key in literals
+        String hashKeyField) {
         String conditionExpression = request.getPrimaryExpression();
         if (conditionExpression == null) {
             // no filter criteria

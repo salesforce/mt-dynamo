@@ -110,6 +110,9 @@ class RandomPartitioningItemMapper implements ItemMapper {
         return physicalItem;
     }
 
+    /**
+     * Applies field mapping to given value and put the result in the given item map.
+     */
     private void applyFieldMapping(Map<String, AttributeValue> item, FieldMapping fieldMapping, AttributeValue value) {
         item.put(fieldMapping.getTarget().getName(),
             fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, value) : value);
