@@ -17,7 +17,7 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.QueryAndScanMapper.QueryRequestWrapper;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningQueryAndScanMapper.QueryRequestWrapper;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -34,21 +34,21 @@ import org.junit.jupiter.params.provider.MethodSource;
  *
  * @author msgroi
  */
-class ConditionMapperTest {
+class RandomPartitioningConditionMapperTest {
 
-    private static final TableMapping tableMapping = mock(TableMapping.class);
-    private static ConditionMapper SUT = null;
+    private static final RandomPartitioningTableMapping tableMapping = mock(RandomPartitioningTableMapping.class);
+    private static RandomPartitioningConditionMapper SUT = null;
 
     @BeforeAll
     static void beforeAll() {
-        when(tableMapping.getAllVirtualToPhysicalFieldMappingsDeduped())
-            .thenReturn(ImmutableMap.of("field", new FieldMapping(new Field("field", S),
+        when(tableMapping.getTablePrimaryKeyFieldMappings())
+            .thenReturn(ImmutableList.of(new FieldMapping(new Field("field", S),
             new Field("field", S),
             null,
             null,
             TABLE,
             true)));
-        SUT = new ConditionMapper(tableMapping, null);
+        SUT = new RandomPartitioningConditionMapper(tableMapping, null);
     }
 
     @ParameterizedTest(name = "{index}")
@@ -65,7 +65,7 @@ class ConditionMapperTest {
         DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
-        ConditionMapper sut = new ConditionMapper(tableMapping,
+        RandomPartitioningConditionMapper sut = new RandomPartitioningConditionMapper(tableMapping,
                 new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.applyKeyConditionToField(requestWrapper,
@@ -460,7 +460,7 @@ class ConditionMapperTest {
             .withKeyConditionExpression("field = :value")
             .withExpressionAttributeNames(new HashMap<>())
             .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
-        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper);
+        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper, tableMapping.getTablePrimaryKeyFieldMappings());
         assertEquals("#field1 = :value", requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
     }
@@ -471,7 +471,7 @@ class ConditionMapperTest {
             .withKeyConditionExpression("field = :value and field2 = :value2 and field = :value3")
             .withExpressionAttributeNames(new HashMap<>())
             .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
-        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper);
+        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper, tableMapping.getTablePrimaryKeyFieldMappings());
         assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3",
             requestWrapper.getPrimaryExpression());
         assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
@@ -479,51 +479,51 @@ class ConditionMapperTest {
 
     @Test
     void getNextFieldPlaceholder() {
-        assertEquals("#field0", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field0", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
                 new HashMap<>(), new AtomicInteger(0)));
-        assertEquals("#field1", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field1", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
                 new HashMap<>(), new AtomicInteger(1)));
-        assertEquals("#field2", ConditionMapper.getNextFieldPlaceholder(
+        assertEquals("#field2", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
                 ImmutableMap.of("#field0", "someName0", "#field1", "someName1"),
                 new AtomicInteger(0)));
     }
 
     @Test
     void findVirtualValuePlaceholderInEitherExpression() {
-        assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue",
             "#hk = :currentValue", "#hk").orElseThrow());
-        assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentHkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
                 "#hk").orElseThrow());
-        assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentHkValue and #rk = :currentRkValue",
                 "#rk").orElseThrow());
-        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+        assertFalse(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
                 "set #someField = :newValue",
                 "#hk = :currentValue", "#invalid").isPresent());
-        assertEquals(":ue1", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":ue1", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2",
             null, "#ue1").orElseThrow());
-        assertFalse(ConditionMapper.findVirtualValuePlaceholder(
+        assertFalse(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             null, null, "#invalid").isPresent());
     }
 
     @Test
     void findVirtualValuePlaceholder() {
-        assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.empty(), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #someField = :newValue", "#hk"));
-        assertEquals(":currentValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentValue", "#hk").orElseThrow());
-        assertEquals(":currentHkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentHkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").orElseThrow());
-        assertEquals(":currentRkValue", ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").orElseThrow());
-        assertEquals(Optional.of(":ue1"), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.of(":ue1"), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
-        assertEquals(Optional.empty(), ConditionMapper.findVirtualValuePlaceholder(
+        assertEquals(Optional.empty(), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             null, null));
     }
 
