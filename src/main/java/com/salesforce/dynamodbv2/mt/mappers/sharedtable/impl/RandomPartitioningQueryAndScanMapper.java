@@ -49,8 +49,8 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
 
     private static final String VALUE_PLACEHOLDER = ":___value___";
     private static final Map<ComparisonOperator, BiFunction<String, String, String>>
-            FIELD_AND_VALUE_TO_EXPRESSION_STRINGS
-        = new ImmutableMap.Builder<ComparisonOperator, BiFunction<String, String, String>>()
+        FIELD_AND_VALUE_TO_EXPRESSION_STRINGS = new ImmutableMap
+        .Builder<ComparisonOperator, BiFunction<String, String, String>>()
         .put(EQ, (field, value) -> field + " = " + value)
         .put(GT, (field, value) -> field + " > " + value)
         .put(GE, (field, value) -> field + " >= " + value)
@@ -85,7 +85,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
 
         DynamoSecondaryIndex virtualSecondaryIndex = null;
         String virtualHashKey;
-        Collection<FieldMapping> fieldMappings;
+        List<FieldMapping> fieldMappings;
         if (request.getIndexName() == null) {
             // query or scan does NOT use index
             virtualHashKey = tableMapping.getVirtualTable().getPrimaryKey().getHashKey();
@@ -94,7 +94,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
             // query uses index
             virtualSecondaryIndex = tableMapping.getVirtualTable().findSi(request.getIndexName());
             fieldMappings = tableMapping.getIndexPrimaryKeyFieldMappings(virtualSecondaryIndex);
-            request.setIndexName(((List<FieldMapping>) fieldMappings).get(0).getPhysicalIndexName());
+            request.setIndexName(fieldMappings.get(0).getPhysicalIndexName());
             virtualHashKey = virtualSecondaryIndex.getPrimaryKey().getHashKey();
         }
 
@@ -151,7 +151,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
-        String hashKeyField) {
+                                                  String hashKeyField) {
         String conditionExpression = request.getPrimaryExpression();
         if (conditionExpression == null) {
             // no filter criteria

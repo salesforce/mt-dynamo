@@ -81,9 +81,9 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
      */
     @VisibleForTesting
     void applyKeyConditionToField(RequestWrapper request,
-        FieldMapping fieldMapping,
-        String primaryExpression, // "#field1 = :value"
-        String filterExpression) {
+                                  FieldMapping fieldMapping,
+                                  String primaryExpression, // "#field1 = :value"
+                                  String filterExpression) {
         if (primaryExpression != null) {
             String virtualAttrName = fieldMapping.getSource().getName(); // "virtualHk"
             Map<String, String> expressionAttrNames = request.getExpressionAttributeNames(); // "#field1" -> "virtualHk"
@@ -96,11 +96,11 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
                 if (virtualValuePlaceholderOpt.isPresent()) {
                     String virtualValuePlaceholder = virtualValuePlaceholderOpt.get();
                     AttributeValue virtualAttr =
-                            request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkValue,}
+                        request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkValue,}
                     AttributeValue physicalAttr =
                         fieldMapping.isContextAware()
-                                ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkValue,}
-                                : virtualAttr;
+                            ? fieldMapper.apply(fieldMapping, virtualAttr) // {S: ctx.virtualTable.hkValue,}
+                            : virtualAttr;
                     request.putExpressionAttributeValue(virtualValuePlaceholder, physicalAttr);
                 }
                 request.putExpressionAttributeName(keyFieldName.get(), fieldMapping.getTarget().getName());
@@ -126,9 +126,9 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
                 int start = (" " + newConditionExpression).indexOf(toFind); // 0 - TODO add support for non-EQ operators
                 while (start >= 0) {
                     String fieldLiteral =
-                            newConditionExpression.substring(start, start + virtualFieldName.length()); // "field"
+                        newConditionExpression.substring(start, start + virtualFieldName.length()); // "field"
                     String fieldPlaceholder =
-                            getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter); // "#field1"
+                        getNextFieldPlaceholder(request.getExpressionAttributeNames(), counter); // "#field1"
                     newConditionExpression = conditionExpression
                         .replaceAll(fieldLiteral + " ", fieldPlaceholder + " ");
                     // "#field1 = :value and field2 = :value2 and #field1 = :value3"
@@ -159,8 +159,8 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
      */
     @VisibleForTesting
     static Optional<String> findVirtualValuePlaceholder(String primaryExpression,
-        String filterExpression,
-        String keyFieldName) {
+                                                        String filterExpression,
+                                                        String keyFieldName) {
         return Stream.of(
             findVirtualValuePlaceholder(primaryExpression, keyFieldName),
             findVirtualValuePlaceholder(filterExpression, keyFieldName))

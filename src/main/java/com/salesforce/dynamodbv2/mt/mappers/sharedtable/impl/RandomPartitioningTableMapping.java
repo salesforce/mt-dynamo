@@ -28,7 +28,6 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,7 +38,7 @@ import java.util.stream.Collectors;
  * {@link TableMapping} implementation for shared tables that use random partitioning. That is, where
  * <pre>
  *     physicalHashKey = tenantId + virtualTableName + virtualHashKey
- *     phyiscalRangeKey = virtualRangeKey
+ *     physicalRangeKey = virtualRangeKey
  * </pre>
  * See https://salesforce.quip.com/hULMAJ0KNFUY
  *
@@ -171,8 +170,9 @@ public class RandomPartitioningTableMapping implements TableMapping {
                                                        CreateTableRequestFactory createTableRequestFactory) {
         return new DynamoTableDescriptionImpl(
             createTableRequestFactory.getCreateTableRequest(virtualTable)
-            .orElseThrow((Supplier<ResourceNotFoundException>) () ->
-                new ResourceNotFoundException("table " + virtualTable.getTableName() + " is not a supported table")));
+                .orElseThrow((Supplier<ResourceNotFoundException>) () ->
+                    new ResourceNotFoundException("table " + virtualTable.getTableName()
+                        + " is not a supported table")));
     }
 
     private static Map<DynamoSecondaryIndex, List<FieldMapping>> buildIndexPrimaryKeyFieldMappings(
@@ -273,10 +273,10 @@ public class RandomPartitioningTableMapping implements TableMapping {
             "hash key must be of type S or B");
         if (virtualPrimaryKey.getRangeKey().isPresent()) {
             checkArgument(physicalPrimaryKey.getRangeKey().isPresent(),
-                          "rangeKey exists on virtual primary key but not on physical");
+                "rangeKey exists on virtual primary key but not on physical");
             checkArgument(virtualPrimaryKey.getRangeKeyType().orElseThrow()
                     == physicalPrimaryKey.getRangeKeyType().orElseThrow(),
-                          "virtual and physical range-key types mismatch");
+                "virtual and physical range-key types mismatch");
         }
     }
 
@@ -289,10 +289,10 @@ public class RandomPartitioningTableMapping implements TableMapping {
         validatePrimaryKey(physicalTableDescription.getPrimaryKey(), tableMsgPrefix);
         physicalTableDescription.getGsis().forEach(dynamoSecondaryIndex ->
             validatePrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix
-                               + " GSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
+                + " GSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
         physicalTableDescription.getLsis().forEach(dynamoSecondaryIndex ->
             validatePrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix
-                               + " LSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
+                + " LSI " + dynamoSecondaryIndex.getIndexName() + "'s"));
     }
 
     private void validatePrimaryKey(PrimaryKey primaryKey, String msgPrefix) {
