@@ -165,9 +165,9 @@ class ScanTest {
                 isFound = true;
                 assertTrue(scanResult.getItems().stream().allMatch(
                     row -> row.containsKey(
-                            ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanTenantKey())
+                        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanTenantKey())
                         && row.containsKey(
-                            ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanVirtualTableKey())));
+                        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanVirtualTableKey())));
             }
         }
         assertTrue(isFound, "all scans found no items... that's not right");

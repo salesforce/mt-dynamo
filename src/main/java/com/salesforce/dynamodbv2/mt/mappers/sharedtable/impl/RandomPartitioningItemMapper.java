@@ -93,7 +93,7 @@ class RandomPartitioningItemMapper implements ItemMapper {
     }
 
     /**
-     *  Converts a virtual item to a physical item, where we retain only the fields in the given list of field mappings.
+     * Converts a virtual item to a physical item, where we retain only the fields in the given list of field mappings.
      */
     private Map<String, AttributeValue> applySpecificMappings(Map<String, AttributeValue> virtualItem,
                                                               List<FieldMapping> fieldMappings) {

@@ -415,11 +415,11 @@ class QueryTest {
         testArgument.forEachOrgContext(org -> {
             String table = TABLE5;
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
-                    new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
-                            .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
-                            .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                    createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
-                            .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
+                new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
+                    .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":value",
+                        createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
+                    .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_OTHER_FIELD_VALUE + table + org)

@@ -47,12 +47,12 @@ public class TableMappingFactory {
      * TODO: write Javadoc.
      *
      * @param createTableRequestFactory maps virtual to physical table instances
-     * @param mtContext the multitenant context provider
-     * @param secondaryIndexMapper maps virtual to physical indexes
-     * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
-     * @param createTablesEagerly a flag indicating whether to create physical tables eagerly at start time
-     * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
-     *     created
+     * @param mtContext                 the multitenant context provider
+     * @param secondaryIndexMapper      maps virtual to physical indexes
+     * @param amazonDynamoDb            the underlying {@code AmazonDynamoDB} delegate
+     * @param createTablesEagerly       a flag indicating whether to create physical tables eagerly at start time
+     * @param pollIntervalSeconds       the interval in seconds between attempts at checking the status of the table
+     *                                  being created
      */
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,
