@@ -12,11 +12,14 @@ import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_HK_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_RK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI_HK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALUE;
@@ -42,6 +45,7 @@ import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.QueryResult;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
@@ -49,10 +53,12 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -409,17 +415,67 @@ class QueryTest {
         testArgument.forEachOrgContext(org -> {
             String table = TABLE5;
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
-                    new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
-                            .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
-                            .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                    createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
-                            .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
+                new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
+                    .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":value",
+                        createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
+                    .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
                 .withDefaults()
                 .build(), items.get(0));
         });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryGsiWithPaging(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            // add another gsi2 record so there are multiple and we'd need paging
+            Map<String, AttributeValue> secondRecord = ItemBuilder
+                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .withDefaults()
+                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
+                .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
+                .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
+                .build();
+            testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
+
+            Map<String, AttributeValue> firstRecord = ItemBuilder
+                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .withDefaults()
+                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                .build();
+            List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
+
+            assertEquals(expectedRecords, executeQueryWithPaging(
+                exclusiveStartKey -> testArgument.getAmazonDynamoDb().query(
+                    new QueryRequest(TABLE3)
+                        .withIndexName("testGsi2")
+                        .withKeyConditionExpression("#name = :value")
+                        .withExpressionAttributeNames(ImmutableMap.of("#name", GSI2_HK_FIELD))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value",
+                            createStringAttribute(GSI2_HK_FIELD_VALUE)))
+                        .withLimit(1)
+                        .withExclusiveStartKey(exclusiveStartKey))));
+        });
+    }
+
+    /**
+     * Executes a ScanRequest and iterates through pages until a scan result that has an empty lastEvaluatedKey
+     * is found.
+     */
+    private List<Map<String, AttributeValue>> executeQueryWithPaging(
+        Function<Map<String, AttributeValue>, QueryResult> queryExecutor) {
+        List<Map<String, AttributeValue>> items = new ArrayList<>();
+        Map<String, AttributeValue> exclusiveStartKey = null;
+        do {
+            QueryResult scanResult = queryExecutor.apply(exclusiveStartKey);
+            exclusiveStartKey = scanResult.getLastEvaluatedKey();
+            items.addAll(scanResult.getItems());
+        } while (exclusiveStartKey != null);
+        return items;
     }
 
     @ParameterizedTest(name = "{arguments}")

@@ -249,8 +249,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             // map key
             qualifiedBatchGetItemRequest.addRequestItemsEntry(
                 qualifiedTableName,
-                new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream().map(
-                    key -> tableMapping.getKeyMapper().apply(key)).collect(Collectors.toList())));
+                new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream()
+                    .map(key -> tableMapping.getItemMapper().applyToKeyAttributes(key, null))
+                    .collect(Collectors.toList())));
         });
 
         // batch get
@@ -280,7 +281,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                 .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
                                 .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
                                     .map(keysAndAttributes ->
-                                        tableMapping.getKeyMapper().reverse(keysAndAttributes))
+                                        tableMapping.getItemMapper().reverse(keysAndAttributes))
                                     .collect(Collectors.toList())));
                     });
             }
@@ -324,7 +325,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         deleteItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        deleteItemRequest.setKey(tableMapping.getKeyMapper().apply(deleteItemRequest.getKey()));
+        deleteItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(deleteItemRequest.getKey(), null));
 
         // map conditions
         tableMapping.getConditionMapper().apply(new DeleteItemRequestWrapper(deleteItemRequest));
@@ -395,7 +396,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         getItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        getItemRequest.setKey(tableMapping.getKeyMapper().apply(getItemRequest.getKey()));
+        getItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(getItemRequest.getKey(), null));
 
         // get
         GetItemResult getItemResult = getAmazonDynamoDb().getItem(getItemRequest);
@@ -429,7 +430,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         tableMapping.getConditionMapper().apply(new PutItemRequestWrapper(putItemRequest));
 
         // map item
-        putItemRequest.setItem(tableMapping.getItemMapper().apply(putItemRequest.getItem()));
+        putItemRequest.setItem(tableMapping.getItemMapper().applyForWrite(putItemRequest.getItem()));
 
         // put
         return getAmazonDynamoDb().putItem(putItemRequest);
@@ -506,7 +507,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         if (!items.isEmpty()) {
             scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
             if (scanResult.getLastEvaluatedKey() != null) {
-                scanResult.setLastEvaluatedKey(getKeyFromItem(Iterables.getLast(scanResult.getItems()), key));
+                Map<String, AttributeValue> lastItem = Iterables.getLast(scanResult.getItems());
+                Map<String, AttributeValue> lastEvaluatedKey = new HashMap<>();
+                lastEvaluatedKey.putAll(getKeyFromItem(lastItem, tableMapping.getVirtualTable().getPrimaryKey()));
+                if (scanRequest.getIndexName() != null) {
+                    lastEvaluatedKey.putAll(getKeyFromItem(lastItem, key));
+                }
+                scanResult.setLastEvaluatedKey(lastEvaluatedKey);
             }
         } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
 
@@ -588,7 +595,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         updateItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map key
-        updateItemRequest.setKey(tableMapping.getKeyMapper().apply(updateItemRequest.getKey()));
+        updateItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(updateItemRequest.getKey(), null));
 
         // map conditions
         tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
@@ -809,7 +816,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
 
-    @VisibleForTesting MtBackupManager getBackupManager() { 
+    @VisibleForTesting MtBackupManager getBackupManager() {
         return backupManager.orElse(null);
     }
 
