@@ -274,13 +274,13 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     @Override
-    public TableBuilder withScanTenantKey(String scanTenantKey) {
+    public SharedTableBuilder withScanTenantKey(String scanTenantKey) {
         this.scanTenantKey = scanTenantKey;
         return this;
     }
 
     @Override
-    public TableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
+    public SharedTableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
         this.scanVirtualTableKey = scanVirtualTableKey;
         return this;
     }
