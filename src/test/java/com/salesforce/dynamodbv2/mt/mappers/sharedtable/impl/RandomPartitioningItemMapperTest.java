@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.util.Collections;
 import java.util.Map;
@@ -31,15 +30,15 @@ class RandomPartitioningItemMapperTest {
     private static final String PREFIX = "PREFIX-";
     private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
         new MockFieldMapper(),
-        new RandomPartitioningTableMapping(new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder.builder()
-                    .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
-                .getCreateTableRequest()),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            null
+        new RandomPartitioningTableMapping(
+                new DynamoTableDescriptionImpl(
+                        CreateTableRequestBuilder.builder()
+                                .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
+                new DynamoTableDescriptionImpl(
+                        CreateTableRequestBuilder.builder()
+                                .withTableKeySchema("physicalHk", S, "physicalRk", S).build()),
+                null,
+                null
         ).getTablePrimaryKeyFieldMappings(),
         Collections.emptyMap());
 

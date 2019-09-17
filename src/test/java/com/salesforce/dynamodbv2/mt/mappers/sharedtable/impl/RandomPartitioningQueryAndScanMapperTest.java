@@ -23,11 +23,12 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -41,18 +42,21 @@ import org.junit.jupiter.params.provider.EnumSource;
 class RandomPartitioningQueryAndScanMapperTest {
 
     private static final DynamoTableDescription VIRTUAL_TABLE_DESCRIPTION = new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                    .withTableName("virtualTable")
-                    .withTableKeySchema("virtualHk", S)
-                    .addSi("virtualGsi", GSI, new PrimaryKey("virtualGsiHk", S), 1L).build());
+        CreateTableRequestBuilder.builder()
+            .withTableName("virtualTable")
+            .withTableKeySchema("virtualHk", S)
+            .addSi("virtualGsi", GSI, new PrimaryKey("virtualGsiHk", S), 1L).build());
     private static final DynamoTableDescription PHYSICAL_TABLE_DESCRIPTION = new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                    .withTableKeySchema("physicalHk", S)
-                    .addSi("physicalGsi", GSI, new PrimaryKey("physicalGsiHk", S), 1L).build());
+        CreateTableRequestBuilder.builder()
+            .withTableKeySchema("physicalHk", S)
+            .addSi("physicalGsi", GSI, new PrimaryKey("physicalGsiHk", S), 1L).build());
+    private static final Map<DynamoSecondaryIndex, DynamoSecondaryIndex> secondaryIndexMap = ImmutableMap.of(
+        VIRTUAL_TABLE_DESCRIPTION.findSi("virtualGsi"),
+        PHYSICAL_TABLE_DESCRIPTION.findSi("physicalGsi"));
     private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
         VIRTUAL_TABLE_DESCRIPTION,
-        new SingletonCreateTableRequestFactory(PHYSICAL_TABLE_DESCRIPTION.getCreateTableRequest()),
-        new DynamoSecondaryIndexMapperByTypeImpl(),
+        PHYSICAL_TABLE_DESCRIPTION,
+        secondaryIndexMap::get,
         new MtAmazonDynamoDbContextProvider() {
             @Override
             public Optional<String> getContextOpt() {

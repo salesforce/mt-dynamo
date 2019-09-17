@@ -10,6 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
@@ -34,15 +35,13 @@ import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByNameImpl;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
-import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.RandomPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
@@ -193,8 +192,6 @@ public class SharedTableBuilder implements TableBuilder {
     private MtAmazonDynamoDbContextProvider mtContext;
     private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
-    private CreateTableRequestFactory createTableRequestFactory;
-    private DynamoSecondaryIndexMapper secondaryIndexMapper;
     private MtSharedTableBackupManagerBuilder backupManagerBuilder;
     private Boolean binaryHashKey;
     private Boolean deleteTableAsync;
@@ -211,6 +208,7 @@ public class SharedTableBuilder implements TableBuilder {
     private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
     private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
     private String backupTablePrefix = DEFAULT_BACKUP_TABLE_PREFIX;
+    private TablePartitioningStrategy partitioningStrategy;
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -306,6 +304,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withPartitioningStrategy(TablePartitioningStrategy strategy) {
+        this.partitioningStrategy = strategy;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      *
@@ -315,17 +318,15 @@ public class SharedTableBuilder implements TableBuilder {
     public MtAmazonDynamoDbBySharedTable build() {
         setDefaults();
         withName("SharedTableBuilder");
-        withCreateTableRequestFactory(new SharedTableCreateTableRequestFactory(createTableRequests,
-            getTablePrefix()));
-        withDynamoSecondaryIndexMapper(new DynamoSecondaryIndexMapperByTypeImpl());
-        setDefaults();
         validate();
         if (tableMappingFactory == null) {
+            CreateTableRequestFactory createTableRequestFactory = new SharedTableCreateTableRequestFactory(
+                partitioningStrategy.getTablePrimaryKeyMapper(), createTableRequests, getTablePrefix());
             tableMappingFactory = new TableMappingFactory(
                 createTableRequestFactory,
                 mtContext,
-                secondaryIndexMapper,
                 amazonDynamoDb,
+                partitioningStrategy,
                 createTablesEagerly,
                 pollIntervalSeconds
             );
@@ -360,9 +361,12 @@ public class SharedTableBuilder implements TableBuilder {
         if (this.binaryHashKey == null) {
             binaryHashKey = false;
         }
+        if (partitioningStrategy == null) {
+            partitioningStrategy = new RandomPartitioningStrategy();
+        }
         if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
             this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                this.billingMode, this.streamsEnabled, this.binaryHashKey);
+                this.billingMode, this.streamsEnabled, this.binaryHashKey, this.partitioningStrategy);
         } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
             this.createTableRequests = createTableRequests.stream()
                 .map(createTableRequest ->
@@ -375,9 +379,6 @@ public class SharedTableBuilder implements TableBuilder {
         }
         if (this.billingMode == null) {
             this.billingMode = BillingMode.PROVISIONED;
-        }
-        if (secondaryIndexMapper == null) {
-            secondaryIndexMapper = new DynamoSecondaryIndexMapperByNameImpl();
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
@@ -431,49 +432,73 @@ public class SharedTableBuilder implements TableBuilder {
     /**
      * Builds the tables underlying the SharedTable implementation as described in the class-level Javadoc.
      */
-    private static List<CreateTableRequest> buildDefaultCreateTableRequests(long provisionedThroughput,
-                                                                            BillingMode billingMode,
-                                                                            boolean streamsEnabled,
-                                                                            boolean binaryHashKey) {
+    private static List<CreateTableRequest> buildDefaultCreateTableRequests(
+        long provisionedThroughput, BillingMode billingMode, boolean streamsEnabled, boolean binaryHashKey,
+        TablePartitioningStrategy partitioningStrategy) {
 
-        ScalarAttributeType hashKeyType = binaryHashKey ? B : S;
+        if (partitioningStrategy instanceof HashPartitioningStrategy) {
+            checkArgument(binaryHashKey, "Table hash key must be binary when using hash partitioning");
+            int numGsis = 5;
+            CreateTableRequestBuilder noLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table")
+                .withTableKeySchema(HASH_KEY_FIELD, B, RANGE_KEY_FIELD, B);
+            for (int i = 0; i < numGsis; i++) {
+                String name = "gsi" + i;
+                noLsi.addSi(name, GSI, new PrimaryKey(name + "_hk", B, name + "_rk", B), provisionedThroughput);
+            }
+            CreateTableRequestBuilder withLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_lsi")
+                .withTableKeySchema(HASH_KEY_FIELD, B, RANGE_KEY_FIELD, B)
+                .addSi("lsi", LSI, new PrimaryKey("hk", B, "lsi_rk", B), provisionedThroughput);
+            for (int i = 0; i < numGsis; i++) {
+                String name = "gsi" + i;
+                withLsi.addSi(name, GSI, new PrimaryKey(name + "_hk", B, name + "_rk", B), provisionedThroughput);
+            }
+            return ImmutableList.of(noLsi, withLsi).stream()
+                .map(createTableRequestBuilder -> {
+                    setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
+                    addStreamSpecification(createTableRequestBuilder, streamsEnabled);
+                    return createTableRequestBuilder.build();
+                }).collect(Collectors.toList());
+        } else {
+            ScalarAttributeType hashKeyType = binaryHashKey ? B : S;
 
+            CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
+            CreateTableRequestBuilder mtSharedTableStaticSn = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
+            CreateTableRequestBuilder mtSharedTableStaticSb = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
+            CreateTableRequestBuilder mtSharedTableStaticsNoLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_no_lsi")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType);
+            CreateTableRequestBuilder mtSharedTableStaticSsNoLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s_no_lsi")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
+            CreateTableRequestBuilder mtSharedTableStaticSnNoLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n_no_lsi")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
+            CreateTableRequestBuilder mtSharedTableStaticSbNoLsi = CreateTableRequestBuilder.builder()
+                .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b_no_lsi")
+                .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
 
-        CreateTableRequestBuilder mtSharedTableStaticSs = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
-        CreateTableRequestBuilder mtSharedTableStaticSn = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
-        CreateTableRequestBuilder mtSharedTableStaticSb = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
-        CreateTableRequestBuilder mtSharedTableStaticsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_no_lsi")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType);
-        CreateTableRequestBuilder mtSharedTableStaticSsNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_s_no_lsi")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, S);
-        CreateTableRequestBuilder mtSharedTableStaticSnNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_n_no_lsi")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, N);
-        CreateTableRequestBuilder mtSharedTableStaticSbNoLsi = CreateTableRequestBuilder.builder()
-            .withTableName("mt_shared_table_static_" + hashKeyType.name().toLowerCase() + "_b_no_lsi")
-            .withTableKeySchema(HASH_KEY_FIELD, hashKeyType, RANGE_KEY_FIELD, B);
-
-        return ImmutableList.of(mtSharedTableStaticSs,
-            mtSharedTableStaticSn,
-            mtSharedTableStaticSb,
-            mtSharedTableStaticsNoLsi,
-            mtSharedTableStaticSsNoLsi,
-            mtSharedTableStaticSnNoLsi,
-            mtSharedTableStaticSbNoLsi
-        ).stream().map(createTableRequestBuilder -> {
-            setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
-            addSis(createTableRequestBuilder, hashKeyType, provisionedThroughput);
-            addStreamSpecification(createTableRequestBuilder, streamsEnabled);
-            return createTableRequestBuilder.build();
-        }).collect(Collectors.toList());
+            return ImmutableList.of(mtSharedTableStaticSs,
+                mtSharedTableStaticSn,
+                mtSharedTableStaticSb,
+                mtSharedTableStaticsNoLsi,
+                mtSharedTableStaticSsNoLsi,
+                mtSharedTableStaticSnNoLsi,
+                mtSharedTableStaticSbNoLsi
+            ).stream().map(createTableRequestBuilder -> {
+                setBillingMode(createTableRequestBuilder, billingMode, provisionedThroughput);
+                addSis(createTableRequestBuilder, hashKeyType, provisionedThroughput);
+                addStreamSpecification(createTableRequestBuilder, streamsEnabled);
+                return createTableRequestBuilder.build();
+            }).collect(Collectors.toList());
+        }
     }
 
     /**
@@ -555,18 +580,6 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withCreateTableRequestFactory(
-        CreateTableRequestFactory createTableRequestFactory) {
-        this.createTableRequestFactory = createTableRequestFactory;
-        return this;
-    }
-
-    public SharedTableBuilder withDynamoSecondaryIndexMapper(
-        DynamoSecondaryIndexMapper dynamoSecondaryIndexMapper) {
-        this.secondaryIndexMapper = dynamoSecondaryIndexMapper;
-        return this;
-    }
-
     public SharedTableBuilder withTableDescriptionRepo(MtTableDescriptionRepo mtTableDescriptionRepo) {
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         return this;
@@ -609,7 +622,6 @@ public class SharedTableBuilder implements TableBuilder {
     private void validate() {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
-        checkNotNull(createTableRequestFactory, "createTableRequestFactory is required");
 
         boolean tableCollidesWithBackupPrefix = createTableRequests
             .stream()
@@ -619,8 +631,6 @@ public class SharedTableBuilder implements TableBuilder {
             "Cannot suffix a physical table name with "
                 + DEFAULT_BACKUP_TABLE_PREFIX
                 + ". Either change your table names or override the default backup suffix.");
-
-
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
@@ -648,14 +658,13 @@ public class SharedTableBuilder implements TableBuilder {
      */
     static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
 
-        private final PrimaryKeyMapper primaryKeyMapper = new PrimaryKeyMapperByTypeImpl(false);
+        private final PrimaryKeyMapper primaryKeyMapper;
         private final List<CreateTableRequest> createTableRequests;
 
-        /**
-         * Public constructor.
-         */
-        SharedTableCreateTableRequestFactory(List<CreateTableRequest> createTableRequests,
+        SharedTableCreateTableRequestFactory(PrimaryKeyMapper primaryKeyMapper,
+                                             List<CreateTableRequest> createTableRequests,
                                              Optional<String> tablePrefix) {
+            this.primaryKeyMapper = primaryKeyMapper;
             this.createTableRequests = createTableRequests.stream()
                 .map(createTableRequest -> createTableRequest.withTableName(
                     prefix(tablePrefix, createTableRequest.getTableName())))
