@@ -29,19 +29,22 @@ import org.junit.jupiter.api.Test;
 class RandomPartitioningItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
-    private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
-        new MockFieldMapper(),
-        new RandomPartitioningTableMapping(new DynamoTableDescriptionImpl(
+    private static final RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+        new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder.builder()
-                    .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
-                .getCreateTableRequest()),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            null
-        ).getTablePrimaryKeyFieldMappings(),
-        Collections.emptyMap());
+        new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder()
+                .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
+            .getCreateTableRequest()),
+        new DynamoSecondaryIndexMapperByTypeImpl(),
+        null
+    );
+    private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
+        new MockFieldMapper(),
+        tableMapping.getTablePrimaryKeyFieldMappings(),
+        Collections.emptyMap(),
+        tableMapping.getAllMappingsPerField());
 
     @Test
     void applyAndReverse() {

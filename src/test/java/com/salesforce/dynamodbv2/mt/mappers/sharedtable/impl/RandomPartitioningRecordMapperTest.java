@@ -32,19 +32,22 @@ class RandomPartitioningRecordMapperTest {
     private final String virtualRk = "vrk";
     private final String physicalHk = "phk";
     private final String physicalRk = "prk";
-    private final RandomPartitioningItemMapper itemMapper = new RandomPartitioningItemMapper(
-        new StringFieldMapper(provider, tableName),
-        new RandomPartitioningTableMapping(new DynamoTableDescriptionImpl(
+    private final RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+        new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema(virtualHk, S, virtualRk, S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder.builder()
-                    .withTableKeySchema(physicalHk, S, physicalRk, S).build())
-                .getCreateTableRequest()),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            null
-        ).getTablePrimaryKeyFieldMappings(),
-        Collections.emptyMap());
+        new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder()
+                .withTableKeySchema(physicalHk, S, physicalRk, S).build())
+            .getCreateTableRequest()),
+        new DynamoSecondaryIndexMapperByTypeImpl(),
+        null
+    );
+    private final RandomPartitioningItemMapper itemMapper = new RandomPartitioningItemMapper(
+        new StringFieldMapper(provider, tableName),
+        tableMapping.getTablePrimaryKeyFieldMappings(),
+        Collections.emptyMap(),
+        tableMapping.getAllMappingsPerField());
     private final FieldMapper fieldMapper = new StringFieldMapper(provider, tableName);
     private final RandomPartitioningRecordMapper sut = new RandomPartitioningRecordMapper(
         provider, tableName, itemMapper, fieldMapper, physicalHk);

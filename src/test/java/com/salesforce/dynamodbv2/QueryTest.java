@@ -311,7 +311,7 @@ class QueryTest {
     @ArgumentsSource(DefaultArgumentProvider.class)
     void queryHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            String keyConditionExpression = "#hk = :hkv and #rk = :rkv";
+            String keyConditionExpression = "#hk = :hkv and #rk <= :rkv";
             Map<String, String> queryExpressionAttrNames = ImmutableMap.of(
                 "#hk", HASH_KEY_FIELD,
                 "#rk", RANGE_KEY_FIELD);
@@ -393,10 +393,31 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    void queryGsi(TestArgument testArgument) {
+    void queryHkRkWithFilterExpression_lessThanOrEqual(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(TABLE3).withKeyConditionExpression("#name = :value")
+                    .withFilterExpression("#name2 <= :value2")
+                    .withExpressionAttributeNames(ImmutableMap.of("#name", HASH_KEY_FIELD, "#name2", SOME_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":value", createAttributeValue(
+                        testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
+                        ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
+            assertEquals(1, items.size());
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                    .withDefaults()
+                    .build(),
+                items.get(0));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void queryGsi(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
+                new QueryRequest().withTableName(TABLE3)
+                    .withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", GSI_HK_FIELD))
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(GSI_HK_FIELD_VALUE)))
                     .withIndexName("testGsi")).getItems();
@@ -417,8 +438,11 @@ class QueryTest {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
                 new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
-                    .withExpressionAttributeValues(ImmutableMap.of(":value",
-                        createStringAttribute(RANGE_KEY_OTHER_S_VALUE)))
+                    .withExpressionAttributeValues(ImmutableMap.of(
+                        ":value", createStringAttribute(RANGE_KEY_OTHER_S_VALUE),
+                        ":hkValue", createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    ))
+                    .withFilterExpression(HASH_KEY_FIELD + " = :hkValue")
                     .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
