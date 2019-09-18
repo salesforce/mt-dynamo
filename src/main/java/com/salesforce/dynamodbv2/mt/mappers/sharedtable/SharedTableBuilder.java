@@ -178,7 +178,6 @@ public class SharedTableBuilder implements TableBuilder {
 
     /**
      * Special default prefix to a physical table name use for temp snapshots of tables to generate tenant backups.
-     *
      */
     private static final String DEFAULT_BACKUP_TABLE_PREFIX = "mt-table-snapshot-";
 
