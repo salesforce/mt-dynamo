@@ -27,7 +27,7 @@ import java.util.function.UnaryOperator;
  * {@link TableMapping} implementation for shared tables that use random partitioning. That is, where
  * <pre>
  *     physicalHashKey = tenantId + virtualTableName + virtualHashKey
- *     phyiscalRangeKey = virtualRangeKey
+ *     physicalRangeKey = virtualRangeKey
  * </pre>
  * See https://salesforce.quip.com/hULMAJ0KNFUY
  *
@@ -40,6 +40,7 @@ public class RandomPartitioningTableMapping implements TableMapping {
 
     private final List<FieldMapping> tablePrimaryKeyFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings;
+    private final Map<String, List<FieldMapping>> allMappingsPerField;
 
     private final ItemMapper itemMapper;
     private final RecordMapper recordMapper;
@@ -56,12 +57,20 @@ public class RandomPartitioningTableMapping implements TableMapping {
         this.tablePrimaryKeyFieldMappings = buildTablePrimaryKeyFieldMappings(virtualTable, physicalTable);
         this.indexPrimaryKeyFieldMappings = buildIndexPrimaryKeyFieldMappings(virtualTable, secondaryIndexMapper);
 
+        // build map from each field to any PK or secondary index mappings
+        this.allMappingsPerField = new HashMap<>();
+        tablePrimaryKeyFieldMappings.forEach(
+            fieldMapping -> addFieldMapping(allMappingsPerField, fieldMapping));
+        indexPrimaryKeyFieldMappings.values().forEach(
+            list -> list.forEach(
+                fieldMapping -> addFieldMapping(allMappingsPerField, fieldMapping)));
+
         FieldMapper fieldMapper = physicalTable.getPrimaryKey().getHashKeyType() == S
             ? new StringFieldMapper(mtContext, virtualTable.getTableName())
             : new BinaryFieldMapper(mtContext, virtualTable.getTableName());
 
         itemMapper = new RandomPartitioningItemMapper(fieldMapper, tablePrimaryKeyFieldMappings,
-            indexPrimaryKeyFieldMappings);
+            indexPrimaryKeyFieldMappings, allMappingsPerField);
         recordMapper = new RandomPartitioningRecordMapper(mtContext, virtualTable.getTableName(), itemMapper,
             fieldMapper, physicalTable.getPrimaryKey().getHashKey());
         queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(this, fieldMapper);
@@ -110,6 +119,13 @@ public class RandomPartitioningTableMapping implements TableMapping {
      */
     List<FieldMapping> getIndexPrimaryKeyFieldMappings(DynamoSecondaryIndex virtualSecondaryIndex) {
         return indexPrimaryKeyFieldMappings.get(virtualSecondaryIndex);
+    }
+
+    /*
+     * Returns map from each field to any PK or secondary index mappings.
+     */
+    Map<String, List<FieldMapping>> getAllMappingsPerField() {
+        return allMappingsPerField;
     }
 
     @Override
@@ -175,6 +191,15 @@ public class RandomPartitioningTableMapping implements TableMapping {
             secondaryIndexFieldMappings.put(virtualSi, fieldMappings);
         }
         return secondaryIndexFieldMappings;
+    }
+
+    /**
+     * Helper method for adding a single FieldMapping object to the existing list of FieldMapping objects.
+     */
+    private static void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
+        String key = fieldMappingToAdd.getSource().getName();
+        List<FieldMapping> fieldMapping = fieldMappings.computeIfAbsent(key, k -> new ArrayList<>());
+        fieldMapping.add(fieldMappingToAdd);
     }
 
 }

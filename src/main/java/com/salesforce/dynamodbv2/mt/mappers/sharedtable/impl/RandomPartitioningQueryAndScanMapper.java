@@ -49,8 +49,8 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
 
     private static final String VALUE_PLACEHOLDER = ":___value___";
     private static final Map<ComparisonOperator, BiFunction<String, String, String>>
-            FIELD_AND_VALUE_TO_EXPRESSION_STRINGS
-        = new ImmutableMap.Builder<ComparisonOperator, BiFunction<String, String, String>>()
+        FIELD_AND_VALUE_TO_EXPRESSION_STRINGS = new ImmutableMap
+        .Builder<ComparisonOperator, BiFunction<String, String, String>>()
         .put(EQ, (field, value) -> field + " = " + value)
         .put(GT, (field, value) -> field + " > " + value)
         .put(GE, (field, value) -> field + " >= " + value)
@@ -71,21 +71,21 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
     @Override
     public void apply(QueryRequest queryRequest) {
         validateQueryRequest(queryRequest);
-        apply(new QueryRequestWrapper(queryRequest));
+        apply(new QueryRequestWrapper(queryRequest), true);
     }
 
     @Override
     public void apply(ScanRequest scanRequest) {
         validateScanRequest(scanRequest);
-        apply(new ScanRequestWrapper(scanRequest));
+        apply(new ScanRequestWrapper(scanRequest), false);
     }
 
-    private void apply(RequestWrapper request) {
+    private void apply(RequestWrapper request, boolean isQuery) {
         convertLegacyExpression(request);
 
         DynamoSecondaryIndex virtualSecondaryIndex = null;
         String virtualHashKey;
-        Collection<FieldMapping> fieldMappings;
+        List<FieldMapping> fieldMappings;
         if (request.getIndexName() == null) {
             // query or scan does NOT use index
             virtualHashKey = tableMapping.getVirtualTable().getPrimaryKey().getHashKey();
@@ -94,7 +94,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
             // query uses index
             virtualSecondaryIndex = tableMapping.getVirtualTable().findSi(request.getIndexName());
             fieldMappings = tableMapping.getIndexPrimaryKeyFieldMappings(virtualSecondaryIndex);
-            request.setIndexName(((List<FieldMapping>) fieldMappings).get(0).getPhysicalIndexName());
+            request.setIndexName(fieldMappings.get(0).getPhysicalIndexName());
             virtualHashKey = virtualSecondaryIndex.getPrimaryKey().getHashKey();
         }
 
@@ -104,7 +104,17 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
         checkNotNull(request.getPrimaryExpression(), "request expression is required");
 
         // map each field to its target name and apply field prefixing as appropriate
-        tableMapping.getConditionMapper().apply(request, virtualSecondaryIndex);
+        if (isQuery) {
+            // key condition
+            tableMapping.getConditionMapper().applyToKeyCondition(request, virtualSecondaryIndex);
+            // filter expression
+            if (request.getFilterExpression() != null) {
+                tableMapping.getConditionMapper().applyToFilterExpression(request, false);
+            }
+        } else {
+            // filter expression
+            tableMapping.getConditionMapper().applyToFilterExpression(request, true);
+        }
 
         applyExclusiveStartKey(request, virtualSecondaryIndex);
     }
@@ -151,7 +161,7 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
     }
 
     private boolean queryContainsHashKeyCondition(RequestWrapper request,
-        String hashKeyField) {
+                                                  String hashKeyField) {
         String conditionExpression = request.getPrimaryExpression();
         if (conditionExpression == null) {
             // no filter criteria

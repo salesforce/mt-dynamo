@@ -69,18 +69,24 @@ public class HashPartitioningTableMapping implements TableMapping {
 
     @Override
     public ConditionMapper getConditionMapper() {
-        // TODO
+        // TODO implement ConditionMapper (returning something non-null for now so we can run PutTest)
         return new ConditionMapper() {
 
             @Override
-            public void apply(RequestWrapper request) {
+            public void applyForUpdate(RequestWrapper request) {
 
             }
 
             @Override
-            public void apply(RequestWrapper request, @Nullable DynamoSecondaryIndex virtualSecondaryIndex) {
+            public void applyToKeyCondition(RequestWrapper request, @Nullable DynamoSecondaryIndex virtualSecondaryIndex) {
 
             }
+
+            @Override
+            public void applyToFilterExpression(RequestWrapper request, boolean isPrimaryExpression) {
+
+            }
+
         };
     }
 

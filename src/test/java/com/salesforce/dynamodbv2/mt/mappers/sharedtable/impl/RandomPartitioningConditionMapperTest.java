@@ -4,7 +4,6 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,13 +17,13 @@ import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningQueryAndScanMapper.QueryRequestWrapper;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,19 +36,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 class RandomPartitioningConditionMapperTest {
 
     private static final RandomPartitioningTableMapping tableMapping = mock(RandomPartitioningTableMapping.class);
-    private static RandomPartitioningConditionMapper SUT = null;
-
-    @BeforeAll
-    static void beforeAll() {
-        when(tableMapping.getTablePrimaryKeyFieldMappings())
-            .thenReturn(ImmutableList.of(new FieldMapping(new Field("field", S),
-            new Field("field", S),
-            null,
-            null,
-            TABLE,
-            true)));
-        SUT = new RandomPartitioningConditionMapper(tableMapping, null);
-    }
 
     @ParameterizedTest(name = "{index}")
     @MethodSource("applyKeyConditionToFieldInvocations")
@@ -68,10 +54,9 @@ class RandomPartitioningConditionMapperTest {
         RandomPartitioningConditionMapper sut = new RandomPartitioningConditionMapper(tableMapping,
                 new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
-        sut.applyKeyConditionToField(requestWrapper,
-                inputs.getFieldMapping(),
-                inputs.getPrimaryExpression(),
-                inputs.getFilterExpression());
+        sut.mapFieldInConditionExpression(inputs.getPrimaryExpression(),
+            requestWrapper,
+            inputs.getFieldMapping());
         expected.getAttributeNames().forEach((name, value) ->
                 verify(requestWrapper).putExpressionAttributeName(name, value));
         expected.getAttributeValues().forEach((name, attributeValue) ->
@@ -85,7 +70,6 @@ class RandomPartitioningConditionMapperTest {
         private String[] attributeValues;
         private FieldMapping fieldMapping;
         private String primaryExpression;
-        private String filterExpression;
 
         private KeyConditionTestInputs() {
         }
@@ -95,15 +79,13 @@ class RandomPartitioningConditionMapperTest {
                                        String[] attributeNames,
                                        String[] attributeValues,
                                        FieldMapping fieldMapping,
-                                       String primaryExpression,
-                                       String filterExpression) {
+                                       String primaryExpression) {
             this.org = org;
             this.virtualTableName = virtualTableName;
             this.attributeNames = attributeNames;
             this.attributeValues = attributeValues;
             this.fieldMapping = fieldMapping;
             this.primaryExpression = primaryExpression;
-            this.filterExpression = filterExpression;
         }
 
         KeyConditionTestInputs org(String org) {
@@ -137,11 +119,6 @@ class RandomPartitioningConditionMapperTest {
             return this;
         }
 
-        KeyConditionTestInputs filterExpression(String filterExpression) {
-            this.filterExpression = filterExpression;
-            return this;
-        }
-
         String getOrg() {
             return org;
         }
@@ -165,18 +142,13 @@ class RandomPartitioningConditionMapperTest {
             return primaryExpression;
         }
 
-        String getFilterExpression() {
-            return filterExpression;
-        }
-
         KeyConditionTestInputs build() {
             return new KeyConditionTestInputs(org,
                     virtualTableName,
                     attributeNames,
                     attributeValues,
                     fieldMapping,
-                    primaryExpression,
-                    filterExpression);
+                    primaryExpression);
         }
 
     }
@@ -249,7 +221,7 @@ class RandomPartitioningConditionMapperTest {
                                         TABLE,
                                         true))
                                 .primaryExpression("#field1 = :value")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field1", "physicalHk")
                                 .attributeValues(":value", "ctx/virtualTable/hkValue").build()
@@ -268,7 +240,7 @@ class RandomPartitioningConditionMapperTest {
                                     SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#field = :value")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#field", "physicalGsiHk")
                                 .attributeValues(":value", "ctx/virtualTable/hkGsiValue").build()
@@ -286,7 +258,7 @@ class RandomPartitioningConditionMapperTest {
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1/Table3/1").build()
@@ -304,29 +276,10 @@ class RandomPartitioningConditionMapperTest {
                                         TABLE,
                                         false))
                                 .primaryExpression("#name = :value AND #name2 = :value2")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name2", "rk")
                                 .attributeValues(":value2", "rangeKeyValue").build()
-                ),
-                // map table's hash-key field name on a filter expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name2", "someField", "#name", "hashKeyField")
-                                .attributeValues(":value2", "someValue3a", ":value", "hashKeyValue3")
-                                .fieldMapping(new FieldMapping(
-                                        new Field("hashKeyField", S), new Field("hk", S),
-                                        "Table3",
-                                        "mt_shared_table_static_s_s",
-                                        TABLE,
-                                        true))
-                                .primaryExpression("#name = :value")
-                                .filterExpression("#name2 = :value2").build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1/Table3/hashKeyValue3").build()
                 ),
                 // map table's range-key field name on a filter expression on a table with hk and rk
                 new KeyConditionTestInvocation(
@@ -342,8 +295,8 @@ class RandomPartitioningConditionMapperTest {
                                         "mt_shared_table_static_s_s",
                                         TABLE,
                                         false))
-                                .primaryExpression("set #someField = :newValue")
-                                .filterExpression("#hk = :currentHkValue and #rk = :currentRkValue").build(),
+                                .primaryExpression("#hk = :currentHkValue and #rk = :currentRkValue")
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#rk", "rk")
                                 .attributeValues(":currentRkValue", "rangeKeyValue").build()
@@ -361,7 +314,7 @@ class RandomPartitioningConditionMapperTest {
                                     SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
                                 .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
@@ -380,7 +333,7 @@ class RandomPartitioningConditionMapperTest {
                                         TABLE,
                                         true))
                                 .primaryExpression("#name = :value and #name2 = :value2")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "hk")
                                 .attributeValues(":value", "ctx1/Table3/1").build()
@@ -399,7 +352,7 @@ class RandomPartitioningConditionMapperTest {
                                     SECONDARY_INDEX,
                                         false))
                                 .primaryExpression("#name = :value and #name2 = :value2")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name2", "lsi_s_s_rk")
                                 .attributeValues(":value2", "indexFieldValue").build()
@@ -417,7 +370,7 @@ class RandomPartitioningConditionMapperTest {
                                     SECONDARY_INDEX,
                                         true))
                                 .primaryExpression("#name = :value and begins_with(#___name___, :___value___)")
-                                .filterExpression(null).build(),
+                                .build(),
                         new KeyConditionTestExpected()
                                 .attributeNames("#name", "gsi_s_hk")
                                 .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
@@ -434,7 +387,7 @@ class RandomPartitioningConditionMapperTest {
                             TABLE,
                             true))
                         .primaryExpression("attribute_exists(#field1)")
-                        .filterExpression(null).build(),
+                        .build(),
                     new KeyConditionTestExpected()
                         .attributeNames("#field1", "physicalHk").build()
                 )
@@ -456,59 +409,50 @@ class RandomPartitioningConditionMapperTest {
 
     @Test
     void convertFieldNameLiteralsToExpressionNames() {
+        String expression = "literal = :value AND attribute_exists(literal) AND prefix_literal_suffix > :value2"
+            + " AND #literal = :value3";
+        String expected = "#field1 = :value AND attribute_exists(#field1) AND #field2 > :value2"
+            + " AND #literal = :value3";
         RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
-            .withKeyConditionExpression("field = :value")
             .withExpressionAttributeNames(new HashMap<>())
-            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
-        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper, tableMapping.getTablePrimaryKeyFieldMappings());
-        assertEquals("#field1 = :value", requestWrapper.getPrimaryExpression());
-        assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
+            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/));
+        String actual = RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
+            expression, requestWrapper, ImmutableList.of("literal", "other_literal", "prefix_literal_suffix"));
+        assertEquals(expected, actual);
+        assertEquals(ImmutableMap.of("#field1", "literal", "#field2", "prefix_literal_suffix"),
+            requestWrapper.getExpressionAttributeNames());
     }
 
     @Test
-    void convertFieldNameLiteralsToExpressionNamesMultiple() {
+    void convertFieldNameLiteralsToExpressionNames_allSupportedOperators() {
+        validateConvertFieldNameLiteralsSingleLiteral("literal = :value");
+        validateConvertFieldNameLiteralsSingleLiteral("literal <> :value");
+        validateConvertFieldNameLiteralsSingleLiteral("literal > :value");
+        validateConvertFieldNameLiteralsSingleLiteral("literal >= :value");
+        validateConvertFieldNameLiteralsSingleLiteral("literal < :value");
+        validateConvertFieldNameLiteralsSingleLiteral("literal <= :value");
+        validateConvertFieldNameLiteralsSingleLiteral("attribute_exists(literal)");
+        validateConvertFieldNameLiteralsSingleLiteral("attribute_not_exists(literal)");
+    }
+
+    private void validateConvertFieldNameLiteralsSingleLiteral(String expression) {
         RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
-            .withKeyConditionExpression("field = :value and field2 = :value2 and field = :value3")
             .withExpressionAttributeNames(new HashMap<>())
-            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue())));
-        SUT.convertFieldNameLiteralsToExpressionNames(requestWrapper, tableMapping.getTablePrimaryKeyFieldMappings());
-        assertEquals("#field1 = :value and field2 = :value2 and #field1 = :value3",
-            requestWrapper.getPrimaryExpression());
-        assertEquals(ImmutableMap.of("#field1", "field"), requestWrapper.getExpressionAttributeNames());
+            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/));
+        String actual = RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
+            expression, requestWrapper, ImmutableList.of("literal"));
+        assertEquals(expression.replace("literal", "#field1"), actual);
+        assertEquals(ImmutableMap.of("#field1", "literal"), requestWrapper.getExpressionAttributeNames());
     }
 
     @Test
-    void getNextFieldPlaceholder() {
-        assertEquals("#field0", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
-                new HashMap<>(), new AtomicInteger(0)));
-        assertEquals("#field1", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
-                new HashMap<>(), new AtomicInteger(1)));
-        assertEquals("#field2", RandomPartitioningConditionMapper.getNextFieldPlaceholder(
-                ImmutableMap.of("#field0", "someName0", "#field1", "someName1"),
-                new AtomicInteger(0)));
-    }
-
-    @Test
-    void findVirtualValuePlaceholderInEitherExpression() {
-        assertEquals(":currentValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-            "set #someField = :newValue",
-            "#hk = :currentValue", "#hk").orElseThrow());
-        assertEquals(":currentHkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-                "set #someField = :newValue",
-                "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#hk").orElseThrow());
-        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-                "set #someField = :newValue",
-                "#hk = :currentHkValue and #rk = :currentRkValue",
-                "#rk").orElseThrow());
-        assertFalse(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-                "set #someField = :newValue",
-                "#hk = :currentValue", "#invalid").isPresent());
-        assertEquals(":ue1", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-            "set #ue1 = :ue1, #ue2 = :ue2",
-            null, "#ue1").orElseThrow());
-        assertFalse(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-            null, null, "#invalid").isPresent());
+    void getNextPlaceholder() {
+        assertEquals("#field1", RandomPartitioningConditionMapper.getNextPlaceholder(
+                new HashMap<>(), "#field"));
+        assertEquals("#field2", RandomPartitioningConditionMapper.getNextPlaceholder(
+                ImmutableMap.of("#field1", "literal"), "#field"));
+        assertEquals(":value3", RandomPartitioningConditionMapper.getNextPlaceholder(
+                ImmutableMap.of(":value1", "someValue1", ":value2", "someValue2"), ":value"));
     }
 
     @Test
@@ -521,10 +465,64 @@ class RandomPartitioningConditionMapperTest {
             "#hk = :currentHkValue and #rk = :currentRkValue", "#hk").orElseThrow());
         assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentHkValue and #rk = :currentRkValue", "#rk").orElseThrow());
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "#hk = :currentHkValue and #rk <> :currentRkValue", "#rk").orElseThrow());
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "#hk = :currentHkValue and #rk > :currentRkValue", "#rk").orElseThrow());
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "#hk = :currentHkValue and #rk >= :currentRkValue", "#rk").orElseThrow());
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "#hk = :currentHkValue and #rk < :currentRkValue", "#rk").orElseThrow());
+        assertEquals(":currentRkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "#hk = :currentHkValue and #rk <= :currentRkValue", "#rk").orElseThrow());
         assertEquals(Optional.of(":ue1"), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
         assertEquals(Optional.empty(), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             null, null));
+    }
+
+    @Test
+    void makePlaceholdersDistinct() {
+        String primaryExpression = "SET #field1 = :value1";
+        String expression = "#field1 = :value1 AND #field2 <> :value2 AND #field3 > :value1";
+        String expectedExpression = "#field4 = :value3 AND #field2 <> :value2 AND #field3 > :value3";
+        RequestWrapper request = new QueryRequestWrapper(new QueryRequest()
+            .withExpressionAttributeNames(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
+                ":value2", new AttributeValue("y"))));
+        assertEquals(expectedExpression, RandomPartitioningConditionMapper.makePlaceholdersDistinct(
+            primaryExpression, expression, request));
+        assertEquals(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C", "#field4", "A"),
+            request.getExpressionAttributeNames());
+        assertEquals(ImmutableMap.of(":value1", new AttributeValue("x"),
+            ":value2", new AttributeValue("y"), ":value3", new AttributeValue("x")),
+            request.getExpressionAttributeValues());
+    }
+
+    @Test
+    void applyToUpdateExpression() {
+        RandomPartitioningConditionMapper mapper = new RandomPartitioningConditionMapper(null,
+            new StringFieldMapper(() -> Optional.of("ctx"), "virtualTable"));
+
+        String expression = "SET #field1 = :value1, #field2 = :value2";
+        String virtualField = "field1";
+        List<FieldMapping> fieldMappings = ImmutableList.of(
+            new FieldMapping(new Field("field1", S), new Field("physicalGsi1Hk", S), null, null, null, true),
+            new FieldMapping(new Field("field1", S), new Field("physicalGsi2Rk", S), null, null, null, false)
+        );
+        RequestWrapper request = new QueryRequestWrapper(new QueryRequest()
+            .withExpressionAttributeNames(ImmutableMap.of("#field1", "field1", "#field2", "field2"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
+                ":value2", new AttributeValue("y"))));
+
+        String actualExpression = mapper.mapFieldInUpdateExpression(expression, request, virtualField, fieldMappings);
+        assertEquals("SET #field1 = :value1, #field3 = :value3, #field2 = :value2", actualExpression);
+        assertEquals(ImmutableMap.of("#field1", "physicalGsi1Hk", "#field2", "field2", "#field3", "physicalGsi2Rk"),
+            request.getExpressionAttributeNames());
+        assertEquals(ImmutableMap.of(":value1", new AttributeValue("ctx/virtualTable/x"),
+            ":value2", new AttributeValue("y"),
+            ":value3", new AttributeValue("x")),
+            request.getExpressionAttributeValues());
     }
 
 }

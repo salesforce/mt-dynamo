@@ -330,7 +330,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         deleteItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(deleteItemRequest.getKey(), null));
 
         // map conditions
-        tableMapping.getConditionMapper().apply(new DeleteItemRequestWrapper(deleteItemRequest));
+        tableMapping.getConditionMapper().applyToFilterExpression(new DeleteItemRequestWrapper(deleteItemRequest),
+            true);
 
         // delete
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
@@ -429,7 +430,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map conditions
-        tableMapping.getConditionMapper().apply(new PutItemRequestWrapper(putItemRequest));
+        tableMapping.getConditionMapper().applyToFilterExpression(new PutItemRequestWrapper(putItemRequest), true);
 
         // map item
         putItemRequest.setItem(tableMapping.getItemMapper().applyForWrite(putItemRequest.getItem()));
@@ -600,7 +601,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         updateItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(updateItemRequest.getKey(), null));
 
         // map conditions
-        tableMapping.getConditionMapper().apply(new UpdateItemRequestWrapper(updateItemRequest));
+        tableMapping.getConditionMapper().applyForUpdate(new UpdateItemRequestWrapper(updateItemRequest));
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
@@ -818,7 +819,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
 
-    @VisibleForTesting MtBackupManager getBackupManager() { 
+    @VisibleForTesting MtBackupManager getBackupManager() {
         return backupManager.orElse(null);
     }
 

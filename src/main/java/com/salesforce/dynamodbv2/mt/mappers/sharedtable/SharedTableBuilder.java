@@ -177,7 +177,6 @@ public class SharedTableBuilder implements TableBuilder {
 
     /**
      * Special default prefix to a physical table name use for temp snapshots of tables to generate tenant backups.
-     *
      */
     private static final String DEFAULT_BACKUP_TABLE_PREFIX = "mt-table-snapshot-";
 
@@ -272,13 +271,13 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     @Override
-    public TableBuilder withScanTenantKey(String scanTenantKey) {
+    public SharedTableBuilder withScanTenantKey(String scanTenantKey) {
         this.scanTenantKey = scanTenantKey;
         return this;
     }
 
     @Override
-    public TableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
+    public SharedTableBuilder withScanVirtualTableKey(String scanVirtualTableKey) {
         this.scanVirtualTableKey = scanVirtualTableKey;
         return this;
     }
