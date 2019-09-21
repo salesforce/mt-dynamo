@@ -29,6 +29,8 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
 
     static final String NAME_PLACEHOLDER = "#___name___";
     private static final String COMPARISON_OP_PATTERN = "(=|<>|<|<=|>|>=)";
+    private static final Pattern ATTR_NAME_PLACEHOLDER_PATTERN = Pattern.compile("#[a-zA-Z0-9]+");
+    private static final Pattern ATTR_VALUE_PLACEHOLDER_PATTERN = Pattern.compile(":[a-zA-Z0-9]+");
 
     private final RandomPartitioningTableMapping tableMapping;
     private final FieldMapper fieldMapper;
@@ -77,7 +79,7 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
         String expression = isPrimaryExpression ? request.getPrimaryExpression() : request.getFilterExpression();
 
         // for conditional / filter expressions, for each indexed field, we only need to use one of its field mappings,
-        // since we're supporting only equals expressions
+        // since any of the possible physical field comparison expressions are true IFF virtual field comparison is true
         List<FieldMapping> fieldMappings = new ArrayList<>(tableMapping.getAllMappingsPerField().size());
         tableMapping.getAllMappingsPerField().forEach((virtualField, mappings) -> fieldMappings.add(mappings.get(0)));
 
@@ -90,6 +92,10 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
         }
     }
 
+    /**
+     * Used by applyToKeyCondition() and applyToFilterExpression() to apply the given field mappings to a
+     * condition/filter expression.
+     */
     private String mapFieldsInConditionExpression(String expression,
                                                   RequestWrapper request,
                                                   Collection<FieldMapping> fieldMappings) {
@@ -181,19 +187,20 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
     }
 
     private void validateNotUpdatingTablePrimaryKeyFields(String updateExpression, RequestWrapper request) {
-        PrimaryKey primaryKey = tableMapping.getVirtualTable().getPrimaryKey();
-        Set<String> tablePrimaryKeyFields = new HashSet<>();
-        tablePrimaryKeyFields.add(primaryKey.getHashKey());
-        primaryKey.getRangeKey().ifPresent(tablePrimaryKeyFields::add);
+        if (updateExpression != null) {
+            PrimaryKey primaryKey = tableMapping.getVirtualTable().getPrimaryKey();
+            Set<String> tablePrimaryKeyFields = new HashSet<>();
+            tablePrimaryKeyFields.add(primaryKey.getHashKey());
+            primaryKey.getRangeKey().ifPresent(tablePrimaryKeyFields::add);
 
-        Pattern p = Pattern.compile("#[a-zA-Z0-9]+");
-        Matcher m = p.matcher(updateExpression);
-        while (m.find()) {
-            String placeholder = m.group();
-            String field = request.getExpressionAttributeNames().get(placeholder);
-            if (field != null && tablePrimaryKeyFields.contains(field)) {
-                // not the best error message but this is what local dynamo does?
-                throw new AmazonServiceException("This attribute is part of the key");
+            Matcher m = ATTR_NAME_PLACEHOLDER_PATTERN.matcher(updateExpression);
+            while (m.find()) {
+                String placeholder = m.group();
+                String field = request.getExpressionAttributeNames().get(placeholder);
+                if (field != null && tablePrimaryKeyFields.contains(field)) {
+                    // not the best error message but this is what local dynamo does?
+                    throw new AmazonServiceException("This attribute is part of the key");
+                }
             }
         }
     }
@@ -259,21 +266,20 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
 
     @VisibleForTesting
     static String makePlaceholdersDistinct(String primaryExpression, String expression, RequestWrapper request) {
-        expression = makePlaceholdersDistinct(primaryExpression, expression, '#', "#field",
+        expression = makePlaceholdersDistinct(primaryExpression, expression, ATTR_NAME_PLACEHOLDER_PATTERN, "#field",
             request.getExpressionAttributeNames());
-        expression = makePlaceholdersDistinct(primaryExpression, expression, ':', ":value",
+        expression = makePlaceholdersDistinct(primaryExpression, expression, ATTR_VALUE_PLACEHOLDER_PATTERN, ":value",
             request.getExpressionAttributeValues());
         return expression;
     }
 
     private static <T> String makePlaceholdersDistinct(String primaryExpression,
                                                        String expression,
-                                                       char prefixChar,
+                                                       Pattern placeholderPattern,
                                                        String newPlaceholderPrefix,
                                                        Map<String, T> placeholderToLiteralMap) {
         if (expression != null) {
-            Pattern p = Pattern.compile(prefixChar + "[a-zA-Z0-9]+");
-            Matcher m = p.matcher(expression);
+            Matcher m = placeholderPattern.matcher(expression);
             Set<String> overlappingPlaceholders = new HashSet<>();
             while (m.find()) {
                 String placeholder = m.group();

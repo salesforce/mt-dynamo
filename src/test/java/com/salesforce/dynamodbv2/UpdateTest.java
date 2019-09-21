@@ -39,6 +39,7 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -536,6 +537,83 @@ class UpdateTest {
         }
     }
 
+    /**
+     * Calling UpdateItem without an update expression on an existing key should end up not affecting the specified
+     * record.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateWithoutUpdateExpression(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE).build();
+            Map<String, AttributeValue> existingItem = getItem(testArgument.getAmazonDynamoDb(),
+                TABLE1, HASH_KEY_VALUE, testArgument.getHashKeyAttrType(), Optional.empty());
 
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest().withTableName(TABLE1).withKey(key));
+
+            Map<String, AttributeValue> item = getItem(testArgument.getAmazonDynamoDb(),
+                TABLE1, HASH_KEY_VALUE, testArgument.getHashKeyAttrType(), Optional.empty());
+            assertEquals(existingItem, item);
+        });
+    }
+
+    /**
+     * Calling UpdateItem with a key that doesn't yet exist and no update expression should result in creating a new
+     * record with the specified key.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateNewKeyWithoutUpdateExpression(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .rangeKey(S, "abcde").build();
+            QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
+                .withKeyConditionExpression(HASH_KEY_FIELD + " = :v1 AND " + RANGE_KEY_FIELD + " = :v2")
+                .withExpressionAttributeValues(ImmutableMap.of(":v1", createAttributeValue(
+                    testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
+                    ":v2", createAttributeValue(S, "abcde")));
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
+            assertEquals(0, items.size());
+
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest().withTableName(TABLE3).withKey(key));
+
+            Map<String, AttributeValue> item = getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3, HASH_KEY_VALUE, testArgument.getHashKeyAttrType(), Optional.of("abcde"));
+            assertEquals(key, item);
+        });
+    }
+
+    /**
+     * Calling UpdateItem with a key that doesn't yet exist and an update expression on some non-key field should
+     * result in creating a new record with the specified key and the specified non-key field value.
+     */
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    void updateNewKey(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .rangeKey(S, "abcde").build();
+            QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
+                .withKeyConditionExpression(HASH_KEY_FIELD + " = :v1 AND " + RANGE_KEY_FIELD + " = :v2")
+                .withExpressionAttributeValues(ImmutableMap.of(":v1", createAttributeValue(
+                    testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
+                    ":v2", createAttributeValue(S, "abcde")));
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
+            assertEquals(0, items.size());
+
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE3)
+                .withKey(key)
+                .withUpdateExpression("SET " + SOME_FIELD + " = :value")
+                .addExpressionAttributeValuesEntry(":value", createStringAttribute("someValue")));
+
+            Map<String, AttributeValue> item = getItem(testArgument.getAmazonDynamoDb(),
+                TABLE3, HASH_KEY_VALUE, testArgument.getHashKeyAttrType(), Optional.of("abcde"));
+            Map<String, AttributeValue> expectedItem = new HashMap<>(key);
+            expectedItem.put(SOME_FIELD, createStringAttribute("someValue"));
+            assertEquals(expectedItem, item);
+        });
+    }
 
 }

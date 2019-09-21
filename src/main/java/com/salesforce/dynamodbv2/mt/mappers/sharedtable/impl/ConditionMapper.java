@@ -30,6 +30,9 @@ interface ConditionMapper {
     /**
      * Maps the filter expression in the given virtual request to the corresponding physical filter expression,
      * applying the change to either the primary or secondary expression in the request wrapper.
+     *
+     * <p>Used to map filter/condition expressions in a put/delete/scan/query request, which in terms of RequestWrapper
+     * is primary in the case of put/delete/scan, and secondary in a query request.
      */
     void applyToFilterExpression(RequestWrapper request, boolean isPrimaryExpression);
 
