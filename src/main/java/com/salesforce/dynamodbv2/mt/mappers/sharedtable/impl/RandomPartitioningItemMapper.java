@@ -34,18 +34,12 @@ class RandomPartitioningItemMapper implements ItemMapper {
 
     RandomPartitioningItemMapper(FieldMapper fieldMapper,
                                  List<FieldMapping> tablePrimaryKeyFieldMappings,
-                                 Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings) {
+                                 Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings,
+                                 Map<String, List<FieldMapping>> allMappingsPerField) {
         this.fieldMapper = fieldMapper;
         this.tableVirtualToPhysicalFieldMappings = tablePrimaryKeyFieldMappings;
         this.indexVirtualToPhysicalFieldMappings = indexPrimaryKeyFieldMappings;
-
-        // build map from each field to any PK or secondary index mappings
-        this.allVirtualToPhysicalFieldMappings = new HashMap<>();
-        tableVirtualToPhysicalFieldMappings.forEach(
-            fieldMapping -> addFieldMapping(allVirtualToPhysicalFieldMappings, fieldMapping));
-        indexVirtualToPhysicalFieldMappings.values().forEach(
-            list -> list.forEach(
-                fieldMapping -> addFieldMapping(allVirtualToPhysicalFieldMappings, fieldMapping)));
+        this.allVirtualToPhysicalFieldMappings = allMappingsPerField;
 
         // invert PK map
         this.physicalToVirtualFieldMappings = invertMapping(allVirtualToPhysicalFieldMappings);

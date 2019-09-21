@@ -71,16 +71,16 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
     @Override
     public void apply(QueryRequest queryRequest) {
         validateQueryRequest(queryRequest);
-        apply(new QueryRequestWrapper(queryRequest));
+        apply(new QueryRequestWrapper(queryRequest), true);
     }
 
     @Override
     public void apply(ScanRequest scanRequest) {
         validateScanRequest(scanRequest);
-        apply(new ScanRequestWrapper(scanRequest));
+        apply(new ScanRequestWrapper(scanRequest), false);
     }
 
-    private void apply(RequestWrapper request) {
+    private void apply(RequestWrapper request, boolean isQuery) {
         convertLegacyExpression(request);
 
         DynamoSecondaryIndex virtualSecondaryIndex = null;
@@ -104,7 +104,17 @@ class RandomPartitioningQueryAndScanMapper implements QueryAndScanMapper {
         checkNotNull(request.getPrimaryExpression(), "request expression is required");
 
         // map each field to its target name and apply field prefixing as appropriate
-        tableMapping.getConditionMapper().apply(request, virtualSecondaryIndex);
+        if (isQuery) {
+            // key condition
+            tableMapping.getConditionMapper().applyToKeyCondition(request, virtualSecondaryIndex);
+            // filter expression
+            if (request.getFilterExpression() != null) {
+                tableMapping.getConditionMapper().applyToFilterExpression(request, false);
+            }
+        } else {
+            // filter expression
+            tableMapping.getConditionMapper().applyToFilterExpression(request, true);
+        }
 
         applyExclusiveStartKey(request, virtualSecondaryIndex);
     }

@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
@@ -185,7 +186,7 @@ public class DefaultTestSetup implements TestSetup {
         CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder()
                 .withTableName(TABLE1)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH))
                 .withProvisionedThroughput(1L, 1L);
         return ImmutableList.of(
             baseBuilder.withTableName(TABLE1).build(),
@@ -197,24 +198,15 @@ public class DefaultTestSetup implements TestSetup {
                     new AttributeDefinition(GSI_HK_FIELD, S),
                     new AttributeDefinition(GSI2_HK_FIELD, S),
                     new AttributeDefinition(GSI2_RK_FIELD, N))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                    new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
+                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
                 .withGlobalSecondaryIndexes(
-                    new GlobalSecondaryIndex().withIndexName("testGsi")
-                        .withKeySchema(new KeySchemaElement(GSI_HK_FIELD, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)),
-                    new GlobalSecondaryIndex().withIndexName("testGsi2")
-                        .withKeySchema(new KeySchemaElement(GSI2_HK_FIELD, KeyType.HASH),
-                            new KeySchemaElement(GSI2_RK_FIELD, KeyType.RANGE))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
-                )
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
-                    .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(INDEX_FIELD, RANGE))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL))).build(),
-            baseBuilder.withTableName(TABLE4) // same as TABLE3, but with different with RK of type N
+                    buildGsi("testGsi", getKeySchema(GSI_HK_FIELD, HASH)),
+                    buildGsi("testGsi2", getKeySchema(GSI2_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
+                .withLocalSecondaryIndexes(
+                    buildLsi("testLsi", getKeySchema(HASH_KEY_FIELD, HASH, INDEX_FIELD, RANGE)))
+                .build(),
+            // same as TABLE3, but with different with RK of type N
+            baseBuilder.withTableName(TABLE4)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
                     new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
                     new AttributeDefinition(INDEX_FIELD, S),
@@ -222,17 +214,47 @@ public class DefaultTestSetup implements TestSetup {
                     new AttributeDefinition(GSI2_HK_FIELD, S),
                     new AttributeDefinition(GSI2_RK_FIELD, N)
                 ).build(),
-            baseBuilder.withTableName(TABLE5) // same as TABLE3, but with a GSI whose HK field is the table's RK field
+            // same as TABLE3, but with a GSI whose HK field is the table's RK field, and two GSIs with a common field
+            baseBuilder.withTableName(TABLE5)
                 .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
-                    new AttributeDefinition(RANGE_KEY_FIELD, S))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                    new KeySchemaElement(RANGE_KEY_FIELD, RANGE))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi_table_rk_as_index_hk")
-                    .withKeySchema(new KeySchemaElement(RANGE_KEY_FIELD, KeyType.HASH))
-                    .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                    .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes().build()
+                    new AttributeDefinition(RANGE_KEY_FIELD, S),
+                    new AttributeDefinition(GSI_HK_FIELD, S),
+                    new AttributeDefinition(INDEX_FIELD, S),
+                    new AttributeDefinition(GSI2_RK_FIELD, N))
+                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
+                .withGlobalSecondaryIndexes(
+                    buildGsi("testGsi_table_rk_as_index_hk", getKeySchema(RANGE_KEY_FIELD, HASH)),
+                    buildGsi("testGsi_on_common_field_1", getKeySchema(GSI_HK_FIELD, HASH, INDEX_FIELD, RANGE)),
+                    buildGsi("testGsi_on_common_field_2", getKeySchema(GSI_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
+                .withLocalSecondaryIndexes()
+                .build()
         );
+    }
+
+    private KeySchemaElement[] getKeySchema(String hkName, KeyType hkType) {
+        return new KeySchemaElement[] {new KeySchemaElement(hkName, hkType)};
+    }
+
+    private KeySchemaElement[] getKeySchema(String hkName, KeyType hkType, String rkName, KeyType rkType) {
+        return new KeySchemaElement[] {
+            new KeySchemaElement(hkName, hkType),
+            new KeySchemaElement(rkName, rkType)
+        };
+    }
+
+    private GlobalSecondaryIndex buildGsi(String name, KeySchemaElement... keySchemaElements) {
+        return new GlobalSecondaryIndex()
+            .withIndexName(name)
+            .withKeySchema(keySchemaElements)
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
+    }
+
+    private LocalSecondaryIndex buildLsi(String name, KeySchemaElement... keySchemaElements) {
+        return new LocalSecondaryIndex()
+            .withIndexName(name)
+            .withKeySchema(keySchemaElements)
+            .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
     }
 
     private int getPollInterval() {
