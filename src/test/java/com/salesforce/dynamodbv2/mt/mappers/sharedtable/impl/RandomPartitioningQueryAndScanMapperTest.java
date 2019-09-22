@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,9 +20,7 @@ import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.HashMap;
 import java.util.Optional;
@@ -38,15 +35,12 @@ import org.junit.jupiter.params.provider.EnumSource;
  */
 class RandomPartitioningQueryAndScanMapperTest {
 
-    private static final DynamoTableDescription VIRTUAL_TABLE = new DynamoTableDescriptionImpl(
-        CreateTableRequestBuilder.builder()
-            .withTableName("virtualTable")
-            .withTableKeySchema("virtualHk", S)
-            .addSi("virtualGsi", GSI, new PrimaryKey("virtualGsiHk", S), 1L).build());
-    private static final DynamoTableDescription PHYSICAL_TABLE = new DynamoTableDescriptionImpl(
-        CreateTableRequestBuilder.builder()
-            .withTableKeySchema("physicalHk", S)
-            .addSi("physicalGsi", GSI, new PrimaryKey("physicalGsiHk", S), 1L).build());
+    private static final DynamoTableDescription VIRTUAL_TABLE = TableMappingTestUtil.buildTable("virtualTable",
+        new PrimaryKey("virtualHk", S),
+        ImmutableMap.of("virtualGsi", new PrimaryKey("virtualGsiHk", S)));
+    private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable("physicalTable",
+        new PrimaryKey("physicalHk", S),
+        ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S)));
     private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
         VIRTUAL_TABLE,
         PHYSICAL_TABLE,

@@ -13,8 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -29,21 +29,23 @@ class RandomPartitioningItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
 
-    private static final RandomPartitioningTableMapping tableMapping =  new RandomPartitioningTableMapping(
-        new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
-        new DynamoTableDescriptionImpl(
-            CreateTableRequestBuilder.builder()
-                .withTableKeySchema("physicalHk", S, "physicalRk", S).build()),
+    private static final DynamoTableDescription VIRTUAL_TABLE = TableMappingTestUtil.buildTable("virtualTable",
+        new PrimaryKey("virtualHk", S, "virtualRk", S));
+
+    private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable("physicalTable",
+        new PrimaryKey("physicalHk", S, "physicalRk", S));
+
+    private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
+        VIRTUAL_TABLE,
+        PHYSICAL_TABLE,
         index -> null,
         null
     );
     private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
         new MockFieldMapper(),
-        tableMapping.getTablePrimaryKeyFieldMappings(),
+        TABLE_MAPPING.getTablePrimaryKeyFieldMappings(),
         Collections.emptyMap(),
-        tableMapping.getAllMappingsPerField());
+        TABLE_MAPPING.getAllMappingsPerField());
 
     @Test
     void applyAndReverse() {

@@ -19,7 +19,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 
@@ -38,14 +37,12 @@ import org.junit.jupiter.api.Test;
  */
 class RandomPartitioningTableMappingTest {
 
-    private final DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(
-        buildDefaultCreateTableRequestBuilderWithGsi().build());
-    private final DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(CreateTableRequestBuilder
-        .builder()
-        .withTableName("physicalTableName")
-        .withTableKeySchema("physicalHk", S, "physicalRk", N)
-        .addSi("physicalGsi", GSI, new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N), 1L)
-        .build());
+    private final DynamoTableDescription virtualTable = TableMappingTestUtil.buildTable("virtualTableName",
+        new PrimaryKey("virtualHk", S, "virtualRk", N),
+        ImmutableMap.of("virtualGsi", new PrimaryKey("virtualGsiHk", S, "virtualGsiRk", N)));
+    private final DynamoTableDescription physicalTable = TableMappingTestUtil.buildTable("physicalTableName",
+        new PrimaryKey("physicalHk", S, "physicalRk", N),
+        ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N)));
     private final RandomPartitioningTableMapping sut = new RandomPartitioningTableMapping(virtualTable,
         physicalTable,
         index -> index.getIndexName().equals("virtualGsi") ? physicalTable.findSi("physicalGsi") : null,

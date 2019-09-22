@@ -22,9 +22,11 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 
@@ -141,9 +143,7 @@ class HashPartitioningItemMapper implements ItemMapper {
 
     private void putPhysicalHashKey(Map<String, AttributeValue> item, ScalarAttributeType virtualHkType,
                                     AttributeValue virtualHkValue, PrimaryKey physicalPK) {
-        Object primitiveValue = getPrimitiveValue(virtualHkType, virtualHkValue);
-        checkNotNull(primitiveValue, "Hash key value cannot be null");
-        int salt = primitiveValue.hashCode() % numBucketsPerVirtualHashKey;
+        int salt = getPrimitiveValueHashCode(virtualHkType, virtualHkValue) % numBucketsPerVirtualHashKey;
 
         // TODO we don't need to include virtual table name if physical table is for one mt table only
         String value = mtContext.getContext() + delimiter + virtualTable.getTableName() + delimiter + salt;
@@ -151,14 +151,14 @@ class HashPartitioningItemMapper implements ItemMapper {
         putBytesInField(item, physicalPK.getHashKey(), ByteBuffer.wrap(value.getBytes(StandardCharsets.UTF_8)));
     }
 
-    private Object getPrimitiveValue(ScalarAttributeType type, AttributeValue value) {
+    private int getPrimitiveValueHashCode(ScalarAttributeType type, AttributeValue value) {
         switch (type) {
             case S:
-                return value.getS();
+                return Objects.hashCode(value.getS());
             case N:
-                return value.getN();
+                return Objects.hashCode(new BigDecimal(value.getN()));
             case B:
-                return value.getB().array();
+                return Arrays.hashCode(value.getB().array());
             default:
                 throw new UnsupportedOperationException("Unsupported field type: " + type);
         }
@@ -189,7 +189,7 @@ class HashPartitioningItemMapper implements ItemMapper {
         item.remove(physicalPK.getHashKey());
         AttributeValue physicalRkValue = item.remove(physicalPK.getRangeKey().get());
         if (required) {
-            checkNotNull(physicalRkValue, "Physical item missing RK value");
+            checkNotNull(physicalRkValue, "Physical item missing range key value");
         }
 
         if (physicalRkValue != null) {

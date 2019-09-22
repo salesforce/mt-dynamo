@@ -78,7 +78,8 @@ public class HashPartitioningTableMapping implements TableMapping {
             }
 
             @Override
-            public void applyToKeyCondition(RequestWrapper request, @Nullable DynamoSecondaryIndex virtualSecondaryIndex) {
+            public void applyToKeyCondition(RequestWrapper request,
+                                            @Nullable DynamoSecondaryIndex virtualSecondaryIndex) {
 
             }
 

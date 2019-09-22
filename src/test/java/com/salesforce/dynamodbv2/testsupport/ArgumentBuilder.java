@@ -150,8 +150,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             //byAccount,
             byTable,
             sharedTable,
-            sharedTableBinaryHashKey,
-            sharedTableHashPartitioning
+            sharedTableBinaryHashKey/*,
+            sharedTableHashPartitioning*/
         );
     }
 
