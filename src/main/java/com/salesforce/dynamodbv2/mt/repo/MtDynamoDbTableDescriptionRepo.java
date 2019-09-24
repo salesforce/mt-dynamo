@@ -33,6 +33,8 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
@@ -281,6 +283,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             + tenantTableMetadata.getCreateTableRequest().getTableName();
     }
 
+    private String getHashKey(TenantTable tenantTable) {
+        return tenantTable.getTenantName()
+            + delimiter
+            + tenantTable.getVirtualTableName();
+    }
+
     private String addPrefix(String tableName) {
         return getPrefix() + tableName;
     }
@@ -292,26 +300,61 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
+        if (listMetadataRequest.getExclusiveStartTableMetadata() != null && listMetadataRequest.getExclusiveStartTenantTable() != null) {
+            throw new IllegalArgumentException("Cannot pass both a start create table request key and a tenant table key.");
+        }
         ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
-        Map<String, AttributeValue> lastEvaluatedKey =
-            Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
-                .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                    new AttributeValue(getHashKey(t)))))
-                .orElse(null);
-        ScanResult scanResult;
+        Map<String, AttributeValue> lastEvaluatedKey = null;
+        if (listMetadataRequest.getExclusiveStartTenantTable() != null) {
+            lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                new AttributeValue(getHashKey(listMetadataRequest.getExclusiveStartTenantTable()))));
+        }
+        if (listMetadataRequest.getExclusiveStartTableMetadata() != null) {
+            lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                    new AttributeValue(getHashKey(listMetadataRequest.getExclusiveStartTableMetadata()))));
+        }
 
-        scanReq.setExclusiveStartKey(lastEvaluatedKey);
-        scanReq.setLimit(listMetadataRequest.getLimit());
-        scanResult = amazonDynamoDb.scan(scanReq);
-        List<MtCreateTableRequest> createTableRequests = scanResult.getItems().stream()
-            .map(rowMap ->
-                new MtCreateTableRequest(
-                    getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
-                    getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
-            .collect(Collectors.toList());
-        MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
-            createTableRequests.get(createTableRequests.size() - 1);
-        return new ListMetadataResult(createTableRequests, lastEvaluatedMetadata);
+        // if multitenant virtual table list, this is easy, scan for the rows up to limit, and returned what's found
+        if (mtContext.getContextOpt().isEmpty()) {
+            ScanResult scanResult;
+
+            scanReq.setExclusiveStartKey(lastEvaluatedKey);
+            scanReq.setLimit(listMetadataRequest.getLimit());
+            scanResult = amazonDynamoDb.scan(scanReq);
+            List<MtCreateTableRequest> createTableRequests = scanResult.getItems().stream()
+                .map(rowMap ->
+                    new MtCreateTableRequest(
+                        getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
+                        getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
+                .collect(Collectors.toList());
+            MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
+                createTableRequests.get(createTableRequests.size() - 1);
+            return new ListMetadataResult(createTableRequests, lastEvaluatedMetadata);
+        } else {
+            // if tenant scoped virtual table list, keep scanning until we either run out of metadata rows in the
+            // multitenant virtual table definitions, or we fill up our result set
+            List<MtCreateTableRequest> createTableRequests = Lists.newArrayList();
+            do {
+                ScanResult scanResult;
+                scanReq.setExclusiveStartKey(lastEvaluatedKey);
+                scanResult = amazonDynamoDb.scan(scanReq);
+                createTableRequests.addAll(scanResult.getItems().stream()
+                    .map(rowMap ->
+                        new MtCreateTableRequest(
+                            getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
+                            getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
+                    .filter(t -> t.getTenantName().equals(mtContext.getContext()))
+                    .collect(Collectors.toList()));
+                lastEvaluatedKey = scanResult.getLastEvaluatedKey();
+            } while (lastEvaluatedKey != null && createTableRequests.size() < scanReq.getLimit());
+
+            if (createTableRequests.size() >= listMetadataRequest.getLimit()) {
+                List<MtCreateTableRequest> ret = createTableRequests.subList(0, listMetadataRequest.getLimit());
+                return new ListMetadataResult(ret, Iterables.getLast(ret));
+            } else {
+                return new ListMetadataResult(createTableRequests, null);
+            }
+        }
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {

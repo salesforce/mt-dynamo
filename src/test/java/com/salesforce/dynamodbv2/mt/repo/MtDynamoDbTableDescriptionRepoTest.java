@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -13,6 +14,7 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
@@ -23,6 +25,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableReq
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -130,6 +133,21 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     @Test
+    void testTenantScopedListVirtualTables() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
+        MT_CONTEXT.withContext("1", () -> {
+            ListMetadataResult listMetadataResult =
+                ((MtTableDescriptionRepo) repo).listVirtualTableMetadata(new ListMetadataRequest());
+            List<MtCreateTableRequest> expectedList = tablesCreated
+                .stream()
+                .filter(t -> t.getTenantName().equals("1"))
+                .collect(Collectors.toList());
+            assertEquals(new ListMetadataResult(expectedList, null), listMetadataResult);
+        });
+    }
+
+    @Test
     void testListVirtualTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
@@ -149,6 +167,37 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     @Test
+    void testTenantScopedListVirtualTables_pagination() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        List<MtCreateTableRequest> tablesCreated = Lists.newArrayList();
+        tablesCreated.addAll(createPairOfVirtualTables(repo, "table1"));
+        tablesCreated.addAll(createPairOfVirtualTables(repo, "table2"));
+        tablesCreated.addAll(createPairOfVirtualTables(repo, "table3"));
+
+        List<MtCreateTableRequest> expectedReturnedTables = tablesCreated.stream()
+            .filter(t -> t.getTenantName().equals("1")).collect(Collectors.toList());
+        assertEquals(3, expectedReturnedTables.size());
+
+        ListMetadataRequest metadataRequest = new ListMetadataRequest().withLimit(1);
+        MT_CONTEXT.withContext("1", () -> {
+            int numScans = 0;
+            do {
+                ListMetadataResult metadataResult = repo.listVirtualTableMetadata(metadataRequest);
+                metadataRequest.setExclusiveStartTableMetadata(metadataResult.getLastEvaluatedTable());
+                if (numScans < 3) {
+                    assertEquals(1, metadataResult.getCreateTableRequests().size());
+                    assertTrue(expectedReturnedTables.remove(metadataResult.getCreateTableRequests().get(0)));
+                } else {
+                    assertTrue(metadataResult.getCreateTableRequests().isEmpty());
+                }
+                numScans++;
+            } while (metadataRequest.getExclusiveStartTableMetadata() != null);
+            assertTrue(expectedReturnedTables.isEmpty(), "Expected all created tables to be returned by scan");
+        });
+
+    }
+
+    @Test
     void testListVirtualTables_empty() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest());
@@ -156,11 +205,16 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     private List<MtCreateTableRequest> createPairOfVirtualTables(MtDynamoDbTableDescriptionRepo repo) {
+        return createPairOfVirtualTables(repo, "table");
+    }
+
+    private List<MtCreateTableRequest> createPairOfVirtualTables(
+        MtDynamoDbTableDescriptionRepo repo, String tablePrefix) {
         String tenant1 = "1";
         String tenant2 = "2";
         String table1Gsi = "index";
-        String tableName1 = "table";
-        String tableName2 = "table2";
+        String tableName1 = tablePrefix + "1";
+        String tableName2 = tablePrefix + "2";
         CreateTableRequest createReq1 = new CreateTableRequest()
             .withTableName(tableName1)
             .withKeySchema(new KeySchemaElement("id", KeyType.HASH))

@@ -81,6 +81,12 @@ class MtAmazonDynamoDbBySharedTableTest {
         }
     }
 
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(SharedTableArgumentProvider.class)
+    public void testListTables_withContext(TestArgument testArgument) {
+        //todo: implement this
+    }
+
     private static class SharedTableArgumentProvider extends DefaultArgumentProvider {
         public SharedTableArgumentProvider() {
             super(new SharedTableArgumentBuilder(), new DefaultTestSetup());

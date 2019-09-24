@@ -7,6 +7,7 @@ package com.salesforce.dynamodbv2.mt.repo
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.TableDescription
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 
 /**
  * Interface for managing table metadata of multitenant virtual tables within mt-dynamo.
@@ -52,7 +53,7 @@ interface MtTableDescriptionRepo {
         val lastEvaluatedTable: MtCreateTableRequest?
     )
 
-    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {
+    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null, var exclusiveStartTenantTable: MtAmazonDynamoDb.TenantTable? = null) {
         fun withLimit(limit: Int): ListMetadataRequest {
             this.limit = limit
             return this
@@ -60,6 +61,11 @@ interface MtTableDescriptionRepo {
 
         fun withExclusiveStartKey(startKey: MtCreateTableRequest?): ListMetadataRequest {
             exclusiveStartTableMetadata = startKey
+            return this
+        }
+
+        fun withExclusiveStartTenantTable(startTenantTable: MtAmazonDynamoDb.TenantTable?): ListMetadataRequest {
+            exclusiveStartTenantTable = startTenantTable
             return this
         }
     }

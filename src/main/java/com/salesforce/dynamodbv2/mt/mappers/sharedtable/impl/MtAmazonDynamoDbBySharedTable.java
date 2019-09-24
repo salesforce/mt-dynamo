@@ -41,6 +41,7 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
@@ -77,6 +78,9 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableRequest;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -603,6 +607,28 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
+    }
+
+    @Override
+    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
+        if (getMtContext().getContextOpt().isEmpty()) {
+            // delegate to parent class' multitenant listTables call if no tenant is provided
+            return super.listTables(exclusiveStartTableName, limit);
+        } else {
+            TenantTable startKey = exclusiveStartTableName == null ? null :
+                new TenantTable(exclusiveStartTableName, getMtContext().getContext());
+            ListMetadataRequest listRequest =
+                new ListMetadataRequest().withLimit(limit).withExclusiveStartTenantTable(startKey);
+            ListMetadataResult listMetadataResult = mtTableDescriptionRepo.listVirtualTableMetadata(listRequest);
+            List<String> tableNames = listMetadataResult.getCreateTableRequests()
+                .stream()
+                .map(t -> t.getCreateTableRequest().getTableName())
+                .collect(Collectors.toList());
+            String lastEvaluatedTableName = listMetadataResult.getLastEvaluatedTable() == null
+                ? null
+                : listMetadataResult.getLastEvaluatedTable().getCreateTableRequest().getTableName();
+            return new ListTablesResult().withTableNames(tableNames).withLastEvaluatedTableName(lastEvaluatedTableName);
+        }
     }
 
     @Override
