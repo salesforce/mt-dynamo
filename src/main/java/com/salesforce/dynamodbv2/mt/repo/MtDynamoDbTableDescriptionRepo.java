@@ -20,6 +20,8 @@ import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
@@ -30,9 +32,12 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
@@ -275,10 +280,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
-    private String getHashKey(MtCreateTableRequest tenantTableMetadata) {
-        return tenantTableMetadata.getTenantName()
+    private String getHashKey(TenantTable tenantTable) {
+        return tenantTable.getTenantName()
             + delimiter
-            + tenantTableMetadata.getCreateTableRequest().getTableName();
+            + tenantTable.getVirtualTableName();
     }
 
     private String addPrefix(String tableName) {
@@ -292,26 +297,77 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
-        Map<String, AttributeValue> lastEvaluatedKey =
-            Optional.ofNullable(listMetadataRequest.getExclusiveStartTableMetadata())
-                .map(t -> new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                    new AttributeValue(getHashKey(t)))))
-                .orElse(null);
-        ScanResult scanResult;
+        return listVirtualTableMetadata(listMetadataRequest, null);
+    }
 
-        scanReq.setExclusiveStartKey(lastEvaluatedKey);
-        scanReq.setLimit(listMetadataRequest.getLimit());
-        scanResult = amazonDynamoDb.scan(scanReq);
-        List<MtCreateTableRequest> createTableRequests = scanResult.getItems().stream()
-            .map(rowMap ->
-                new MtCreateTableRequest(
-                    getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
-                    getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
-            .collect(Collectors.toList());
-        MtCreateTableRequest lastEvaluatedMetadata = scanResult.getLastEvaluatedKey() == null ? null :
-            createTableRequests.get(createTableRequests.size() - 1);
-        return new ListMetadataResult(createTableRequests, lastEvaluatedMetadata);
+    /**
+     * Do a scan of the description table, returning all virtual table metadata. If a filter is passed, continue
+     * scanning until a full page of results is populated, or the description table is exhausted.
+     */
+    private ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest, String filterTenant) {
+        Preconditions.checkArgument(mtContext.getContextOpt().map(t -> filterTenant.equals(t))
+                .orElse(filterTenant == null),
+            "Tenant context does not match filter");
+        Map<String, AttributeValue> lastEvaluatedKey = null;
+        if (listMetadataRequest.getStartTenantTableKey() != null) {
+            lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
+                new AttributeValue(getHashKey(listMetadataRequest.getStartTenantTableKey()))));
+        }
+        ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
+        // if tenant scoped virtual table list, keep scanning until we either run out of metadata rows in the
+        // multitenant virtual table definitions, or we fill up our result set
+        List<MtCreateTableRequest> createTableRequests = Lists.newArrayList();
+        do {
+            ScanResult scanResult;
+            scanReq.setExclusiveStartKey(lastEvaluatedKey);
+            scanResult = amazonDynamoDb.scan(scanReq);
+            List<MtCreateTableRequest> createRequestsBatch = scanResult.getItems().stream()
+                .map(rowMap ->
+                    new MtCreateTableRequest(
+                        getTenantTableFromHashKey(
+                            rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
+                        getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
+                .collect(Collectors.toList());
+            if (filterTenant == null) {
+                createTableRequests.addAll(createRequestsBatch);
+            } else {
+                createTableRequests.addAll(createRequestsBatch.stream()
+                    .filter(t -> t.getTenantName().equals(filterTenant))
+                    .collect(Collectors.toList()));
+            }
+            lastEvaluatedKey = scanResult.getLastEvaluatedKey();
+        } while (lastEvaluatedKey != null && createTableRequests.size() < scanReq.getLimit());
+
+        if (createTableRequests.size() >= listMetadataRequest.getLimit()) {
+            List<MtCreateTableRequest> ret = createTableRequests.subList(0, listMetadataRequest.getLimit());
+            return new ListMetadataResult(ret, Iterables.getLast(ret));
+        } else {
+            return new ListMetadataResult(createTableRequests, null);
+        }
+
+    }
+
+    @NotNull
+    @Override
+    public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
+        Preconditions.checkArgument(mtContext.getContextOpt().isPresent(),
+            "Must rovide a tenant context.");
+        ListMetadataRequest listMetadataRequest = new ListMetadataRequest()
+            .withLimit(listTablesRequest.getLimit())
+            .withExclusiveStartKey(listTablesRequest.getExclusiveStartTableName() == null
+                ? null
+                : new TenantTable(listTablesRequest.getExclusiveStartTableName(),
+                mtContext.getContext()));
+        ListMetadataResult listMetadataResult = listVirtualTableMetadata(listMetadataRequest, mtContext.getContext());
+        return new ListTablesResult()
+            .withLastEvaluatedTableName(
+                Optional.ofNullable(listMetadataResult.getLastEvaluatedTable())
+                    .map(t -> t.getCreateTableRequest().getTableName())
+                    .orElse(null))
+            .withTableNames(listMetadataResult.getCreateTableRequests()
+                .stream().map(t -> t.getCreateTableRequest().getTableName())
+                .collect(Collectors.toList()));
+
     }
 
     public static class MtDynamoDbTableDescriptionRepoBuilder {

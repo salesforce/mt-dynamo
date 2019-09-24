@@ -41,6 +41,8 @@ import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult;
+import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
@@ -603,6 +605,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
+    }
+
+    @Override
+    public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
+        if (getMtContext().getContextOpt().isEmpty()) {
+            // delegate to parent class' multitenant listTables call if no tenant is provided
+            return super.listTables(exclusiveStartTableName, limit);
+        } else {
+            return mtTableDescriptionRepo.listTables(new ListTablesRequest()
+                .withExclusiveStartTableName(exclusiveStartTableName)
+                .withLimit(limit));
+        }
     }
 
     @Override

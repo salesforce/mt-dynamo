@@ -57,7 +57,7 @@ import java.util.stream.IntStream;
  */
 public class DefaultTestSetup implements TestSetup {
 
-    private static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
+    protected static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
     public static final String TABLE1 = "Table1"; // has hk
     public static final String TABLE2 = "Table2"; // has hk
     public static final String TABLE3 = "Table3"; // has hk, rk(S), GSI and LSI
@@ -257,7 +257,7 @@ public class DefaultTestSetup implements TestSetup {
             .withProjection(new Projection().withProjectionType(ProjectionType.ALL));
     }
 
-    private int getPollInterval() {
+    protected int getPollInterval() {
         return IS_LOCAL_DYNAMO ? 0 : 1;
     }
 
