@@ -618,7 +618,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             TenantTable startKey = exclusiveStartTableName == null ? null :
                 new TenantTable(exclusiveStartTableName, getMtContext().getContext());
             ListMetadataRequest listRequest =
-                new ListMetadataRequest().withLimit(limit).withExclusiveStartTenantTable(startKey);
+                new ListMetadataRequest().withLimit(limit).withExclusiveStartKey(startKey);
             ListMetadataResult listMetadataResult = mtTableDescriptionRepo.listVirtualTableMetadata(listRequest);
             List<String> tableNames = listMetadataResult.getCreateTableRequests()
                 .stream()

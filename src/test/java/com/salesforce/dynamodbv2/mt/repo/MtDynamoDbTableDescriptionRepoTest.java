@@ -156,14 +156,14 @@ class MtDynamoDbTableDescriptionRepoTest {
         assertEquals(expected, listMetadataResult);
 
         listMetadataResult =
-            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tablesCreated.get(0)));
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0)));
         assertEquals(listMetadataResult,
             repo.listVirtualTableMetadata(new ListMetadataRequest()
-                .withExclusiveStartKey(tablesCreated.get(0))
+                .withExclusiveStartCreateTableReq(tablesCreated.get(0))
                 .withLimit(5)));
         expected = new ListMetadataResult(ImmutableList.of(tablesCreated.get(1)), null);
         assertEquals(expected,
-            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartKey(tablesCreated.get(0))));
+            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0))));
     }
 
     @Test
@@ -183,7 +183,7 @@ class MtDynamoDbTableDescriptionRepoTest {
             int numScans = 0;
             do {
                 ListMetadataResult metadataResult = repo.listVirtualTableMetadata(metadataRequest);
-                metadataRequest.setExclusiveStartTableMetadata(metadataResult.getLastEvaluatedTable());
+                metadataRequest.withExclusiveStartCreateTableReq(metadataResult.getLastEvaluatedTable());
                 if (numScans < 3) {
                     assertEquals(1, metadataResult.getCreateTableRequests().size());
                     assertTrue(expectedReturnedTables.remove(metadataResult.getCreateTableRequests().get(0)));
@@ -191,7 +191,7 @@ class MtDynamoDbTableDescriptionRepoTest {
                     assertTrue(metadataResult.getCreateTableRequests().isEmpty());
                 }
                 numScans++;
-            } while (metadataRequest.getExclusiveStartTableMetadata() != null);
+            } while (metadataRequest.getStartTenantTableKey() != null);
             assertTrue(expectedReturnedTables.isEmpty(), "Expected all created tables to be returned by scan");
         });
 

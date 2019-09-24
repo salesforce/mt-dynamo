@@ -277,12 +277,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, TableDescription.class);
     }
 
-    private String getHashKey(MtCreateTableRequest tenantTableMetadata) {
-        return tenantTableMetadata.getTenantName()
-            + delimiter
-            + tenantTableMetadata.getCreateTableRequest().getTableName();
-    }
-
     private String getHashKey(TenantTable tenantTable) {
         return tenantTable.getTenantName()
             + delimiter
@@ -300,20 +294,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        if (listMetadataRequest.getExclusiveStartTableMetadata() != null && listMetadataRequest.getExclusiveStartTenantTable() != null) {
-            throw new IllegalArgumentException("Cannot pass both a start create table request key and a tenant table key.");
-        }
         ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
         Map<String, AttributeValue> lastEvaluatedKey = null;
-        if (listMetadataRequest.getExclusiveStartTenantTable() != null) {
+        if (listMetadataRequest.getStartTenantTableKey() != null) {
             lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(getHashKey(listMetadataRequest.getExclusiveStartTenantTable()))));
+                new AttributeValue(getHashKey(listMetadataRequest.getStartTenantTableKey()))));
         }
-        if (listMetadataRequest.getExclusiveStartTableMetadata() != null) {
-            lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                    new AttributeValue(getHashKey(listMetadataRequest.getExclusiveStartTableMetadata()))));
-        }
-
         // if multitenant virtual table list, this is easy, scan for the rows up to limit, and returned what's found
         if (mtContext.getContextOpt().isEmpty()) {
             ScanResult scanResult;
