@@ -10,6 +10,8 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
+import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
@@ -133,21 +135,6 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     @Test
-    void testTenantScopedListVirtualTables() {
-        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
-        MT_CONTEXT.withContext("1", () -> {
-            ListMetadataResult listMetadataResult =
-                ((MtTableDescriptionRepo) repo).listVirtualTableMetadata(new ListMetadataRequest());
-            List<MtCreateTableRequest> expectedList = tablesCreated
-                .stream()
-                .filter(t -> t.getTenantName().equals("1"))
-                .collect(Collectors.toList());
-            assertEquals(new ListMetadataResult(expectedList, null), listMetadataResult);
-        });
-    }
-
-    @Test
     void testListVirtualTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
@@ -169,31 +156,47 @@ class MtDynamoDbTableDescriptionRepoTest {
     }
 
     @Test
-    void testTenantScopedListVirtualTables_pagination() {
+    void testListTables() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        List<String> tablesCreated = createPairOfVirtualTables(repo).stream()
+            .filter(t -> t.getTenantName().equals("1"))
+            .map(t -> t.getCreateTableRequest().getTableName())
+            .collect(Collectors.toList());
+        MT_CONTEXT.withContext("1", () -> {
+            ListTablesResult listTablesResult =
+                ((MtTableDescriptionRepo) repo).listTables(new ListTablesRequest());
+            assertEquals(tablesCreated, listTablesResult.getTableNames());
+        });
+    }
+
+    @Test
+    void testListTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         List<MtCreateTableRequest> tablesCreated = Lists.newArrayList();
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table1"));
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table2"));
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table3"));
 
-        List<MtCreateTableRequest> expectedReturnedTables = tablesCreated.stream()
-            .filter(t -> t.getTenantName().equals("1")).collect(Collectors.toList());
+        List<String> expectedReturnedTables = tablesCreated.stream()
+            .filter(t -> t.getTenantName().equals("1"))
+            .map(t -> t.getCreateTableRequest().getTableName())
+            .collect(Collectors.toList());
         assertEquals(3, expectedReturnedTables.size());
 
-        ListMetadataRequest metadataRequest = new ListMetadataRequest().withLimit(1);
+        ListTablesRequest listTablesRequest = new ListTablesRequest().withLimit(1);
         MT_CONTEXT.withContext("1", () -> {
             int numScans = 0;
             do {
-                ListMetadataResult metadataResult = repo.listVirtualTableMetadata(metadataRequest);
-                metadataRequest.withExclusiveStartCreateTableReq(metadataResult.getLastEvaluatedTable());
+                ListTablesResult listTablesResult = repo.listTables(listTablesRequest);
+                listTablesRequest.withExclusiveStartTableName(listTablesResult.getLastEvaluatedTableName());
                 if (numScans < 3) {
-                    assertEquals(1, metadataResult.getCreateTableRequests().size());
-                    assertTrue(expectedReturnedTables.remove(metadataResult.getCreateTableRequests().get(0)));
+                    assertEquals(1, listTablesResult.getTableNames().size());
+                    assertTrue(expectedReturnedTables.remove(listTablesResult.getTableNames().get(0)));
                 } else {
-                    assertTrue(metadataResult.getCreateTableRequests().isEmpty());
+                    assertTrue(listTablesResult.getTableNames().isEmpty());
                 }
                 numScans++;
-            } while (metadataRequest.getStartTenantTableKey() != null);
+            } while (listTablesRequest.getExclusiveStartTableName() != null);
             assertTrue(expectedReturnedTables.isEmpty(), "Expected all created tables to be returned by scan");
         });
 
