@@ -80,7 +80,6 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
-import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableRequest;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;

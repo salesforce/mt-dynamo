@@ -327,7 +327,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 createTableRequests.addAll(scanResult.getItems().stream()
                     .map(rowMap ->
                         new MtCreateTableRequest(
-                            getTenantTableFromHashKey(rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
+                            getTenantTableFromHashKey(
+                                rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
                             getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
                     .filter(t -> t.getTenantName().equals(mtContext.getContext()))
                     .collect(Collectors.toList()));

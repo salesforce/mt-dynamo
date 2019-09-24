@@ -156,14 +156,16 @@ class MtDynamoDbTableDescriptionRepoTest {
         assertEquals(expected, listMetadataResult);
 
         listMetadataResult =
-            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0)));
+            repo.listVirtualTableMetadata(
+                new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0)));
         assertEquals(listMetadataResult,
             repo.listVirtualTableMetadata(new ListMetadataRequest()
                 .withExclusiveStartCreateTableReq(tablesCreated.get(0))
                 .withLimit(5)));
         expected = new ListMetadataResult(ImmutableList.of(tablesCreated.get(1)), null);
         assertEquals(expected,
-            repo.listVirtualTableMetadata(new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0))));
+            repo.listVirtualTableMetadata(
+                new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0))));
     }
 
     @Test
