@@ -151,10 +151,9 @@ class MtAmazonDynamoDbBySharedTableTest {
                             .map(prefix -> baseBuilder.withTableName(prefix + org).build())
                             .collect(Collectors.toList());
                         for (CreateTableRequest createTableRequest : createTableRequests) {
-                            mtContext.withContext(org, () -> {
-                                new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
-                                    .createTableIfNotExists(createTableRequest, getPollInterval());
-                            });
+                            mtContext.withContext(org,
+                                () -> new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
+                                    .createTableIfNotExists(createTableRequest, getPollInterval()));
                         }
                     }
                 }

@@ -351,7 +351,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
         Preconditions.checkArgument(mtContext.getContextOpt().isPresent(),
-            "Must rovide a tenant context.");
+            "Must provide a tenant context.");
         ListMetadataRequest listMetadataRequest = new ListMetadataRequest()
             .withLimit(listTablesRequest.getLimit())
             .withExclusiveStartKey(listTablesRequest.getExclusiveStartTableName() == null

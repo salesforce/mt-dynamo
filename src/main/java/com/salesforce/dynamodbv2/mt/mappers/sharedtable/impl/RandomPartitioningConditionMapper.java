@@ -253,7 +253,7 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
                     int previousEnd = 0;
                     do {
                         int start = startsIterator.next();
-                        newExpression.append(expression.substring(previousEnd, start)).append(placeholder);
+                        newExpression.append(expression, previousEnd, start).append(placeholder);
                         previousEnd = start + virtualFieldName.length();
                     } while (startsIterator.hasNext());
                     newExpression.append(expression.substring(previousEnd));
