@@ -133,7 +133,7 @@ class MtAmazonDynamoDbBySharedTableTest {
         }
     }
 
-    private static List<String> TABLE_NAME_PREFIXES = ImmutableList.of("table1-", "table2-", "table3-");
+    private static final List<String> TABLE_NAME_PREFIXES = ImmutableList.of("table1-", "table2-", "table3-");
 
     private static class ListVirtualTableProvider extends DefaultArgumentProvider {
         public ListVirtualTableProvider() {
