@@ -52,10 +52,12 @@ public class StreamsTestUtil {
     /**
      * Verifies a cache miss/hit occurs on a describeStreamCache lookup.
      */
-    public static DescribeStreamResult verifyDescribeStreamCacheResult(Cache describeStreamCache, String key,
+    public static DescribeStreamResult verifyDescribeStreamCacheResult(Cache<String, DescribeStreamResult>
+                                                                           describeStreamCache,
+                                                                       String key,
                                                                        boolean expectedCacheHit,
                                                                        DescribeStreamResult expectedResult) {
-        DescribeStreamResult cacheLookupResult = (DescribeStreamResult) describeStreamCache.getIfPresent(key);
+        DescribeStreamResult cacheLookupResult = describeStreamCache.getIfPresent(key);
 
         if (!expectedCacheHit) {
             assertNull(cacheLookupResult);
