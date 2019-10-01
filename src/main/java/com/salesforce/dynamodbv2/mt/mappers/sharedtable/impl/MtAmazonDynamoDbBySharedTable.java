@@ -536,7 +536,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             // go through each row in the scan and pull out the tenant and table information from the primary key to
             // separate attributes in each item's map
-            FieldValue virtualFieldKeys = fieldMapperFunction.apply(item);
+            FieldValue<?> virtualFieldKeys = fieldMapperFunction.apply(item);
             TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
                 virtualFieldKeys.getTableName());
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);

@@ -33,7 +33,7 @@ class FieldValue<V> {
             return false;
         }
 
-        final FieldValue that = (FieldValue) o;
+        final FieldValue<?> that = (FieldValue<?>) o;
 
         return context.equals(that.context)
                 && tableName.equals(that.tableName)
