@@ -310,6 +310,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
+        tableMappingFactory.validateCreateVirtualTableRequest(createTableRequest);
+        // TODO: persist virtual to physical secondary index map in repo
         return new CreateTableResult()
             .withTableDescription(withTenantStreamArn(mtTableDescriptionRepo.createTable(createTableRequest)));
     }

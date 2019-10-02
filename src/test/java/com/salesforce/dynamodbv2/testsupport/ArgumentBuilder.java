@@ -18,6 +18,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountM
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -129,6 +130,18 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withBinaryHashKey(true)
             .build();
 
+        /*
+         * bySharedTable w/ hash partitioning
+         */
+        AmazonDynamoDB sharedTableHashPartitioning = SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(amazonDynamoDb)
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .withBinaryHashKey(true)
+            .withPartitioningStrategy(new HashPartitioningStrategy(64))
+            .build();
+
         return ImmutableList.of(
             /*
              * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
@@ -137,7 +150,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             //byAccount,
             byTable,
             sharedTable,
-            sharedTableBinaryHashKey
+            sharedTableBinaryHashKey/*,
+            sharedTableHashPartitioning*/
         );
     }
 

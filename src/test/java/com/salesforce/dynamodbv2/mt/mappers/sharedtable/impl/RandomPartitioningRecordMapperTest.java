@@ -15,7 +15,6 @@ import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.util.Collections;
 import java.util.Optional;
@@ -36,13 +35,12 @@ class RandomPartitioningRecordMapperTest {
         new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema(virtualHk, S, virtualRk, S).build()),
-        new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
+        new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
-                .withTableKeySchema(physicalHk, S, physicalRk, S).build())
-            .getCreateTableRequest()),
-        new DynamoSecondaryIndexMapperByTypeImpl(),
+                .withTableKeySchema(physicalHk, S, physicalRk, S).build()),
+        index -> null,
         null
-    );
+        );
     private final RandomPartitioningItemMapper itemMapper = new RandomPartitioningItemMapper(
         new StringFieldMapper(provider, tableName),
         tableMapping.getTablePrimaryKeyFieldMappings(),
