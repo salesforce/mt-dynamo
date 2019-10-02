@@ -272,7 +272,7 @@ class RandomPartitioningTableMappingTest {
         );
     }
 
-    private static void assertException(TestFunction test, String expectedMessagePrefix) {
+    private static void assertException(TestFunction<? extends Throwable> test, String expectedMessagePrefix) {
         try {
             test.run();
             fail("Expected exception '" + expectedMessagePrefix + "' not encountered");
