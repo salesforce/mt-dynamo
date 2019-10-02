@@ -12,6 +12,7 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitio
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.common.collect.Lists;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningItemMapper.BigDecimalSortedBytesConverter;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,13 +47,17 @@ class BigDecimalSortedBytesConverterTest {
             new BigDecimal("-1.23E-130"),
             new BigDecimal("9.8E+125")
         );
-        List<byte[]> byteArrays = numbers.stream().map(n -> encode(n)).collect(Collectors.toList());
+        List<byte[]> byteArrays = numbers.stream()
+            .map(BigDecimalSortedBytesConverter::encode)
+            .collect(Collectors.toList());
 
         Collections.sort(numbers);
         numbers = numbers.stream().map(BigDecimal::stripTrailingZeros).collect(Collectors.toList());
 
-        Collections.sort(byteArrays, Arrays::compare);
-        List<BigDecimal> decodedNumbers = byteArrays.stream().map(b -> decode(b)).collect(Collectors.toList());
+        byteArrays.sort(Arrays::compare);
+        List<BigDecimal> decodedNumbers = byteArrays.stream()
+            .map(BigDecimalSortedBytesConverter::decode)
+            .collect(Collectors.toList());
         assertEquals(numbers, decodedNumbers);
     }
 }

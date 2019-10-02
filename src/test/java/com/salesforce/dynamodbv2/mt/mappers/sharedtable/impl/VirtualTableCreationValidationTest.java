@@ -211,7 +211,7 @@ class VirtualTableCreationValidationTest {
             "failure mapping virtual GSI");
     }
 
-    private static void assertException(TestFunction test, String expectedContainedMessage) {
+    private static void assertException(TestFunction<? extends Throwable> test, String expectedContainedMessage) {
         try {
             test.run();
             fail("Expected exception '" + expectedContainedMessage + "' not encountered");

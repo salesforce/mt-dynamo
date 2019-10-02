@@ -309,7 +309,7 @@ class HashPartitioningItemMapper implements ItemMapper {
                 BigInteger[] quotientAndRemainder = significand.divideAndRemainder(BigInteger.TEN);
                 // remove least significant digit
                 significand = quotientAndRemainder[0];
-                // write it in the least signficant byte not yet written
+                // write it in the least significant byte not yet written
                 byteArray[i] = quotientAndRemainder[1].byteValueExact();
             }
 
@@ -335,13 +335,13 @@ class HashPartitioningItemMapper implements ItemMapper {
             // get signum from first byte
             int signum = byteArray[0];
 
-            // get exponent from second byte, and the number of signficand digits from the length of the remaining
+            // get exponent from second byte, and the number of significand digits from the length of the remaining
             // bytes, so we can recover the scale
             int normalizedExponent = fromExponentByte(flipByteIfNegative(byteArray[1], signum));
             int precision = byteArray.length - 2;
             int scale = precision - normalizedExponent - 1;
 
-            // compute the significand, working backwards from the least signficant digit
+            // compute the significand, working backwards from the least significant digit
             BigInteger significand = BigInteger.ZERO;
             BigInteger power = BigInteger.ONE;
             for (int i = byteArray.length - 1; i >= 2; i--) {
