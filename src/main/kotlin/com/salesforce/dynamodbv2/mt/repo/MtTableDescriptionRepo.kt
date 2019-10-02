@@ -6,7 +6,10 @@
 package com.salesforce.dynamodbv2.mt.repo
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
+import com.amazonaws.services.dynamodbv2.model.ListTablesRequest
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult
 import com.amazonaws.services.dynamodbv2.model.TableDescription
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 
 /**
  * Interface for managing table metadata of multitenant virtual tables within mt-dynamo.
@@ -31,7 +34,7 @@ interface MtTableDescriptionRepo {
     fun getTableDescription(tableName: String): TableDescription
 
     /**
-     * Delete the designated virtual table metadata.
+     * Delete the designated virtual table metadata for a given tenant context.
      *
      * @param tableName name of the table to delete
      * @return the table description of the virtual table to be deleted
@@ -47,19 +50,38 @@ interface MtTableDescriptionRepo {
      */
     fun listVirtualTableMetadata(listMetadataRequest: ListMetadataRequest): ListMetadataResult
 
+    /**
+     * Enumerate all virtual table names associated with the given tenant context.
+     */
+    fun listTables(listTablesRequest: ListTablesRequest): ListTablesResult
+
     data class ListMetadataResult(
         val createTableRequests: List<MtCreateTableRequest>,
         val lastEvaluatedTable: MtCreateTableRequest?
     )
 
-    data class ListMetadataRequest(var limit: Int = 10, var exclusiveStartTableMetadata: MtCreateTableRequest? = null) {
-        fun withLimit(limit: Int): ListMetadataRequest {
-            this.limit = limit
+    data class ListMetadataRequest(var limit: Int = DEFAULT_SCAN_LIMIT, var startTenantTableKey: MtAmazonDynamoDb.TenantTable? = null) {
+
+        fun withLimit(limit: Int?): ListMetadataRequest {
+            if (limit == null) {
+                this.limit = DEFAULT_SCAN_LIMIT
+            } else {
+                this.limit = limit
+            }
             return this
         }
 
-        fun withExclusiveStartKey(startKey: MtCreateTableRequest?): ListMetadataRequest {
-            exclusiveStartTableMetadata = startKey
+        fun withExclusiveStartCreateTableReq(startKey: MtCreateTableRequest?): ListMetadataRequest {
+            if (startKey == null) {
+                startTenantTableKey = null
+            } else {
+                startTenantTableKey = MtAmazonDynamoDb.TenantTable(startKey.createTableRequest.tableName, startKey.tenantName)
+            }
+            return this
+        }
+
+        fun withExclusiveStartKey(startTenantTable: MtAmazonDynamoDb.TenantTable?): ListMetadataRequest {
+            startTenantTableKey = startTenantTable
             return this
         }
     }
@@ -69,3 +91,5 @@ interface MtTableDescriptionRepo {
         val createTableRequest: CreateTableRequest
     )
 }
+
+private const val DEFAULT_SCAN_LIMIT = 100

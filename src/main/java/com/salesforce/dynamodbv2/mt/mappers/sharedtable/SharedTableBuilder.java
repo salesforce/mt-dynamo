@@ -686,7 +686,7 @@ public class SharedTableBuilder implements TableBuilder {
             }
         }
 
-        private boolean isEmpty(List l) {
+        private boolean isEmpty(List<?> l) {
             return l == null || l.isEmpty();
         }
 

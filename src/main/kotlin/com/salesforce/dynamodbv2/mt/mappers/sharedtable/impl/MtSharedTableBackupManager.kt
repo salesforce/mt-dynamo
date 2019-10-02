@@ -123,7 +123,7 @@ open class MtSharedTableBackupManager(
     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
         val startTime = System.currentTimeMillis()
         // write out table metadata
-        val startKey: MtTableDescriptionRepo.MtCreateTableRequest? = null
+        val startKey: TenantTable? = null
         val batchSize = 100
         var tenantTableCount = 0
         val tenantTables = Lists.newArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()

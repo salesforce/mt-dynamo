@@ -21,10 +21,10 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.5.2</junit.version>
-        <aws.sdk.version>1.11.635</aws.sdk.version>
+        <aws.sdk.version>1.11.642</aws.sdk.version>
         <skipITs>true</skipITs>
         <kotlin.version>1.3.50</kotlin.version>
-        <spotless-maven-plugin.version>1.24.1</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>1.24.3</spotless-maven-plugin.version>
         <ktlint.version>0.33.0</ktlint.version>
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
@@ -79,7 +79,7 @@
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-core</artifactId>
-            <version>1.2.1</version>
+            <version>1.3.0</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>
@@ -109,7 +109,7 @@
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>3.0.0</version>
+            <version>3.1.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -265,7 +265,7 @@
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>8.24</version>
+                        <version>8.25</version>
                     </dependency>
                 </dependencies>
                 <executions>
