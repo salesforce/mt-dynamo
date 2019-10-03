@@ -37,11 +37,12 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -58,18 +59,26 @@ import java.util.stream.IntStream;
 public class DefaultTestSetup implements TestSetup {
 
     protected static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
+
     public static final String TABLE1 = "Table1"; // has hk
     public static final String TABLE2 = "Table2"; // has hk
     public static final String TABLE3 = "Table3"; // has hk, rk(S), GSI and LSI
     public static final String TABLE4 = "Table4"; // has hk, rk(N), GSI and LSI
     public static final String TABLE5 = "Table5"; // has hk, rk(S), GSI whose HK field is the table's RK field, no LSI
-    private List<CreateTableRequest> createTableRequests;
+    public static final Set<String> ALL_TABLES = ImmutableSet.of(TABLE1, TABLE2, TABLE3, TABLE4, TABLE5);
+
+    private final Set<String> tableNames;
+
+    public DefaultTestSetup(Set<String> tableNames) {
+        this.tableNames = tableNames;
+    }
 
     @Override
     public void setupTest(TestArgument testArgument) {
         testArgument.getOrgs().forEach(org -> {
             mtContext.setContext(org);
-            createTableRequests = getCreateRequests(testArgument.getHashKeyAttrType());
+            List<CreateTableRequest> createTableRequests =
+                getCreateRequests(testArgument.getHashKeyAttrType(), tableNames);
             createTableRequests.forEach(createTableRequest -> {
                 new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                     .createTableIfNotExists(createTableRequest, getPollInterval());
@@ -81,8 +90,7 @@ public class DefaultTestSetup implements TestSetup {
         });
     }
 
-    @Override
-    public void setupTableData(AmazonDynamoDB amazonDynamoDb,
+    protected void setupTableData(AmazonDynamoDB amazonDynamoDb,
         ScalarAttributeType hashKeyAttrType,
         String org,
         CreateTableRequest createTableRequest) {
@@ -179,56 +187,71 @@ public class DefaultTestSetup implements TestSetup {
         return scalarAttributeTypeOpt;
     }
 
-    private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType) {
+    private List<CreateTableRequest> getCreateRequests(ScalarAttributeType hashKeyAttrType, Set<String> tableNames) {
+        List<CreateTableRequest> tables = new ArrayList<>(tableNames.size());
+
         /*
          * Each successive table adds onto the previous table builder state that was used to create the previous table.
          */
+        // TABLE1
         CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder()
-                .withTableName(TABLE1)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
-                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH))
-                .withProvisionedThroughput(1L, 1L);
-        return ImmutableList.of(
-            baseBuilder.withTableName(TABLE1).build(),
-            baseBuilder.withTableName(TABLE2).build(),
-            baseBuilder.withTableName(TABLE3) // also has a RK, GSIs, and LSIs
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
-                    new AttributeDefinition(RANGE_KEY_FIELD, S),
-                    new AttributeDefinition(INDEX_FIELD, S),
-                    new AttributeDefinition(GSI_HK_FIELD, S),
-                    new AttributeDefinition(GSI2_HK_FIELD, S),
-                    new AttributeDefinition(GSI2_RK_FIELD, N))
-                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
-                .withGlobalSecondaryIndexes(
-                    buildGsi("testGsi", getKeySchema(GSI_HK_FIELD, HASH)),
-                    buildGsi("testGsi2", getKeySchema(GSI2_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
-                .withLocalSecondaryIndexes(
-                    buildLsi("testLsi", getKeySchema(HASH_KEY_FIELD, HASH, INDEX_FIELD, RANGE)))
-                .build(),
-            // same as TABLE3, but with different with RK of type N
-            baseBuilder.withTableName(TABLE4)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
-                    new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
-                    new AttributeDefinition(INDEX_FIELD, S),
-                    new AttributeDefinition(GSI_HK_FIELD, S),
-                    new AttributeDefinition(GSI2_HK_FIELD, S),
-                    new AttributeDefinition(GSI2_RK_FIELD, N)
-                ).build(),
-            // same as TABLE3, but with a GSI whose HK field is the table's RK field, and two GSIs with a common field
-            baseBuilder.withTableName(TABLE5)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
-                    new AttributeDefinition(RANGE_KEY_FIELD, S),
-                    new AttributeDefinition(GSI_HK_FIELD, S),
-                    new AttributeDefinition(INDEX_FIELD, S),
-                    new AttributeDefinition(GSI2_RK_FIELD, N))
-                .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
-                .withGlobalSecondaryIndexes(
-                    buildGsi("testGsi_table_rk_as_index_hk", getKeySchema(RANGE_KEY_FIELD, HASH)),
-                    buildGsi("testGsi_on_common_field_1", getKeySchema(GSI_HK_FIELD, HASH, INDEX_FIELD, RANGE)),
-                    buildGsi("testGsi_on_common_field_2", getKeySchema(GSI_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
-                .withLocalSecondaryIndexes()
-                .build()
-        );
+            .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType))
+            .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH))
+            .withProvisionedThroughput(1L, 1L);
+        if (tableNames.contains(TABLE1)) {
+            tables.add(baseBuilder.withTableName(TABLE1).build());
+        }
+        // TABLE2
+        if (tableNames.contains(TABLE2)) {
+            tables.add(baseBuilder.withTableName(TABLE2).build());
+        }
+        // TABLE3: has an RK, GSIs, and LSIs
+        baseBuilder
+            .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                new AttributeDefinition(RANGE_KEY_FIELD, S),
+                new AttributeDefinition(INDEX_FIELD, S),
+                new AttributeDefinition(GSI_HK_FIELD, S),
+                new AttributeDefinition(GSI2_HK_FIELD, S),
+                new AttributeDefinition(GSI2_RK_FIELD, N))
+            .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
+            .withGlobalSecondaryIndexes(
+                buildGsi("testGsi", getKeySchema(GSI_HK_FIELD, HASH)),
+                buildGsi("testGsi2", getKeySchema(GSI2_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
+            .withLocalSecondaryIndexes(
+                buildLsi("testLsi", getKeySchema(HASH_KEY_FIELD, HASH, INDEX_FIELD, RANGE)));
+        if (tableNames.contains(TABLE3)) {
+            tables.add(baseBuilder.withTableName(TABLE3).build());
+        }
+        // TABLE4: same as TABLE3, but with different with RK of type N
+        baseBuilder
+            .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                new AttributeDefinition(RANGE_KEY_FIELD, N), // unlike TABLE3
+                new AttributeDefinition(INDEX_FIELD, S),
+                new AttributeDefinition(GSI_HK_FIELD, S),
+                new AttributeDefinition(GSI2_HK_FIELD, S),
+                new AttributeDefinition(GSI2_RK_FIELD, N));
+        if (tableNames.contains(TABLE4)) {
+            tables.add(baseBuilder.withTableName(TABLE4).build());
+        }
+        // TABLE5: has a GSI whose HK field is the table's RK field, two GSIs with a common field, and no LSI
+        baseBuilder
+            .withAttributeDefinitions(
+                new AttributeDefinition(HASH_KEY_FIELD, hashKeyAttrType),
+                new AttributeDefinition(RANGE_KEY_FIELD, S),
+                new AttributeDefinition(GSI_HK_FIELD, S),
+                new AttributeDefinition(INDEX_FIELD, S),
+                new AttributeDefinition(GSI2_RK_FIELD, N))
+            .withKeySchema(getKeySchema(HASH_KEY_FIELD, HASH, RANGE_KEY_FIELD, RANGE))
+            .withGlobalSecondaryIndexes(
+                buildGsi("testGsi_table_rk_as_index_hk", getKeySchema(RANGE_KEY_FIELD, HASH)),
+                buildGsi("testGsi_on_common_field_1", getKeySchema(GSI_HK_FIELD, HASH, INDEX_FIELD, RANGE)),
+                buildGsi("testGsi_on_common_field_2", getKeySchema(GSI_HK_FIELD, HASH, GSI2_RK_FIELD, RANGE)))
+            .withLocalSecondaryIndexes();
+        if (tableNames.contains(TABLE5)) {
+            tables.add(baseBuilder.withTableName(TABLE5).build());
+        }
+
+        return tables;
     }
 
     private KeySchemaElement[] getKeySchema(String hkName, KeyType hkType) {

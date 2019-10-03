@@ -1,7 +1,16 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.ALL_TABLES;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
+
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.provider.Arguments;
@@ -62,25 +71,24 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
  *
  * @author msgroi
  */
-public class DefaultArgumentProvider implements ArgumentsProvider {
+public abstract class DefaultArgumentProvider implements ArgumentsProvider {
 
     private final ArgumentBuilder argumentBuilder;
     private final TestSetup testSetup;
 
-    /**
-     * Used when annotating a test method with an arguments-source annotation directly, e.g.,
-     * &#64;ArgumentsSource(DefaultArgumentProvider.class)
-     */
-    public DefaultArgumentProvider() {
-        this(new ArgumentBuilder(), new DefaultTestSetup());
+    protected DefaultArgumentProvider(String tableName) {
+        this(ImmutableSet.of(tableName));
     }
 
-    public DefaultArgumentProvider(TestSetup testSetup) {
-        this.argumentBuilder = new ArgumentBuilder();
-        this.testSetup = testSetup;
+    protected DefaultArgumentProvider(Set<String> tableNames) {
+        this(new DefaultTestSetup(tableNames));
     }
 
-    public DefaultArgumentProvider(ArgumentBuilder argumentBuilder, TestSetup testSetup) {
+    protected DefaultArgumentProvider(TestSetup testSetup) {
+        this(new ArgumentBuilder(), testSetup);
+    }
+
+    protected DefaultArgumentProvider(ArgumentBuilder argumentBuilder, TestSetup testSetup) {
         this.argumentBuilder = argumentBuilder;
         this.testSetup = testSetup;
     }
@@ -102,4 +110,57 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
         return arguments.stream().map(Arguments::of);
     }
 
+    /**
+     * The argument providers below are used when annotating a test method with an arguments-source annotation directly,
+     * e.g., &#64;ArgumentsSource(DefaultArgumentProvider.class)
+     */
+
+    public static class DefaultArgumentProviderWithNoTables extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderWithNoTables() {
+            super(Collections.emptySet());
+        }
+    }
+
+    public static class DefaultArgumentProviderWithAllTables extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderWithAllTables() {
+            super(ALL_TABLES);
+        }
+    }
+
+    public static class DefaultArgumentProviderForTable1 extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderForTable1() {
+            super(TABLE1);
+        }
+    }
+
+    /*public static class DefaultArgumentProviderForTable2 extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderForTable2() {
+            super(TABLE2);
+        }
+    }*/
+
+    public static class DefaultArgumentProviderForTable3 extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderForTable3() {
+            super(TABLE3);
+        }
+    }
+
+    public static class DefaultArgumentProviderForTable4 extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderForTable4() {
+            super(TABLE4);
+        }
+    }
+
+    public static class DefaultArgumentProviderForTable5 extends DefaultArgumentProvider {
+
+        public DefaultArgumentProviderForTable5() {
+            super(TABLE5);
+        }
+    }
 }
