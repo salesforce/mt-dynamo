@@ -22,7 +22,10 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithAllTables;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +43,7 @@ class DeleteTest {
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithAllTables.class)
     void delete(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
@@ -80,7 +83,7 @@ class DeleteTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void deleteWithAttributeExists(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
@@ -96,7 +99,7 @@ class DeleteTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void deleteWithAttributeExistsWithLiterals(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
@@ -111,7 +114,7 @@ class DeleteTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void deleteWithAttributeExistsFails(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         try {
@@ -128,7 +131,7 @@ class DeleteTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void deleteWithHkAttributeExists(TestArgument testArgument) {
         MT_CONTEXT.setContext(testArgument.getOrgs().get(0));
         testArgument.getAmazonDynamoDb().deleteItem(new DeleteItemRequest()
@@ -144,13 +147,13 @@ class DeleteTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void deleteHkRkTable(TestArgument testArgument) {
         runDeleteTestForHkRkTable(testArgument, TABLE3);
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
     void deleteHkRkTableWithPkFieldInGsi(TestArgument testArgument) {
         runDeleteTestForHkRkTable(testArgument, TABLE5);
     }

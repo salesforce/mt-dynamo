@@ -11,7 +11,9 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.Optional;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,7 +27,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 class GetTest {
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void get(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -39,7 +41,7 @@ class GetTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void getHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -54,7 +56,7 @@ class GetTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
     void getHkRk_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
         String table = TABLE5;
         testArgument.forEachOrgContext(

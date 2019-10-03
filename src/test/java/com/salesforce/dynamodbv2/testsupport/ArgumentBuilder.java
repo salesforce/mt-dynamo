@@ -55,9 +55,10 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
         new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
-    private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
+    private final AmazonDynamoDB rootAmazonDynamoDb;
 
     public ArgumentBuilder() {
+        this(ROOT_AMAZON_DYNAMO_DB);
     }
 
     public ArgumentBuilder(AmazonDynamoDB rootAmazonDynamoDb) {

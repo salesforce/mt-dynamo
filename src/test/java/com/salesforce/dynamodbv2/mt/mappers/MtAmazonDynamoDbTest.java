@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithAllTables;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 public class MtAmazonDynamoDbTest {
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithAllTables.class)
     public void testListTables_noContext(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
@@ -28,7 +28,7 @@ public class MtAmazonDynamoDbTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithAllTables.class)
     public void testListTables_noContext_pagination(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         final Set<String> allTableSet = new HashSet<>();

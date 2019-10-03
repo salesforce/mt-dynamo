@@ -51,7 +51,11 @@ import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable4;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithNoTables;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -71,7 +75,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  */
 class QueryTest {
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void query(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#name = :value";
@@ -98,7 +102,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void queryWithKeyConditionsEq(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb()
@@ -125,7 +129,7 @@ class QueryTest {
      * (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsGtLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GT,
             testArgument,
@@ -141,7 +145,7 @@ class QueryTest {
      * (hk, RANGE_KEY_N_MIN + 2), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsGtAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GT,
             testArgument,
@@ -157,7 +161,7 @@ class QueryTest {
      * (hk, RANGE_KEY_N_MIN), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsGeLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GE,
             testArgument,
@@ -173,7 +177,7 @@ class QueryTest {
      * (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsGeAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(GE,
             testArgument,
@@ -188,7 +192,7 @@ class QueryTest {
      * rk < RANGE_KEY_N_MIN, so there should be 0 results.
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsLtLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LT,
             testArgument,
@@ -201,7 +205,7 @@ class QueryTest {
      * rk < RANGE_KEY_N_MIN + 1, so there should be 1 result: (hk, RANGE_KEY_N_MIN).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsLtAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LT,
             testArgument,
@@ -214,7 +218,7 @@ class QueryTest {
      * rk <= RANGE_KEY_N_MIN, so there should be 1 result: (hk, RANGE_KEY_N_MIN).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsLeLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LE,
             testArgument,
@@ -227,7 +231,7 @@ class QueryTest {
      * rk <= RANGE_KEY_N_MIN + 1, so there should be 2 results: (hk, RANGE_KEY_N_MIN) and (hk, RANGE_KEY_N_MIN + 1).
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithKeyConditionsLeAlmostAsLow(TestArgument testArgument) {
         queryWithKeyConditionsComparisonOperatorInner(LE,
             testArgument,
@@ -273,7 +277,7 @@ class QueryTest {
 
     // TODO: non-legacy query test(s); legacy & non-legacy scan tests
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -290,7 +294,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
     void queryUsingAttributeNameLiterals(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
@@ -308,7 +312,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#hk = :hkv and #rk <= :rkv";
@@ -339,7 +343,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryHkRkTableNoRkSpecified(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#hk = :hkv";
@@ -372,7 +376,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -392,7 +396,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryHkRkWithFilterExpression_lessThanOrEqual(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -412,7 +416,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryGsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -431,7 +435,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
     void queryGsi_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String table = TABLE5;
@@ -453,7 +457,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
@@ -503,7 +507,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void queryLsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
@@ -523,7 +527,7 @@ class QueryTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable4.class)
     void queryWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> queryAndAssertItemKeys(testArgument.getAmazonDynamoDb(),
             testArgument.getHashKeyAttrType()));
@@ -534,7 +538,7 @@ class QueryTest {
      * happen to have the same GSI name would cause unexpected results when the GSI was queried.
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithNoTables.class)
     void queryGsiTwoTablesSameIndexName(TestArgument testArgument) {
         String gsiHkField = "gsiHk";
         String gsiHkFieldValue = "gsiHkValue";
