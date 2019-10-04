@@ -91,9 +91,9 @@ public class DefaultTestSetup implements TestSetup {
     }
 
     protected void setupTableData(AmazonDynamoDB amazonDynamoDb,
-        ScalarAttributeType hashKeyAttrType,
-        String org,
-        CreateTableRequest createTableRequest) {
+                                  ScalarAttributeType hashKeyAttrType,
+                                  String org,
+                                  CreateTableRequest createTableRequest) {
         String table = createTableRequest.getTableName();
         final Optional<ScalarAttributeType> rangeKeyAttributeTypeOpt = getScalarAttributeType(createTableRequest,
             KeyType.RANGE);
@@ -159,7 +159,7 @@ public class DefaultTestSetup implements TestSetup {
      * {@code keyType}.
      */
     private Optional<ScalarAttributeType> getScalarAttributeType(CreateTableRequest createTableRequest,
-        KeyType keyType) {
+                                                                 KeyType keyType) {
         final Optional<ScalarAttributeType> scalarAttributeTypeOpt;
         final Set<String> setWithKeyAttributeNameIfItExists = createTableRequest.getKeySchema().stream()
             .filter(keySchemaElement -> keyType.equals(KeyType.fromValue(keySchemaElement.getKeyType())))
@@ -255,7 +255,7 @@ public class DefaultTestSetup implements TestSetup {
     }
 
     private KeySchemaElement[] getKeySchema(String hkName, KeyType hkType) {
-        return new KeySchemaElement[] {new KeySchemaElement(hkName, hkType)};
+        return new KeySchemaElement[] { new KeySchemaElement(hkName, hkType) };
     }
 
     private KeySchemaElement[] getKeySchema(String hkName, KeyType hkType, String rkName, KeyType rkType) {
