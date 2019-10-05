@@ -1,5 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import com.google.common.base.Objects;
+
 class FieldValue<V> {
 
     private final String context;
@@ -38,6 +40,11 @@ class FieldValue<V> {
         return context.equals(that.context)
                 && tableName.equals(that.tableName)
                 && value.equals(that.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(this.context, this.tableName, this.value);
     }
 
     @Override
