@@ -45,13 +45,14 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assumptions;
 
 public class MtAmazonDynamoDbStreamsBaseTestUtils {
 
     public static final String SHARED_TABLE_NAME = "SharedTable";
     public static final String[] TENANTS = { "tenant1", "tenant2" };
-    static final String TENANT_TABLE_NAME = "TenantTable";
+    public static final String TENANT_TABLE_NAME = "TenantTable";
     private static final String ID_ATTR_NAME = "id";
     private static final String INDEX_ID_ATTR_NAME = "indexId";
 
@@ -182,7 +183,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         GetRecordsResult result = streams
             .getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(limit));
         assertNotNull(result.getNextShardIterator());
-        List<Record> records = result.getRecords();
+        List<Record> records = result.getRecords().stream().filter(e -> e != null).collect(Collectors.toList());
         assertEquals(expected.length, records.size());
         for (int i = 0; i < expected.length; i++) {
             assertMtRecord(expected[i], records.get(i));

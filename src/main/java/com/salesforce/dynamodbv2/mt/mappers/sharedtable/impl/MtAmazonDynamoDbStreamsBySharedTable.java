@@ -11,6 +11,8 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
@@ -79,9 +81,23 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             // when called to map a record, extract tenant context and table
             final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
             // then establish context to map physical to virtual record, i.e., remove index key prefixes
-            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () ->
-                mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record)
-            );
+            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () -> {
+                try {
+                    return mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record);
+
+                } catch (UncheckedExecutionException e) {
+                    // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual
+                    // table, and thus, shouldn't be mapping records to MtRecords. Instead return null, but really,
+                    // we should make sure we let deleted records flow through a stream and expire out, before removing
+                    // the virtual table entry.
+                    if (e.getCause() instanceof ResourceNotFoundException) {
+                        return null;
+                    }
+                    throw e;
+                } catch (ResourceNotFoundException e) {
+                    return null;
+                }
+            });
         };
     }
 

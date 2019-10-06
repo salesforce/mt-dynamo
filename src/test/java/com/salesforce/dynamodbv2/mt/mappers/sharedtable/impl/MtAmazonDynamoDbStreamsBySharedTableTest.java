@@ -5,6 +5,7 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
+import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,6 +33,7 @@ import com.amazonaws.services.dynamodbv2.model.Stream;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
@@ -48,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -172,6 +175,78 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             // fetched for cross-tenant call. Tenant calls should be served from cache.
             assertEquals(1, dynamoDbStreams.getRecordsCount);
             assertEquals(1, dynamoDbStreams.getShardIteratorCount);
+            iterator = getShardIterator(mtDynamoDbStreams);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+
+        } finally {
+            MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
+        }
+
+    }
+
+    /**
+     * Until delete's process deletes and wait for streams to clear through before clearing virtual table definition,
+     * validate a deleted table doesn't block stream for everyone else and is filtered out.
+     */
+    @Test
+    void testRecordsFromDeletedVirtualTable() {
+        String tablePrefix = TABLE_PREFIX + "testRecords.";
+
+        MtAmazonDynamoDbBySharedTable mtDynamoDb = SharedTableBuilder.builder()
+            .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
+            .withAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal())
+            .withTablePrefix(tablePrefix)
+            .withTableDescriptionCache(CacheBuilder.newBuilder().expireAfterWrite(0L, TimeUnit.SECONDS).build())
+            .withTableMappingCache(CacheBuilder.newBuilder().expireAfterWrite(0L, TimeUnit.SECONDS).build())
+            .withTruncateOnDeleteTable(true)
+            .withCreateTablesEagerly(true)
+            .withContext(MT_CONTEXT)
+            .build();
+        try {
+            MtAmazonDynamoDbStreamsBaseTestUtils.createTenantTables(mtDynamoDb);
+
+            int i = 0;
+            MtRecord expected1 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i++);
+            MtRecord expected2 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], i);
+            i = 0;
+            MtRecord expected3 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i++);
+            MtRecord expected4 = MtAmazonDynamoDbStreamsBaseTestUtils
+                .putTestItem(mtDynamoDb, MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], i);
+
+            // get shard iterator
+            CountingAmazonDynamoDbStreams dynamoDbStreams =
+                new CountingAmazonDynamoDbStreams(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
+            MtAmazonDynamoDbStreams mtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(mtDynamoDb,
+                new CachingAmazonDynamoDbStreams.Builder(dynamoDbStreams).withTicker(new MockTicker()).build());
+
+            // test without context
+            String iterator = getShardIterator(mtDynamoDbStreams);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+
+            // issue a delete of one tenant
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
+                    mtDynamoDb.deleteTable(new DeleteTableRequest().withTableName(TENANT_TABLE_NAME));
+            });
+
+            // validate we can fetch records from other tenant
+            MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], () -> {
+                String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
+                    .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
+                MtAmazonDynamoDbStreamsBaseTestUtils
+                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+            });
+
+            // and validate fetching all multi tenant records filters out deleted tenant
+            iterator = getShardIterator(mtDynamoDbStreams);
+            MtAmazonDynamoDbStreamsBaseTestUtils
+                .assertGetRecords(mtDynamoDbStreams, iterator, expected3, expected4);
+
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
