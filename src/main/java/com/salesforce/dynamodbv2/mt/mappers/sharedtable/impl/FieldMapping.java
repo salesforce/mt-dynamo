@@ -10,6 +10,7 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static java.lang.String.format;
 
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
+import com.google.common.base.Objects;
 
 /**
  * Model class for storing a mapping of a field mapping pair.
@@ -102,6 +103,11 @@ class FieldMapping {
         }
 
         @Override
+        public int hashCode() {
+            return Objects.hashCode(this.name, this.type);
+        }
+
+        @Override
         public String toString() {
             return format("{name=%s, type=%s}", name, type);
         }
@@ -124,6 +130,12 @@ class FieldMapping {
             && virtualIndexName.equals(that.virtualIndexName)
             && physicalIndexName.equals(that.physicalIndexName)
             && indexType == that.indexType;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(this.source, this.target, this.virtualIndexName, this.physicalIndexName, this.indexType,
+            this.isContextAware);
     }
 
     @Override
