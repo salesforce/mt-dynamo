@@ -247,7 +247,8 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             // and validate fetching all multi tenant records filters out deleted tenant
             iterator = getShardIterator(mtDynamoDbStreams);
             MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator, deletedExpected1, deletedExpected2, expected3, expected4);
+                .assertGetRecords(mtDynamoDbStreams, iterator,
+                    deletedExpected1, deletedExpected2, expected3, expected4);
 
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
