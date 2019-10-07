@@ -242,10 +242,12 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
                     .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
             });
 
+            MtRecord deletedExpected1 = expected1.withContext(null).withTableName(null);
+            MtRecord deletedExpected2 = expected2.withContext(null).withTableName(null);
             // and validate fetching all multi tenant records filters out deleted tenant
             iterator = getShardIterator(mtDynamoDbStreams);
             MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator, expected3, expected4);
+                .assertGetRecords(mtDynamoDbStreams, iterator, deletedExpected1, deletedExpected2, expected3, expected4);
 
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);

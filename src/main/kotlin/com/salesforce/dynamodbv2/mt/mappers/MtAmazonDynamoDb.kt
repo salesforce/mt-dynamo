@@ -23,12 +23,12 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
         var tableName: String? = null
             private set
 
-        fun withContext(context: String): MtRecord {
+        fun withContext(context: String?): MtRecord {
             this.context = context
             return this
         }
 
-        fun withTableName(tableName: String): MtRecord {
+        fun withTableName(tableName: String?): MtRecord {
             this.tableName = tableName
             return this
         }

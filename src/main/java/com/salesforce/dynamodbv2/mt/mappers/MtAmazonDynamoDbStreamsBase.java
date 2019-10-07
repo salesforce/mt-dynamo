@@ -17,6 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningRecordMapper;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
@@ -221,13 +222,27 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
-            mapper.apply(record).ifPresent(mtRecords::add);
+            Optional<MtRecord> mtRecord = mapper.apply(record);
+            if (mtRecord.isPresent()) {
+                mtRecords.add(mtRecord.get());
+            } else {
+                mtRecords.add(getMissingMapper(record));
+            }
+
         }
         meter.record(mtRecords.size());
         return new MtGetRecordsResult()
             .withRecords(mtRecords)
             .withNextShardIterator(nextIterator)
             .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
+    }
+
+
+    private MtRecord getMissingMapper(Record record) {
+        return RandomPartitioningRecordMapper.getDefaultMtRecord(record)
+            .withDynamodb(record.getDynamodb())
+            .withContext(null)
+            .withTableName(null);
     }
 
 }
