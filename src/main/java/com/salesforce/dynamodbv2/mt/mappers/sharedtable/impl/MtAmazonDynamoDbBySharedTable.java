@@ -118,7 +118,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final String name;
 
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
-    private final Cache<Object, TableMapping> tableMappingCache;
+    private final Cache<Object, Optional<TableMapping>> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
@@ -156,7 +156,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
                                          Clock clock,
-                                         Cache<Object, TableMapping> tableMappingCache,
+                                         Cache<Object, Optional<TableMapping>> tableMappingCache,
                                          MeterRegistry meterRegistry,
                                          Optional<MtSharedTableBackupManagerBuilder> backupManager,
                                          String scanTenantKey,
@@ -418,18 +418,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     Optional<TableMapping> getTableMapping(String virtualTableName) {
         try {
-            return Optional.of(tableMappingCache.get(virtualTableName, () ->
-                tableMappingFactory.getTableMapping(
-                    new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName)))));
-        } catch (UncheckedExecutionException e) {
-            // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual
-            // table, and thus, shouldn't be mapping records to MtRecords. Instead return null, but really,
-            // we should make sure we let deleted records flow through a stream and expire out, before removing
-            // the virtual table entry.
-            if (e.getCause() instanceof ResourceNotFoundException) {
-                return Optional.empty();
-            }
-            throw e;
+            return tableMappingCache.get(virtualTableName, () -> {
+                try {
+
+                    return Optional.of(tableMappingFactory.getTableMapping(
+                        new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
+                } catch (ResourceNotFoundException e) {
+                    // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual
+                    // table, and thus, shouldn't be mapping records to MtRecords. Instead return null, but really,
+                    // we should make sure we let deleted records flow through a stream and expire out, before removing
+                    // the virtual table entry.
+                    return Optional.empty();
+                }
+            });
         } catch (ExecutionException e) {
             throw new RuntimeException("exception mapping virtual table " + virtualTableName, e);
         }
