@@ -11,7 +11,7 @@ import java.util.function.Predicate;
  * Maps physical stream records into virtual stream records. Also exposes a filter method to allow pushing tenant table
  * predicate as low as possible when traversing a shared stream.
  */
-class RandomPartitioningRecordMapper implements RecordMapper {
+public class RandomPartitioningRecordMapper implements RecordMapper {
 
     private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
@@ -40,6 +40,19 @@ class RandomPartitioningRecordMapper implements RecordMapper {
     @Override
     public MtRecord apply(Record record) {
         final StreamRecord streamRecord = record.getDynamodb();
+        return getDefaultMtRecord(record).withContext(mtContext.getContext())
+            .withTableName(virtualTableName)
+            .withDynamodb(new StreamRecord()
+                .withKeys(itemMapper.reverse(streamRecord.getKeys())) // should this use key mapper?
+                .withNewImage(itemMapper.reverse(streamRecord.getNewImage()))
+                .withOldImage(itemMapper.reverse(streamRecord.getOldImage()))
+                .withSequenceNumber(streamRecord.getSequenceNumber())
+                .withStreamViewType(streamRecord.getStreamViewType())
+                .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime())
+                .withSizeBytes(streamRecord.getSizeBytes()));
+    }
+
+    public static MtRecord getDefaultMtRecord(Record record) {
         final MtRecord ret = new MtRecord();
         if (record.getAwsRegion() != null) {
             ret.withAwsRegion(record.getAwsRegion());
@@ -64,15 +77,6 @@ class RandomPartitioningRecordMapper implements RecordMapper {
         if (record.getUserIdentity() != null) {
             ret.withUserIdentity(record.getUserIdentity());
         }
-        return ret.withContext(mtContext.getContext())
-            .withTableName(virtualTableName)
-            .withDynamodb(new StreamRecord()
-                .withKeys(itemMapper.reverse(streamRecord.getKeys())) // should this use key mapper?
-                .withNewImage(itemMapper.reverse(streamRecord.getNewImage()))
-                .withOldImage(itemMapper.reverse(streamRecord.getOldImage()))
-                .withSequenceNumber(streamRecord.getSequenceNumber())
-                .withStreamViewType(streamRecord.getStreamViewType())
-                .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime())
-                .withSizeBytes(streamRecord.getSizeBytes()));
+        return ret;
     }
 }
