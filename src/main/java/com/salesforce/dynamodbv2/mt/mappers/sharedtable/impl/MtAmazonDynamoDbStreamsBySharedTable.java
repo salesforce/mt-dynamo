@@ -11,8 +11,6 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
-import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
@@ -73,7 +71,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             getMtRecords(request, getRecordMapper(streamArn.getTableName()), getAllRecordsSize));
     }
 
-    private Function<Record, MtRecord> getRecordMapper(String physicalTableName) {
+    private Function<Record, Optional<MtRecord>> getRecordMapper(String physicalTableName) {
         // get function that extracts tenant context and table name from key prefix
         final Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
             mtDynamoDb.getFieldValueFunction(physicalTableName);
@@ -82,21 +80,10 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
             // then establish context to map physical to virtual record, i.e., remove index key prefixes
             return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () -> {
-                try {
-                    return mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record);
+                Optional<TableMapping> tableMapping = mtDynamoDb.getTableMapping(fieldValue.getTableName());
+                return tableMapping.map(TableMapping::getRecordMapper)
+                    .map(f -> f.apply(record));
 
-                } catch (UncheckedExecutionException e) {
-                    // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual
-                    // table, and thus, shouldn't be mapping records to MtRecords. Instead return null, but really,
-                    // we should make sure we let deleted records flow through a stream and expire out, before removing
-                    // the virtual table entry.
-                    if (e.getCause() instanceof ResourceNotFoundException) {
-                        return null;
-                    }
-                    throw e;
-                } catch (ResourceNotFoundException e) {
-                    return null;
-                }
             });
         };
     }
@@ -129,7 +116,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withNextShardIterator(request.getShardIterator());
 
             final RecordMapper recordMapper =
-                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).getRecordMapper();
+                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).get().getRecordMapper();
             final Predicate<Record> recordFilter = recordMapper.createFilter();
 
             int recordsLoaded;

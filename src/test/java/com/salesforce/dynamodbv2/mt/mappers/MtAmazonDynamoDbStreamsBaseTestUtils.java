@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assumptions;
 
 public class MtAmazonDynamoDbStreamsBaseTestUtils {
@@ -183,7 +182,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         GetRecordsResult result = streams
             .getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(limit));
         assertNotNull(result.getNextShardIterator());
-        List<Record> records = result.getRecords().stream().filter(e -> e != null).collect(Collectors.toList());
+        List<Record> records = result.getRecords();
         assertEquals(expected.length, records.size());
         for (int i = 0; i < expected.length; i++) {
             assertMtRecord(expected[i], records.get(i));

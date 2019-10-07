@@ -210,7 +210,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * @return MtGetRecordsResult result.
      */
     protected MtGetRecordsResult getMtRecords(GetRecordsRequest request,
-                                              Function<Record, MtRecord> mapper,
+                                              Function<Record, Optional<MtRecord>> mapper,
                                               DistributionSummary meter) {
         final GetRecordsResult result = dynamoDbStreams.getRecords(request);
         final List<Record> records = result.getRecords();
@@ -221,7 +221,10 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
-            mtRecords.add(mapper.apply(record));
+            Optional<MtRecord> mtRecord = mapper.apply(record);
+            if (mtRecord.isPresent()) {
+                mtRecords.add(mtRecord.get());
+            }
         }
         meter.record(mtRecords.size());
         return new MtGetRecordsResult()

@@ -231,7 +231,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
             // issue a delete of one tenant
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
-                    mtDynamoDb.deleteTable(new DeleteTableRequest().withTableName(TENANT_TABLE_NAME));
+                mtDynamoDb.deleteTable(new DeleteTableRequest().withTableName(TENANT_TABLE_NAME));
             });
 
             // validate we can fetch records from other tenant

@@ -9,6 +9,7 @@ import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.util.Optional;
 import java.util.function.Function;
 
 /**
@@ -52,12 +53,12 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
             getMtRecords(request, mapper(mtStreamArn.getContext(), mtStreamArn.getTenantTableName()), getRecordsSize));
     }
 
-    private Function<Record, MtRecord> mapper(String tenant, String tableName) {
+    private Function<Record, Optional<MtRecord>> mapper(String tenant, String tableName) {
         return record -> mapRecord(tenant, tableName, record);
     }
 
-    private MtRecord mapRecord(String tenant, String tableName, Record record) {
-        return new MtRecord()
+    private Optional<MtRecord> mapRecord(String tenant, String tableName, Record record) {
+        return Optional.of(new MtRecord()
             .withAwsRegion(record.getAwsRegion())
             .withEventID(record.getEventID())
             .withEventName(record.getEventName())
@@ -65,7 +66,7 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
             .withEventVersion(record.getEventVersion())
             .withContext(tenant)
             .withTableName(tableName)
-            .withDynamodb(record.getDynamodb());
+            .withDynamodb(record.getDynamodb()));
     }
 
 }
