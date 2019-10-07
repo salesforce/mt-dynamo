@@ -71,7 +71,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             getMtRecords(request, getRecordMapper(streamArn.getTableName()), getAllRecordsSize));
     }
 
-    private Function<Record, MtRecord> getRecordMapper(String physicalTableName) {
+    private Function<Record, Optional<MtRecord>> getRecordMapper(String physicalTableName) {
         // get function that extracts tenant context and table name from key prefix
         final Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
             mtDynamoDb.getFieldValueFunction(physicalTableName);
@@ -79,9 +79,12 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             // when called to map a record, extract tenant context and table
             final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
             // then establish context to map physical to virtual record, i.e., remove index key prefixes
-            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () ->
-                mtDynamoDb.getTableMapping(fieldValue.getTableName()).getRecordMapper().apply(record)
-            );
+            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () -> {
+                Optional<TableMapping> tableMapping = mtDynamoDb.getTableMapping(fieldValue.getTableName());
+                return tableMapping.map(TableMapping::getRecordMapper)
+                    .map(f -> f.apply(record));
+
+            });
         };
     }
 
@@ -113,7 +116,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withNextShardIterator(request.getShardIterator());
 
             final RecordMapper recordMapper =
-                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).getRecordMapper();
+                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).get().getRecordMapper();
             final Predicate<Record> recordFilter = recordMapper.createFilter();
 
             int recordsLoaded;
