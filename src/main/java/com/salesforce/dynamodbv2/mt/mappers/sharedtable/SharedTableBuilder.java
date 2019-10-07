@@ -201,7 +201,7 @@ public class SharedTableBuilder implements TableBuilder {
     private Long getRecordsTimeLimit;
     private Clock clock;
     private String tableDescriptionTableName;
-    private Cache<Object, TableMapping> tableMappingCache;
+    private Cache<Object, Optional<TableMapping>> tableMappingCache;
     private Cache<Object, TableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
     private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
@@ -604,7 +604,7 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTableMappingCache(Cache<Object, TableMapping> tableMappingCache) {
+    public SharedTableBuilder withTableMappingCache(Cache<Object, Optional<TableMapping>> tableMappingCache) {
         this.tableMappingCache = tableMappingCache;
         return this;
     }
