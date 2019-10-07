@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.context.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
@@ -28,7 +29,7 @@ class MtAmazonDynamoDbContextProviderThreadLocalImplTest {
 
     @Test
     void testNullOpt() {
-        assertEquals(Optional.empty(), sut.getContextOpt());
+        assertTrue(sut.getContextOpt().isEmpty());
     }
 
     @Test

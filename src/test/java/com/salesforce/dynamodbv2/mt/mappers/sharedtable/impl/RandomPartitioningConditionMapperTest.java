@@ -4,6 +4,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -457,8 +458,8 @@ class RandomPartitioningConditionMapperTest {
 
     @Test
     void findVirtualValuePlaceholder() {
-        assertEquals(Optional.empty(), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-            "set #someField = :newValue", "#hk"));
+        assertTrue(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            "set #someField = :newValue", "#hk").isEmpty());
         assertEquals(":currentValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "#hk = :currentValue", "#hk").orElseThrow());
         assertEquals(":currentHkValue", RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
@@ -477,8 +478,8 @@ class RandomPartitioningConditionMapperTest {
             "#hk = :currentHkValue and #rk <= :currentRkValue", "#rk").orElseThrow());
         assertEquals(Optional.of(":ue1"), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
             "set #ue1 = :ue1, #ue2 = :ue2", "#ue1"));
-        assertEquals(Optional.empty(), RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
-            null, null));
+        assertTrue(RandomPartitioningConditionMapper.findVirtualValuePlaceholder(
+            null, null).isEmpty());
     }
 
     @Test

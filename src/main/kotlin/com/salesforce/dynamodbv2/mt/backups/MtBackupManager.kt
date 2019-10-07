@@ -125,7 +125,7 @@ data class MtBackupMetadata(
      */
     fun merge(newBackupMetadata: MtBackupMetadata): MtBackupMetadata {
         if (!(newBackupMetadata.mtBackupName.equals(mtBackupName))) {
-            throw MtBackupException("Trying to merge a backup with a different backup id, " +
+            throw MtBackupException("Trying to merge a backup with a different backup ID, " +
                     "this: $mtBackupName, other: ${newBackupMetadata.mtBackupName}")
         }
         val tenantTableCount: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
