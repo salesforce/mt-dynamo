@@ -221,10 +221,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
-            Optional<MtRecord> mtRecord = mapper.apply(record);
-            if (mtRecord.isPresent()) {
-                mtRecords.add(mtRecord.get());
-            }
+            mapper.apply(record).ifPresent(mtRecords::add);
         }
         meter.record(mtRecords.size());
         return new MtGetRecordsResult()
