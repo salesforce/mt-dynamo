@@ -24,6 +24,7 @@ Change log:
 - Indentation.basicOffset|caseIndent|arrayInitIndent: 2 -> 4
 - add UnusedImports
 - move LineLength up from under TreeWalker to under Checker (as required by Checkstyle 8.24)
+- removed Checker > TreeWalker > JavadocMethod > minLineCount (as required by Checkstyle 8.25)
 
 -->
 
@@ -252,7 +253,6 @@ Change log:
             <property name="allowMissingParamTags" value="true"/>
             <property name="allowMissingThrowsTags" value="true"/>
             <property name="allowMissingReturnTag" value="true"/>
-            <property name="minLineCount" value="2"/>
             <property name="allowedAnnotations" value="Override, Test"/>
             <property name="allowThrowsTagsForSubclasses" value="true"/>
         </module>

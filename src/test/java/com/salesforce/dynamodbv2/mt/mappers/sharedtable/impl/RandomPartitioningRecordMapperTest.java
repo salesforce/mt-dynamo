@@ -15,14 +15,14 @@ import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import java.util.Collections;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class RecordMapperTest {
+class RandomPartitioningRecordMapperTest {
 
     private final String context = "context";
     private final String tableName = "table";
@@ -31,20 +31,24 @@ class RecordMapperTest {
     private final String virtualRk = "vrk";
     private final String physicalHk = "phk";
     private final String physicalRk = "prk";
-    private final ItemMapper itemMapper = new ItemMapper(
-        new StringFieldMapper(provider, tableName),
-        new TableMapping(new DynamoTableDescriptionImpl(
+    private final RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+        new DynamoTableDescriptionImpl(
             CreateTableRequestBuilder.builder()
                 .withTableKeySchema(virtualHk, S, virtualRk, S).build()),
-            new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
-                CreateTableRequestBuilder.builder()
-                    .withTableKeySchema(physicalHk, S, physicalRk, S).build())
-                .getCreateTableRequest()),
-            new DynamoSecondaryIndexMapperByTypeImpl(),
-            null
-        ).getAllVirtualToPhysicalFieldMappings());
+        new DynamoTableDescriptionImpl(
+            CreateTableRequestBuilder.builder()
+                .withTableKeySchema(physicalHk, S, physicalRk, S).build()),
+        index -> null,
+        null
+        );
+    private final RandomPartitioningItemMapper itemMapper = new RandomPartitioningItemMapper(
+        new StringFieldMapper(provider, tableName),
+        tableMapping.getTablePrimaryKeyFieldMappings(),
+        Collections.emptyMap(),
+        tableMapping.getAllMappingsPerField());
     private final FieldMapper fieldMapper = new StringFieldMapper(provider, tableName);
-    private final RecordMapper sut = new RecordMapper(provider, tableName, itemMapper, fieldMapper, physicalHk);
+    private final RandomPartitioningRecordMapper sut = new RandomPartitioningRecordMapper(
+        provider, tableName, itemMapper, fieldMapper, physicalHk);
 
     @ParameterizedTest
     @ValueSource(strings = { "context/table/abc", "context/table/0" })

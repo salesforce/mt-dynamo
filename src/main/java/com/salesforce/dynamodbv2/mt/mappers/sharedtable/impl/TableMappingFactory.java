@@ -7,18 +7,25 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.String.format;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapper;
+import com.salesforce.dynamodbv2.mt.mappers.MappingException;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperTrackingAssigned;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
+import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +46,9 @@ public class TableMappingFactory {
     private final AmazonDynamoDbAdminUtils dynamoDbAdminUtils;
     private final CreateTableRequestFactory createTableRequestFactory;
     private final MtAmazonDynamoDbContextProvider mtContext;
-    private final DynamoSecondaryIndexMapper secondaryIndexMapper;
     private final AmazonDynamoDB amazonDynamoDb;
+    private final TablePartitioningStrategy partitioningStrategy;
+    private final VirtualTableCreationValidator virtualTableCreationValidator;
     private final int pollIntervalSeconds;
 
     /**
@@ -48,7 +56,6 @@ public class TableMappingFactory {
      *
      * @param createTableRequestFactory maps virtual to physical table instances
      * @param mtContext the multitenant context provider
-     * @param secondaryIndexMapper maps virtual to physical indexes
      * @param amazonDynamoDb the underlying {@code AmazonDynamoDB} delegate
      * @param createTablesEagerly a flag indicating whether to create physical tables eagerly at start time
      * @param pollIntervalSeconds the interval in seconds between attempts at checking the status of the table being
@@ -56,15 +63,16 @@ public class TableMappingFactory {
      */
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,
-                               DynamoSecondaryIndexMapper secondaryIndexMapper,
                                AmazonDynamoDB amazonDynamoDb,
+                               TablePartitioningStrategy partitioningStrategy,
                                boolean createTablesEagerly,
                                int pollIntervalSeconds) {
         this.createTableRequestFactory = createTableRequestFactory;
-        this.secondaryIndexMapper = secondaryIndexMapper;
         this.mtContext = mtContext;
         this.amazonDynamoDb = amazonDynamoDb;
         this.dynamoDbAdminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
+        this.partitioningStrategy = partitioningStrategy;
+        this.virtualTableCreationValidator = new VirtualTableCreationValidator(partitioningStrategy);
         this.pollIntervalSeconds = pollIntervalSeconds;
         if (createTablesEagerly) {
             createTablesEagerly(createTableRequestFactory);
@@ -79,17 +87,108 @@ public class TableMappingFactory {
         createTableRequestFactory.getPhysicalTables().forEach(this::createTableIfNotExists);
     }
 
-    /*
+    void validateCreateVirtualTableRequest(CreateTableRequest createVirtualTableRequest) {
+        DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(createVirtualTableRequest);
+        DynamoTableDescription physicalTable = lookupPhysicalTable(virtualTable);
+
+        // validate physical table key types
+        virtualTableCreationValidator.validatePhysicalTable(physicalTable);
+
+        // validate primary key types are compatible
+        virtualTableCreationValidator.validateCompatiblePrimaryKeys(virtualTable, physicalTable);
+
+        // validate secondary indexes
+        virtualTableCreationValidator.validateAndGetSecondaryIndexMap(virtualTable, physicalTable);
+    }
+
+    /**
+     * Calls the provided CreateTableRequestFactory passing in the virtual table description and returns the
+     * corresponding physical table.  Throws a ResourceNotFoundException if the implementation returns null.
+     */
+    private DynamoTableDescription lookupPhysicalTable(DynamoTableDescription virtualTable) {
+        return new DynamoTableDescriptionImpl(
+            createTableRequestFactory.getCreateTableRequest(virtualTable).orElseThrow(() ->
+                new ResourceNotFoundException("table " + virtualTable.getTableName() + " is not a supported table")));
+    }
+
+    @VisibleForTesting
+    static class VirtualTableCreationValidator {
+
+        private final TablePartitioningStrategy partitioningStrategy;
+
+        VirtualTableCreationValidator(TablePartitioningStrategy partitioningStrategy) {
+            this.partitioningStrategy = partitioningStrategy;
+        }
+
+        /**
+         * Maps each virtual secondary index to a corresponding physical secondary index, based on our secondary index
+         * PrimaryKeyMapper. For each virtual index, the PrimaryKeyMapper will look for a valid physical index amongst
+         * the physical indexes that are still unassigned. An IllegalArgumentException is thrown if there is an index
+         * that cannot be mapped.
+         */
+        Map<DynamoSecondaryIndex, DynamoSecondaryIndex> validateAndGetSecondaryIndexMap(
+                DynamoTableDescription virtualTable, DynamoTableDescription physicalTable) {
+            DynamoSecondaryIndexMapperTrackingAssigned indexMapper = new DynamoSecondaryIndexMapperTrackingAssigned(
+                    partitioningStrategy.getSecondaryIndexPrimaryKeyMapper());
+
+            for (DynamoSecondaryIndex virtualSi : virtualTable.getSis()) {
+                try {
+                    indexMapper.lookupPhysicalSecondaryIndex(virtualSi, physicalTable);
+                } catch (MappingException e) {
+                    throw new IllegalArgumentException("failure mapping virtual " + virtualSi.getType()
+                            + ": " + e.getMessage() + ", virtualSi=" + virtualSi
+                            + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
+                }
+            }
+            return indexMapper.getAssignedVirtualToPhysicalIndexes();
+        }
+
+        /**
+         * Validates that virtual and physical table primary keys are compatible.
+         */
+        void validateCompatiblePrimaryKeys(DynamoTableDescription virtualTable, DynamoTableDescription physicalTable) {
+            try {
+                partitioningStrategy.validateCompatiblePrimaryKeys(virtualTable.getPrimaryKey(),
+                        physicalTable.getPrimaryKey());
+            } catch (RuntimeException e) {
+                throw new IllegalArgumentException("incompatible table primary keys: "
+                        + e.getMessage() + ", virtualTable=" + virtualTable + ", physicalTable=" + physicalTable);
+            }
+        }
+
+        /**
+         * Validate that the physical table's primary key and all of its secondary index's primary keys have valid
+         * types.
+         */
+        void validatePhysicalTable(DynamoTableDescription physicalTableDescription) {
+            String tableMsgPrefix = "physical table " + physicalTableDescription.getTableName();
+            validatePhysicalPrimaryKey(physicalTableDescription.getPrimaryKey(), tableMsgPrefix);
+            physicalTableDescription.getGsis().forEach(dynamoSecondaryIndex ->
+                    validatePhysicalPrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix
+                            + "'s GSI " + dynamoSecondaryIndex.getIndexName()));
+            physicalTableDescription.getLsis().forEach(dynamoSecondaryIndex ->
+                    validatePhysicalPrimaryKey(dynamoSecondaryIndex.getPrimaryKey(), tableMsgPrefix
+                            + "'s LSI " + dynamoSecondaryIndex.getIndexName()));
+        }
+
+        private void validatePhysicalPrimaryKey(PrimaryKey primaryKey, String msgPrefix) {
+            checkArgument(partitioningStrategy.isPhysicalPrimaryKeyValid(primaryKey),
+                    msgPrefix + " has invalid primary key: " + primaryKey);
+        }
+    }
+
+    /**
      * Creates the table mapping, creates the table if it does not exist, sets the physical table description
      * back onto the table mapping so it includes things that can only be determined after the physical
      * table is created, like the streamArn.
      */
-    TableMapping getTableMapping(DynamoTableDescription virtualTableDescription) {
-        TableMapping tableMapping = new TableMapping(virtualTableDescription,
-            createTableRequestFactory,
-            secondaryIndexMapper,
-            mtContext);
-        tableMapping.setPhysicalTable(createTableIfNotExists(tableMapping.getPhysicalTable().getCreateTableRequest()));
+    TableMapping getTableMapping(DynamoTableDescription virtualTable) {
+        DynamoTableDescription physicalTable = lookupPhysicalTable(virtualTable);
+        physicalTable = createTableIfNotExists(physicalTable.getCreateTableRequest());
+        Map<DynamoSecondaryIndex, DynamoSecondaryIndex> secondaryIndexMap =
+                virtualTableCreationValidator.validateAndGetSecondaryIndexMap(virtualTable, physicalTable);
+        TableMapping tableMapping = partitioningStrategy.createTableMapping(virtualTable, physicalTable,
+            secondaryIndexMap::get, mtContext);
         LOG.info("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
     }

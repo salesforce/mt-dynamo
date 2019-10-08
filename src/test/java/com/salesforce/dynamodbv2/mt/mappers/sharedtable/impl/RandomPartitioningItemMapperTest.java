@@ -13,9 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperByTypeImpl;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import java.util.Collections;
 import java.util.Map;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
@@ -25,21 +25,27 @@ import org.junit.jupiter.api.Test;
  *
  * @author msgroi
  */
-class ItemMapperTest {
+class RandomPartitioningItemMapperTest {
 
     private static final String PREFIX = "PREFIX-";
-    private static final ItemMapper SUT = new ItemMapper(
-            new MockFieldMapper(),
-            new TableMapping(new DynamoTableDescriptionImpl(
-                    CreateTableRequestBuilder.builder()
-                        .withTableKeySchema("virtualHk", S, "virtualRk", S).build()),
-                    new SingletonCreateTableRequestFactory(new DynamoTableDescriptionImpl(
-                            CreateTableRequestBuilder.builder()
-                                    .withTableKeySchema("physicalHk", S, "physicalRk", S).build())
-                            .getCreateTableRequest()),
-                    new DynamoSecondaryIndexMapperByTypeImpl(),
-                    null
-            ).getAllVirtualToPhysicalFieldMappings());
+
+    private static final DynamoTableDescription VIRTUAL_TABLE = TableMappingTestUtil.buildTable("virtualTable",
+        new PrimaryKey("virtualHk", S, "virtualRk", S));
+
+    private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable("physicalTable",
+        new PrimaryKey("physicalHk", S, "physicalRk", S));
+
+    private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
+        VIRTUAL_TABLE,
+        PHYSICAL_TABLE,
+        index -> null,
+        null
+    );
+    private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
+        new MockFieldMapper(),
+        TABLE_MAPPING.getTablePrimaryKeyFieldMappings(),
+        Collections.emptyMap(),
+        TABLE_MAPPING.getAllMappingsPerField());
 
     @Test
     void applyAndReverse() {
@@ -48,7 +54,7 @@ class ItemMapperTest {
             "virtualRk", new AttributeValue().withS("rkValue"),
             "someField", new AttributeValue().withS("someValue"));
 
-        Map<String, AttributeValue> mappedItem = SUT.apply(item);
+        Map<String, AttributeValue> mappedItem = SUT.applyForWrite(item);
 
         assertEquals(ImmutableMap.of(
             "physicalHk", new AttributeValue().withS(PREFIX + "hkValue"),

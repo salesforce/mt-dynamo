@@ -17,7 +17,8 @@ import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,7 +40,7 @@ class PutTest {
     private static final String ATTRIBUTE_NOT_EXISTS = "attribute_not_exists";
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void put(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -64,7 +65,7 @@ class PutTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void putOverwrite(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -93,7 +94,7 @@ class PutTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void putHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -119,7 +120,7 @@ class PutTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // assert before state
@@ -151,7 +152,7 @@ class PutTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void putAttributeNotExists(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             PutItemRequest putItemRequest = new PutItemRequest()

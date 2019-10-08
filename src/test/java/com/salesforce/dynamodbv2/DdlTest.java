@@ -26,7 +26,8 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithNoTables;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import java.util.List;
 import java.util.Map;
@@ -43,14 +44,14 @@ class DdlTest {
     private static final MtAmazonDynamoDbContextProvider MT_CONTEXT = ArgumentBuilder.MT_CONTEXT;
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void describeTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org
             -> assertEquals(TABLE1, testArgument.getAmazonDynamoDb().describeTable(TABLE1).getTable().getTableName()));
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void createAndDeleteTable(TestArgument testArgument) {
         String org = testArgument.getOrgs().get(0);
         MT_CONTEXT.setContext(org);
@@ -77,7 +78,7 @@ class DdlTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithNoTables.class)
     void createTableResponse(TestArgument testArgument) {
         String orgId = testArgument.getOrgs().get(0);
         MT_CONTEXT.withContext(orgId, () -> {

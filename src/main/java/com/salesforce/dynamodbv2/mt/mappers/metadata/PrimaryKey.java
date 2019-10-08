@@ -76,8 +76,8 @@ public class PrimaryKey {
         return "{"
             + "hashKey='" + hashKey + '\''
             + ", hashKeyType=" + hashKeyType
-            + (rangeKey.map(s -> ", rangeKey=" + s + ", rangeKeyType="
-            + (rangeKeyType.map(Enum::toString).orElse("<NONE>"))))
+            + rangeKey.map(s -> ", rangeKey='" + s + "', rangeKeyType="
+            + rangeKeyType.map(Enum::toString).orElse("<NONE>")).orElse("")
             + "}";
     }
 

@@ -18,6 +18,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountM
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,11 +33,11 @@ import java.util.stream.IntStream;
 /**
  * Builds of a list of {@code TestArgument}s.  Each {@code TestArgument} consists of 3 elements:
  *
- * <p>- the {@code AmazonDynamoDB} instance to be tested
- * - the attribute type of the hash key of the table to be tested
- * - a list of orgs that have been designated to be used for the given test invocation
+ * <ul><li> the {@code AmazonDynamoDB} instance to be tested
+ * <li> the attribute type of the hash key of the table to be tested
+ * <li> a list of orgs that have been designated to be used for the given test invocation</ul>
  *
- * <p>The {@code ArgumentBuilder} is used by the {@code DefaultArgumentProvider} which can be referenced in a JUnit 5
+ * <p>{@code ArgumentBuilder} is used by the {@code DefaultArgumentProvider}, which can be referenced in a JUnit 5
  * {@code @ParameterizedTest} {@code @ArgumentSource} annotation.  See {@link DefaultArgumentProvider} for details.
  *
  * @author msgroi
@@ -54,9 +55,10 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
         new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
-    private AmazonDynamoDB rootAmazonDynamoDb = ROOT_AMAZON_DYNAMO_DB;
+    private final AmazonDynamoDB rootAmazonDynamoDb;
 
     public ArgumentBuilder() {
+        this(ROOT_AMAZON_DYNAMO_DB);
     }
 
     public ArgumentBuilder(AmazonDynamoDB rootAmazonDynamoDb) {
@@ -74,7 +76,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         return ret;
     }
 
-    /*
+    /**
      * Returns a list of orgs to be used for a test.
      */
     private List<String> getOrgs() {
@@ -82,16 +84,14 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             Collectors.toList());
     }
 
-    /*
+    /**
      * Returns a list of DynamoDB data types to be used as the table's HASH key data type when creating virtual tables.
      */
     private List<ScalarAttributeType> getHashKeyAttrTypes() {
-        // TODO get-bug: remove the filter and fix the tests that fail when RK is Binary
-        return Arrays.stream(ScalarAttributeType.values()).filter(scalarAttributeType ->
-            !scalarAttributeType.equals(ScalarAttributeType.B)).collect(Collectors.toList());
+        return Arrays.stream(ScalarAttributeType.values()).collect(Collectors.toList());
     }
 
-    /*
+    /**
      * Returns a list of AmazonDynamoDB instances to be tested.
      */
     private List<AmazonDynamoDB> getAmazonDynamoDbStrategies() {
@@ -131,6 +131,18 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withBinaryHashKey(true)
             .build();
 
+        /*
+         * bySharedTable w/ hash partitioning
+         */
+        AmazonDynamoDB sharedTableHashPartitioning = SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(amazonDynamoDb)
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .withBinaryHashKey(true)
+            .withPartitioningStrategy(new HashPartitioningStrategy(64))
+            .build();
+
         return ImmutableList.of(
             /*
              * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
@@ -139,7 +151,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             //byAccount,
             byTable,
             sharedTable,
-            sharedTableBinaryHashKey
+            sharedTableBinaryHashKey/*,
+            sharedTableHashPartitioning*/
         );
     }
 

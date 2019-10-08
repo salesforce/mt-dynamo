@@ -1,15 +1,21 @@
 package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_HK_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_RK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
@@ -33,6 +39,9 @@ import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithAllTables;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.ArrayList;
@@ -56,7 +65,7 @@ class ScanTest {
     private static final ScanTestSetup scanTestSetup = new ScanTestSetup();
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void scanWithHk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -79,7 +88,7 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> assertEquals(
             ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -95,7 +104,7 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void scanByNonPk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -119,7 +128,7 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void scanAll(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = executeScan(
@@ -141,7 +150,7 @@ class ScanTest {
 
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderWithAllTables.class)
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
@@ -159,14 +168,43 @@ class ScanTest {
                 isFound = true;
                 assertTrue(scanResult.getItems().stream().allMatch(
                     row -> row.containsKey(
-                            ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanTenantKey())
+                        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanTenantKey())
                         && row.containsKey(
-                            ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanVirtualTableKey())));
+                        ((MtAmazonDynamoDbBase) testArgument.getAmazonDynamoDb()).getScanVirtualTableKey())));
             }
         }
         assertTrue(isFound, "all scans found no items... that's not right");
     }
 
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    void scanGsiWithPaging(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            // add another gsi2 record so there are multiple and we'd need paging
+            Map<String, AttributeValue> secondRecord = ItemBuilder
+                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .withDefaults()
+                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
+                .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
+                .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
+                .build();
+            testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
+
+            Map<String, AttributeValue> firstRecord = ItemBuilder
+                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .withDefaults()
+                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                .build();
+            List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
+
+            assertEquals(expectedRecords, executeScan(
+                exclusiveStartKey -> testArgument.getAmazonDynamoDb().scan(
+                    new ScanRequest(TABLE3)
+                        .withIndexName("testGsi2")
+                        .withLimit(1)
+                        .withExclusiveStartKey(exclusiveStartKey))));
+        });
+    }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ScanTestArgumentProvider.class)
@@ -217,6 +255,9 @@ class ScanTest {
         final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
+        ScanTestSetup() {
+            super(ImmutableSet.of(TABLE1));
+        }
 
         @Override
         public void setupTableData(AmazonDynamoDB amazonDynamoDb, ScalarAttributeType hashKeyAttrType, String org,

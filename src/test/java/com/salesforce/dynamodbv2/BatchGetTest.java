@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
@@ -17,7 +18,9 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +39,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 class BatchGetTest {
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void batchGet(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
@@ -71,7 +74,7 @@ class BatchGetTest {
      * <p>For more info, see https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html.
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
     void batchGetWithUnprocessedKeys(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
@@ -96,28 +99,38 @@ class BatchGetTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProvider.class)
+    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
     void batchGetHkRkTable(TestArgument testArgument) {
+        runBatchGetHkRkTableTest(testArgument, TABLE3);
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
+    void batchGetHkRkTableWithPkFieldInGsi(TestArgument testArgument) {
+        runBatchGetHkRkTableTest(testArgument, TABLE5);
+    }
+
+    private void runBatchGetHkRkTableTest(TestArgument testArgument, String tableName) {
         testArgument.forEachOrgContext(
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_VALUE);
                 final List<Optional<String>> rangeKeyValueOpts = Arrays.asList(Optional.of(RANGE_KEY_S_VALUE),
-                        Optional.of(RANGE_KEY_OTHER_S_VALUE));
+                    Optional.of(RANGE_KEY_OTHER_S_VALUE));
                 final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
-                        testArgument.getAmazonDynamoDb(),
-                        TABLE3,
-                        hashKeyValues,
-                        rangeKeyValueOpts);
+                    testArgument.getAmazonDynamoDb(),
+                    tableName,
+                    hashKeyValues,
+                    rangeKeyValueOpts);
                 final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                            hashKeyValues.get(0))
-                        .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                        .rangeKey(S, RANGE_KEY_S_VALUE)
-                        .build();
+                    hashKeyValues.get(0))
+                    .someField(S, SOME_FIELD_VALUE + tableName + org)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build();
                 final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                            hashKeyValues.get(1))
-                        .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                        .withDefaults()
-                        .build();
+                    hashKeyValues.get(1))
+                    .someField(S, SOME_OTHER_FIELD_VALUE + tableName + org)
+                    .withDefaults()
+                    .build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
