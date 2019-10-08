@@ -189,14 +189,14 @@ public class TableMappingFactory {
                 virtualTableCreationValidator.validateAndGetSecondaryIndexMap(virtualTable, physicalTable);
         TableMapping tableMapping = partitioningStrategy.createTableMapping(virtualTable, physicalTable,
             secondaryIndexMap::get, mtContext);
-        LOG.info("created virtual to physical table mapping: " + tableMapping.toString());
+        LOG.debug("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
     }
 
     private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
         if (getTableDescription(physicalTable.getTableName()).isPresent()) {
-            LOG.info(format("using existing physical table %s", physicalTable.getTableName()));
+            LOG.debug(format("using existing physical table %s", physicalTable.getTableName()));
         } else {
             LOG.info(format("creating physical table %s", physicalTable.getTableName()));
             dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
