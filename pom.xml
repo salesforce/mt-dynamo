@@ -377,6 +377,7 @@
                         </licenseHeader>
                         <trimTrailingWhitespace />
                         <ktlint>
+                            <!-- available versions: https://github.com/pinterest/ktlint/releases -->
                             <version>${ktlint.version}</version>
                         </ktlint>
                     </kotlin>
