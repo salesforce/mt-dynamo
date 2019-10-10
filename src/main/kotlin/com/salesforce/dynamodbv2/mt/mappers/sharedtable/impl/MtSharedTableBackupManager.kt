@@ -35,22 +35,14 @@ import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
-import com.salesforce.dynamodbv2.mt.backups.MtBackupException
-import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
-import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
-import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
-import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest
-import com.salesforce.dynamodbv2.mt.backups.Status
-import com.salesforce.dynamodbv2.mt.backups.TenantBackupMetadata
-import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata
-import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.*
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.ArrayList
 import java.util.HashMap
@@ -87,7 +79,10 @@ open class MtSharedTableBackupManager(
                 override fun shouldSkipField(field: FieldAttributes): Boolean {
                     return false
                 }
-            }).enableComplexMapKeySerialization().create()
+            })
+            .enableComplexMapKeySerialization()
+            .registerTypeAdapter(ByteBuffer::class.java, GsonByteBufferTypeAdapter())
+            .create()
     val ignoreClassesOfCreateTableRequest: Set<String> = ImmutableSet.of(
             "com.amazonaws.RequestClientOptions",
             "com.amazonaws.event.ProgressListener"
@@ -365,18 +360,9 @@ open class MtSharedTableBackupManager(
         return ret
     }
 
-    override fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata {
-        if (!isTenantTableArn(backupArn)) {
-            throw IllegalArgumentException("$backupArn does not include tenant-table specifier.")
-        }
-        val tenantTableParts = backupArn.split(':')
-        return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2])
-    }
+    override fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata = mtBackupAwsAdaptor.getTenantTableBackupFromArn(backupArn)
 
-    private fun isTenantTableArn(backupArn: String): Boolean = backupArn.split(':').size == 3
-
-    override fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String =
-            "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
+    override fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String = mtBackupAwsAdaptor.getBackupArnForTenantTableBackup(tenantTable)
 
     private fun commitTenantTableMetadata(
         backupId: String,
@@ -387,8 +373,9 @@ open class MtSharedTableBackupManager(
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
             objectMetadata.contentType = "application/json"
+            val tenantTableMetadataFile = getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName))
             val putObjectReq = PutObjectRequest(s3BucketName,
-                    getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName)),
+                    tenantTableMetadataFile,
                     gson.toJson(tenantTableMetadata.createTableRequest).byteInputStream(charset),
                     objectMetadata)
             s3.putObject(putObjectReq)

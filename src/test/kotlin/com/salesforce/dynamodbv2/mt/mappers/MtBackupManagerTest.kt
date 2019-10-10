@@ -11,10 +11,7 @@ import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.google.common.collect.ImmutableMap
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
-import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
-import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
-import com.salesforce.dynamodbv2.mt.backups.Status
-import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.*
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerS3It
@@ -40,6 +37,20 @@ internal class MtBackupManagerTest {
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
         assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupArn)
+        assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupName)
+        assertEquals(Date(fakeDate), describeBackupResult.backupDescription.backupDetails.backupCreationDateTime)
+    }
+
+    @Test
+    fun testDescribeTenantBackup() {
+        val backupId = "backup-id-1234"
+        val tenant = "tenant-1234"
+        val table = "table-1234"
+        val fakeDate = 10203040L
+        val backupMetadata = TenantBackupMetadata(MtAmazonDynamoDb.TenantTable(table, tenant), backupId, Status.IN_PROGRESS, fakeDate)
+        val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
+        assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
+        assertEquals(MtBackupAwsAdaptor().getBackupArnForTenantTableBackup(backupMetadata), describeBackupResult.backupDescription.backupDetails.backupArn)
         assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupName)
         assertEquals(Date(fakeDate), describeBackupResult.backupDescription.backupDetails.backupCreationDateTime)
     }

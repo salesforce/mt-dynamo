@@ -72,6 +72,7 @@ import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata;
 import com.salesforce.dynamodbv2.mt.backups.RestoreMtBackupRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
+import com.salesforce.dynamodbv2.mt.backups.TenantBackupMetadata;
 import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata;
 import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
@@ -419,6 +420,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         try {
             return tableMappingCache.get(virtualTableName, () -> {
                 try {
+
                     return Optional.of(tableMappingFactory.getTableMapping(
                         new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
                 } catch (ResourceNotFoundException e) {
@@ -648,14 +650,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         if (backupManager.isPresent()) {
-            //validate we have a backup for this tenant-table and we're under the same context
+            if (!getMtContext().getContextOpt().isPresent()) {
+                throw new MtBackupException("Cannot do restore of backup without tenant specifier", null);
+            }
+            //validate we have a backup for this tenant-table
             try {
-                TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
-                    .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
-                checkArgument(tenantBackupMetadata.getTenantId().equals(getMtContext().getContext()),
-                    "Current context does not match ARN context");
-            } catch (IllegalArgumentException e) {
-                throw new MtBackupException("Error restoring table, invalid input.", e);
+                describeBackup(new DescribeBackupRequest().withBackupArn(restoreTableFromBackupRequest.getBackupArn()));
+            } catch (BackupNotFoundException e) {
+                throw new MtBackupException("Error restoring table, backup not found with given ARN.", e);
             }
 
             TenantTableBackupMetadata backupMetadata = backupManager.get()
@@ -679,7 +681,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
         if (backupManager.isPresent()) {
             if (getMtContext().getContextOpt().isPresent()) {
-                throw new UnsupportedOperationException("TODO: Implement tenant table backup describe");
+                TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
+                        .getTenantTableBackupFromArn(describeBackupRequest.getBackupArn());
+                TenantBackupMetadata backupMetadata =
+                    backupManager.get().getTenantTableBackup(tenantBackupMetadata.getBackupName(),
+                        new TenantTable(
+                            tenantBackupMetadata.getVirtualTableName(), tenantBackupMetadata.getTenantId()));
+                if (backupMetadata != null) {
+                    return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
+                } else {
+                    throw new BackupNotFoundException("No backup with arn "
+                       + describeBackupRequest.getBackupArn() + " found");
+                }
             }
             MtBackupMetadata backupMetadata = getBackupManager().getBackup(describeBackupRequest.getBackupArn());
             if (backupMetadata != null) {
