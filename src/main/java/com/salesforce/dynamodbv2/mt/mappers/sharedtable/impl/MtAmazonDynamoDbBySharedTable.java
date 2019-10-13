@@ -419,7 +419,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         try {
             return tableMappingCache.get(virtualTableName, () -> {
                 try {
-
                     return Optional.of(tableMappingFactory.getTableMapping(
                         new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
                 } catch (ResourceNotFoundException e) {

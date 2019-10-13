@@ -21,10 +21,10 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.5.2</junit.version>
-        <aws.sdk.version>1.11.646</aws.sdk.version>
+        <aws.sdk.version>1.11.648</aws.sdk.version>
         <skipITs>true</skipITs>
         <kotlin.version>1.3.50</kotlin.version>
-        <spotless-maven-plugin.version>1.24.3</spotless-maven-plugin.version>
+        <spotless-maven-plugin.version>1.25.1</spotless-maven-plugin.version>
         <ktlint.version>0.33.0</ktlint.version>
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
@@ -377,6 +377,7 @@
                         </licenseHeader>
                         <trimTrailingWhitespace />
                         <ktlint>
+                            <!-- available versions: https://github.com/pinterest/ktlint/releases -->
                             <version>${ktlint.version}</version>
                         </ktlint>
                     </kotlin>
