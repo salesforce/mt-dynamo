@@ -17,6 +17,7 @@ import org.testcontainers.dynamodb.DynaliteContainer;
  * has bugs and deviates from remote DynamoDB behavior. This involves starting a Dynalite docker image, which gets
  * shut down automatically when the JVM stops. Tests using this take significantly longer to run, so we should use this
  * sparingly.
+ *
  * <p>See: https://www.testcontainers.org/modules/databases/dynalite/ and https://github.com/mhart/dynalite
  */
 class DynaliteAmazonDynamoDb {
