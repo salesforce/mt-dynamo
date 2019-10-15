@@ -264,7 +264,7 @@ class HashPartitioningConditionMapper implements ConditionMapper {
             if (id != null) {
                 String fieldName = keyConditionPart.id().getText();
                 if (fieldName.startsWith("#")) {
-                    // if it's a field placeolder, remove it -- we'll generated a new one for translated expression
+                    // if it's a field placeholder, remove it -- we'll generated a new one for translated expression
                     fieldName = removeFieldPlaceholder(fieldName);
                 }
 
@@ -350,7 +350,7 @@ class HashPartitioningConditionMapper implements ConditionMapper {
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine,
                                 String msg, RecognitionException e) {
-            throw new IllegalArgumentException("Syntax error in update expression \"" + expression
+            throw new IllegalArgumentException("Syntax error while parsing expression \"" + expression
                 + "\". Line " + line + ":" + charPositionInLine + " " + msg);
         }
     }

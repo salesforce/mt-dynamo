@@ -539,7 +539,7 @@ class RandomPartitioningConditionMapperTest {
         assertEquals(ImmutableMap.of(":value1", new AttributeValue("ctx/virtualTable/x"),
             ":value2", new AttributeValue("y"),
             ":value3", new AttributeValue("x")/*,
-            ":oldValue", new AttributeValue("ctx/virtualTabze/z")*/),
+            ":oldValue", new AttributeValue("ctx/virtualTable/z")*/),
             request.getExpressionAttributeValues());
     }
 

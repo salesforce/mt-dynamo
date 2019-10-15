@@ -99,11 +99,11 @@ class ExpressionsTest {
         /**
          * Platform dependent end-of-line marker.
          */
-        public static final String Eol = System.lineSeparator();
+        static final String Eol = System.lineSeparator();
         /**
          * The literal indent char(s) used for pretty-printing.
          */
-        public static final String Indents = "  ";
+        static final String Indents = "  ";
         private static int level;
 
         private TreeUtils() {
@@ -113,7 +113,7 @@ class ExpressionsTest {
          * Pretty print out a whole tree. {@link #getNodeText} is used on the node payloads to get the text
          * for the nodes. (Derived from Trees.toStringTree(....))
          */
-        public static String toPrettyTree(final Tree t, final List<String> ruleNames) {
+        static String toPrettyTree(final Tree t, final List<String> ruleNames) {
             level = 0;
             return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", Eol);
         }

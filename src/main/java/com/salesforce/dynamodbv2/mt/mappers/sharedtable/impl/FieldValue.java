@@ -1,6 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.google.common.base.Objects;
+import java.util.Objects;
 
 class FieldValue<V> extends MtContextAndTable {
 
@@ -30,7 +30,7 @@ class FieldValue<V> extends MtContextAndTable {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(getContext(), getTableName(), this.value);
+        return Objects.hash(getContext(), getTableName(), this.value);
     }
 
     @Override

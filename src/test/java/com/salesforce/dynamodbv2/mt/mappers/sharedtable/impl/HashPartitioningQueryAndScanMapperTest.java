@@ -67,15 +67,14 @@ class HashPartitioningQueryAndScanMapperTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanHkTable(boolean onGsi) {
+    void testScanHkTable(boolean onGsi) {
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = new HashMap<>();
         List<AttributeValue> virtualHkValues2 = getVirtualHkValuesForBucket(2 /*bucket*/, 2 /*count*/);
         List<AttributeValue> virtualHkValues5 = getVirtualHkValuesForBucket(5 /*bucket*/, 1 /*count*/);
         physicalRkValuesPerBucket.put(2, getPhysicalRkValues(virtualHkValues2));
         physicalRkValuesPerBucket.put(5, getPhysicalRkValues(virtualHkValues5));
 
-        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(VIRTUAL_HK_TABLE, onGsi,
-            physicalRkValuesPerBucket.get(2));
+        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(onGsi, physicalRkValuesPerBucket.get(2));
 
         runScanTest(VIRTUAL_HK_TABLE, onGsi, physicalRkValuesPerBucket, null /*exclusiveStartKey*/,
             expectedItems, true /*shouldHaveLastEvaluatedKey*/);
@@ -83,7 +82,7 @@ class HashPartitioningQueryAndScanMapperTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanHkTableWithStartKey(boolean onGsi) {
+    void testScanHkTableWithStartKey(boolean onGsi) {
         List<AttributeValue> virtualHkValues2 = getVirtualHkValuesForBucket(2 /*bucket*/, 2 /*count*/);
         List<AttributeValue> virtualHkValues5 = getVirtualHkValuesForBucket(5 /*bucket*/, 1 /*count*/);
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = ImmutableMap.of(
@@ -92,28 +91,28 @@ class HashPartitioningQueryAndScanMapperTest {
 
         // scan with exclusive start key in the middle of bucket 2 -- should return rest of bucket 2
         Map<String, AttributeValue> exclusiveStartKey = getExclusiveStartKey(onGsi, virtualHkValues2.get(0));
-        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(VIRTUAL_HK_TABLE, onGsi,
+        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(onGsi,
             physicalRkValuesPerBucket.get(2).subList(1, 2));
         runScanTest(VIRTUAL_HK_TABLE, onGsi, physicalRkValuesPerBucket, exclusiveStartKey,
             expectedItems, true /*shouldHaveLastEvaluatedKey*/);
 
         // scan with exclusive start key at the end of bucket 2 -- should return next non-empty bucket
         exclusiveStartKey = getExclusiveStartKey(onGsi, virtualHkValues2.get(1));
-        expectedItems = getExpectedItems(VIRTUAL_HK_TABLE, onGsi, physicalRkValuesPerBucket.get(5));
+        expectedItems = getExpectedItems(onGsi, physicalRkValuesPerBucket.get(5));
         runScanTest(VIRTUAL_HK_TABLE, onGsi, physicalRkValuesPerBucket, exclusiveStartKey,
             expectedItems, true /*shouldHaveLastEvaluatedKey*/);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanHkRkTable(boolean onGsi) {
+    void testScanHkRkTable(boolean onGsi) {
         AttributeValue virtualHkValue2 = getVirtualHkValueForBucket(2);
         AttributeValue virtualHkValue5 = getVirtualHkValueForBucket(5);
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = ImmutableMap.of(
             2, getPhysicalRkValues(virtualHkValue2, new byte[]{1, 2}, new byte[]{3}),
             5, getPhysicalRkValues(virtualHkValue5, new byte[]{4}));
 
-        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(VIRTUAL_HK_RK_TABLE, onGsi, virtualHkValue2,
+        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(onGsi, virtualHkValue2,
             new byte[]{1, 2}, new byte[]{3});
 
         runScanTest(VIRTUAL_HK_RK_TABLE, onGsi, physicalRkValuesPerBucket, null /*exclusiveStartKey*/,
@@ -122,7 +121,7 @@ class HashPartitioningQueryAndScanMapperTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanHkRkTableWithStartKey(boolean onGsi) {
+    void testScanHkRkTableWithStartKey(boolean onGsi) {
         AttributeValue virtualHkValue2 = getVirtualHkValueForBucket(2);
         AttributeValue virtualHkValue5 = getVirtualHkValueForBucket(5);
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = ImmutableMap.of(
@@ -131,21 +130,20 @@ class HashPartitioningQueryAndScanMapperTest {
 
         // scan with an exclusive start key in the middle of bucket 2 -- should return rest of bucket 2
         Map<String, AttributeValue> exclusiveStartKey = getExclusiveStartKey(onGsi, virtualHkValue2, new byte[]{1, 2});
-        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(VIRTUAL_HK_RK_TABLE, onGsi, virtualHkValue2,
-            new byte[]{3});
+        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(onGsi, virtualHkValue2, new byte[]{3});
         runScanTest(VIRTUAL_HK_RK_TABLE, onGsi, physicalRkValuesPerBucket, exclusiveStartKey,
             expectedItems, true /*shouldHaveLastEvaluatedKey*/);
 
         // scan with exclusive start key at the end of bucket 2 -- should return next non-empty bucket
         exclusiveStartKey = getExclusiveStartKey(onGsi, virtualHkValue2, new byte[]{3});
-        expectedItems = getExpectedItems(VIRTUAL_HK_RK_TABLE, onGsi, virtualHkValue5, new byte[]{4});
+        expectedItems = getExpectedItems(onGsi, virtualHkValue5, new byte[]{4});
         runScanTest(VIRTUAL_HK_RK_TABLE, onGsi, physicalRkValuesPerBucket, exclusiveStartKey,
             expectedItems, true /*shouldHaveLastEvaluatedKey*/);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanNoRecords(boolean onGsi) {
+    void testScanNoRecords(boolean onGsi) {
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = Collections.emptyMap();
         List<Map<String, AttributeValue>> expectedItems = Collections.emptyList();
         runScanTest(VIRTUAL_HK_RK_TABLE, onGsi, physicalRkValuesPerBucket, null /*exclusiveStartKey*/,
@@ -154,13 +152,13 @@ class HashPartitioningQueryAndScanMapperTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    public void testScanLastBucket(boolean onGsi) {
+    void testScanLastBucket(boolean onGsi) {
         int lastBucket = NUM_BUCKETS - 1;
         AttributeValue virtualHkValue = getVirtualHkValueForBucket(lastBucket);
         Map<Integer, List<AttributeValue>> physicalRkValuesPerBucket = ImmutableMap.of(
             lastBucket, getPhysicalRkValues(virtualHkValue, new byte[]{1, 2}, new byte[]{3}));
 
-        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(VIRTUAL_HK_RK_TABLE, onGsi, virtualHkValue,
+        List<Map<String, AttributeValue>> expectedItems = getExpectedItems(onGsi, virtualHkValue,
             new byte[]{1, 2}, new byte[]{3});
 
         // lastEvaluatedKey should be set to null if we got to the end of the last bucket
@@ -194,23 +192,21 @@ class HashPartitioningQueryAndScanMapperTest {
             result.getLastEvaluatedKey());
     }
 
-    private List<Map<String, AttributeValue>> getExpectedItems(DynamoTableDescription virtualTable, boolean onGsi,
-                                                               List<AttributeValue> virtualHkValues) {
+    private List<Map<String, AttributeValue>> getExpectedItems(boolean onGsi, List<AttributeValue> virtualHkValues) {
         String physicalHk = onGsi ? PHYSICAL_GSI_HK : PHYSICAL_HK;
         String physicalRk = onGsi ? PHYSICAL_GSI_RK : PHYSICAL_RK;
-        HashPartitioningKeyMapper keyMapper = getKeyMapper(virtualTable);
+        HashPartitioningKeyMapper keyMapper = getKeyMapper(VIRTUAL_HK_TABLE);
         return virtualHkValues.stream()
             .map(vhk -> ImmutableMap.of(physicalHk, keyMapper.toPhysicalHashKey(HK_TYPE, vhk),
                 physicalRk, getPhysicalRkValue(HK_TYPE, vhk)))
             .collect(Collectors.toList());
     }
 
-    private List<Map<String, AttributeValue>> getExpectedItems(DynamoTableDescription virtualTable, boolean onGsi,
-                                                               AttributeValue virtualHkValue,
+    private List<Map<String, AttributeValue>> getExpectedItems(boolean onGsi, AttributeValue virtualHkValue,
                                                                byte[]... virtualRkRawValues) {
         String physicalHk = onGsi ? PHYSICAL_GSI_HK : PHYSICAL_HK;
         String physicalRk = onGsi ? PHYSICAL_GSI_RK : PHYSICAL_RK;
-        AttributeValue physicalHkValue = getKeyMapper(virtualTable).toPhysicalHashKey(HK_TYPE, virtualHkValue);
+        AttributeValue physicalHkValue = getKeyMapper(VIRTUAL_HK_RK_TABLE).toPhysicalHashKey(HK_TYPE, virtualHkValue);
         return getPhysicalRkValues(virtualHkValue, virtualRkRawValues).stream()
             .map(prk -> ImmutableMap.of(physicalHk, physicalHkValue, physicalRk, prk))
             .collect(Collectors.toList());

@@ -76,8 +76,8 @@ public class RandomPartitioningTableMapping implements TableMapping {
         recordMapper = new RandomPartitioningRecordMapper(mtContext, virtualTable.getTableName(), itemMapper,
             fieldMapper, physicalTable.getPrimaryKey().getHashKey());
         conditionMapper = new RandomPartitioningConditionMapper(this, fieldMapper);
-        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(virtualTable, this::getRequestIndex,
-            conditionMapper, itemMapper, fieldMapper, tablePrimaryKeyFieldMappings, indexPrimaryKeyFieldMappings);
+        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(this::getRequestIndex, conditionMapper,
+            itemMapper, fieldMapper, tablePrimaryKeyFieldMappings, indexPrimaryKeyFieldMappings);
     }
 
     @Override

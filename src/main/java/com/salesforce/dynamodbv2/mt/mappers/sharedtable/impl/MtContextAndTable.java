@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import java.util.Objects;
+
 /**
  * Represents a record's MT context and virtual table name.
  */
@@ -39,6 +41,11 @@ public class MtContextAndTable {
         final MtContextAndTable that = (MtContextAndTable) o;
         return context.equals(that.context)
             && tableName.equals(that.tableName);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.context, this.tableName);
     }
 
     @Override

@@ -26,8 +26,9 @@ class RequestIndex {
     private final Optional<DynamoSecondaryIndex> virtualSecondaryIndex;
     private final Optional<DynamoSecondaryIndex> physicalSecondaryIndex;
 
-    RequestIndex(PrimaryKey virtualPk, PrimaryKey physicalPk, Optional<DynamoSecondaryIndex> virtualSecondaryIndex,
-                 Optional<DynamoSecondaryIndex> physicalSecondaryIndex) {
+    private RequestIndex(PrimaryKey virtualPk, PrimaryKey physicalPk,
+                         Optional<DynamoSecondaryIndex> virtualSecondaryIndex,
+                         Optional<DynamoSecondaryIndex> physicalSecondaryIndex) {
         this.virtualPk = virtualPk;
         this.physicalPk = physicalPk;
         this.virtualSecondaryIndex = virtualSecondaryIndex;

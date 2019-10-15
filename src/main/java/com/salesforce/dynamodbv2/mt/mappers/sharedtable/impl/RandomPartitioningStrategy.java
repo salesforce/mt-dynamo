@@ -24,7 +24,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrateg
 import java.util.function.UnaryOperator;
 
 /**
- * Shared table strategy where records are randomly partiitoned based on a context-prefixed hash key. That is, where
+ * Shared table strategy where records are randomly partitioned based on a context-prefixed hash key. That is, where
  * <pre>
  *     physicalHashKey = tenantId + virtualTableName + virtualHashKey
  *     physicalRangeKey = virtualRangeKey

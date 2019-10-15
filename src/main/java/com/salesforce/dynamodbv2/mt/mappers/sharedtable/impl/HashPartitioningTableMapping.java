@@ -26,7 +26,6 @@ public class HashPartitioningTableMapping implements TableMapping {
     private final DynamoTableDescription virtualTable;
     private final DynamoTableDescription physicalTable;
     private final UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper;
-    private final HashPartitioningKeyMapper keyMapper;
     private final HashPartitioningItemMapper itemMapper;
     private final HashPartitioningConditionMapper conditionMapper;
     private final HashPartitioningQueryAndScanMapper queryAndScanMapper;
@@ -39,12 +38,12 @@ public class HashPartitioningTableMapping implements TableMapping {
         this.virtualTable = virtualTable;
         this.physicalTable = physicalTable;
         this.secondaryIndexMapper = secondaryIndexMapper;
-        this.keyMapper = new HashPartitioningKeyMapper(virtualTable.getTableName(), mtContext,
+        HashPartitioningKeyMapper keyMapper = new HashPartitioningKeyMapper(virtualTable.getTableName(), mtContext,
             numBucketsPerVirtualTable);
         this.itemMapper = new HashPartitioningItemMapper(virtualTable, physicalTable, secondaryIndexMapper, keyMapper);
         this.conditionMapper = new HashPartitioningConditionMapper(keyMapper);
-        this.queryAndScanMapper = new HashPartitioningQueryAndScanMapper(virtualTable, physicalTable,
-            this::getRequestIndex, conditionMapper, itemMapper, keyMapper);
+        this.queryAndScanMapper = new HashPartitioningQueryAndScanMapper(physicalTable, this::getRequestIndex,
+            conditionMapper, itemMapper, keyMapper);
     }
 
     @Override

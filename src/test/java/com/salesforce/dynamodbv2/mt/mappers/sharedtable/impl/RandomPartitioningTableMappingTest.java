@@ -9,7 +9,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,11 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -114,21 +111,6 @@ class RandomPartitioningTableMappingTest {
                     fieldMappingEntry -> fieldMappingEntry.getValue().stream())
                 .collect(Collectors.toList()),
             sut.getTablePrimaryKeyFieldMappings());
-    }
-
-    private static CreateTableRequestBuilder buildDefaultCreateTableRequestBuilder() {
-        return CreateTableRequestBuilder
-            .builder()
-            .withTableName("virtualTableName")
-            .withTableKeySchema("virtualHk", S, "virtualRk", N);
-    }
-
-    private static CreateTableRequestBuilder buildDefaultCreateTableRequestBuilderWithGsi() {
-        return buildDefaultCreateTableRequestBuilder()
-            .addSi("virtualGsi",
-                GSI,
-                new PrimaryKey("virtualGsiHk", S, "virtualGsiRk", N),
-                1L);
     }
 
 }

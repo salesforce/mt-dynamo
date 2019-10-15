@@ -26,13 +26,12 @@ class HashPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
     private final HashPartitioningKeyMapper keyMapper;
     private final int maxBucketNumber;
 
-    HashPartitioningQueryAndScanMapper(DynamoTableDescription virtualTable,
-                                       DynamoTableDescription physicalTable,
+    HashPartitioningQueryAndScanMapper(DynamoTableDescription physicalTable,
                                        Function<String, RequestIndex> indexLookup,
                                        HashPartitioningConditionMapper conditionMapper,
                                        HashPartitioningItemMapper itemMapper,
                                        HashPartitioningKeyMapper keyMapper) {
-        super(virtualTable, indexLookup, conditionMapper, itemMapper);
+        super(indexLookup, conditionMapper, itemMapper);
         this.physicalTable = physicalTable;
         this.keyMapper = keyMapper;
         this.maxBucketNumber = keyMapper.getNumberOfBucketsPerVirtualTable() - 1;

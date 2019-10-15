@@ -100,14 +100,9 @@ class HashPartitioningKeyMapper {
     }
 
     AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, AttributeValue rk) {
-        return toPhysicalRangeKey(primaryKey, hk, rk, false);
-    }
-
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, AttributeValue rk,
-                                      boolean padWithMaxUnsignedByte) {
         checkArgument(primaryKey.getRangeKey().isPresent(), "Key should be composite");
         return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk,
-            primaryKey.getRangeKeyType().get(), rk, padWithMaxUnsignedByte));
+            primaryKey.getRangeKeyType().get(), rk));
     }
 
     AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, byte[] rkBytes) {
@@ -129,13 +124,8 @@ class HashPartitioningKeyMapper {
 
         static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, ScalarAttributeType rkType,
                                   AttributeValue rk) {
-            return toBytes(hkType, hk, rkType, rk, false);
-        }
-
-        static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, ScalarAttributeType rkType,
-                                  AttributeValue rk, boolean padWithMaxUnsignedByte) {
             byte[] rkb = toByteArray(rkType, rk);
-            return toBytes(hkType, hk, rkb, padWithMaxUnsignedByte);
+            return toBytes(hkType, hk, rkb, false);
         }
 
         static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, byte[] rkb,

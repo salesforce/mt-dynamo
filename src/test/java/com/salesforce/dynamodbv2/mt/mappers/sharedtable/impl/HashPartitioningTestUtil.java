@@ -13,7 +13,6 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitio
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.PhysicalRangeKeyBytesConverter;
@@ -22,11 +21,10 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.function.UnaryOperator;
 
 class HashPartitioningTestUtil {
 
-    static final String CONTEXT = "someContext";
+    private static final String CONTEXT = "someContext";
     static final int NUM_BUCKETS = 10;
 
     static final String VIRTUAL_TABLE_NAME = "someVirtualTable";
@@ -38,22 +36,19 @@ class HashPartitioningTestUtil {
     static final String SOME_FIELD = "someField";
     static final String PHYSICAL_HK = "physicalHk";
     static final String PHYSICAL_RK = "physicalRk";
-    static final String PHYSICAL_GSI = "physicalGsi";
+    private static final String PHYSICAL_GSI = "physicalGsi";
     static final String PHYSICAL_GSI_HK = "physicalGsiHk";
     static final String PHYSICAL_GSI_RK = "physicalGsiRk";
 
-    static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable(
+    private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable(
         "somePhysicalTable",
         new PrimaryKey(PHYSICAL_HK, B, PHYSICAL_RK, B),
         ImmutableMap.of(PHYSICAL_GSI, new PrimaryKey(PHYSICAL_GSI_HK, B, PHYSICAL_GSI_RK, B))
     );
 
-    static final UnaryOperator<DynamoSecondaryIndex> SECONDARY_INDEX_LOOKUP =
-        index -> index.getIndexName().equals(VIRTUAL_GSI) ? PHYSICAL_TABLE.findSi(PHYSICAL_GSI) : null;
-
-
     static HashPartitioningTableMapping getTableMapping(DynamoTableDescription virtualTable) {
-        return new HashPartitioningTableMapping(virtualTable, PHYSICAL_TABLE, SECONDARY_INDEX_LOOKUP,
+        return new HashPartitioningTableMapping(virtualTable, PHYSICAL_TABLE,
+            index -> index.getIndexName().equals(VIRTUAL_GSI) ? PHYSICAL_TABLE.findSi(PHYSICAL_GSI) : null,
             () -> Optional.of(CONTEXT), NUM_BUCKETS);
     }
 

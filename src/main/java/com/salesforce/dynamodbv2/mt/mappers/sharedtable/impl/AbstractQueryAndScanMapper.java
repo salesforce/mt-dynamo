@@ -22,7 +22,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RequestWrapper.AbstractRequestWrapper;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,16 +33,13 @@ import java.util.function.Supplier;
 
 abstract class AbstractQueryAndScanMapper implements QueryAndScanMapper {
 
-    protected final DynamoTableDescription virtualTable;
     private final Function<String, RequestIndex> indexLookup;
     private final ConditionMapper conditionMapper;
     private final ItemMapper itemMapper;
 
-    AbstractQueryAndScanMapper(DynamoTableDescription virtualTable,
-                               Function<String, RequestIndex> indexLookup,
+    AbstractQueryAndScanMapper(Function<String, RequestIndex> indexLookup,
                                ConditionMapper conditionMapper,
                                ItemMapper itemMapper) {
-        this.virtualTable = virtualTable;
         this.indexLookup = indexLookup;
         this.conditionMapper = conditionMapper;
         this.itemMapper = itemMapper;

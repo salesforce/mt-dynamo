@@ -8,8 +8,8 @@
 package com.salesforce.dynamodbv2.testsupport;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.google.common.base.Supplier;
 import com.google.common.base.Suppliers;
+import java.util.function.Supplier;
 import org.testcontainers.dynamodb.DynaliteContainer;
 
 /**
@@ -22,8 +22,8 @@ import org.testcontainers.dynamodb.DynaliteContainer;
  */
 class DynaliteAmazonDynamoDb {
 
-    static final Supplier<DynaliteContainer> dynaliteContainer = Suppliers.memoize(
-        DynaliteAmazonDynamoDb::initialize);
+    private static final Supplier<DynaliteContainer> dynaliteContainer =
+        Suppliers.memoize(DynaliteAmazonDynamoDb::initialize);
 
     private static DynaliteContainer initialize() {
         DynaliteContainer container = new DynaliteContainer();

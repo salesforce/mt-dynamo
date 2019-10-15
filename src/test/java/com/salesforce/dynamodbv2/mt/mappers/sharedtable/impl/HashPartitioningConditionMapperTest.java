@@ -49,14 +49,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class HashPartitioningConditionMapperTest {
 
-    private static ScalarAttributeType HK_TYPE = B;
-    private static ScalarAttributeType RK_TYPE = B;
-    private static DynamoTableDescription VIRTUAL_HK_TABLE = buildVirtualHkTable(HK_TYPE);
-    private static DynamoTableDescription VIRTUAL_HK_RK_TABLE =
+    private static final ScalarAttributeType HK_TYPE = B;
+    private static final ScalarAttributeType RK_TYPE = B;
+    private static final DynamoTableDescription VIRTUAL_HK_TABLE = buildVirtualHkTable(HK_TYPE);
+    private static final DynamoTableDescription VIRTUAL_HK_RK_TABLE =
         buildVirtualHkRkTable(HK_TYPE, RK_TYPE, HK_TYPE, RK_TYPE);
-    private static byte[] VIRTUAL_HK_BYTES = new byte[] {1, 2, 3};
-    private static TestHashKeyValue VIRTUAL_HK_VALUE = new TestHashKeyValue(VIRTUAL_HK_BYTES);
-    private static int MAX_VIRTUAL_RK_LENGTH = 1024 - 2 - VIRTUAL_HK_BYTES.length;
+    private static final byte[] VIRTUAL_HK_BYTES = new byte[] {1, 2, 3};
+    private static final TestHashKeyValue VIRTUAL_HK_VALUE = new TestHashKeyValue(VIRTUAL_HK_BYTES);
+    private static final int MAX_VIRTUAL_RK_LENGTH = 1024 - 2 - VIRTUAL_HK_BYTES.length;
 
     @ParameterizedTest(name = "{index}")
     @MethodSource("buildTestInputs")
@@ -67,7 +67,6 @@ class HashPartitioningConditionMapperTest {
         if (rkExpression != null) {
             expression += " AND " + rkExpression;
         }
-        Map<String, String> fields = null;
         Map<String, AttributeValue> values = new HashMap<>(rkValues);
         values.put(":vhk", VIRTUAL_HK_VALUE.getAttributeValue());
 
@@ -78,7 +77,7 @@ class HashPartitioningConditionMapperTest {
         Map<String, AttributeValue> expectedValues = new HashMap<>(expectedRkValues);
         expectedValues.put(":value1", getPhysicalHkValue(VIRTUAL_HK_VALUE));
 
-        runApplyToKeyConditionTest(virtualTable, useSecondaryIndex, expression, fields, values,
+        runApplyToKeyConditionTest(virtualTable, useSecondaryIndex, expression, null /*fields*/, values,
             expectedExpression, expectedFields, expectedValues);
     }
 

@@ -17,7 +17,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import java.util.Collection;
 import java.util.List;
@@ -39,14 +38,13 @@ class RandomPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
     private final List<FieldMapping> tablePrimaryKeyFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings;
 
-    RandomPartitioningQueryAndScanMapper(DynamoTableDescription virtualTable,
-                                         Function<String, RequestIndex> indexLookup,
+    RandomPartitioningQueryAndScanMapper(Function<String, RequestIndex> indexLookup,
                                          ConditionMapper conditionMapper,
                                          ItemMapper itemMapper,
                                          FieldMapper fieldMapper,
                                          List<FieldMapping> tablePrimaryKeyFieldMappings,
                                          Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings) {
-        super(virtualTable, indexLookup, conditionMapper, itemMapper);
+        super(indexLookup, conditionMapper, itemMapper);
         this.fieldMapper = fieldMapper;
         this.tablePrimaryKeyFieldMappings = tablePrimaryKeyFieldMappings;
         this.indexPrimaryKeyFieldMappings = indexPrimaryKeyFieldMappings;

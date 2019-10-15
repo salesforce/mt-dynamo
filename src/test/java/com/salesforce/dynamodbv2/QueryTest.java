@@ -1,6 +1,5 @@
 package com.salesforce.dynamodbv2;
 
-import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.BETWEEN;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
@@ -76,8 +75,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  *
  * <p>Some tests use Dynalite, because DynamoDB Local incorrectly enforces that the aggregated size of all range key
  * values in a key condition expression cannot exceed 1024 bytes, when the limit should be per value only, causing
- * hash paritioning tests to fail. Tests that involve paging also trigger a second bug, where binary values in query key
- * conditions are being compared as signed bytes rather than unsigned bytes.
+ * hash partitioning tests to fail. Tests that involve paging also trigger a second bug, where binary values in query
+ * key conditions are being compared as signed bytes rather than unsigned bytes.
  *
  * @author msgroi
  */
@@ -285,10 +284,7 @@ class QueryTest {
             .map(v -> createAttributeValue(N, String.valueOf(v)))
             .toArray(AttributeValue[]::new);
         if (useLegacyKeyConditions) {
-            queryRequest.setKeyConditions(ImmutableMap.of(
-                HASH_KEY_FIELD, new Condition().withComparisonOperator(EQ).withAttributeValueList(hkAttributeValue),
-                RANGE_KEY_FIELD, new Condition().withComparisonOperator(rangeKeyOp)
-                    .withAttributeValueList(rkAttributeValues)));
+            queryRequest.setKeyConditions(getKeyConditions(hkAttributeValue, rangeKeyOp, rkAttributeValues));
         } else {
             String keyConditionExpression = HASH_KEY_FIELD + " = :hk AND " + getRangeKeyConditionExpression(rangeKeyOp);
             queryRequest.setKeyConditionExpression(keyConditionExpression);
@@ -318,16 +314,21 @@ class QueryTest {
         }
     }
 
-    private Map<String, Condition> getKeyConditions(ComparisonOperator op,
-                                                    String valueForComparisonOperator,
-                                                    ScalarAttributeType hashKeyAttrType) {
+    private Map<String, Condition> getKeyConditions(ScalarAttributeType hashKeyType, ComparisonOperator rangeKeyOp,
+                                                    AttributeValue... rkValues) {
+        AttributeValue hkValue = createAttributeValue(hashKeyType, HASH_KEY_VALUE);
         return ImmutableMap.of(
-            HASH_KEY_FIELD,
-            new Condition().withComparisonOperator(EQ).withAttributeValueList(createAttributeValue(
-                hashKeyAttrType, HASH_KEY_VALUE)),
-            RANGE_KEY_FIELD,
-            new Condition().withComparisonOperator(op).withAttributeValueList(createAttributeValue(
-                N, valueForComparisonOperator)));
+            HASH_KEY_FIELD, new Condition().withComparisonOperator(EQ).withAttributeValueList(hkValue),
+            RANGE_KEY_FIELD, new Condition().withComparisonOperator(rangeKeyOp).withAttributeValueList(rkValues)
+        );
+    }
+
+    private Map<String, Condition> getKeyConditions(AttributeValue hkValue, ComparisonOperator rangeKeyOp,
+                                                    AttributeValue... rkValues) {
+        return ImmutableMap.of(
+            HASH_KEY_FIELD, new Condition().withComparisonOperator(EQ).withAttributeValueList(hkValue),
+            RANGE_KEY_FIELD, new Condition().withComparisonOperator(rangeKeyOp).withAttributeValueList(rkValues)
+        );
     }
 
     // TODO: non-legacy query test(s); legacy & non-legacy scan tests
@@ -425,7 +426,7 @@ class QueryTest {
     }
 
     private void runQueryGsiTest(TestArgument testArgument, boolean testHkRkGsi) {
-        String indexNmae = testHkRkGsi ? "testGsi2" : "testGsi";
+        String indexName = testHkRkGsi ? "testGsi2" : "testGsi";
         String hkField = testHkRkGsi ? GSI2_HK_FIELD : GSI_HK_FIELD;
         String hkValue = testHkRkGsi ? GSI2_HK_FIELD_VALUE : GSI_HK_FIELD_VALUE;
         testArgument.forEachOrgContext(org -> {
@@ -434,7 +435,7 @@ class QueryTest {
                     .withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", hkField))
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(hkValue)))
-                    .withIndexName(indexNmae)).getItems();
+                    .withIndexName(indexName)).getItems();
             assertEquals(1, items.size());
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
@@ -608,7 +609,8 @@ class QueryTest {
                 ++pageCount;
                 final QueryRequest queryRequest = new QueryRequest()
                     .withTableName(TABLE4)
-                    .withKeyConditions(getKeyConditions(GT, "1", testArgument.getHashKeyAttrType()))
+                    .withKeyConditions(
+                        getKeyConditions(testArgument.getHashKeyAttrType(), GT, createAttributeValue(N, "1")))
                     .withLimit(maxPageSize)
                     .withExclusiveStartKey(exclusiveStartKey);
                 final QueryResult queryResult = testArgument.getAmazonDynamoDb().query(queryRequest);
