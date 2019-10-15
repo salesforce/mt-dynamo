@@ -14,12 +14,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.HashMap;
@@ -41,15 +43,24 @@ class RandomPartitioningQueryAndScanMapperTest {
     private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable("physicalTable",
         new PrimaryKey("physicalHk", S),
         ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S)));
+    private static final DynamoSecondaryIndex VIRTUAL_GSI = VIRTUAL_TABLE.findSi("virtualGsi");
+    private static final DynamoSecondaryIndex PHYSICAL_GSI = PHYSICAL_TABLE.findSi("physicalGsi");
     private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
         VIRTUAL_TABLE,
         PHYSICAL_TABLE,
-        index -> index.equals(VIRTUAL_TABLE.findSi("virtualGsi")) ? PHYSICAL_TABLE.findSi("physicalGsi") : null,
+        index -> PHYSICAL_GSI,
         () -> Optional.of("ctx")
     );
 
-    private RandomPartitioningQueryAndScanMapper getMockQueryMapper() {
-        return new RandomPartitioningQueryAndScanMapper(TABLE_MAPPING, null);
+    private RandomPartitioningQueryAndScanMapper getQueryAndScanMapper() {
+        return getQueryAndScanMapper(null);
+    }
+
+    private RandomPartitioningQueryAndScanMapper getQueryAndScanMapper(FieldMapper fieldMapper) {
+        return new RandomPartitioningQueryAndScanMapper(VIRTUAL_TABLE, TABLE_MAPPING::getRequestIndex,
+            TABLE_MAPPING.getConditionMapper(), TABLE_MAPPING.getItemMapper(), fieldMapper,
+            TABLE_MAPPING.getTablePrimaryKeyFieldMappings(),
+            ImmutableMap.of(VIRTUAL_GSI, TABLE_MAPPING.getIndexPrimaryKeyFieldMappings(VIRTUAL_GSI)));
     }
 
     @Test
@@ -59,7 +70,7 @@ class RandomPartitioningQueryAndScanMapperTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualHk"))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
 
-        getMockQueryMapper().apply(queryRequest);
+        getQueryAndScanMapper().apply(queryRequest);
 
         assertEquals(new QueryRequest()
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
@@ -82,7 +93,7 @@ class RandomPartitioningQueryAndScanMapperTest {
                                 .withComparisonOperator(comparisonOperator)
                                 .withAttributeValueList(new AttributeValue().withS("hkValue"))));
 
-        getMockQueryMapper().apply(queryRequest);
+        getQueryAndScanMapper().apply(queryRequest);
 
         assertEquals(new QueryRequest()
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
@@ -98,7 +109,7 @@ class RandomPartitioningQueryAndScanMapperTest {
                 .withKeyConditionExpression("virtualHk = :value")
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
 
-        getMockQueryMapper().apply(queryRequest);
+        getQueryAndScanMapper().apply(queryRequest);
 
         assertEquals(new QueryRequest()
                         .withKeyConditionExpression("#field1 = :value")
@@ -116,7 +127,7 @@ class RandomPartitioningQueryAndScanMapperTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
 
-        getMockQueryMapper().apply(queryRequest);
+        getQueryAndScanMapper().apply(queryRequest);
 
         assertEquals(new QueryRequest()
                         .withIndexName("physicalGsi")
@@ -131,7 +142,7 @@ class RandomPartitioningQueryAndScanMapperTest {
     @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT", "GE", "LT", "LE" })
     void queryWithKeyConditionExpressionAndKeyConditions(ComparisonOperator comparisonOperator) {
         try {
-            getMockQueryMapper()
+            getQueryAndScanMapper()
                     .apply(new QueryRequest().withKeyConditions(ImmutableMap.of("virtualHk",
                             new Condition()
                                     .withComparisonOperator(comparisonOperator)
@@ -147,7 +158,7 @@ class RandomPartitioningQueryAndScanMapperTest {
     @Test
     void queryWithNeitherKeyConditionExpressionNorKeyConditions() {
         try {
-            getMockQueryMapper().apply(new QueryRequest());
+            getQueryAndScanMapper().apply(new QueryRequest());
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("keyConditionExpression or keyConditions are required", e.getMessage());
@@ -162,7 +173,7 @@ class RandomPartitioningQueryAndScanMapperTest {
                 .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
                 .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
 
-        getMockQueryMapper().apply(scanRequest);
+        getQueryAndScanMapper().applyToScanInternal(scanRequest);
 
         assertEquals(new ScanRequest()
                         .withIndexName("physicalGsi")
@@ -181,7 +192,7 @@ class RandomPartitioningQueryAndScanMapperTest {
 
         FieldMapper fieldMapper = mock(FieldMapper.class);
         when(fieldMapper.apply(any(), any())).thenReturn(new AttributeValue("prefixed"));
-        new RandomPartitioningQueryAndScanMapper(TABLE_MAPPING, fieldMapper).apply(scanRequest);
+        getQueryAndScanMapper(fieldMapper).applyToScanInternal(scanRequest);
 
         assertEquals(new ScanRequest()
                         .withFilterExpression("begins_with(#___name___, :___value___)")
@@ -195,11 +206,11 @@ class RandomPartitioningQueryAndScanMapperTest {
     @EnumSource(value = ComparisonOperator.class, names = { "EQ", "GT", "GE", "LT", "LE" })
     void scanWithFilterExpressionAndScanFilter(ComparisonOperator comparisonOperator) {
         try {
-            getMockQueryMapper()
-                    .apply(new ScanRequest().withScanFilter(ImmutableMap.of("virtualHk",
-                            new Condition()
-                                    .withComparisonOperator(comparisonOperator)
-                                    .withAttributeValueList(new AttributeValue().withS("hkValue"))))
+            getQueryAndScanMapper()
+                .executeScan(mock(AmazonDynamoDB.class), new ScanRequest().withScanFilter(ImmutableMap.of("virtualHk",
+                    new Condition()
+                        .withComparisonOperator(comparisonOperator)
+                        .withAttributeValueList(new AttributeValue().withS("hkValue"))))
                     .withFilterExpression("#field = :value"));
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {

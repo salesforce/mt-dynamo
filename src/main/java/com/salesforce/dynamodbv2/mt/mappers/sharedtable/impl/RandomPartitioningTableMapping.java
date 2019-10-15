@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.UnaryOperator;
+import javax.annotation.Nullable;
 
 /**
  * {@link TableMapping} implementation for shared tables that use random partitioning. That is, where
@@ -37,6 +38,7 @@ public class RandomPartitioningTableMapping implements TableMapping {
 
     private final DynamoTableDescription virtualTable;
     private final DynamoTableDescription physicalTable;
+    private final UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper;
 
     private final List<FieldMapping> tablePrimaryKeyFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings;
@@ -48,12 +50,12 @@ public class RandomPartitioningTableMapping implements TableMapping {
     private final ConditionMapper conditionMapper;
 
     public RandomPartitioningTableMapping(DynamoTableDescription virtualTable,
-                                   DynamoTableDescription physicalTable,
-                                   UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                   MtAmazonDynamoDbContextProvider mtContext) {
+                                          DynamoTableDescription physicalTable,
+                                          UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
+                                          MtAmazonDynamoDbContextProvider mtContext) {
         this.virtualTable = virtualTable;
         this.physicalTable = physicalTable;
-
+        this.secondaryIndexMapper = secondaryIndexMapper;
         this.tablePrimaryKeyFieldMappings = buildTablePrimaryKeyFieldMappings(virtualTable, physicalTable);
         this.indexPrimaryKeyFieldMappings = buildIndexPrimaryKeyFieldMappings(virtualTable, secondaryIndexMapper);
 
@@ -73,8 +75,9 @@ public class RandomPartitioningTableMapping implements TableMapping {
             indexPrimaryKeyFieldMappings, allMappingsPerField);
         recordMapper = new RandomPartitioningRecordMapper(mtContext, virtualTable.getTableName(), itemMapper,
             fieldMapper, physicalTable.getPrimaryKey().getHashKey());
-        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(this, fieldMapper);
         conditionMapper = new RandomPartitioningConditionMapper(this, fieldMapper);
+        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(virtualTable, this::getRequestIndex,
+            conditionMapper, itemMapper, fieldMapper, tablePrimaryKeyFieldMappings, indexPrimaryKeyFieldMappings);
     }
 
     @Override
@@ -105,6 +108,12 @@ public class RandomPartitioningTableMapping implements TableMapping {
     @Override
     public ConditionMapper getConditionMapper() {
         return conditionMapper;
+    }
+
+    @Override
+    public RequestIndex getRequestIndex(@Nullable String virtualSecondaryIndexName) {
+        return RequestIndex.fromVirtualSecondaryIndexName(virtualTable, physicalTable, secondaryIndexMapper,
+            virtualSecondaryIndexName);
     }
 
     /*

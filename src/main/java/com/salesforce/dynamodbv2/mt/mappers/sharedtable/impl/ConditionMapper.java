@@ -7,8 +7,7 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
-import javax.annotation.Nullable;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 
 /**
  * Applies mapping and prefixing to condition query and conditional update expressions.
@@ -19,13 +18,13 @@ interface ConditionMapper {
      * Maps the update expression, condition expression, and expression attributes in the given virtual update request
      * to the corresponding physical update request.
      */
-    void applyForUpdate(RequestWrapper request);
+    void applyForUpdate(UpdateItemRequest updateItemRequest);
 
     /**
      * Maps the key condition in the given virtual query request to the corresponding physical key condition,
      * based on the given virtual secondary index if it's provided, or if not, on the virtual table primary key.
      */
-    void applyToKeyCondition(RequestWrapper request, @Nullable DynamoSecondaryIndex virtualSecondaryIndex);
+    void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex);
 
     /**
      * Maps the filter expression in the given virtual request to the corresponding physical filter expression,
@@ -34,6 +33,6 @@ interface ConditionMapper {
      * <p>Used to map filter/condition expressions in a put/delete/scan/query request, which in terms of RequestWrapper
      * is primary in the case of put/delete/scan, and secondary in a query request.
      */
-    void applyToFilterExpression(RequestWrapper request, boolean isPrimaryExpression);
+    void applyToFilterExpression(RequestWrapper request);
 
 }

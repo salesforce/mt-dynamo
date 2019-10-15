@@ -2,24 +2,13 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.google.common.base.Objects;
 
-class FieldValue<V> {
+class FieldValue<V> extends MtContextAndTable {
 
-    private final String context;
-    private final String tableName;
     private final V value;
 
     FieldValue(String context, String tableName, V value) {
-        this.context = context;
-        this.tableName = tableName;
+        super(context, tableName);
         this.value = value;
-    }
-
-    String getContext() {
-        return context;
-    }
-
-    String getTableName() {
-        return tableName;
     }
 
     V getValue() {
@@ -34,24 +23,21 @@ class FieldValue<V> {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-
         final FieldValue<?> that = (FieldValue<?>) o;
-
-        return context.equals(that.context)
-                && tableName.equals(that.tableName)
+        return super.equals(that)
                 && value.equals(that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(this.context, this.tableName, this.value);
+        return Objects.hashCode(getContext(), getTableName(), this.value);
     }
 
     @Override
     public String toString() {
         return "FieldValue{"
-                + "context='" + context + '\''
-                + ", tableName='" + tableName + '\''
+                + "context='" + getContext() + '\''
+                + ", tableName='" + getTableName() + '\''
                 + ", value='" + value + '\''
                 + '}';
     }

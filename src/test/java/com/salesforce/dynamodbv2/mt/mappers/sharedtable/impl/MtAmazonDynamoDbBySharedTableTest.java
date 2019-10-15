@@ -27,7 +27,6 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -138,7 +137,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     private static class ListVirtualTableProvider extends DefaultArgumentProvider {
         public ListVirtualTableProvider() {
-            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(Collections.emptySet()) {
+            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(new String[0]) {
 
                 @Override
                 public void setupTest(TestArgument testArgument) {
