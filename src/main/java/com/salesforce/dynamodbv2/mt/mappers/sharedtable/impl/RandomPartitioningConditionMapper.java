@@ -273,7 +273,7 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
                                                        Map<String, T> placeholderToLiteralMap) {
         if (primaryExpression != null && expression != null && placeholderToLiteralMap != null) {
             for (Entry<String, T> placeholderEntry : placeholderToLiteralMap.entrySet()) {
-                Pattern pattern = Pattern.compile(placeholderEntry.getKey() + "($|[^a-zA-Z0-9])");
+                Pattern pattern = Pattern.compile(placeholderEntry.getKey() + "(?=($|[^a-zA-Z0-9]))");
                 if (pattern.matcher(primaryExpression).find()) {
                     Matcher matcher = pattern.matcher(expression);
                     if (matcher.find()) {
