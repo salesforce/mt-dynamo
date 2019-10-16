@@ -56,7 +56,8 @@ abstract class AbstractQueryAndScanMapper implements QueryAndScanMapper {
         // map key condition
         QueryRequestWrapper keyConditionExpressionRequest = new QueryRequestWrapper(queryRequest,
             queryRequest::getKeyConditionExpression, queryRequest::setKeyConditionExpression);
-        conditionMapper.applyToKeyCondition(keyConditionExpressionRequest, requestIndex);
+        conditionMapper.applyToKeyCondition(keyConditionExpressionRequest, requestIndex,
+            queryRequest.getFilterExpression());
 
         // map filter expression if there is one
         QueryRequestWrapper filterExpressionRequest = new QueryRequestWrapper(queryRequest,

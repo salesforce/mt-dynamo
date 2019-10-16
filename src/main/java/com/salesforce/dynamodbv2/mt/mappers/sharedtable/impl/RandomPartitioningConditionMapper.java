@@ -34,7 +34,6 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
     static final String NAME_PLACEHOLDER = "#___name___";
     private static final String COMPARISON_OP_PATTERN = "(=|<>|<|<=|>|>=)";
     private static final Pattern ATTR_NAME_PLACEHOLDER_PATTERN = Pattern.compile("#[a-zA-Z0-9]+");
-    private static final Pattern ATTR_VALUE_PLACEHOLDER_PATTERN = Pattern.compile(":[a-zA-Z0-9]+");
 
     private final RandomPartitioningTableMapping tableMapping;
     private final FieldMapper fieldMapper;
@@ -66,10 +65,16 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
     }
 
     @Override
-    public void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex) {
+    public void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex, String filterExpression) {
         Collection<FieldMapping> fieldMappings = requestIndex.getVirtualSecondaryIndex().isPresent()
             ? tableMapping.getIndexPrimaryKeyFieldMappings(requestIndex.getVirtualSecondaryIndex().get())
             : tableMapping.getTablePrimaryKeyFieldMappings();
+
+        // if the hash key value placeholder is also in the filter expression, then we need to use two different
+        // value placeholders, since the hash key value will become different but the other not
+        if (filterExpression != null) {
+            makePlaceholdersDistinct(filterExpression, request);
+        }
 
         mapFieldsInConditionExpression(request, fieldMappings);
     }
@@ -253,37 +258,30 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
     }
 
     @VisibleForTesting
-    static void makePlaceholdersDistinct(String updateExpression,
-                                         UpdateConditionExpressionRequestWrapper conditionExprWrapper) {
-        String conditionExpression = conditionExprWrapper.getExpression();
-        conditionExpression = makePlaceholdersDistinct(updateExpression, conditionExpression,
-            ATTR_NAME_PLACEHOLDER_PATTERN, "#field",
-            conditionExprWrapper.getExpressionAttributeNames());
-        conditionExpression = makePlaceholdersDistinct(updateExpression, conditionExpression,
-            ATTR_VALUE_PLACEHOLDER_PATTERN, ":value",
-            conditionExprWrapper.getExpressionAttributeValues());
-        conditionExprWrapper.setExpression(conditionExpression);
+    static void makePlaceholdersDistinct(String expression1, RequestWrapper expression2Request) {
+        String expression2 = expression2Request.getExpression();
+        expression2 = makePlaceholdersDistinct(expression1, expression2,
+            "#field", expression2Request.getExpressionAttributeNames());
+        expression2 = makePlaceholdersDistinct(expression1, expression2,
+            ":value", expression2Request.getExpressionAttributeValues());
+        expression2Request.setExpression(expression2);
     }
 
     private static <T> String makePlaceholdersDistinct(String primaryExpression,
                                                        String expression,
-                                                       Pattern placeholderPattern,
                                                        String newPlaceholderPrefix,
                                                        Map<String, T> placeholderToLiteralMap) {
-        if (expression != null) {
-            Matcher m = placeholderPattern.matcher(expression);
-            Set<String> overlappingPlaceholders = new HashSet<>();
-            while (m.find()) {
-                String placeholder = m.group();
-                if (primaryExpression.contains(placeholder)) { // this check may have false positives but that's okay
-                    overlappingPlaceholders.add(placeholder);
+        if (primaryExpression != null && expression != null && placeholderToLiteralMap != null) {
+            for (Entry<String, T> placeholderEntry : placeholderToLiteralMap.entrySet()) {
+                Pattern pattern = Pattern.compile(placeholderEntry.getKey() + "($|[^a-zA-Z0-9])");
+                if (pattern.matcher(primaryExpression).find()) {
+                    Matcher matcher = pattern.matcher(expression);
+                    if (matcher.find()) {
+                        String newPlaceholder = getNextPlaceholder(placeholderToLiteralMap, newPlaceholderPrefix);
+                        expression = matcher.replaceAll(newPlaceholder);
+                        placeholderToLiteralMap.put(newPlaceholder, placeholderEntry.getValue());
+                    }
                 }
-            }
-            for (String placeholder : overlappingPlaceholders) {
-                T literal = placeholderToLiteralMap.get(placeholder);
-                String newPlaceholder = getNextPlaceholder(placeholderToLiteralMap, newPlaceholderPrefix);
-                expression = expression.replaceAll(placeholder + "\\b", newPlaceholder);
-                placeholderToLiteralMap.put(newPlaceholder, literal);
             }
         }
         return expression;

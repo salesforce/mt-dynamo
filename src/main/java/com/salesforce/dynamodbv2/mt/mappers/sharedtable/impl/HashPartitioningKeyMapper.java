@@ -105,15 +105,15 @@ class HashPartitioningKeyMapper {
             primaryKey.getRangeKeyType().get(), rk));
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, byte[] rkBytes) {
-        return toPhysicalRangeKey(primaryKey, hk, rkBytes, false);
+    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes) {
+        return toPhysicalRangeKey(primaryKey, hkBytes, rkBytes, false);
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, byte[] rkBytes,
+    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes,
                                       boolean padWithMaxUnsignedByte) {
         checkArgument(primaryKey.getRangeKey().isPresent(), "Key should be composite");
-        return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk,
-            rkBytes, padWithMaxUnsignedByte));
+        return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(hkBytes, rkBytes,
+            padWithMaxUnsignedByte));
     }
 
     @VisibleForTesting
@@ -122,15 +122,16 @@ class HashPartitioningKeyMapper {
         // see https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-partition-sort-keys
         private static final int MAX_KEY_LENGTH = 1024;
 
+        static final int MAX_COMPOSITE_KEY_LENGTH = MAX_KEY_LENGTH - 2;
+
         static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, ScalarAttributeType rkType,
                                   AttributeValue rk) {
+            byte[] hkb = toByteArray(hkType, hk);
             byte[] rkb = toByteArray(rkType, rk);
-            return toBytes(hkType, hk, rkb, false);
+            return toBytes(hkb, rkb, false);
         }
 
-        static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, byte[] rkb,
-                                  boolean padWithMaxUnsignedByte) {
-            byte[] hkb = toByteArray(hkType, hk);
+        static ByteBuffer toBytes(byte[] hkb, byte[] rkb, boolean padWithMaxUnsignedByte) {
             Preconditions.checkArgument(hkb.length + rkb.length <= MAX_KEY_LENGTH - 2);
             if (padWithMaxUnsignedByte) {
                 ByteBuffer key = ByteBuffer.allocate(MAX_KEY_LENGTH);
@@ -149,7 +150,7 @@ class HashPartitioningKeyMapper {
             return ByteBuffer.wrap(toByteArray(type, value));
         }
 
-        private static byte[] toByteArray(ScalarAttributeType type, AttributeValue value) {
+        static byte[] toByteArray(ScalarAttributeType type, AttributeValue value) {
             switch (type) {
                 case S:
                     return value.getS().getBytes(StandardCharsets.UTF_8);

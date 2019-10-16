@@ -84,7 +84,7 @@ class HashPartitioningConditionMapperTest {
     @Test
     void testApplyToKeyConditionParsing() {
         // field place holders, extra spaces, "AND" and "BETWEEN" not all uppercase
-        String expression = "#vhk   = :vhk And  #vrk  beTWEEn :vrk1 aNd :vrk2";
+        String expression = "#vhk   =:vhk And  #vrk  beTWEEn :vrk1 aNd :vrk2";
         // "#field1" is already taken
         Map<String, String> fields = ImmutableMap.of("#vhk", VIRTUAL_HK, "#vrk", VIRTUAL_RK,
             "#field1", SOME_FIELD);
@@ -122,7 +122,7 @@ class HashPartitioningConditionMapperTest {
         RequestWrapper requestWrapper = new QueryRequestWrapper(request, request::getKeyConditionExpression,
             request::setKeyConditionExpression);
         RequestIndex requestIndex = tableMapping.getRequestIndex(useSecondaryIndex ? VIRTUAL_GSI : null);
-        mapper.applyToKeyCondition(requestWrapper, requestIndex);
+        mapper.applyToKeyCondition(requestWrapper, requestIndex, request.getFilterExpression());
 
         assertEquals(expectedExpression, request.getKeyConditionExpression());
         assertEquals(expectedFields, request.getExpressionAttributeNames());
@@ -149,23 +149,36 @@ class HashPartitioningConditionMapperTest {
                 "#field2 BETWEEN :value2 AND :value3",
                 getPhysicalRkValueMap(":value2", new byte[0],
                     ":value3", getBytesFilledWithMax(new byte[0]))));
-            // HK RK table: "vhk = :vhk AND vrk < :vrk"
+            // HK RK table: "vhk = :vhk AND vrk < :vrk" (flavor 1: vrk ends with 0)
             inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,
                 virtualRkField + " < :vrk", ImmutableMap.of(":vrk", getVirtualRkValue(new byte[]{4, 5, 6, 0, 0})),
                 "#field2 BETWEEN :value2 AND :value3",
                 getPhysicalRkValueMap(":value2", new byte[0],
-                    ":value3", getBytesFilledWithMax(new byte[]{4, 5, 5, -1, -1}))));
+                    ":value3", new byte[]{4, 5, 6, 0})));
+            // HK RK table: "vhk = :vhk AND vrk < :vrk" (flavor 2: vrk ends with non-zero)
+            inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,
+                virtualRkField + " < :vrk", ImmutableMap.of(":vrk", getVirtualRkValue(new byte[]{4, 5, 6})),
+                "#field2 BETWEEN :value2 AND :value3",
+                getPhysicalRkValueMap(":value2", new byte[0],
+                    ":value3", getBytesFilledWithMax(new byte[]{4, 5, 5}))));
             // HK RK table: "vhk = :vhk AND vrk <= :vrk"
             inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,
                 virtualRkField + " <= :vrk", ImmutableMap.of(":vrk", getVirtualRkValue(new byte[]{4, 5, 6, 0, 0})),
                 "#field2 BETWEEN :value2 AND :value3",
                 getPhysicalRkValueMap(":value2", new byte[0],
                     ":value3", new byte[]{4, 5, 6, 0, 0})));
-            // HK RK table: "vhk = :vhk AND vrk > :vrk"
+            // HK RK table: "vhk = :vhk AND vrk > :vrk (flavor 1: length(vrk+vhk) < max)"
             inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,
                 virtualRkField + " > :vrk", ImmutableMap.of(":vrk", getVirtualRkValue(new byte[]{4, 5, 6})),
                 "#field2 BETWEEN :value2 AND :value3",
                 getPhysicalRkValueMap(":value2", new byte[]{4, 5, 6, 0},
+                    ":value3", getBytesFilledWithMax(new byte[0]))));
+            // HK RK table: "vhk = :vhk AND vrk > :vrk (flavor 2: length(vrk+vhk) = max)"
+            inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,
+                virtualRkField + " > :vrk",
+                ImmutableMap.of(":vrk", getVirtualRkValue(getBytesFilledWithMax(new byte[]{4, 5, 6}))),
+                "#field2 BETWEEN :value2 AND :value3",
+                getPhysicalRkValueMap(":value2", new byte[]{4, 5, 7},
                     ":value3", getBytesFilledWithMax(new byte[0]))));
             // HK RK table: "vhk = :vhk AND vrk >= :vrk"
             inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex,

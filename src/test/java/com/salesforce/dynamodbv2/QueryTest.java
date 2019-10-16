@@ -27,6 +27,7 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.INDEX_FIELD_VALU
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MAX;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_N_MIN;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
@@ -331,7 +332,6 @@ class QueryTest {
         );
     }
 
-    // TODO: non-legacy query test(s); legacy & non-legacy scan tests
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = {TABLE1})
@@ -366,6 +366,47 @@ class QueryTest {
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
                     .build(),
                 items.get(0));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    void queryWithHkValueInFilterExpression(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
+            Map<String, AttributeValue> item = ImmutableMap.of(
+                HASH_KEY_FIELD, hkValue, SOME_FIELD, hkValue);
+            testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE1).withItem(item));
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
+                new QueryRequest().withTableName(TABLE1)
+                    .withKeyConditionExpression(HASH_KEY_FIELD + " = :value")
+                    .withFilterExpression(SOME_FIELD + " = :value")
+                    .withExpressionAttributeValues(ImmutableMap.of(":value", hkValue))
+            ).getItems();
+            assertEquals(1, items.size());
+            assertEquals(item, items.get(0));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    void queryWithRkValueInFilterExpression(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
+            AttributeValue rkValue = createAttributeValue(S, RANGE_KEY_S_VALUE);
+            Map<String, AttributeValue> item = ImmutableMap.of(
+                HASH_KEY_FIELD, hkValue, RANGE_KEY_FIELD, rkValue, SOME_FIELD, rkValue);
+            testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(item));
+            List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
+                new QueryRequest().withTableName(TABLE3)
+                    .withKeyConditionExpression(HASH_KEY_FIELD + " = :hkValue AND " + RANGE_KEY_FIELD + " = :value")
+                    .withFilterExpression(SOME_FIELD + " = :value")
+                    .withExpressionAttributeValues(ImmutableMap.of(":hkValue", hkValue, ":value", rkValue))
+            ).getItems();
+            assertEquals(1, items.size());
+            assertEquals(item, items.get(0));
         });
     }
 

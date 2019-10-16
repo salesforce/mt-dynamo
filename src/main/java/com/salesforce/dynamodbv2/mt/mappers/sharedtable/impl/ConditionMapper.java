@@ -24,7 +24,7 @@ interface ConditionMapper {
      * Maps the key condition in the given virtual query request to the corresponding physical key condition,
      * based on the given virtual secondary index if it's provided, or if not, on the virtual table primary key.
      */
-    void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex);
+    void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex, String filterExpression);
 
     /**
      * Maps the filter expression in the given virtual request to the corresponding physical filter expression,
