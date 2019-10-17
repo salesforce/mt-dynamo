@@ -15,8 +15,6 @@ import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.RandomPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory.VirtualTableCreationValidator;
 import java.util.Map;
 import org.junit.jupiter.api.Test;

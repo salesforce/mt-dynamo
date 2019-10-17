@@ -35,7 +35,7 @@ class IsolatedArgumentProvider extends DefaultArgumentProvider {
     private static final int port = getRandomPort();
 
     public IsolatedArgumentProvider(TestSetup testSetup) {
-        super(new ArgumentBuilder(amazonDynamoDb), testSetup);
+        super(new ArgumentBuilder().withAmazonDynamoDb(amazonDynamoDb), testSetup);
     }
 
     private static void initializeDynamoDbClients() {

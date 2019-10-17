@@ -36,9 +36,8 @@ import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +54,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 class UpdateTest {
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void update(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -83,7 +83,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updatePrimaryKeyFieldFails(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -105,9 +106,33 @@ class UpdateTest {
         });
     }
 
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    void updateSetFieldMultipleTimesFails(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #someField = :someValue, " + SOME_FIELD + " = :someValue")
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                    createStringAttribute("someUpdatedValue")));
+            try {
+                testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+                fail("Update expression with the same field being set more than once should fail");
+            } catch (AmazonServiceException e) {
+                assertTrue(e.getMessage().contains("Two document paths overlap with each other"));
+            }
+        });
+    }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -133,7 +158,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updateConditionalOnHkSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -160,7 +186,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updateConditionalOnHkSuccessWithLiterals(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -186,13 +213,15 @@ class UpdateTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateConditionalOnGsiRkSuccess_usePlaceholder(TestArgument testArgument) {
         runUpdateConditionalOnGsiRkTest(testArgument, true);
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateConditionalOnGsiRkSuccess_useLiteral(TestArgument testArgument) {
         runUpdateConditionalOnGsiRkTest(testArgument, false);
     }
@@ -234,7 +263,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updateConditionalFail(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             try {
@@ -264,13 +294,15 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateHkRkTable(TestArgument testArgument) {
         runUpdateHkRkTableTest(testArgument, TABLE3);
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE5})
     void updateHkRkTableWithTableRkInGsi(TestArgument testArgument) {
         runUpdateHkRkTableTest(testArgument, TABLE5);
     }
@@ -309,7 +341,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateGsiFieldAndQueryGsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String tableName = TABLE3;
@@ -355,7 +388,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE5})
     void updateFieldInMultipleGsis(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String tableName = TABLE5;
@@ -428,7 +462,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -456,7 +491,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateConditionalOnHkRkSuccessHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -487,7 +523,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             try {
@@ -519,7 +556,8 @@ class UpdateTest {
     }
 
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void attributeUpdatesNotSupportedInSharedTable(TestArgument testArgument) {
         if (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable) {
             try {
@@ -544,7 +582,8 @@ class UpdateTest {
      * record.
      */
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void updateWithoutUpdateExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -565,7 +604,8 @@ class UpdateTest {
      * record with the specified key.
      */
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateNewKeyWithoutUpdateExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -591,7 +631,8 @@ class UpdateTest {
      * result in creating a new record with the specified key and the specified non-key field value.
      */
     @ParameterizedTest
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void updateNewKey(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
