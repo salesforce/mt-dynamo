@@ -40,10 +40,10 @@ import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.RandomPartitioningStrategy;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
@@ -334,6 +334,7 @@ public class SharedTableBuilder implements TableBuilder {
             mtContext,
             amazonDynamoDb,
             tableMappingFactory,
+            partitioningStrategy,
             mtTableDescriptionRepo,
             deleteTableAsync,
             truncateOnDeleteTable,
