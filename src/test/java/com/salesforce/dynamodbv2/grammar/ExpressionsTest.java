@@ -124,11 +124,11 @@ class ExpressionsTest {
         /**
          * Platform dependent end-of-line marker.
          */
-        static final String Eol = System.lineSeparator();
+        static final String EOL = System.lineSeparator();
         /**
          * The literal indent char(s) used for pretty-printing.
          */
-        static final String Indents = "  ";
+        static final String INDENTS = "  ";
         private static int level;
 
         private TreeUtils() {
@@ -140,7 +140,7 @@ class ExpressionsTest {
          */
         static String toPrettyTree(final Tree t, final List<String> ruleNames) {
             level = 0;
-            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", Eol);
+            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", EOL);
         }
 
         private static String process(final Tree t, final List<String> ruleNames) {
@@ -163,8 +163,8 @@ class ExpressionsTest {
         private static String lead(int level) {
             StringBuilder sb = new StringBuilder();
             if (level > 0) {
-                sb.append(Eol);
-                sb.append(Indents.repeat(level));
+                sb.append(EOL);
+                sb.append(INDENTS.repeat(level));
             }
             return sb.toString();
         }
