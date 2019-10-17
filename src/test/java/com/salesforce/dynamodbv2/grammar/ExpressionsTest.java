@@ -11,14 +11,16 @@ import com.amazon.dynamodb.grammar.DynamoDbExpressionParser;
 import com.amazon.dynamodb.grammar.DynamoDbGrammarParser;
 import com.amazonaws.services.dynamodbv2.local.shared.env.LocalDBEnv;
 import com.amazonaws.services.dynamodbv2.parser.ExpressionErrorListener;
-import com.salesforce.dynamodbv2.grammar.ExpressionsParser.ConditionContext;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser.KeyConditionExpressionContext;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser.UpdateExpressionContext;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.misc.Utils;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.Tree;
@@ -34,7 +36,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 @Disabled
 class ExpressionsTest {
 
-    @ParameterizedTest
+    /*@ParameterizedTest
     @ValueSource(strings = {
         "Score > Score2 AND Time = Time2",
         "#field1 = :value1",
@@ -54,7 +56,7 @@ class ExpressionsTest {
 
         System.out.println("Their tree: "
             + TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames)));
-    }
+    }*/
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -91,6 +93,29 @@ class ExpressionsTest {
         KeyConditionExpressionContext context = parser.keyConditionExpression();
 
         System.out.println("Our tree: " + TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames)));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "#hk = :hk",
+        "HashKey = :hk AND #rk > :rk AND SomeField < :rk",
+        "HashKey = :hk AND #rk BETWEEN :value1 AND :value2",
+        "HashKey = :hk AND attribute_not_exists(#field)"
+    })
+    void testTokenizePlaceholders(String expression) {
+        List<? extends Token> tokens = new ExpressionsLexer(CharStreams.fromString(expression)).getAllTokens();
+        Set<String> fieldPlaceholders = new HashSet<>();
+        Set<String> valuePlaceholders = new HashSet<>();
+        for (Token token : tokens) {
+            if (token.getType() == ExpressionsLexer.FIELD_PLACEHOLDER) {
+                fieldPlaceholders.add(token.getText());
+            } else if (token.getType() == ExpressionsLexer.VALUE_PLACEHOLDER) {
+                valuePlaceholders.add(token.getText());
+            }
+        }
+
+        System.out.println(String.format("Placeholders in '%s': fields = %s, values = %s", expression,
+            fieldPlaceholders.toString(), valuePlaceholders.toString()));
     }
 
     // source: https://stackoverflow.com/questions/50064110/antlr4-java-pretty-print-parse-tree-to-stdout

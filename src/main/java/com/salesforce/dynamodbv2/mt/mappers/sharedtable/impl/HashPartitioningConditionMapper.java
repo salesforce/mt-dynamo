@@ -34,7 +34,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -67,8 +67,9 @@ class HashPartitioningConditionMapper implements ConditionMapper {
     public void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex, String filterExpression) {
         // parse expression for the virtual HK value, and the RK condition if it exists
         ExpressionsParser parser = getExpressionsParser(request.getExpression());
+        Set<String> valuePlaceholders = MappingUtils.getValuePlaceholders(filterExpression);
         KeyConditionExpressionVisitor visitor = new KeyConditionExpressionVisitor(requestIndex.getVirtualPk(),
-            request.getExpressionAttributeNames(), request.getExpressionAttributeValues(), filterExpression);
+            request.getExpressionAttributeNames(), request.getExpressionAttributeValues(), valuePlaceholders);
         parser.keyConditionExpression().accept(visitor);
         checkNotNull(visitor.hkValue, "Key condition does not specify hash key");
 
@@ -165,7 +166,9 @@ class HashPartitioningConditionMapper implements ConditionMapper {
                         keyMapper.toPhysicalRangeKey(virtualPk, vhk, EMPTY_BYTE_ARRAY),
                         keyMapper.toPhysicalRangeKey(virtualPk, vhk, vrk));
                 case GT:
-                    // #vhk = :vhk and #vrk > :vrk" ==> "#prk BETWEEN :vhk+vrk+0 AND :vhk+FFFFFF“
+                    // #vhk = :vhk and #vrk > :vrk" ==> "#prk BETWEEN :vhk+minValueGreaterThan(vrk) AND :vhk+FFFFFF“
+                    // (for the lower bound, we compute the smallest value that's greater than the specified virtual RK
+                    // RK value, since BETWEEN is inclusive)
                     return new BetweenRange(
                         getMinValueGreaterThan(vhk, vrk),
                         keyMapper.toPhysicalRangeKey(virtualPk, vhk, EMPTY_BYTE_ARRAY, true));
@@ -280,18 +283,19 @@ class HashPartitioningConditionMapper implements ConditionMapper {
         private final PrimaryKey primaryKey;
         private final Map<String, String> fieldPlaceholders;
         private final Map<String, AttributeValue> valuePlaceholders;
-        private final String filterExpression;
+        private final Set<String> filterExpressionValuePlaceholders;
 
         // output
         private AttributeValue hkValue = null;
         private Optional<KeyFieldCondition> rkCondition = Optional.empty();
 
         KeyConditionExpressionVisitor(PrimaryKey primaryKey, Map<String, String> fieldPlaceholders,
-                                      Map<String, AttributeValue> valuePlaceholders, String filterExpression) {
+                                      Map<String, AttributeValue> valuePlaceholders,
+                                      Set<String> filterExpressionValuePlaceholders) {
             this.primaryKey = primaryKey;
             this.fieldPlaceholders = fieldPlaceholders;
             this.valuePlaceholders = valuePlaceholders;
-            this.filterExpression = filterExpression;
+            this.filterExpressionValuePlaceholders = filterExpressionValuePlaceholders;
         }
 
         @Override
@@ -341,20 +345,12 @@ class HashPartitioningConditionMapper implements ConditionMapper {
             AttributeValue value = null;
             if (valuePlaceholders != null) {
                 // keep the value placeholder if it's also in the filter expression; otherwise remove it
-                value = isPlaceholderInFilterExpression(placeholder)
+                value = filterExpressionValuePlaceholders.contains(placeholder)
                     ? valuePlaceholders.get(placeholder)
                     : valuePlaceholders.remove(placeholder);
             }
             checkArgument(value != null, "Referenced attribute value does not exist: %s", placeholder);
             return value;
-        }
-
-        private boolean isPlaceholderInFilterExpression(String placeholder) {
-            if (filterExpression == null) {
-                return false;
-            }
-            Pattern pattern = Pattern.compile(placeholder + "($|[^a-zA-Z0-9])");
-            return pattern.matcher(filterExpression).find();
         }
 
         private ComparisonOperator getRangeKeyComparisonOp(KeyConditionPartContext keyConditionPart) {

@@ -1,5 +1,6 @@
 grammar Expressions;
 
+// not supported: REMOVE, ADD, DELETE
 updateExpression
     : SET setAction
     ;
@@ -18,21 +19,28 @@ keyConditionExpression
     | keyConditionPart AND keyConditionPart
     ;
 
+// not suppoorted: begins_with
 keyConditionPart
     : id comparator literal
     | id BETWEEN literal AND literal
     | LPAREN keyConditionPart RPAREN
     ;
 
-// general filter expressions -- not currently used
-condition
+/*condition
     : operand comparator operand
     | operand BETWEEN operand AND operand
+    | operand IN LPAREN inValues RPAREN
+    | function
     | condition AND condition
     | condition OR condition
     | NOT condition
     | LPAREN condition RPAREN
     ;
+
+inValues
+    : operand
+    | inValues COMMA operand
+    ;*/
 
 comparator
     : '='
@@ -54,12 +62,20 @@ path
     ;
 
 literal
-    : ':'ALPHANUM
+    : VALUE_PLACEHOLDER
     ;
 
 id
-    : '#'ALPHANUM
+    : FIELD_PLACEHOLDER
     | ALPHANUM
+    ;
+
+VALUE_PLACEHOLDER
+    : ':'ALPHANUM
+    ;
+
+FIELD_PLACEHOLDER
+    : '#'ALPHANUM
     ;
 
 SET
