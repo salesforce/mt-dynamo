@@ -135,8 +135,8 @@ class ExpressionsTest {
         }
 
         /**
-         * Pretty print out a whole tree. {@link #getNodeText} is used on the node payloads to get the text
-         * for the nodes. (Derived from Trees.toStringTree(....))
+         * Pretty print a whole tree. {@link Trees#getNodeText} is used on the node payloads to get the text for the
+         * nodes. (Derived from {@link Trees#toStringTree}.)
          */
         static String toPrettyTree(final Tree t, final List<String> ruleNames) {
             level = 0;
@@ -151,7 +151,7 @@ class ExpressionsTest {
             sb.append(lead(level));
             level++;
             String s = Utils.escapeWhitespace(Trees.getNodeText(t, ruleNames), false);
-            sb.append(s + ' ');
+            sb.append(s).append(' ');
             for (int i = 0; i < t.getChildCount(); i++) {
                 sb.append(process(t.getChild(i), ruleNames));
             }
@@ -164,9 +164,7 @@ class ExpressionsTest {
             StringBuilder sb = new StringBuilder();
             if (level > 0) {
                 sb.append(Eol);
-                for (int cnt = 0; cnt < level; cnt++) {
-                    sb.append(Indents);
-                }
+                sb.append(Indents.repeat(level));
             }
             return sb.toString();
         }

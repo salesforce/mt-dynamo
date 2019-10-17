@@ -217,7 +217,7 @@ class QueryTest {
                                               IntStream expectedValues,
                                               String errorMessage) {
         runHkRkTableKeyConditionTest(testArgument, useLegacyKeyConditions, op, comparisonValues,
-            expectedValues.mapToObj(Integer::valueOf).collect(Collectors.toSet()), errorMessage);
+            expectedValues.boxed().collect(Collectors.toSet()), errorMessage);
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
@@ -225,7 +225,7 @@ class QueryTest {
                                               IntStream expectedValues,
                                               String errorMessage) {
         runHkRkTableKeyConditionTest(testArgument, queryRequestModifier,
-            expectedValues.mapToObj(Integer::valueOf).collect(Collectors.toSet()), errorMessage);
+            expectedValues.boxed().collect(Collectors.toSet()), errorMessage);
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
