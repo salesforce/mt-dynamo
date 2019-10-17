@@ -73,17 +73,16 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
     private Function<Record, Optional<MtRecord>> getRecordMapper(String physicalTableName) {
         // get function that extracts tenant context and table name from key prefix
-        final Function<Map<String, AttributeValue>, FieldValue<?>> fieldValueFunction =
-            mtDynamoDb.getFieldValueFunction(physicalTableName);
+        final Function<Map<String, AttributeValue>, MtContextAndTable> contextParser =
+            mtDynamoDb.getContextParser(physicalTableName);
         return record -> {
             // when called to map a record, extract tenant context and table
-            final FieldValue<?> fieldValue = fieldValueFunction.apply(record.getDynamodb().getKeys());
+            final MtContextAndTable mtContextAndTable = contextParser.apply(record.getDynamodb().getKeys());
             // then establish context to map physical to virtual record, i.e., remove index key prefixes
-            return mtDynamoDb.getMtContext().withContext(fieldValue.getContext(), () -> {
-                Optional<TableMapping> tableMapping = mtDynamoDb.getTableMapping(fieldValue.getTableName());
+            return mtDynamoDb.getMtContext().withContext(mtContextAndTable.getContext(), () -> {
+                Optional<TableMapping> tableMapping = mtDynamoDb.getTableMapping(mtContextAndTable.getTableName());
                 return tableMapping.map(TableMapping::getRecordMapper)
                     .map(f -> f.apply(record));
-
             });
         };
     }

@@ -18,9 +18,8 @@ import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable5;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.Arrays;
 import java.util.List;
@@ -39,7 +38,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 class BatchGetTest {
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void batchGet(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
@@ -74,7 +74,8 @@ class BatchGetTest {
      * <p>For more info, see https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchGetItem.html.
      */
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void batchGetWithUnprocessedKeys(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
@@ -99,13 +100,15 @@ class BatchGetTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void batchGetHkRkTable(TestArgument testArgument) {
         runBatchGetHkRkTableTest(testArgument, TABLE3);
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable5.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE5})
     void batchGetHkRkTableWithPkFieldInGsi(TestArgument testArgument) {
         runBatchGetHkRkTableTest(testArgument, TABLE5);
     }

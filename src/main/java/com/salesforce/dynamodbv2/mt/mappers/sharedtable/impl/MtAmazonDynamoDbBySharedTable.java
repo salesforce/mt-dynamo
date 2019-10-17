@@ -7,19 +7,16 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
-import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.BackupDescription;
 import com.amazonaws.services.dynamodbv2.model.BackupDetails;
 import com.amazonaws.services.dynamodbv2.model.BackupNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
-import com.amazonaws.services.dynamodbv2.model.Condition;
 import com.amazonaws.services.dynamodbv2.model.ContinuousBackupsUnavailableException;
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.CreateBackupResult;
@@ -77,8 +74,11 @@ import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata;
 import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RequestWrapper.AbstractRequestWrapper;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -119,9 +119,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<Object, Optional<TableMapping>> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
+    private final TablePartitioningStrategy partitioningStrategy;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
-    private final Map<String, CreateTableRequest> mtTables;
+    private final Map<String, DynamoTableDescription> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
     private final Optional<MtBackupManager> backupManager;
@@ -134,6 +135,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param mtContext              the multitenant context provider
      * @param amazonDynamoDb         the underlying {@code AmazonDynamoDB} delegate
      * @param tableMappingFactory    the table-mapping factory for mapping virtual to physical table instances
+     * @param partitioningStrategy   the table partitioning strategy
      * @param mtTableDescriptionRepo the {@code MtTableDescriptionRepo} impl
      * @param deleteTableAsync       flag indicating whether to perform delete-table operations async (vs. sync)
      * @param truncateOnDeleteTable  flag indicating whether to delete all table data when a virtual table is deleted
@@ -150,6 +152,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          MtAmazonDynamoDbContextProvider mtContext,
                                          AmazonDynamoDB amazonDynamoDb,
                                          TableMappingFactory tableMappingFactory,
+                                         TablePartitioningStrategy partitioningStrategy,
                                          MtTableDescriptionRepo mtTableDescriptionRepo,
                                          boolean deleteTableAsync,
                                          boolean truncateOnDeleteTable,
@@ -166,10 +169,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
+        this.partitioningStrategy = partitioningStrategy;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
         this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
-            .collect(Collectors.toMap(CreateTableRequest::getTableName, Function.identity()));
+            .map(DynamoTableDescriptionImpl::new)
+            .collect(Collectors.toMap(DynamoTableDescription::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
 
@@ -198,27 +203,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return mtTableDescriptionRepo;
     }
 
-    Function<Map<String, AttributeValue>, FieldValue<?>> getFieldValueFunction(String sharedTableName) {
-        CreateTableRequest table = mtTables.get(sharedTableName);
+    Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName) {
+        DynamoTableDescription table = mtTables.get(sharedTableName);
         checkArgument(table != null);
-        // TODO consider representing physical tables as DynamoTableDescription
-        String hashKeyName = table.getKeySchema().stream()
-            .filter(elem -> HASH.toString().equals(elem.getKeyType()))
-            .map(KeySchemaElement::getAttributeName)
-            .findFirst().orElseThrow(IllegalStateException::new);
-        ScalarAttributeType hashKeyType = table.getAttributeDefinitions().stream()
-            .filter(attr -> hashKeyName.equals(attr.getAttributeName()))
-            .map(AttributeDefinition::getAttributeType)
-            .map(ScalarAttributeType::valueOf)
-            .findFirst().orElseThrow(IllegalStateException::new);
-        switch (hashKeyType) {
-            case S:
-                return key -> StringFieldPrefixFunction.INSTANCE.reverse(key.get(hashKeyName).getS());
-            case B:
-                return key -> BinaryFieldPrefixFunction.INSTANCE.reverse(key.get(hashKeyName).getB());
-            default:
-                throw new IllegalStateException("Unsupported physical table hash key type " + hashKeyType);
-        }
+        String hashKeyName = table.getPrimaryKey().getHashKey();
+        ScalarAttributeType hashKeyType = table.getPrimaryKey().getHashKeyType();
+        return item -> partitioningStrategy.toContextAndTable(hashKeyType, item.get(hashKeyName));
     }
 
     @Override
@@ -333,8 +323,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         deleteItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(deleteItemRequest.getKey(), null));
 
         // map conditions
-        tableMapping.getConditionMapper().applyToFilterExpression(new DeleteItemRequestWrapper(deleteItemRequest),
-            true);
+        tableMapping.getConditionMapper().applyToFilterExpression(new DeleteItemRequestWrapper(deleteItemRequest));
 
         // delete
         return getAmazonDynamoDb().deleteItem(deleteItemRequest);
@@ -442,7 +431,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
         // map conditions
-        tableMapping.getConditionMapper().applyToFilterExpression(new PutItemRequestWrapper(putItemRequest), true);
+        tableMapping.getConditionMapper().applyToFilterExpression(new PutItemRequestWrapper(putItemRequest));
 
         // map item
         putItemRequest.setItem(tableMapping.getItemMapper().applyForWrite(putItemRequest.getItem()));
@@ -503,19 +492,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         ScanRequest clonedScanRequest = scanRequest.clone();
         clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
-        // map scan request
-        clonedScanRequest.setExpressionAttributeNames(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeNames())).orElseGet(HashMap::new));
-        clonedScanRequest.setExpressionAttributeValues(Optional.ofNullable(clonedScanRequest.getFilterExpression())
-            .map(s -> new HashMap<>(clonedScanRequest.getExpressionAttributeValues())).orElseGet(HashMap::new));
-        tableMapping.getQueryAndScanMapper().apply(clonedScanRequest);
-
-        // keep moving forward pages until we find at least one record for current tenant or reach end
-        ScanResult scanResult;
-        while ((scanResult = getAmazonDynamoDb().scan(clonedScanRequest)).getItems().isEmpty()
-            && scanResult.getLastEvaluatedKey() != null) {
-            clonedScanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
-        }
+        // execute scan, keep moving forward pages until we find at least one record for current tenant or reach end
+        ScanResult scanResult = tableMapping.getQueryAndScanMapper().executeScan(getAmazonDynamoDb(),
+            clonedScanRequest);
 
         // map result
         List<Map<String, AttributeValue>> items = scanResult.getItems();
@@ -542,18 +521,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // given the shared table we are working with,
         // get the function to map the primary key back to
         // tuple (tenant, virtual table name, primary attributes)
-        Function<Map<String, AttributeValue>, FieldValue<?>> fieldMapperFunction =
-            getFieldValueFunction(scanRequest.getTableName());
+        Function<Map<String, AttributeValue>, MtContextAndTable> contextParser =
+            getContextParser(scanRequest.getTableName());
         List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             // go through each row in the scan and pull out the tenant and table information from the primary key to
             // separate attributes in each item's map
-            FieldValue<?> virtualFieldKeys = fieldMapperFunction.apply(item);
-            TableMapping tableMapping = getMtContext().withContext(virtualFieldKeys.getContext(), this::getTableMapping,
-                virtualFieldKeys.getTableName()).get();
+            MtContextAndTable contextAndTable = contextParser.apply(item);
+            TableMapping tableMapping = getMtContext().withContext(contextAndTable.getContext(),
+                this::getTableMapping, contextAndTable.getTableName()).get();
             Map<String, AttributeValue> unpackedVirtualItem = tableMapping.getItemMapper().reverse(item);
-            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(virtualFieldKeys.getContext()));
-            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(virtualFieldKeys.getTableName()));
+            unpackedVirtualItem.put(scanTenantKey, new AttributeValue(contextAndTable.getContext()));
+            unpackedVirtualItem.put(scanVirtualTableKey, new AttributeValue(contextAndTable.getTableName()));
             unpackedItems.add(unpackedVirtualItem);
         }
 
@@ -613,7 +592,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         updateItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(updateItemRequest.getKey(), null));
 
         // map conditions
-        tableMapping.getConditionMapper().applyForUpdate(new UpdateItemRequestWrapper(updateItemRequest));
+        tableMapping.getConditionMapper().applyForUpdate(updateItemRequest);
 
         // update
         return getAmazonDynamoDb().updateItem(updateItemRequest);
@@ -813,16 +792,22 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private void truncateTable(String tableName) {
         if (truncateOnDeleteTable) {
-            ScanResult scanResult = scan(new ScanRequest().withTableName(tableName));
-            log.warn("truncating " + scanResult.getItems().size() + " items from table=" + tableName);
-            for (Map<String, AttributeValue> item : scanResult.getItems()) {
-                deleteItem(new DeleteItemRequest().withTableName(tableName).withKey(getKeyFromItem(item, tableName)));
+            long deletedCount = 0;
+            ScanRequest scanRequest = new ScanRequest().withTableName(tableName);
+            while (true) {
+                ScanResult scanResult = scan(scanRequest);
+                log.warn("truncating " + scanResult.getItems().size() + " items from table=" + tableName);
+                for (Map<String, AttributeValue> item : scanResult.getItems()) {
+                    deleteItem(new DeleteItemRequest().withTableName(tableName)
+                        .withKey(getKeyFromItem(item, tableName)));
+                }
+                deletedCount += scanResult.getItems().size();
+                if (scanResult.getLastEvaluatedKey() == null) {
+                    break;
+                }
+                scanRequest.withExclusiveStartKey(scanResult.getLastEvaluatedKey());
             }
-            log.warn("truncation of " + scanResult.getItems().size() + " items from table=" + tableName
-                + (scanResult.getLastEvaluatedKey() == null
-                ? " complete. "
-                : "but data may have been dropped to the floor, beware."));
-
+            log.warn("truncation of " + deletedCount + " items from table=" + tableName + " complete.");
         } else {
             log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
                 + "Data has been dropped, clean up on aisle "
@@ -847,281 +832,22 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return backupManager.orElse(null);
     }
 
-    private static class PutItemRequestWrapper implements RequestWrapper {
-
-        private final PutItemRequest putItemRequest;
+    private static class PutItemRequestWrapper extends AbstractRequestWrapper {
 
         PutItemRequestWrapper(PutItemRequest putItemRequest) {
-            this.putItemRequest = putItemRequest;
-            if (this.putItemRequest.getExpressionAttributeNames() != null) {
-                this.putItemRequest.setExpressionAttributeNames(new HashMap<>(this.getExpressionAttributeNames()));
-            }
-            if (this.putItemRequest.getExpressionAttributeValues() != null) {
-                this.putItemRequest.setExpressionAttributeValues(new HashMap<>(this.getExpressionAttributeValues()));
-            }
+            super(putItemRequest::getExpressionAttributeNames, putItemRequest::setExpressionAttributeNames,
+                putItemRequest::getExpressionAttributeValues, putItemRequest::setExpressionAttributeValues,
+                putItemRequest::getConditionExpression, putItemRequest::setConditionExpression);
         }
-
-        @Override
-        public Map<String, String> getExpressionAttributeNames() {
-            return putItemRequest.getExpressionAttributeNames();
-        }
-
-        @Override
-        public void putExpressionAttributeName(String key, String value) {
-            if (putItemRequest.getExpressionAttributeNames() == null) {
-                putItemRequest.setExpressionAttributeNames(new HashMap<>());
-            }
-            putItemRequest.getExpressionAttributeNames().put(key, value);
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExpressionAttributeValues() {
-            if (putItemRequest.getExpressionAttributeValues() == null) {
-                putItemRequest.setExpressionAttributeValues(new HashMap<>());
-            }
-            return putItemRequest.getExpressionAttributeValues();
-        }
-
-        @Override
-        public void putExpressionAttributeValue(String key, AttributeValue value) {
-            putItemRequest.getExpressionAttributeValues().put(key, value);
-        }
-
-        @Override
-        public String getPrimaryExpression() {
-            return putItemRequest.getConditionExpression();
-        }
-
-        @Override
-        public void setPrimaryExpression(String expression) {
-            putItemRequest.setConditionExpression(expression);
-        }
-
-        @Override
-        public String getFilterExpression() {
-            return putItemRequest.getConditionExpression();
-        }
-
-        @Override
-        public void setFilterExpression(String conditionalExpression) {
-            putItemRequest.setConditionExpression(conditionalExpression);
-        }
-
-        @Override
-        public String getIndexName() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setIndexName(String indexName) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, Condition> getLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void clearLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExclusiveStartKey() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
-            throw new UnsupportedOperationException();
-        }
-
     }
 
-    private static class UpdateItemRequestWrapper implements RequestWrapper {
-
-        private final UpdateItemRequest updateItemRequest;
-
-        UpdateItemRequestWrapper(UpdateItemRequest updateItemRequest) {
-            this.updateItemRequest = updateItemRequest;
-            if (this.updateItemRequest.getExpressionAttributeNames() != null) {
-                this.updateItemRequest.setExpressionAttributeNames(
-                    new HashMap<>(updateItemRequest.getExpressionAttributeNames()));
-            }
-            if (this.updateItemRequest.getExpressionAttributeValues() != null) {
-                this.updateItemRequest.setExpressionAttributeValues(
-                    new HashMap<>(updateItemRequest.getExpressionAttributeValues()));
-            }
-        }
-
-        @Override
-        public Map<String, String> getExpressionAttributeNames() {
-            return updateItemRequest.getExpressionAttributeNames();
-        }
-
-        @Override
-        public void putExpressionAttributeName(String key, String value) {
-            if (updateItemRequest.getExpressionAttributeNames() == null) {
-                updateItemRequest.setExpressionAttributeNames(new HashMap<>());
-            }
-            updateItemRequest.getExpressionAttributeNames().put(key, value);
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExpressionAttributeValues() {
-            if (updateItemRequest.getExpressionAttributeValues() == null) {
-                updateItemRequest.setExpressionAttributeValues(new HashMap<>());
-            }
-            return updateItemRequest.getExpressionAttributeValues();
-        }
-
-        @Override
-        public void putExpressionAttributeValue(String key, AttributeValue value) {
-            updateItemRequest.getExpressionAttributeValues().put(key, value);
-        }
-
-        @Override
-        public String getPrimaryExpression() {
-            return updateItemRequest.getUpdateExpression();
-        }
-
-        @Override
-        public void setPrimaryExpression(String expression) {
-            updateItemRequest.setUpdateExpression(expression);
-        }
-
-        @Override
-        public String getFilterExpression() {
-            return updateItemRequest.getConditionExpression();
-        }
-
-        @Override
-        public void setFilterExpression(String conditionalExpression) {
-            updateItemRequest.setConditionExpression(conditionalExpression);
-        }
-
-        @Override
-        public String getIndexName() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setIndexName(String indexName) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, Condition> getLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void clearLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExclusiveStartKey() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
-            throw new UnsupportedOperationException();
-        }
-
-    }
-
-    private static class DeleteItemRequestWrapper implements RequestWrapper {
-
-        private final DeleteItemRequest deleteItemRequest;
+    private static class DeleteItemRequestWrapper extends AbstractRequestWrapper {
 
         DeleteItemRequestWrapper(DeleteItemRequest deleteItemRequest) {
-            this.deleteItemRequest = deleteItemRequest;
-            if (this.deleteItemRequest.getExpressionAttributeNames() != null) {
-                this.deleteItemRequest.setExpressionAttributeNames(new HashMap<>(this.getExpressionAttributeNames()));
-            }
-            if (this.deleteItemRequest.getExpressionAttributeValues() != null) {
-                this.deleteItemRequest.setExpressionAttributeValues(new HashMap<>(this.getExpressionAttributeValues()));
-            }
+            super(deleteItemRequest::getExpressionAttributeNames, deleteItemRequest::setExpressionAttributeNames,
+                deleteItemRequest::getExpressionAttributeValues, deleteItemRequest::setExpressionAttributeValues,
+                deleteItemRequest::getConditionExpression, deleteItemRequest::setConditionExpression);
         }
-
-        @Override
-        public Map<String, String> getExpressionAttributeNames() {
-            return deleteItemRequest.getExpressionAttributeNames();
-        }
-
-        @Override
-        public void putExpressionAttributeName(String key, String value) {
-            if (deleteItemRequest.getExpressionAttributeNames() == null) {
-                deleteItemRequest.setExpressionAttributeNames(new HashMap<>());
-            }
-            deleteItemRequest.getExpressionAttributeNames().put(key, value);
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExpressionAttributeValues() {
-            if (deleteItemRequest.getExpressionAttributeValues() == null) {
-                deleteItemRequest.setExpressionAttributeValues(new HashMap<>());
-            }
-            return deleteItemRequest.getExpressionAttributeValues();
-        }
-
-        @Override
-        public void putExpressionAttributeValue(String key, AttributeValue value) {
-            deleteItemRequest.getExpressionAttributeValues().put(key, value);
-        }
-
-        @Override
-        public String getPrimaryExpression() {
-            return deleteItemRequest.getConditionExpression();
-        }
-
-        @Override
-        public void setPrimaryExpression(String expression) {
-            deleteItemRequest.setConditionExpression(expression);
-        }
-
-        @Override
-        public String getFilterExpression() {
-            return null;
-        }
-
-        @Override
-        public void setFilterExpression(String conditionalExpression) {
-        }
-
-        @Override
-        public String getIndexName() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setIndexName(String indexName) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, Condition> getLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void clearLegacyExpression() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Map<String, AttributeValue> getExclusiveStartKey() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setExclusiveStartKey(Map<String, AttributeValue> exclusiveStartKey) {
-            throw new UnsupportedOperationException();
-        }
-
     }
 
 }

@@ -10,77 +10,126 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.PHYSICAL_GSI_HK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.PHYSICAL_GSI_RK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.PHYSICAL_HK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.PHYSICAL_RK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.SOME_FIELD;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.VIRTUAL_GSI;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.VIRTUAL_GSI_HK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.VIRTUAL_GSI_RK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.VIRTUAL_HK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.VIRTUAL_RK;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.buildVirtualHkRkTable;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.buildVirtualHkTable;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getPhysicalHkValue;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getPhysicalRkValue;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getTableMapping;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.google.common.collect.ImmutableMap;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningItemMapper.AttributeBytesConverter;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.TestHashKeyValue;
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class HashPartitioningItemMapperTest {
 
-    private static final char DELIMITER = '/';
-    private static final String CONTEXT = "someContext";
-    private static final int NUM_BUCKETS = 10;
-    private static final String VIRTUAL_TABLE_NAME = "someVirtualTable";
-
-    // TODO add tests for different N & B hk types
-    private static final DynamoTableDescription VIRTUAL_HK_TABLE = TableMappingTestUtil.buildTable(
-        VIRTUAL_TABLE_NAME,
-        new PrimaryKey("virtualHk", S),
-        ImmutableMap.of("virtualGsi", new PrimaryKey("virtualGsiHk", S))
-    );
-
-    private static final DynamoTableDescription VIRTUAL_HK_RK_TABLE = TableMappingTestUtil.buildTable(
-        VIRTUAL_TABLE_NAME,
-        new PrimaryKey("virtualHk", S, "virtualRk", N),
-        ImmutableMap.of("virtualGsi", new PrimaryKey("virtualGsiHk", S, "virtualGsiRk", B))
-    );
-
-    private static final DynamoTableDescription PHYSICAL_TABLE = TableMappingTestUtil.buildTable(
-        "somePhysicalTable",
-        new PrimaryKey("physicalHk", B, "physicalRk", B),
-        ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", B))
-    );
-
-    private static HashPartitioningItemMapper getItemMapper(DynamoTableDescription virtualTable) {
-        return new HashPartitioningItemMapper(
-            virtualTable,
-            PHYSICAL_TABLE,
-            index -> index.getIndexName().equals("virtualGsi") ? PHYSICAL_TABLE.findSi("physicalGsi") : null,
-            () -> Optional.of(CONTEXT),
-            NUM_BUCKETS,
-            DELIMITER
-        );
-    }
-
-    private static final AttributeValue VIRTUAL_HK_VALUE = new AttributeValue().withS("hkValue");
-    private static final AttributeValue VIRTUAL_RK_VALUE = new AttributeValue().withN("123.456");
-    private static final AttributeValue VIRTUAL_GSI_HK_VALUE = new AttributeValue().withS("gsiHkValue");
+    private static final ScalarAttributeType VIRTUAL_RK_TYPE = N;
+    private static final ScalarAttributeType VIRTUAL_GSI_RK_TYPE = B;
+    private static final AttributeValue VIRTUAL_RK_VALUE = new AttributeValue().withN("-9.87");
     private static final AttributeValue VIRTUAL_GSI_RK_VALUE = new AttributeValue().withB(
-        ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5}));
+        ByteBuffer.wrap(new byte[]{6, 7, 8}));
     private static final AttributeValue SOME_VALUE = new AttributeValue().withS("someValue");
 
-    @Test
-    void applyAndReverse_hkTable_noGsiValue() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_TABLE);
+    private static TestHashKeyValue getVirtualHkValue(ScalarAttributeType type, boolean forGsi) {
+        switch (type) {
+            case S:
+                return new TestHashKeyValue(forGsi ? "gsiHkValue" : "hkValue");
+            case N:
+                return new TestHashKeyValue(forGsi ? new BigDecimal("-654.321") : new BigDecimal("123.456"));
+            case B:
+                return new TestHashKeyValue(forGsi ? new byte[]{-1, -2} : new byte[]{3, 4, 5});
+            default:
+                throw new IllegalArgumentException("Invalid hash key type: " + type);
+        }
+    }
 
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "someField", SOME_VALUE);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyAndReverse_hkTable_noGsiValue(ScalarAttributeType hkType) {
+        runApplyAndReverseTest(hkType, false /*iskRkTable*/, false /*hasGsiHk*/, false /*hasGsiRk*/);
+    }
 
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE),
-            "someField", SOME_VALUE);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyAndReverse_hkTable_withGsiValue(ScalarAttributeType hkType) {
+        runApplyAndReverseTest(hkType, false /*iskRkTable*/, true /*hasGsiHk*/, false /*hasGsiRk*/);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyAndReverse_hkRkTable_noGsiValues(ScalarAttributeType hkType) {
+        runApplyAndReverseTest(hkType, true /*iskRkTable*/, false /*hasGsiHk*/, false /*hasGsiRk*/);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyAndReverse_hkRkTable_withGsiValues(ScalarAttributeType hkType) {
+        runApplyAndReverseTest(hkType, true /*iskRkTable*/, true /*hasGsiHk*/, true /*hasGsiRk*/);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyAndReverse_hkRkTable_notAllGsiValues(ScalarAttributeType hkType) {
+        runApplyAndReverseTest(hkType, true /*iskRkTable*/, true /*hasGsiHk*/, false /*hasGsiRk*/);
+    }
+
+    private void runApplyAndReverseTest(ScalarAttributeType hkType, boolean isHkRkTable, boolean hasGsiHk,
+                                        boolean hasGsiRk) {
+        TestHashKeyValue virtualHkValue = getVirtualHkValue(hkType, false);
+        TestHashKeyValue virtualGsiHkValue = getVirtualHkValue(hkType, true);
+
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put(VIRTUAL_HK, virtualHkValue.getAttributeValue());
+        item.put(SOME_FIELD, SOME_VALUE);
+        if (isHkRkTable) {
+            item.put(VIRTUAL_RK, VIRTUAL_RK_VALUE);
+        }
+        if (hasGsiHk) {
+            item.put(VIRTUAL_GSI_HK, virtualGsiHkValue.getAttributeValue());
+            if (hasGsiRk) {
+                item.put(VIRTUAL_GSI_RK, VIRTUAL_GSI_RK_VALUE);
+            }
+        }
+
+        Map<String, AttributeValue> expectedMappedItem = new HashMap<>(item);
+        expectedMappedItem.put(PHYSICAL_HK, getPhysicalHkValue(virtualHkValue));
+        expectedMappedItem.put(PHYSICAL_RK, isHkRkTable
+            ? getPhysicalRkValue(hkType, virtualHkValue.getAttributeValue(), N, VIRTUAL_RK_VALUE)
+            : HashPartitioningTestUtil.getPhysicalRkValue(hkType, virtualHkValue.getAttributeValue()));
+        if (isHkRkTable && hasGsiHk && hasGsiRk) {
+            expectedMappedItem.put(PHYSICAL_GSI_HK, getPhysicalHkValue(virtualGsiHkValue));
+            expectedMappedItem.put(PHYSICAL_GSI_RK,
+                getPhysicalRkValue(hkType, virtualGsiHkValue.getAttributeValue(), B, VIRTUAL_GSI_RK_VALUE));
+        } else if (!isHkRkTable && hasGsiHk) {
+            expectedMappedItem.put(PHYSICAL_GSI_HK, getPhysicalHkValue(virtualGsiHkValue));
+            expectedMappedItem.put(PHYSICAL_GSI_RK,
+                HashPartitioningTestUtil.getPhysicalRkValue(hkType, virtualGsiHkValue.getAttributeValue()));
+        }
+
+        DynamoTableDescription virtualTable = isHkRkTable
+            ? buildVirtualHkRkTable(hkType, VIRTUAL_RK_TYPE, hkType, VIRTUAL_GSI_RK_TYPE)
+            : buildVirtualHkTable(hkType);
+        HashPartitioningItemMapper itemMapper = getTableMapping(virtualTable).getItemMapper();
 
         Map<String, AttributeValue> mappedItem = itemMapper.applyForWrite(item);
         assertEquals(expectedMappedItem, mappedItem);
@@ -89,210 +138,70 @@ class HashPartitioningItemMapperTest {
         assertEquals(item, reversedItem);
     }
 
-    @Test
-    void applyAndReverse_hkTable_withGsiValue() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "someField", SOME_VALUE);
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        String expectedPhysicalGsiHk = getExpectedPhysicalHashKey(VIRTUAL_GSI_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE),
-            "physicalGsiHk", getAttributeValueInBytes(expectedPhysicalGsiHk),
-            "physicalGsiRk", getAttributeValueInBytes(S, VIRTUAL_GSI_HK_VALUE),
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyForWrite(item);
-        assertEquals(expectedMappedItem, mappedItem);
-
-        Map<String, AttributeValue> reversedItem = itemMapper.reverse(mappedItem);
-        assertEquals(item, reversedItem);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyToKeyAttributes_hkTable(ScalarAttributeType hkType) {
+        runApplyToKeyAttributesTest(hkType, false /*isHkRkTable*/, false /*onGsi*/);
     }
 
-    @Test
-    void applyAndReverse_hkRkTable_noGsiValues() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_RK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualRk", VIRTUAL_RK_VALUE,
-            "someField", SOME_VALUE);
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE, N, VIRTUAL_RK_VALUE),
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyForWrite(item);
-        assertEquals(expectedMappedItem, mappedItem);
-
-        Map<String, AttributeValue> reversedItem = itemMapper.reverse(mappedItem);
-        assertEquals(item, reversedItem);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyToKeyAttributes_gsi_hkTable(ScalarAttributeType hkType) {
+        runApplyToKeyAttributesTest(hkType, false /*isHkRkTable*/, true /*onGsi*/);
     }
 
-    @Test
-    void applyAndReverse_hkRkTable_withGsiValues() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_RK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualRk", VIRTUAL_RK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "virtualGsiRk", VIRTUAL_GSI_RK_VALUE,
-            "someField", SOME_VALUE);
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        String expectedPhysicalGsiHk = getExpectedPhysicalHashKey(VIRTUAL_GSI_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE, N, VIRTUAL_RK_VALUE),
-            "physicalGsiHk", getAttributeValueInBytes(expectedPhysicalGsiHk),
-            "physicalGsiRk", getAttributeValueInBytes(S, VIRTUAL_GSI_HK_VALUE, B, VIRTUAL_GSI_RK_VALUE),
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyForWrite(item);
-        assertEquals(expectedMappedItem, mappedItem);
-
-        Map<String, AttributeValue> reversedItem = itemMapper.reverse(mappedItem);
-        assertEquals(item, reversedItem);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyToKeyAttributes_hkRkTable(ScalarAttributeType hkType) {
+        runApplyToKeyAttributesTest(hkType, true /*isHkRkTable*/, false /*onGsi*/);
     }
 
-    @Test
-    void applyAndReverse_hkRkTable_notAllGsiValues() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_RK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualRk", VIRTUAL_RK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "someField", SOME_VALUE);
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE, N, VIRTUAL_RK_VALUE),
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyForWrite(item);
-        assertEquals(expectedMappedItem, mappedItem);
-
-        Map<String, AttributeValue> reversedItem = itemMapper.reverse(mappedItem);
-        assertEquals(item, reversedItem);
+    @ParameterizedTest
+    @EnumSource(value = ScalarAttributeType.class, names = {"S", "B", "N"})
+    void applyToKeyAttributes_gsi_hkRkTable(ScalarAttributeType hkType) {
+        runApplyToKeyAttributesTest(hkType, true /*isHkRkTable*/, true /*onGsi*/);
     }
 
-    @Test
-    void applyToKeyAttributes_hkTable() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_TABLE);
+    private void runApplyToKeyAttributesTest(ScalarAttributeType hkType, boolean isHkRkTable, boolean onGsi) {
+        TestHashKeyValue virtualHkValue = getVirtualHkValue(hkType, false);
+        TestHashKeyValue virtualGsiHkValue = getVirtualHkValue(hkType, true);
 
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "someField", SOME_VALUE);
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put(VIRTUAL_HK, virtualHkValue.getAttributeValue());
+        item.put(VIRTUAL_GSI_HK, virtualGsiHkValue.getAttributeValue());
+        item.put(SOME_FIELD, SOME_VALUE);
+        if (isHkRkTable) {
+            item.put(VIRTUAL_RK, VIRTUAL_RK_VALUE);
+            item.put(VIRTUAL_GSI_RK, VIRTUAL_GSI_RK_VALUE);
+        }
 
-        Map<String, AttributeValue> mappedItem = itemMapper.applyToKeyAttributes(item, null);
+        Map<String, AttributeValue> expectedMappedItem = new HashMap<>();
+        expectedMappedItem.put(PHYSICAL_HK, getPhysicalHkValue(virtualHkValue));
+        expectedMappedItem.put(PHYSICAL_RK, isHkRkTable
+            ? getPhysicalRkValue(hkType, virtualHkValue.getAttributeValue(), N, VIRTUAL_RK_VALUE)
+            : HashPartitioningTestUtil.getPhysicalRkValue(hkType, virtualHkValue.getAttributeValue()));
+        if (onGsi) {
+            expectedMappedItem.put(PHYSICAL_GSI_HK, getPhysicalHkValue(virtualGsiHkValue));
+            expectedMappedItem.put(PHYSICAL_GSI_RK, isHkRkTable
+                ? getPhysicalRkValue(hkType, virtualGsiHkValue.getAttributeValue(), B, VIRTUAL_GSI_RK_VALUE)
+                : HashPartitioningTestUtil.getPhysicalRkValue(hkType, virtualGsiHkValue.getAttributeValue()));
+        }
 
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE));
-        assertEquals(expectedMappedItem, mappedItem);
-    }
+        DynamoTableDescription virtualTable = isHkRkTable
+            ? buildVirtualHkRkTable(hkType, VIRTUAL_RK_TYPE, hkType, VIRTUAL_GSI_RK_TYPE)
+            : buildVirtualHkTable(hkType);
+        HashPartitioningTableMapping tableMapping = getTableMapping(virtualTable);
+        HashPartitioningItemMapper itemMapper = tableMapping.getItemMapper();
 
-    @Test
-    void applyToKeyAttributes_gsi_hkTable() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyToKeyAttributes(item,
-            VIRTUAL_HK_TABLE.findSi("virtualGsi"));
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        String expectedPhysicalGsiHk = getExpectedPhysicalHashKey(VIRTUAL_GSI_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE),
-            "physicalGsiHk", getAttributeValueInBytes(expectedPhysicalGsiHk),
-            "physicalGsiRk", getAttributeValueInBytes(S, VIRTUAL_GSI_HK_VALUE));
-        assertEquals(expectedMappedItem, mappedItem);
-    }
-
-    @Test
-    void applyToKeyAttributes_hkRkTable() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_RK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualRk", VIRTUAL_RK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "virtualGsiRk", VIRTUAL_GSI_RK_VALUE,
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyToKeyAttributes(item, null);
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE, N, VIRTUAL_RK_VALUE));
-        assertEquals(expectedMappedItem, mappedItem);
-    }
-
-    @Test
-    void applyToKeyAttributes_gsi_hkRkTable() {
-        HashPartitioningItemMapper itemMapper = getItemMapper(VIRTUAL_HK_RK_TABLE);
-
-        Map<String, AttributeValue> item = ImmutableMap.of(
-            "virtualHk", VIRTUAL_HK_VALUE,
-            "virtualRk", VIRTUAL_RK_VALUE,
-            "virtualGsiHk", VIRTUAL_GSI_HK_VALUE,
-            "virtualGsiRk", VIRTUAL_GSI_RK_VALUE,
-            "someField", SOME_VALUE);
-
-        Map<String, AttributeValue> mappedItem = itemMapper.applyToKeyAttributes(item,
-            VIRTUAL_HK_RK_TABLE.findSi("virtualGsi"));
-
-        String expectedPhysicalHk = getExpectedPhysicalHashKey(VIRTUAL_HK_VALUE.getS());
-        String expectedPhysicalGsiHk = getExpectedPhysicalHashKey(VIRTUAL_GSI_HK_VALUE.getS());
-        Map<String, AttributeValue> expectedMappedItem = ImmutableMap.of(
-            "physicalHk", getAttributeValueInBytes(expectedPhysicalHk),
-            "physicalRk", getAttributeValueInBytes(S, VIRTUAL_HK_VALUE, N, VIRTUAL_RK_VALUE),
-            "physicalGsiHk", getAttributeValueInBytes(expectedPhysicalGsiHk),
-            "physicalGsiRk", getAttributeValueInBytes(S, VIRTUAL_GSI_HK_VALUE, B, VIRTUAL_GSI_RK_VALUE));
+        DynamoSecondaryIndex virtualSi = onGsi ? virtualTable.findSi(VIRTUAL_GSI) : null;
+        Map<String, AttributeValue> mappedItem = itemMapper.applyToKeyAttributes(item, virtualSi);
         assertEquals(expectedMappedItem, mappedItem);
     }
 
     @Test
     void reverseNull() {
-        assertNull(getItemMapper(VIRTUAL_HK_TABLE).reverse(null));
-    }
-
-    private AttributeValue getAttributeValueInBytes(String stringValue) {
-        return getAttributeValueInBytes(S, new AttributeValue().withS(stringValue));
-    }
-
-    private AttributeValue getAttributeValueInBytes(ScalarAttributeType type, AttributeValue attributeValue) {
-        ByteBuffer bytes = AttributeBytesConverter.toBytes(type, attributeValue);
-        return new AttributeValue().withB(bytes);
-    }
-
-    private AttributeValue getAttributeValueInBytes(ScalarAttributeType hkType, AttributeValue hkAttributeValue,
-                                                    ScalarAttributeType rkType, AttributeValue rkAttributeValue) {
-        ByteBuffer bytes = AttributeBytesConverter.toBytes(hkType, hkAttributeValue, rkType, rkAttributeValue);
-        return new AttributeValue().withB(bytes);
-    }
-
-    private String getExpectedPhysicalHashKey(Object hashKeyValue) {
-        return CONTEXT + DELIMITER + VIRTUAL_TABLE_NAME + DELIMITER + (hashKeyValue.hashCode() % NUM_BUCKETS);
+        HashPartitioningItemMapper itemMapper = getTableMapping(buildVirtualHkTable(S)).getItemMapper();
+        assertNull(itemMapper.reverse(null));
     }
 
 }

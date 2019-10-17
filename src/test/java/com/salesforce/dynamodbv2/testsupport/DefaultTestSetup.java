@@ -37,12 +37,12 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -65,12 +65,13 @@ public class DefaultTestSetup implements TestSetup {
     public static final String TABLE3 = "Table3"; // has hk, rk(S), GSI and LSI
     public static final String TABLE4 = "Table4"; // has hk, rk(N), GSI and LSI
     public static final String TABLE5 = "Table5"; // has hk, rk(S), GSI whose HK field is the table's RK field, no LSI
-    public static final Set<String> ALL_TABLES = ImmutableSet.of(TABLE1, TABLE2, TABLE3, TABLE4, TABLE5);
+    public static final String[] ALL_TABLES = {TABLE1, TABLE2, TABLE3, TABLE4, TABLE5};
+    public static final String[] NO_TABLES = {};
 
     private final Set<String> tableNames;
 
-    public DefaultTestSetup(Set<String> tableNames) {
-        this.tableNames = tableNames;
+    public DefaultTestSetup(String[] tableNames) {
+        this.tableNames = Arrays.stream(tableNames).collect(Collectors.toSet());
     }
 
     @Override

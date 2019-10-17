@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import javax.annotation.Nullable;
 
 /**
  * Holds the state of mapping of a virtual table to a physical table. Provides methods for retrieving the virtual
@@ -26,4 +27,6 @@ public interface TableMapping {
     QueryAndScanMapper getQueryAndScanMapper();
 
     ConditionMapper getConditionMapper();
+
+    RequestIndex getRequestIndex(@Nullable String virtualSecondaryIndexName);
 }

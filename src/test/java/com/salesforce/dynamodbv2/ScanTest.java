@@ -6,7 +6,10 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.ORGS_PER_TEST;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
+import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_HK_FIELD_VALUE;
@@ -39,9 +42,7 @@ import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable1;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderForTable3;
-import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderWithAllTables;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.ArrayList;
@@ -65,7 +66,8 @@ class ScanTest {
     private static final ScanTestSetup scanTestSetup = new ScanTestSetup();
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void scanWithHk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -88,7 +90,8 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> assertEquals(
             ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -104,7 +107,8 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void scanByNonPk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -128,7 +132,8 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable1.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
     void scanAll(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = executeScan(
@@ -150,7 +155,8 @@ class ScanTest {
 
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderWithAllTables.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1, TABLE2, TABLE3, TABLE4, TABLE5})
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
@@ -177,7 +183,8 @@ class ScanTest {
     }
 
     @ParameterizedTest(name = "{arguments}")
-    @ArgumentsSource(DefaultArgumentProviderForTable3.class)
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
     void scanGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
@@ -256,7 +263,7 @@ class ScanTest {
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         ScanTestSetup() {
-            super(ImmutableSet.of(TABLE1));
+            super(new String[]{TABLE1});
         }
 
         @Override
