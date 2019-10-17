@@ -438,6 +438,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public PutItemResult putItem(PutItemRequest putItemRequest) {
         // map table name
         putItemRequest = putItemRequest.clone();
+
+        // validate scan attributes are not populated
+        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
+            "Trying to update a reserved column name: " + scanTenantKey);
+        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanVirtualTableKey),
+            "Trying to update a reserved column name: " + scanVirtualTableKey);
+
         TableMapping tableMapping = getTableMapping(putItemRequest.getTableName()).get();
         putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
 
@@ -603,6 +610,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
         // validate that attributeUpdates are not being used
         validateUpdateItemRequest(updateItemRequest);
+
+        // validate scan attributes are not being used
+        if (updateItemRequest.getExpressionAttributeNames() != null) {
+            Preconditions.checkArgument(
+                !updateItemRequest.getExpressionAttributeNames().containsKey(scanTenantKey),
+                "Trying to update a reserved column name: " + scanTenantKey);
+            Preconditions.checkArgument(
+                !updateItemRequest.getExpressionAttributeNames().containsKey(scanVirtualTableKey),
+                "Trying to update a reserved column name: " + scanVirtualTableKey);
+        }
+
 
         // map table name
         updateItemRequest = updateItemRequest.clone();
@@ -775,6 +793,24 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 snapshotResult.getTempSnapshotTable());
             return snapshotResult;
         };
+    }
+
+    /**
+     * When doing multi-tenant scans on a shared table, this column name is injected into each rows scan result to
+     * add tenant context to each scan result. This is mt-dynamo client overrideable, and returns the value the
+     * client was built with.
+     */
+    public String getMtScanTenantKey() {
+        return scanTenantKey;
+    }
+
+    /**
+     * When doing multi-tenant scans on a shared table, this column name is injected into each rows scan result to
+     * add tenant-table context to each scan result. This is mt-dynamo client overrideable, and returns the value the
+     * client was built with.
+     */
+    public String getMtScanVirtualTableKey() {
+        return scanVirtualTableKey;
     }
 
 
