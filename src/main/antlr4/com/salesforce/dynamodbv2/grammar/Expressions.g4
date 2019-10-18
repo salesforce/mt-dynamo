@@ -19,7 +19,7 @@ keyConditionExpression
     | keyConditionPart AND keyConditionPart
     ;
 
-// not suppoorted: begins_with
+// not supported: begins_with
 keyConditionPart
     : id comparator literal
     | id BETWEEN literal AND literal
