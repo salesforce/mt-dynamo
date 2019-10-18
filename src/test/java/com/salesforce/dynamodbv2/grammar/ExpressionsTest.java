@@ -124,23 +124,23 @@ class ExpressionsTest {
         /**
          * Platform dependent end-of-line marker.
          */
-        static final String Eol = System.lineSeparator();
+        static final String EOL = System.lineSeparator();
         /**
          * The literal indent char(s) used for pretty-printing.
          */
-        static final String Indents = "  ";
+        static final String INDENTS = "  ";
         private static int level;
 
         private TreeUtils() {
         }
 
         /**
-         * Pretty print out a whole tree. {@link #getNodeText} is used on the node payloads to get the text
-         * for the nodes. (Derived from Trees.toStringTree(....))
+         * Pretty print a whole tree. {@link Trees#getNodeText} is used on the node payloads to get the text for the
+         * nodes. (Derived from {@link Trees#toStringTree}.)
          */
         static String toPrettyTree(final Tree t, final List<String> ruleNames) {
             level = 0;
-            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", Eol);
+            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", EOL);
         }
 
         private static String process(final Tree t, final List<String> ruleNames) {
@@ -151,7 +151,7 @@ class ExpressionsTest {
             sb.append(lead(level));
             level++;
             String s = Utils.escapeWhitespace(Trees.getNodeText(t, ruleNames), false);
-            sb.append(s + ' ');
+            sb.append(s).append(' ');
             for (int i = 0; i < t.getChildCount(); i++) {
                 sb.append(process(t.getChild(i), ruleNames));
             }
@@ -163,10 +163,8 @@ class ExpressionsTest {
         private static String lead(int level) {
             StringBuilder sb = new StringBuilder();
             if (level > 0) {
-                sb.append(Eol);
-                for (int cnt = 0; cnt < level; cnt++) {
-                    sb.append(Indents);
-                }
+                sb.append(EOL);
+                sb.append(INDENTS.repeat(level));
             }
             return sb.toString();
         }

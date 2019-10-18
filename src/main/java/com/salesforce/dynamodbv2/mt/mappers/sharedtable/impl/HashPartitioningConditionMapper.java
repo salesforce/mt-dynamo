@@ -217,7 +217,7 @@ class HashPartitioningConditionMapper implements ConditionMapper {
         /**
          * Returns the smallest VHK+VRK' value that is more than the VHK+VRK value for the given VRK value.
          * Algorithm: if the length of VHK+VRK is less than the maximum capacity, then return VHK+VRK+0; otherwise,
-         * find the least signficant i such that VRK[i] is less than the max unsigned byte, add 1 to VRK[i], and return
+         * find the least significant i such that VRK[i] is less than the max unsigned byte, add 1 to VRK[i], and return
          * VRK[0, i].
          *
          * <p>Examples: 1 2 3 => 1 2 3 0; 1 1 1 ... 1 4 5 FF FF => 1 1 1 ... 1 4 6
@@ -354,9 +354,9 @@ class HashPartitioningConditionMapper implements ConditionMapper {
         }
 
         private ComparisonOperator getRangeKeyComparisonOp(KeyConditionPartContext keyConditionPart) {
-            ComparatorContext singelValueComparator = keyConditionPart.comparator();
-            if (singelValueComparator != null) {
-                return getSingleRangeKeyValueComparisonOp(singelValueComparator.getText());
+            ComparatorContext singleValueComparator = keyConditionPart.comparator();
+            if (singleValueComparator != null) {
+                return getSingleRangeKeyValueComparisonOp(singleValueComparator.getText());
             } else {
                 checkArgument(keyConditionPart.BETWEEN() != null,
                     "Invalid range key condition: %s", keyConditionPart.getText());
