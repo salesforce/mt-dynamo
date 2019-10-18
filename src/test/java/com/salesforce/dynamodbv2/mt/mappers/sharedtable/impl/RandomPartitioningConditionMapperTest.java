@@ -488,7 +488,7 @@ class RandomPartitioningConditionMapperTest {
     @Test
     void makePlaceholdersDistinct() {
         UpdateItemRequest updateItemRequest = new UpdateItemRequest()
-            .withUpdateExpression("SET #field1 = :value1")
+            .withUpdateExpression("SET #field1 = :value1, #field3 = :value2")
             .withConditionExpression("#field1 = :value1 AND #field2 <> :value2 AND #field3 > :value1")
             .withExpressionAttributeNames(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C"))
             .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
@@ -496,12 +496,18 @@ class RandomPartitioningConditionMapperTest {
         RandomPartitioningConditionMapper.makePlaceholdersDistinct(updateItemRequest.getUpdateExpression(),
             new UpdateConditionExpressionRequestWrapper(updateItemRequest));
 
-        assertEquals("#field4 = :value3 AND #field2 <> :value2 AND #field3 > :value3",
+        assertEquals("#field5 = :value4 AND #field2 <> :value3 AND #field4 > :value4",
             updateItemRequest.getConditionExpression());
-        assertEquals(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C", "#field4", "A"),
+        assertEquals(ImmutableMap.of("#field1", "A",
+            "#field2", "B",
+            "#field3", "C",
+            "#field4", "C",
+            "#field5", "A"),
             updateItemRequest.getExpressionAttributeNames());
         assertEquals(ImmutableMap.of(":value1", new AttributeValue("x"),
-            ":value2", new AttributeValue("y"), ":value3", new AttributeValue("x")),
+            ":value2", new AttributeValue("y"),
+            ":value3", new AttributeValue("y"),
+            ":value4", new AttributeValue("x")),
             updateItemRequest.getExpressionAttributeValues());
     }
 
