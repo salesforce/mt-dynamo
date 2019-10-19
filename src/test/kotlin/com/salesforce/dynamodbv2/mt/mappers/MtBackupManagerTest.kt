@@ -14,7 +14,6 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.backups.*
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerS3It
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail

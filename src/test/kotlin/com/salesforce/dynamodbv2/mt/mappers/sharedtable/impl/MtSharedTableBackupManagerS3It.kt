@@ -9,7 +9,6 @@ import com.amazonaws.SdkClientException
 import com.amazonaws.auth.AWSStaticCredentialsProvider
 import com.amazonaws.auth.BasicAWSCredentials
 import com.amazonaws.client.builder.AwsClientBuilder
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
@@ -23,8 +22,6 @@ import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
-import com.amazonaws.services.dynamodbv2.model.ScanRequest
-import com.amazonaws.services.dynamodbv2.model.TableDescription
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.google.common.collect.ImmutableList
