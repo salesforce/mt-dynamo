@@ -311,7 +311,7 @@ internal class MtSharedTableBackupManagerS3It {
         val backupIds = createOnlyBackupMetadataList("testListBackups_pagination", 7)
 
         val firstResult = backupManager!!.listBackups(ListBackupsRequest().withLimit(4))
-        assertTrue(firstResult.backupSummaries.size <= 4)
+        assertEquals(4, firstResult.backupSummaries.size)
         assertEquals(backupIds.subList(0, firstResult.backupSummaries.size),
                 firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         assertNotNull(firstResult.lastEvaluatedBackupArn)
@@ -322,50 +322,5 @@ internal class MtSharedTableBackupManagerS3It {
         assertEquals(backupIds.subList(firstResult.backupSummaries.size, 7),
                 theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         assertNull(theRest.lastEvaluatedBackupArn)
-    }
-
-    /**
-     * A mock table snapshotter that relies on naively scanning and copying table versus using on-demand backup features
-     * unavailable on local dynamo.
-     *
-     * This should not be used in production environments, as it is not nearly as performant, nor does it guard against
-     * interleaved writes during the backup, but is exposed to allow clients use a backup call that is actually performant.
-     */
-    class MtScanningSnapshotter : MtBackupTableSnapshotter() {
-        override fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
-            val startTime = System.currentTimeMillis()
-            val sourceTableDescription: TableDescription = snapshotRequest.amazonDynamoDb
-                    .describeTable(snapshotRequest.sourceTableName).table
-            val createTableBuilder = CreateTableRequestBuilder.builder()
-                    .withTableName(snapshotRequest.targetTableName)
-                    .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
-
-                    .withProvisionedThroughput(
-                            snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
-                            snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
-                    .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter { a ->
-                        sourceTableDescription.keySchema.stream().anyMatch { k -> a.attributeName.equals(k.attributeName) }
-                    }.collect(Collectors.toList()).toTypedArray())
-            snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
-
-            var exclusiveStartKey: Map<String, AttributeValue>? = null
-
-            do {
-                var oldTableScanRequest: ScanRequest = ScanRequest().withTableName(snapshotRequest.sourceTableName)
-                        .withExclusiveStartKey(exclusiveStartKey)
-                val scanResult = snapshotRequest.amazonDynamoDb.scan(oldTableScanRequest)
-                for (item in scanResult.items) {
-                    snapshotRequest.amazonDynamoDb.putItem(snapshotRequest.targetTableName, item)
-                }
-                exclusiveStartKey = scanResult.lastEvaluatedKey
-            } while (exclusiveStartKey != null)
-            return SnapshotResult(snapshotRequest.mtBackupName,
-                    snapshotRequest.targetTableName,
-                    System.currentTimeMillis() - startTime)
-        }
-
-        override fun cleanup(snapshotResult: SnapshotResult, amazonDynamoDb: AmazonDynamoDB) {
-            amazonDynamoDb.deleteTable(snapshotResult.tempSnapshotTable)
-        }
     }
 }

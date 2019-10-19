@@ -710,10 +710,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         if (backupManager.isPresent()) {
             Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
             MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
-            BackupDescription backupDescription = MtBackupAwsAdaptorKt.getBackupAdaptorSingleton()
-                .getBackupDescription(backupMetadata);
-            return new DeleteBackupResult()
-                .withBackupDescription(backupDescription);
+            if (backupMetadata != null) {
+                BackupDescription backupDescription = MtBackupAwsAdaptorKt.getBackupAdaptorSingleton()
+                    .getBackupDescription(backupMetadata);
+                return new DeleteBackupResult()
+                    .withBackupDescription(backupDescription);
+            } else {
+                throw new BackupNotFoundException("No backup with given ARN found");
+            }
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
                 + "managed on an mt-dynamo table builder, see <insert link to backup guide>");

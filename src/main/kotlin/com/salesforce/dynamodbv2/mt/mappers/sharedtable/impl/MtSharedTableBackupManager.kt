@@ -22,6 +22,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
 import com.google.common.base.Preconditions
+import com.google.common.base.Strings
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
 import com.google.common.collect.Lists
@@ -261,24 +262,32 @@ open class MtSharedTableBackupManager(
         Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
-        val startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
-        else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
-
-        val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
-                ListObjectsV2Request()
-                        .withMaxKeys(listBackupRequest.limit)
-                        .withDelimiter("/")
-                        .withBucketName(s3BucketName)
-                        .withStartAfter(startAfter)
-                        .withPrefix(backupMetadataDir + "/"))
-        for (o in listBucketResult.objectSummaries) {
-            val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
-            ret.add(backup)
-        }
+        var startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
+            else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
         var lastEvaluatedBackupArn: String? = null
-        if (listBucketResult.isTruncated) {
-            lastEvaluatedBackupArn = Iterables.getLast(ret).backupArn
-        }
+        var continuationToken: String? = null
+        val limit = if (listBackupRequest.limit == null) 10 else listBackupRequest.limit
+        do {
+            val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
+                    ListObjectsV2Request()
+                            .withMaxKeys(limit)
+                            .withDelimiter("/")
+                            .withContinuationToken(continuationToken)
+                            .withBucketName(s3BucketName)
+                            .withStartAfter(startAfter)
+                            .withPrefix(backupMetadataDir + "/"))
+            for (o in listBucketResult.objectSummaries) {
+                if (ret.size < limit) {
+                    val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
+                    ret.add(backup)
+                }
+            }
+            continuationToken = listBucketResult.nextContinuationToken
+            if (ret.size == limit) {
+                lastEvaluatedBackupArn = Iterables.getLast(ret).backupArn
+            }
+        } while (!Strings.isNullOrEmpty(continuationToken) && ret.size < limit)
+
         return ListBackupsResult().withBackupSummaries(ret)
                 .withLastEvaluatedBackupArn(lastEvaluatedBackupArn)
     }
