@@ -7,8 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.ScanResult;
 
 /**
  * Maps query and scan requests against virtual tables to their physical table counterparts.
@@ -22,8 +24,8 @@ interface QueryAndScanMapper {
     void apply(QueryRequest queryRequest);
 
     /*
-     * Takes a ScanRequest representing a scan against a virtual table and mutates it so it can be applied to its
-     * physical table counterpart.
+     * Executes a virtual table ScanRequest, which can potentially entail multiple scan/query requests on the physical
+     * table.
      */
-    void apply(ScanRequest scanRequest);
+    ScanResult executeScan(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest);
 }

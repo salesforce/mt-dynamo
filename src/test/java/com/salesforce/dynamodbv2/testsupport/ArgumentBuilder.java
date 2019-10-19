@@ -18,7 +18,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountM
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy.HashPartitioningStrategy;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,7 +46,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
     @VisibleForTesting
-    private static final AmazonDynamoDB ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
+    private static final AmazonDynamoDB DEFAULT_ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
@@ -55,14 +55,11 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
         new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
-    private final AmazonDynamoDB rootAmazonDynamoDb;
+    private AmazonDynamoDB rootAmazonDynamoDb = DEFAULT_ROOT_AMAZON_DYNAMO_DB;
 
-    public ArgumentBuilder() {
-        this(ROOT_AMAZON_DYNAMO_DB);
-    }
-
-    public ArgumentBuilder(AmazonDynamoDB rootAmazonDynamoDb) {
+    public ArgumentBuilder withAmazonDynamoDb(AmazonDynamoDB rootAmazonDynamoDb) {
         this.rootAmazonDynamoDb = rootAmazonDynamoDb;
+        return this;
     }
 
     @Override

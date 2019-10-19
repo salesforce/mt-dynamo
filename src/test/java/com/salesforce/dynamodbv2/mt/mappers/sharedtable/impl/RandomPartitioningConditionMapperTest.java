@@ -10,13 +10,16 @@ import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.QueryRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.AbstractQueryAndScanMapper.QueryRequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningQueryAndScanMapper.QueryRequestWrapper;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningConditionMapper.UpdateConditionExpressionRequestWrapper;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,9 +57,7 @@ class RandomPartitioningConditionMapperTest {
         RandomPartitioningConditionMapper sut = new RandomPartitioningConditionMapper(tableMapping,
                 new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
-        sut.mapFieldInConditionExpression(inputs.getPrimaryExpression(),
-            requestWrapper,
-            inputs.getFieldMapping());
+        sut.mapFieldInConditionExpression(requestWrapper, inputs.getFieldMapping());
         expected.getAttributeNames().forEach((name, value) ->
                 verify(requestWrapper).putExpressionAttributeName(name, value));
         expected.getAttributeValues().forEach((name, attributeValue) ->
@@ -129,6 +130,7 @@ class RandomPartitioningConditionMapperTest {
 
         RequestWrapper getRequestWrapper() {
             RequestWrapper requestWrapper = mock(RequestWrapper.class);
+            when(requestWrapper.getExpression()).thenReturn(primaryExpression);
             when(requestWrapper.getExpressionAttributeNames()).thenReturn(toAttributeNames(attributeNames));
             when(requestWrapper.getExpressionAttributeValues()).thenReturn(toAttributeValues(attributeValues));
             return requestWrapper;
@@ -136,10 +138,6 @@ class RandomPartitioningConditionMapperTest {
 
         FieldMapping getFieldMapping() {
             return fieldMapping;
-        }
-
-        String getPrimaryExpression() {
-            return primaryExpression;
         }
 
         KeyConditionTestInputs build() {
@@ -413,14 +411,17 @@ class RandomPartitioningConditionMapperTest {
             + " AND #literal = :value3";
         String expected = "#field1 = :value AND attribute_exists(#field1) AND #field2 > :value2"
             + " AND #literal = :value3";
-        RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
+        QueryRequest request = new QueryRequest()
+            .withFilterExpression(expression)
             .withExpressionAttributeNames(new HashMap<>())
-            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/));
-        String actual = RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
-            expression, requestWrapper, ImmutableList.of("literal", "other_literal", "prefix_literal_suffix"));
-        assertEquals(expected, actual);
+            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/);
+        RequestWrapper requestWrapper = new QueryRequestWrapper(request, request::getFilterExpression,
+            request::setFilterExpression);
+        RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
+            requestWrapper, ImmutableList.of("literal", "other_literal", "prefix_literal_suffix"));
+        assertEquals(expected, request.getFilterExpression());
         assertEquals(ImmutableMap.of("#field1", "literal", "#field2", "prefix_literal_suffix"),
-            requestWrapper.getExpressionAttributeNames());
+            request.getExpressionAttributeNames());
     }
 
     @Test
@@ -436,22 +437,25 @@ class RandomPartitioningConditionMapperTest {
     }
 
     private void validateConvertFieldNameLiteralsSingleLiteral(String expression) {
-        RequestWrapper requestWrapper = new QueryRequestWrapper(new QueryRequest()
+        QueryRequest request = new QueryRequest()
+            .withFilterExpression(expression)
             .withExpressionAttributeNames(new HashMap<>())
-            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/));
-        String actual = RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
-            expression, requestWrapper, ImmutableList.of("literal"));
-        assertEquals(expression.replace("literal", "#field1"), actual);
-        assertEquals(ImmutableMap.of("#field1", "literal"), requestWrapper.getExpressionAttributeNames());
+            .withExpressionAttributeValues(Collections.emptyMap() /*doesn't matter*/);
+        RequestWrapper requestWrapper = new QueryRequestWrapper(request, request::getFilterExpression,
+            request::setFilterExpression);
+        RandomPartitioningConditionMapper.convertFieldNameLiteralsToExpressionNames(
+            requestWrapper, ImmutableList.of("literal"));
+        assertEquals(expression.replace("literal", "#field1"), request.getFilterExpression());
+        assertEquals(ImmutableMap.of("#field1", "literal"), request.getExpressionAttributeNames());
     }
 
     @Test
     void getNextPlaceholder() {
-        assertEquals("#field1", RandomPartitioningConditionMapper.getNextPlaceholder(
+        assertEquals("#field1", MappingUtils.getNextPlaceholder(
                 new HashMap<>(), "#field"));
-        assertEquals("#field2", RandomPartitioningConditionMapper.getNextPlaceholder(
+        assertEquals("#field2", MappingUtils.getNextPlaceholder(
                 ImmutableMap.of("#field1", "literal"), "#field"));
-        assertEquals(":value3", RandomPartitioningConditionMapper.getNextPlaceholder(
+        assertEquals(":value3", MappingUtils.getNextPlaceholder(
                 ImmutableMap.of(":value1", "someValue1", ":value2", "someValue2"), ":value"));
     }
 
@@ -483,45 +487,65 @@ class RandomPartitioningConditionMapperTest {
 
     @Test
     void makePlaceholdersDistinct() {
-        String primaryExpression = "SET #field1 = :value1";
-        String expression = "#field1 = :value1 AND #field2 <> :value2 AND #field3 > :value1";
-        String expectedExpression = "#field4 = :value3 AND #field2 <> :value2 AND #field3 > :value3";
-        RequestWrapper request = new QueryRequestWrapper(new QueryRequest()
+        UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+            .withUpdateExpression("SET #field1 = :value1, #field3 = :value2")
+            .withConditionExpression("#field1 = :value1 AND #field2 <> :value2 AND #field3 > :value1")
             .withExpressionAttributeNames(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C"))
             .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
-                ":value2", new AttributeValue("y"))));
-        assertEquals(expectedExpression, RandomPartitioningConditionMapper.makePlaceholdersDistinct(
-            primaryExpression, expression, request));
-        assertEquals(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C", "#field4", "A"),
-            request.getExpressionAttributeNames());
+                ":value2", new AttributeValue("y")));
+        RandomPartitioningConditionMapper.makePlaceholdersDistinct(updateItemRequest.getUpdateExpression(),
+            new UpdateConditionExpressionRequestWrapper(updateItemRequest));
+
+        assertEquals("#field5 = :value4 AND #field2 <> :value3 AND #field4 > :value4",
+            updateItemRequest.getConditionExpression());
+        assertEquals(ImmutableMap.of("#field1", "A",
+            "#field2", "B",
+            "#field3", "C",
+            "#field4", "C",
+            "#field5", "A"),
+            updateItemRequest.getExpressionAttributeNames());
         assertEquals(ImmutableMap.of(":value1", new AttributeValue("x"),
-            ":value2", new AttributeValue("y"), ":value3", new AttributeValue("x")),
-            request.getExpressionAttributeValues());
+            ":value2", new AttributeValue("y"),
+            ":value3", new AttributeValue("y"),
+            ":value4", new AttributeValue("x")),
+            updateItemRequest.getExpressionAttributeValues());
     }
 
+    /* TODO HK: There's a bug if a field is in both the update and condition expressions, and it's in multiple secondary
+       indexes. when it's fixed, the commented out parts below should be uncommented. */
     @Test
-    void applyToUpdateExpression() {
-        RandomPartitioningConditionMapper mapper = new RandomPartitioningConditionMapper(null,
-            new StringFieldMapper(() -> Optional.of("ctx"), "virtualTable"));
-
-        String expression = "SET #field1 = :value1, #field2 = :value2";
-        String virtualField = "field1";
-        List<FieldMapping> fieldMappings = ImmutableList.of(
+    void applyToUpdate() {
+        Map<String, List<FieldMapping>> allMappingsPerField = ImmutableMap.of("field1", ImmutableList.of(
             new FieldMapping(new Field("field1", S), new Field("physicalGsi1Hk", S), null, null, null, true),
             new FieldMapping(new Field("field1", S), new Field("physicalGsi2Rk", S), null, null, null, false)
-        );
-        RequestWrapper request = new QueryRequestWrapper(new QueryRequest()
+        ));
+        RandomPartitioningTableMapping tableMapping = mock(RandomPartitioningTableMapping.class);
+        when(tableMapping.getAllMappingsPerField()).thenReturn(allMappingsPerField);
+        DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
+        when(virtualTable.getPrimaryKey()).thenReturn(new PrimaryKey("hk", S));
+        when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
+        RandomPartitioningConditionMapper mapper = new RandomPartitioningConditionMapper(tableMapping,
+            new StringFieldMapper(() -> Optional.of("ctx"), "virtualTable"));
+
+        UpdateItemRequest request = new UpdateItemRequest()
+            .withUpdateExpression("SET #field1 = :value1, #field2 = :value2")
+            //.withConditionExpression("#field1 = :oldValue")
             .withExpressionAttributeNames(ImmutableMap.of("#field1", "field1", "#field2", "field2"))
             .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
-                ":value2", new AttributeValue("y"))));
+                ":value2", new AttributeValue("y")/*, ":oldValue", new AttributeValue("y")*/));
+        mapper.applyForUpdate(request);
 
-        String actualExpression = mapper.mapFieldInUpdateExpression(expression, request, virtualField, fieldMappings);
-        assertEquals("SET #field1 = :value1, #field3 = :value3, #field2 = :value2", actualExpression);
-        assertEquals(ImmutableMap.of("#field1", "physicalGsi1Hk", "#field2", "field2", "#field3", "physicalGsi2Rk"),
+        assertEquals("SET #field1 = :value1, #field3 = :value3, #field2 = :value2", request.getUpdateExpression());
+        //assertEquals("#field4 = :oldValue", request.getConditionExpression());
+        assertEquals(ImmutableMap.of("#field1", "physicalGsi1Hk",
+            "#field2", "field2",
+            "#field3", "physicalGsi2Rk"/*,
+            "#field4", "field1"*/),
             request.getExpressionAttributeNames());
         assertEquals(ImmutableMap.of(":value1", new AttributeValue("ctx/virtualTable/x"),
             ":value2", new AttributeValue("y"),
-            ":value3", new AttributeValue("x")),
+            ":value3", new AttributeValue("x")/*,
+            ":oldValue", new AttributeValue("ctx/virtualTable/z")*/),
             request.getExpressionAttributeValues());
     }
 

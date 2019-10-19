@@ -440,6 +440,8 @@ open class MtSharedTableBackupManager(
                 val row = scanResult.items[i]
                 val tenant = row.get(sharedTableMtDynamo.scanTenantKey)!!.s
                 val virtualTable = row.get(sharedTableMtDynamo.scanVirtualTableKey)!!.s
+                row.remove(sharedTableMtDynamo.scanTenantKey)
+                row.remove(sharedTableMtDynamo.scanVirtualTableKey)
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
                         TenantTableRow(scanResult.items[i]))
             }

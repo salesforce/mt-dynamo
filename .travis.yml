@@ -18,6 +18,5 @@ before_script:
 script:
   - make test
   - make validate
-  - make codecov
 after_success:
   - bash <(curl -s https://codecov.io/bash)

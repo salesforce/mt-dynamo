@@ -7,23 +7,15 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
-import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperByTypeImpl;
-import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperToBinary;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTableMapping;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningTableMapping;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtContextAndTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
-
-import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 /**
@@ -52,88 +44,14 @@ public interface TablePartitioningStrategy {
      */
     void validateCompatiblePrimaryKeys(PrimaryKey virtualPrimaryKey, PrimaryKey physicalPrimaryKey);
 
+    /**
+     * Parses a given physical hash key value into the record's MT context and virtual table name.
+     */
+    MtContextAndTable toContextAndTable(ScalarAttributeType physicalHashKeyType, AttributeValue physicalHashKeyValue);
+
     TableMapping createTableMapping(DynamoTableDescription virtualTable,
                                     DynamoTableDescription physicalTable,
                                     UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
                                     MtAmazonDynamoDbContextProvider mtContext);
 
-    class RandomPartitioningStrategy implements TablePartitioningStrategy {
-
-        @Override
-        public PrimaryKeyMapper getTablePrimaryKeyMapper() {
-            return new PrimaryKeyMapperByTypeImpl(false);
-        }
-
-        @Override
-        public PrimaryKeyMapper getSecondaryIndexPrimaryKeyMapper() {
-            return new PrimaryKeyMapperByTypeImpl(true);
-        }
-
-        @Override
-        public boolean isPhysicalPrimaryKeyValid(PrimaryKey primaryKey) {
-            return primaryKey.getHashKeyType() == S || primaryKey.getHashKeyType() == B;
-        }
-
-        @Override
-        public void validateCompatiblePrimaryKeys(PrimaryKey virtualPrimaryKey, PrimaryKey physicalPrimaryKey) {
-            checkNotNull(virtualPrimaryKey.getHashKey(), "hash key is required on virtual table");
-            checkNotNull(physicalPrimaryKey.getHashKey(), "hash key is required on physical table");
-            checkArgument(physicalPrimaryKey.getHashKeyType() == S || physicalPrimaryKey.getHashKeyType() == B,
-                    "physical hash key must be of type S or B");
-            if (virtualPrimaryKey.getRangeKey().isPresent()) {
-                checkArgument(physicalPrimaryKey.getRangeKey().isPresent(),
-                        "rangeKey exists on virtual primary key but not on physical");
-                checkArgument(virtualPrimaryKey.getRangeKeyType().orElseThrow()
-                                == physicalPrimaryKey.getRangeKeyType().orElseThrow(),
-                        "virtual and physical range-key types mismatch");
-            }
-        }
-
-        @Override
-        public TableMapping createTableMapping(DynamoTableDescription virtualTable,
-                                               DynamoTableDescription physicalTable,
-                                               UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                               MtAmazonDynamoDbContextProvider mtContext) {
-            return new RandomPartitioningTableMapping(virtualTable, physicalTable, secondaryIndexMapper, mtContext);
-        }
-    }
-
-    class HashPartitioningStrategy implements TablePartitioningStrategy {
-
-        private final int numBucketsPerVirtualHashKey;
-
-        public HashPartitioningStrategy(int numBucketsPerVirtualHashKey) {
-            this.numBucketsPerVirtualHashKey = numBucketsPerVirtualHashKey;
-        }
-
-        @Override
-        public PrimaryKeyMapper getTablePrimaryKeyMapper() {
-            return new PrimaryKeyMapperToBinary();
-        }
-
-        @Override
-        public PrimaryKeyMapper getSecondaryIndexPrimaryKeyMapper() {
-            return new PrimaryKeyMapperToBinary();
-        }
-
-        @Override
-        public boolean isPhysicalPrimaryKeyValid(PrimaryKey primaryKey) {
-            return primaryKey.getHashKeyType() == B && primaryKey.getRangeKeyType().equals(Optional.of(B));
-        }
-
-        @Override
-        public void validateCompatiblePrimaryKeys(PrimaryKey virtualPrimaryKey, PrimaryKey physicalPrimaryKey) {
-            checkArgument(isPhysicalPrimaryKeyValid(physicalPrimaryKey),
-                    "physical primary key must have hash type B and range type B but is: " + physicalPrimaryKey);
-        }
-
-        @Override
-        public TableMapping createTableMapping(DynamoTableDescription virtualTable,
-                                               DynamoTableDescription physicalTable,
-                                               UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                               MtAmazonDynamoDbContextProvider mtContext) {
-            return new HashPartitioningTableMapping(virtualTable, physicalTable, secondaryIndexMapper, mtContext,
-                numBucketsPerVirtualHashKey);
-        }
-    }
 }

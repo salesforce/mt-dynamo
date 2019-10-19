@@ -8,12 +8,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
@@ -27,8 +30,8 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -40,6 +43,8 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
  * @author msgroi
  */
 class MtAmazonDynamoDbBySharedTableTest {
+
+    private static final String HASH_KEY = "hashKey";
 
     @Test
     void projectionContainsKey_nullProject() {
@@ -128,6 +133,70 @@ class MtAmazonDynamoDbBySharedTableTest {
         });
     }
 
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(ListVirtualTableProvider.class)
+    public void testPutItem_ScanColumnsReserved(TestArgument testArgument) {
+        MtAmazonDynamoDbBySharedTable mtDynamo = (MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb();
+        final String pk = "row1";
+        // post some global data
+        testArgument.forEachOrgContext(org -> {
+            final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
+            assertFalse(allTables.isEmpty());
+            String arbitraryTable = allTables.get(0);
+
+            List<String> reservedColumns = ImmutableList.of(mtDynamo.getMtScanTenantKey(),
+                mtDynamo.getMtScanVirtualTableKey());
+            for (String reservedColumn : reservedColumns) {
+                Map<String, AttributeValue> row1 = ImmutableMap.of(HASH_KEY, new AttributeValue(pk),
+                    reservedColumn, new AttributeValue("foo"));
+                try {
+                    PutItemRequest putItemRequest = new PutItemRequest().withTableName(arbitraryTable)
+                        .withItem(row1);
+                    mtDynamo.putItem(putItemRequest);
+                } catch (IllegalArgumentException e) {
+                    assertTrue(e.getMessage().contains("Trying to update a reserved column name"));
+                }
+            }
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(ListVirtualTableProvider.class)
+    public void testUpdateItem_ScanColumnsReserved(TestArgument testArgument) {
+        MtAmazonDynamoDbBySharedTable mtDynamo = (MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb();
+        final String pk = "row1";
+        // post some global data
+        testArgument.forEachOrgContext(org -> {
+            final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
+            assertFalse(allTables.isEmpty());
+            String arbitraryTable = allTables.get(0);
+
+
+            Map<String, AttributeValue> row1 = ImmutableMap.of(HASH_KEY, new AttributeValue(pk));
+            PutItemRequest putItemRequest = new PutItemRequest().withTableName(arbitraryTable)
+                .withItem(row1);
+            mtDynamo.putItem(putItemRequest);
+            List<String> reservedColumns = ImmutableList.of(
+                mtDynamo.getMtScanTenantKey(),
+                mtDynamo.getMtScanVirtualTableKey());
+
+            for (String reservedColumn : reservedColumns) {
+                UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                    .withTableName(arbitraryTable)
+                    .withKey(row1)
+                    .withUpdateExpression("set #someField = :someValue")
+                    .withExpressionAttributeNames(ImmutableMap.of("#someField", reservedColumn))
+                    .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                        new AttributeValue("bar")));
+                try {
+                    mtDynamo.updateItem(updateItemRequest);
+                } catch (IllegalArgumentException e) {
+                    assertTrue(e.getMessage().contains("Trying to update a reserved column name"));
+                }
+            }
+        });
+    }
+
     private static class SharedTableArgumentProvider extends DefaultArgumentProvider {
         public SharedTableArgumentProvider() {
             super(new SharedTableArgumentBuilder(), new DefaultTestSetup(DefaultTestSetup.ALL_TABLES));
@@ -138,7 +207,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     private static class ListVirtualTableProvider extends DefaultArgumentProvider {
         public ListVirtualTableProvider() {
-            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(Collections.emptySet()) {
+            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(new String[0]) {
 
                 @Override
                 public void setupTest(TestArgument testArgument) {

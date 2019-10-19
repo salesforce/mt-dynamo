@@ -3,10 +3,12 @@
     <words>
       <w>amazonaws</w>
       <w>amazondynamodb</w>
+      <w>antlr</w>
       <w>atclause</w>
       <w>awaitility</w>
       <w>bxor</w>
       <w>cbor</w>
+      <w>cobertura</w>
       <w>colocated</w>
       <w>dataformat</w>
       <w>datatypes</w>
@@ -14,6 +16,7 @@
       <w>deduped</w>
       <w>diachenko</w>
       <w>dskip</w>
+      <w>dynalite</w>
       <w>dynamodb</w>
       <w>dynamodblocal</w>
       <w>dynamodbv</w>
@@ -25,17 +28,23 @@
       <w>jmespath</w>
       <w>lsi's</w>
       <w>lsis</w>
+      <w>msgroi</w>
       <w>multitenancy</w>
       <w>multitenant</w>
       <w>orgs</w>
+      <w>parallelizing</w>
+      <w>restorable</w>
       <w>reversealphabetical</w>
       <w>ruslan</w>
       <w>salesforce</w>
       <w>sameline</w>
+      <w>signum</w>
       <w>sqlite</w>
       <w>streamsadapter</w>
+      <w>transactionality</w>
       <w>unchecks</w>
       <w>unprefixed</w>
+      <w>upserted</w>
       <w>vetrenko</w>
       <w>zucker</w>
     </words>
