@@ -15,6 +15,10 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
@@ -27,6 +31,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +55,7 @@ public class TableMappingFactory {
     private final TablePartitioningStrategy partitioningStrategy;
     private final VirtualTableCreationValidator virtualTableCreationValidator;
     private final int pollIntervalSeconds;
+    private final Cache<String, DynamoTableDescription> physicalTableDescriptionCache;
 
     /**
      * TODO: write Javadoc.
@@ -74,6 +80,7 @@ public class TableMappingFactory {
         this.partitioningStrategy = partitioningStrategy;
         this.virtualTableCreationValidator = new VirtualTableCreationValidator(partitioningStrategy);
         this.pollIntervalSeconds = pollIntervalSeconds;
+        this.physicalTableDescriptionCache = CacheBuilder.newBuilder().maximumSize(100).build();
         if (createTablesEagerly) {
             createTablesEagerly(createTableRequestFactory);
         }
@@ -193,15 +200,28 @@ public class TableMappingFactory {
         return tableMapping;
     }
 
-    private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
+    private DynamoTableDescription createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
-        if (getTableDescription(physicalTable.getTableName()).isPresent()) {
-            LOG.debug(format("using existing physical table %s", physicalTable.getTableName()));
-        } else {
-            LOG.info(format("creating physical table %s", physicalTable.getTableName()));
-            dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
+        final String tableName = physicalTable.getTableName();
+        try {
+            return physicalTableDescriptionCache.get(tableName, () ->
+                new DynamoTableDescriptionImpl(getTableDescription(tableName)
+                    .map(description -> {
+                        LOG.info(format("using existing physical table %s", tableName));
+                        return description;
+                    }).orElseGet(() -> {
+                        LOG.info(format("creating physical table %s", physicalTable.getTableName()));
+                        dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
+                        return amazonDynamoDb.describeTable(tableName).getTable();
+                    }))
+            );
+        } catch (ExecutionException e) {
+            Throwables.throwIfUnchecked(e.getCause());
+            throw new UncheckedExecutionException(e);
+        } catch (UncheckedExecutionException e) {
+            Throwables.throwIfUnchecked(e.getCause());
+            throw e;
         }
-        return new DynamoTableDescriptionImpl(amazonDynamoDb.describeTable(physicalTable.getTableName()).getTable());
     }
 
     private Optional<TableDescription> getTableDescription(String tableName) {
