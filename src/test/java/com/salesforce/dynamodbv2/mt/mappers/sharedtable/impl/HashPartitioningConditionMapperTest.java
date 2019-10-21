@@ -24,8 +24,8 @@ import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitio
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getPhysicalHkValue;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getPhysicalRkValue;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.getTableMapping;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingTestUtil.verifyApplyToUpdate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.AmazonServiceException;
@@ -121,39 +121,8 @@ class HashPartitioningConditionMapperTest {
         HashPartitioningConditionMapper mapper = tableMapping.getConditionMapper();
         mapper.applyForUpdate(request);
 
-        verifyApplyToUpdateExpression(request, expectedUpdateItem, conditionExpressionFieldPlaceholders,
+        verifyApplyToUpdate(request, expectedUpdateItem, conditionExpressionFieldPlaceholders,
             conditionExpressionValuePlaceholders);
-    }
-
-    private void verifyApplyToUpdateExpression(UpdateItemRequest request,
-                                               Map<String, AttributeValue> expectedUpdateItem,
-                                               Map<String, String> conditionExpressionFieldPlaceholders,
-                                               Map<String, AttributeValue> conditionExpressionValuePlaceholders) {
-        assertTrue(request.getUpdateExpression().startsWith("SET "));
-        String[] setActions = request.getUpdateExpression().substring("SET ".length()).split(", ");
-        assertEquals(expectedUpdateItem.size(), setActions.length);
-
-        Map<String, AttributeValue> actualUpdateItem = new HashMap<>();
-        for (String setAction : setActions) {
-            String[] fieldAndValue = setAction.split(" = ");
-            assertEquals(2, fieldAndValue.length);
-
-            String fieldLiteral = request.getExpressionAttributeNames().get(fieldAndValue[0]);
-            AttributeValue valueLiteral = request.getExpressionAttributeValues().get(fieldAndValue[1]);
-            actualUpdateItem.put(fieldLiteral, valueLiteral);
-        }
-        assertEquals(expectedUpdateItem, actualUpdateItem);
-
-        if (conditionExpressionFieldPlaceholders != null) {
-            conditionExpressionFieldPlaceholders.forEach((placeholder, field) -> {
-                assertEquals(field, request.getExpressionAttributeNames().get(placeholder));
-            });
-        }
-        if (conditionExpressionValuePlaceholders != null) {
-            conditionExpressionValuePlaceholders.forEach((placeholder, value) -> {
-                assertEquals(value, request.getExpressionAttributeValues().get(placeholder));
-            });
-        }
     }
 
     private static Stream<Arguments> getApplyToUpdateTestInputs() {
