@@ -40,6 +40,13 @@ class TableMappingTestUtil {
         return new DynamoTableDescriptionImpl(createTableRequestBuilder.build());
     }
 
+    /**
+     * Verifies the resulting UpdateItemRequest after {@link ConditionMapper#applyForUpdate(UpdateItemRequest)}.
+     * It's a bit ugly because we don't know what the expected placeholder for each field or value in the update
+     * expression is unless we know exactly the order in which things are iterated over. So we instead convert the
+     * update expression back into a field-value map, so placeholders are irrelevant, and compare it with what we
+     * expect.
+     */
     static void verifyApplyToUpdate(UpdateItemRequest request,
                                     Map<String, AttributeValue> expectedUpdateItem,
                                     Map<String, String> conditionExpressionFieldPlaceholders,

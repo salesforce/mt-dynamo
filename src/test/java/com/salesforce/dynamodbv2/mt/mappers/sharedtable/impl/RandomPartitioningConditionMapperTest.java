@@ -517,9 +517,13 @@ class RandomPartitioningConditionMapperTest {
             "physicalGsi2Rk", new AttributeValue("x"),
             "field2", new AttributeValue("y")
         );
-        Map<String, String> conditionExpressionFieldPlaceholders = ImmutableMap.of("#field1", "physicalGsi2Rk");
+        // the expected condition expression depends on whether the gsi1 or gsi2 field mapping comes first for field1
+        FieldMapping field1FirstFieldMapping = tableMapping.getAllMappingsPerField().get("field1").get(0);
+        Map<String, String> conditionExpressionFieldPlaceholders = ImmutableMap.of("#field1",
+            field1FirstFieldMapping.getTarget().getName());
         Map<String, AttributeValue> conditionExpressionValuePlaceholders = ImmutableMap.of(":oldValue",
-            new AttributeValue("z"));
+            new AttributeValue(field1FirstFieldMapping.isContextAware() ? "ctx/virtualTable/z" : "z"));
+
         TableMappingTestUtil.verifyApplyToUpdate(request, expectedUpdateItem,
             conditionExpressionFieldPlaceholders, conditionExpressionValuePlaceholders);
     }
