@@ -8,23 +8,22 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.DELIMITER;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.PhysicalRangeKeyBytesConverter;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyPrefixFunction;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Optional;
 
 class HashPartitioningTestUtil {
 
-    private static final String CONTEXT = "someContext";
+    static final String CONTEXT = "someContext";
     static final int NUM_BUCKETS = 10;
 
     static final String VIRTUAL_TABLE_NAME = "someVirtualTable";
@@ -75,19 +74,19 @@ class HashPartitioningTestUtil {
     }
 
     static AttributeValue getPhysicalHkValue(TestHashKeyValue value) {
-        String asString = CONTEXT + DELIMITER + VIRTUAL_TABLE_NAME + DELIMITER
-            + (value.getRawValueHashCode() % NUM_BUCKETS);
-        return new AttributeValue().withB(ByteBuffer.wrap(asString.getBytes(StandardCharsets.UTF_8)));
+        int bucket = value.getRawValueHashCode() % NUM_BUCKETS;
+        return HashPartitioningKeyPrefixFunction.toPhysicalHashKey(CONTEXT, VIRTUAL_TABLE_NAME, bucket);
     }
 
     static AttributeValue getPhysicalRkValue(ScalarAttributeType type, AttributeValue attributeValue) {
-        ByteBuffer bytes = PhysicalRangeKeyBytesConverter.toBytes(type, attributeValue);
+        ByteBuffer bytes = HashPartitioningKeyBytesConverter.toBytes(type, attributeValue);
         return new AttributeValue().withB(bytes);
     }
 
     static AttributeValue getPhysicalRkValue(ScalarAttributeType hkType, AttributeValue hkAttributeValue,
                                              ScalarAttributeType rkType, AttributeValue rkAttributeValue) {
-        ByteBuffer bytes = PhysicalRangeKeyBytesConverter.toBytes(hkType, hkAttributeValue, rkType, rkAttributeValue);
+        ByteBuffer bytes = HashPartitioningKeyBytesConverter.toBytes(hkType, hkAttributeValue, rkType,
+            rkAttributeValue);
         return new AttributeValue().withB(bytes);
     }
 

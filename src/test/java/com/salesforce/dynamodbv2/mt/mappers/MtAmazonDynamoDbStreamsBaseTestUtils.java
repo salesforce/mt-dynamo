@@ -1,6 +1,7 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
+import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.B;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
@@ -69,6 +70,28 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
             .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
                 .withIndexName("index")
                 .withKeySchema(new KeySchemaElement(INDEX_ID_ATTR_NAME, HASH))
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            )
+            .withStreamSpecification(new StreamSpecification()
+                .withStreamEnabled(true)
+                .withStreamViewType(NEW_AND_OLD_IMAGES));
+    }
+
+    public static CreateTableRequest newHashPartitioningCreateTableRequest(String tableName) {
+        return new CreateTableRequest()
+            .withTableName(tableName + "_HashPartitioning")
+            .withKeySchema(new KeySchemaElement("physicalHk", HASH), new KeySchemaElement("physicalRk", RANGE))
+            .withAttributeDefinitions(
+                new AttributeDefinition("physicalHk", B),
+                new AttributeDefinition("physicalRk", B),
+                new AttributeDefinition("physicalGsiHk", B),
+                new AttributeDefinition("physicalGsiRk", B))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
+                .withIndexName("physicalGsi")
+                .withKeySchema(new KeySchemaElement("physicalGsiHk", HASH),
+                    new KeySchemaElement("physicalGsiRk", RANGE))
                 .withProjection(new Projection().withProjectionType(ProjectionType.ALL))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
             )

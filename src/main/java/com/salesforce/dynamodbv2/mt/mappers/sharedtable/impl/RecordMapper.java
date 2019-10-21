@@ -7,7 +7,10 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
+import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -16,8 +19,76 @@ import java.util.function.Predicate;
  * Maps physical stream records into virtual stream records. Also exposes a filter method to allow pushing tenant table
  * predicate as low as possible when traversing a shared stream.
  */
-public interface RecordMapper extends Function<Record, MtRecord> {
+public class RecordMapper implements Function<Record, MtRecord> {
 
-    Predicate<Record> createFilter();
+    private final MtAmazonDynamoDbContextProvider mtContext;
+    private final String virtualTableName;
+    private final String physicalHashKey;
+    private final Predicate<AttributeValue> isMatchingPhysicalHashKey;
+    private final ItemMapper itemMapper;
+
+    RecordMapper(MtAmazonDynamoDbContextProvider mtContext,
+                 String virtualTableName,
+                 String physicalHashKey,
+                 Predicate<AttributeValue> isMatchingPhysicalHashKey,
+                 ItemMapper itemMapper) {
+        this.mtContext = mtContext;
+        this.virtualTableName = virtualTableName;
+        this.physicalHashKey = physicalHashKey;
+        this.isMatchingPhysicalHashKey = isMatchingPhysicalHashKey;
+        this.itemMapper = itemMapper;
+    }
+
+    public Predicate<Record> createFilter() {
+        return this::isMatchingPhysicalRecord;
+    }
+
+    private boolean isMatchingPhysicalRecord(Record physicalRecord) {
+        AttributeValue physicalHashKeyValue = physicalRecord.getDynamodb().getKeys().get(physicalHashKey);
+        return isMatchingPhysicalHashKey.test(physicalHashKeyValue);
+    }
+
+    @Override
+    public MtRecord apply(Record record) {
+        final StreamRecord streamRecord = record.getDynamodb();
+        return getDefaultMtRecord(record).withContext(mtContext.getContext())
+            .withTableName(virtualTableName)
+            .withDynamodb(new StreamRecord()
+                .withKeys(itemMapper.reverse(streamRecord.getKeys())) // should this use key mapper?
+                .withNewImage(itemMapper.reverse(streamRecord.getNewImage()))
+                .withOldImage(itemMapper.reverse(streamRecord.getOldImage()))
+                .withSequenceNumber(streamRecord.getSequenceNumber())
+                .withStreamViewType(streamRecord.getStreamViewType())
+                .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime())
+                .withSizeBytes(streamRecord.getSizeBytes()));
+    }
+
+    public static MtRecord getDefaultMtRecord(Record record) {
+        final MtRecord ret = new MtRecord();
+        if (record.getAwsRegion() != null) {
+            ret.withAwsRegion(record.getAwsRegion());
+        }
+
+        if (record.getEventID() != null) {
+            ret.withEventID(record.getEventID());
+        }
+
+        if (record.getEventName() != null) {
+            ret.withEventName(record.getEventName());
+        }
+
+        if (record.getEventSource() != null) {
+            ret.withEventSource(record.getEventSource());
+        }
+
+        if (record.getEventVersion() != null) {
+            ret.withEventVersion(record.getEventVersion());
+        }
+
+        if (record.getUserIdentity() != null) {
+            ret.withUserIdentity(record.getUserIdentity());
+        }
+        return ret;
+    }
 
 }

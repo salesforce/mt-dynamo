@@ -9,6 +9,8 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter.fromStringByteArray;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter.toStringByteArray;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
@@ -26,30 +28,33 @@ import java.util.Objects;
 
 class HashPartitioningKeyMapper {
 
-    @VisibleForTesting
-    static final String DELIMITER = ".";
-
-    private static final String DELIMITER_PATTERN = "\\.";
-
     static class HashPartitioningKeyPrefixFunction {
 
+        // see https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-partition-sort-keys
+        private static final int MAX_HASH_KEY_LENGTH = 2048;
+
         static AttributeValue toPhysicalHashKey(String context, String virtualTableName, int bucket) {
-            String stringValue = String.join(DELIMITER, context, virtualTableName, String.valueOf(bucket));
-            return new AttributeValue().withB(ByteBuffer.wrap(stringValue.getBytes(StandardCharsets.UTF_8)));
+            byte[] contextBytes = toStringByteArray(context);
+            byte[] tableNameBytes = toStringByteArray(virtualTableName);
+
+            int totalLength = 2 + contextBytes.length + 2 + tableNameBytes.length + 4;
+            checkArgument(totalLength <= MAX_HASH_KEY_LENGTH);
+            ByteBuffer byteBuffer = ByteBuffer.allocate(totalLength)
+                .putShort((short)contextBytes.length).put(contextBytes)
+                .putShort((short)tableNameBytes.length).put(tableNameBytes)
+                .putInt(bucket)
+                .flip();
+            return new AttributeValue().withB(byteBuffer);
         }
 
         static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
-            String[] parts = fromPhysicalHashKeyToParts(value);
-            return new MtContextAndTable(parts[0], parts[1]);
-        }
+            ByteBuffer byteBuffer = value.getB().rewind();
+            byte[] contextBytes = new byte[byteBuffer.getShort()];
+            byteBuffer.get(contextBytes);
+            byte[] tableNameBytes = new byte[byteBuffer.getShort()];
+            byteBuffer.get(tableNameBytes);
 
-        @VisibleForTesting
-        static String[] fromPhysicalHashKeyToParts(AttributeValue value) {
-            byte[] bytes = value.getB().array();
-            String stringValue = new String(bytes, StandardCharsets.UTF_8);
-            String[] parts = stringValue.split(DELIMITER_PATTERN);
-            checkState(parts.length == 3, "Invalid hash key value: %s", stringValue);
-            return parts;
+            return new MtContextAndTable(fromStringByteArray(contextBytes), fromStringByteArray(tableNameBytes));
         }
     }
 
@@ -94,38 +99,37 @@ class HashPartitioningKeyMapper {
         }
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk) {
+    static AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk) {
         checkArgument(primaryKey.getRangeKey().isEmpty(), "Should not be serializing only hash key of composite key");
-        return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk));
+        return new AttributeValue().withB(HashPartitioningKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk));
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, AttributeValue rk) {
+    static AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, AttributeValue hk, AttributeValue rk) {
         checkArgument(primaryKey.getRangeKey().isPresent(), "Key should be composite");
-        return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk,
+        return new AttributeValue().withB(HashPartitioningKeyBytesConverter.toBytes(primaryKey.getHashKeyType(), hk,
             primaryKey.getRangeKeyType().get(), rk));
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes) {
+    static AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes) {
         return toPhysicalRangeKey(primaryKey, hkBytes, rkBytes, false);
     }
 
-    AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes,
+    static AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes,
                                       boolean padWithMaxUnsignedByte) {
         checkArgument(primaryKey.getRangeKey().isPresent(), "Key should be composite");
-        return new AttributeValue().withB(PhysicalRangeKeyBytesConverter.toBytes(hkBytes, rkBytes,
+        return new AttributeValue().withB(HashPartitioningKeyBytesConverter.toBytes(hkBytes, rkBytes,
             padWithMaxUnsignedByte));
     }
 
-    @VisibleForTesting
-    static class PhysicalRangeKeyBytesConverter {
+    static class HashPartitioningKeyBytesConverter {
 
         // see https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-partition-sort-keys
         private static final int MAX_KEY_LENGTH = 1024;
 
         static final int MAX_COMPOSITE_KEY_LENGTH = MAX_KEY_LENGTH - 2;
 
-        static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk, ScalarAttributeType rkType,
-                                  AttributeValue rk) {
+        static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk,
+                                  ScalarAttributeType rkType, AttributeValue rk) {
             byte[] hkb = toByteArray(hkType, hk);
             byte[] rkb = toByteArray(rkType, rk);
             return toBytes(hkb, rkb, false);
@@ -153,7 +157,7 @@ class HashPartitioningKeyMapper {
         static byte[] toByteArray(ScalarAttributeType type, AttributeValue value) {
             switch (type) {
                 case S:
-                    return value.getS().getBytes(StandardCharsets.UTF_8);
+                    return toStringByteArray(value.getS());
                 case N:
                     BigDecimal bigDecimal = new BigDecimal(value.getN());
                     return BigDecimalSortedBytesConverter.encode(bigDecimal);
@@ -162,6 +166,10 @@ class HashPartitioningKeyMapper {
                 default:
                     throw new UnsupportedOperationException("Unsupported field type: " + type);
             }
+        }
+
+        static byte[] toStringByteArray(String s) {
+            return s.getBytes(StandardCharsets.UTF_8);
         }
 
         static AttributeValue[] fromBytes(ScalarAttributeType hkType, ScalarAttributeType rkType, ByteBuffer buf) {
@@ -180,7 +188,7 @@ class HashPartitioningKeyMapper {
             buf.get(bytes);
             switch (type) {
                 case S:
-                    return new AttributeValue(new String(bytes, StandardCharsets.UTF_8));
+                    return new AttributeValue(fromStringByteArray(bytes));
                 case N:
                     return new AttributeValue().withN(BigDecimalSortedBytesConverter.decode(bytes).toPlainString());
                 case B:
@@ -188,6 +196,10 @@ class HashPartitioningKeyMapper {
                 default:
                     throw new UnsupportedOperationException("Unsupported field type: " + type);
             }
+        }
+
+        static String fromStringByteArray(byte[] bytes) {
+            return new String(bytes, StandardCharsets.UTF_8);
         }
     }
 

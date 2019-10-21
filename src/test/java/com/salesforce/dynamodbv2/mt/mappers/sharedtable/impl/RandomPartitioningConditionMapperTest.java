@@ -19,10 +19,8 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.AbstractQueryAndScanMapper.QueryRequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningConditionMapper.UpdateConditionExpressionRequestWrapper;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -486,67 +484,44 @@ class RandomPartitioningConditionMapperTest {
     }
 
     @Test
-    void makePlaceholdersDistinct() {
-        UpdateItemRequest updateItemRequest = new UpdateItemRequest()
-            .withUpdateExpression("SET #field1 = :value1, #field3 = :value2")
-            .withConditionExpression("#field1 = :value1 AND #field2 <> :value2 AND #field3 > :value1")
-            .withExpressionAttributeNames(ImmutableMap.of("#field1", "A", "#field2", "B", "#field3", "C"))
-            .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
-                ":value2", new AttributeValue("y")));
-        RandomPartitioningConditionMapper.makePlaceholdersDistinct(updateItemRequest.getUpdateExpression(),
-            new UpdateConditionExpressionRequestWrapper(updateItemRequest));
-
-        assertEquals("#field5 = :value4 AND #field2 <> :value3 AND #field4 > :value4",
-            updateItemRequest.getConditionExpression());
-        assertEquals(ImmutableMap.of("#field1", "A",
-            "#field2", "B",
-            "#field3", "C",
-            "#field4", "C",
-            "#field5", "A"),
-            updateItemRequest.getExpressionAttributeNames());
-        assertEquals(ImmutableMap.of(":value1", new AttributeValue("x"),
-            ":value2", new AttributeValue("y"),
-            ":value3", new AttributeValue("y"),
-            ":value4", new AttributeValue("x")),
-            updateItemRequest.getExpressionAttributeValues());
-    }
-
-    /* TODO HK: There's a bug if a field is in both the update and condition expressions, and it's in multiple secondary
-       indexes. when it's fixed, the commented out parts below should be uncommented. */
-    @Test
     void applyToUpdate() {
-        Map<String, List<FieldMapping>> allMappingsPerField = ImmutableMap.of("field1", ImmutableList.of(
-            new FieldMapping(new Field("field1", S), new Field("physicalGsi1Hk", S), null, null, null, true),
-            new FieldMapping(new Field("field1", S), new Field("physicalGsi2Rk", S), null, null, null, false)
-        ));
-        RandomPartitioningTableMapping tableMapping = mock(RandomPartitioningTableMapping.class);
-        when(tableMapping.getAllMappingsPerField()).thenReturn(allMappingsPerField);
-        DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
-        when(virtualTable.getPrimaryKey()).thenReturn(new PrimaryKey("hk", S));
-        when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
-        RandomPartitioningConditionMapper mapper = new RandomPartitioningConditionMapper(tableMapping,
-            new StringFieldMapper(() -> Optional.of("ctx"), "virtualTable"));
+        // field1 is HK of gsi1 and RK of gsi2
+        DynamoTableDescription virtualTable = TableMappingTestUtil.buildTable("virtualTable",
+            new PrimaryKey("hk", S),
+            ImmutableMap.of("virtualGsi1", new PrimaryKey("field1", S),
+                "virtualGsi2", new PrimaryKey("virtualGsi2Hk", S, "field1", S)));
+        DynamoTableDescription physicalTable = TableMappingTestUtil.buildTable("physicalTable",
+            new PrimaryKey("physicalHk", S),
+            ImmutableMap.of("physicalGsi1", new PrimaryKey("physicalGsi1Hk", S),
+                "physicalGsi2", new PrimaryKey("physicalGsi2Hk", S, "physicalGsi2Rk", S)));
+        RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+            virtualTable,
+            physicalTable,
+            index -> index.getIndexName().equals("virtualGsi1")
+                ? physicalTable.findSi("physicalGsi1")
+                : physicalTable.findSi("physicalGsi2"),
+            () -> Optional.of("ctx")
+        );
+        ConditionMapper mapper = tableMapping.getConditionMapper();
 
         UpdateItemRequest request = new UpdateItemRequest()
             .withUpdateExpression("SET #field1 = :value1, #field2 = :value2")
-            //.withConditionExpression("#field1 = :oldValue")
+            .withConditionExpression("#field1 = :oldValue")
             .withExpressionAttributeNames(ImmutableMap.of("#field1", "field1", "#field2", "field2"))
             .withExpressionAttributeValues(ImmutableMap.of(":value1", new AttributeValue("x"),
-                ":value2", new AttributeValue("y")/*, ":oldValue", new AttributeValue("y")*/));
+                ":value2", new AttributeValue("y"), ":oldValue", new AttributeValue("z")));
         mapper.applyForUpdate(request);
 
-        assertEquals("SET #field1 = :value1, #field3 = :value3, #field2 = :value2", request.getUpdateExpression());
-        //assertEquals("#field4 = :oldValue", request.getConditionExpression());
-        assertEquals(ImmutableMap.of("#field1", "physicalGsi1Hk",
-            "#field2", "field2",
-            "#field3", "physicalGsi2Rk"/*,
-            "#field4", "field1"*/),
-            request.getExpressionAttributeNames());
-        assertEquals(ImmutableMap.of(":value1", new AttributeValue("ctx/virtualTable/x"),
-            ":value2", new AttributeValue("y"),
-            ":value3", new AttributeValue("x")/*,
-            ":oldValue", new AttributeValue("ctx/virtualTable/z")*/),
-            request.getExpressionAttributeValues());
+        Map<String, AttributeValue> expectedUpdateItem = ImmutableMap.of(
+            "physicalGsi1Hk", new AttributeValue("ctx/virtualTable/x"),
+            "physicalGsi2Rk", new AttributeValue("x"),
+            "field2", new AttributeValue("y")
+        );
+        Map<String, String> conditionExpressionFieldPlaceholders = ImmutableMap.of("#field1", "physicalGsi2Rk");
+        Map<String, AttributeValue> conditionExpressionValuePlaceholders = ImmutableMap.of(":oldValue",
+            new AttributeValue("z"));
+        TableMappingTestUtil.verifyApplyToUpdate(request, expectedUpdateItem,
+            conditionExpressionFieldPlaceholders, conditionExpressionValuePlaceholders);
     }
 
 }
