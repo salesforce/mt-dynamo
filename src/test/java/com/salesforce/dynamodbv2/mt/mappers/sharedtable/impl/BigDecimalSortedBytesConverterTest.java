@@ -7,12 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningItemMapper.BigDecimalSortedBytesConverter.decode;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningItemMapper.BigDecimalSortedBytesConverter.encode;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.BigDecimalSortedBytesConverter.decode;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.BigDecimalSortedBytesConverter.encode;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.google.common.collect.Lists;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningItemMapper.BigDecimalSortedBytesConverter;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
@@ -28,8 +27,10 @@ class BigDecimalSortedBytesConverterTest {
         validateEncodeDecode(new BigDecimal("-987.654"));
         validateEncodeDecode(new BigDecimal("1000"));
         validateEncodeDecode(new BigDecimal("-0.00987"));
-        validateEncodeDecode(new BigDecimal("-1.23E-130"));
-        validateEncodeDecode(new BigDecimal("9.8E+125"));
+        validateEncodeDecode(new BigDecimal("-1.0000000000000000000000000000000000000E-130"));
+        validateEncodeDecode(new BigDecimal("9.9999999999999999999999999999999999999E+125"));
+        validateEncodeDecode(new BigDecimal("1.0000000000000000000000000000000000000E-130"));
+        validateEncodeDecode(new BigDecimal("-9.9999999999999999999999999999999999999E+125"));
     }
 
     private void validateEncodeDecode(BigDecimal bigDecimal) {
@@ -44,19 +45,21 @@ class BigDecimalSortedBytesConverterTest {
             new BigDecimal("-987.654"),
             new BigDecimal("1000"),
             new BigDecimal("-0.00987"),
-            new BigDecimal("-1.23E-130"),
-            new BigDecimal("9.8E+125")
+            new BigDecimal("-1.0000000000000000000000000000000000000E-130"),
+            new BigDecimal("9.9999999999999999999999999999999999999E+125"),
+            new BigDecimal("1.0000000000000000000000000000000000000E-130"),
+            new BigDecimal("-9.9999999999999999999999999999999999999E+125")
         );
         List<byte[]> byteArrays = numbers.stream()
-            .map(BigDecimalSortedBytesConverter::encode)
+            .map(HashPartitioningKeyMapper.BigDecimalSortedBytesConverter::encode)
             .collect(Collectors.toList());
 
         Collections.sort(numbers);
         numbers = numbers.stream().map(BigDecimal::stripTrailingZeros).collect(Collectors.toList());
 
-        byteArrays.sort(Arrays::compare);
+        byteArrays.sort(Arrays::compareUnsigned);
         List<BigDecimal> decodedNumbers = byteArrays.stream()
-            .map(BigDecimalSortedBytesConverter::decode)
+            .map(HashPartitioningKeyMapper.BigDecimalSortedBytesConverter::decode)
             .collect(Collectors.toList());
         assertEquals(numbers, decodedNumbers);
     }

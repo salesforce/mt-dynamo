@@ -11,7 +11,6 @@ import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -43,15 +42,6 @@ class RandomPartitioningItemMapper implements ItemMapper {
 
         // invert PK map
         this.physicalToVirtualFieldMappings = invertMapping(allVirtualToPhysicalFieldMappings);
-    }
-
-    /*
-     * Helper method for adding a single FieldMapping object to the existing list of FieldMapping objects.
-     */
-    private static void addFieldMapping(Map<String, List<FieldMapping>> fieldMappings, FieldMapping fieldMappingToAdd) {
-        String key = fieldMappingToAdd.getSource().getName();
-        List<FieldMapping> fieldMapping = fieldMappings.computeIfAbsent(key, k -> new ArrayList<>());
-        fieldMapping.add(fieldMappingToAdd);
     }
 
     @Override
