@@ -255,15 +255,15 @@ internal class MtSharedTableBackupManagerS3It {
         val limit = 4
         val firstResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withLimit(limit).withTableName(table), tenant)
         assertEquals(limit, firstResult.backupSummaries.size)
-        assertEquals(expectedBackupIds.subList(0, firstResult.backupSummaries.size),
+        assertEquals(expectedBackupIds.subList(0, limit),
                 firstResult.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         assertNotNull(firstResult.lastEvaluatedBackupArn)
         val theRest = backupManager!!.listTenantTableBackups(ListBackupsRequest()
                 .withLimit(limit)
                 .withTableName(table)
                 .withExclusiveStartBackupArn(firstResult.lastEvaluatedBackupArn), tenant)
-        assertEquals(7 - limit, theRest.backupSummaries.size)
-        assertEquals(expectedBackupIds.subList(firstResult.backupSummaries.size, 7),
+        assertEquals(3, theRest.backupSummaries.size)
+        assertEquals(expectedBackupIds.subList(4, 7),
                 theRest.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         assertNull(theRest.lastEvaluatedBackupArn)
     }
