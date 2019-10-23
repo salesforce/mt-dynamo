@@ -647,16 +647,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public RestoreTableFromBackupResult restoreTableFromBackup(
         RestoreTableFromBackupRequest restoreTableFromBackupRequest) {
         if (backupManager.isPresent()) {
-            if (!getMtContext().getContextOpt().isPresent()) {
+            if (getMtContext().getContextOpt().isEmpty()) {
                 throw new MtBackupException("Cannot do restore of backup without tenant specifier", null);
             }
-            //validate we have a backup for this tenant-table
-            try {
-                describeBackup(new DescribeBackupRequest().withBackupArn(restoreTableFromBackupRequest.getBackupArn()));
-            } catch (BackupNotFoundException e) {
-                throw new MtBackupException("Error restoring table, backup not found with given ARN.", e);
-            }
-
+            
             TenantTableBackupMetadata backupMetadata = backupManager.get()
                 .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
             RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
@@ -678,6 +672,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
         if (backupManager.isPresent()) {
             if (getMtContext().getContextOpt().isPresent()) {
+                // tenant specific descibe backup
                 TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
                         .getTenantTableBackupFromArn(describeBackupRequest.getBackupArn());
                 TenantBackupMetadata backupMetadata =
@@ -690,13 +685,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                     throw new BackupNotFoundException("No backup with arn "
                        + describeBackupRequest.getBackupArn() + " found");
                 }
-            }
-            MtBackupMetadata backupMetadata = getBackupManager().getBackup(describeBackupRequest.getBackupArn());
-            if (backupMetadata != null) {
-                return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
             } else {
-                throw new BackupNotFoundException("No backup with arn "
-                    + describeBackupRequest.getBackupArn() + "found");
+                //multi tenant backup describe
+                MtBackupMetadata backupMetadata = getBackupManager().getBackup(describeBackupRequest.getBackupArn());
+                if (backupMetadata != null) {
+                    return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
+                } else {
+                    throw new BackupNotFoundException("No backup with arn "
+                        + describeBackupRequest.getBackupArn() + "found");
+                }
             }
         } else {
             throw new ContinuousBackupsUnavailableException("Backups can only be created by configuring a backup "
