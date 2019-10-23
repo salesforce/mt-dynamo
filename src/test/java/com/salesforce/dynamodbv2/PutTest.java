@@ -44,47 +44,47 @@ class PutTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void put(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                        HASH_KEY_VALUE_NEW)
-                    .someField(S, SOME_FIELD_VALUE_NEW)
-                    .build();
+                HASH_KEY_VALUE_NEW)
+                .someField(S, SOME_FIELD_VALUE_NEW)
+                .build();
             assertNull(getItem(testArgument.getAmazonDynamoDb(),
-                    TABLE1,
-                    HASH_KEY_VALUE_NEW,
-                    testArgument.getHashKeyAttrType(),
-                    Optional.empty())); // assert before state
+                TABLE1,
+                HASH_KEY_VALUE_NEW,
+                testArgument.getHashKeyAttrType(),
+                Optional.empty())); // assert before state
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE1).withItem(item);
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             assertEquals(new HashMap<>(item), putItemRequest.getItem()); // assert no side effects
             assertEquals(TABLE1, putItemRequest.getTableName()); // assert no side effects
             assertEquals(item, getItem(testArgument.getAmazonDynamoDb(),
-                    TABLE1,
-                    HASH_KEY_VALUE_NEW,
-                    testArgument.getHashKeyAttrType(),
-                    Optional.empty()));
+                TABLE1,
+                HASH_KEY_VALUE_NEW,
+                testArgument.getHashKeyAttrType(),
+                Optional.empty()));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void putOverwrite(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
                     Optional.empty())); // assert before state
             Map<String, AttributeValue> itemToOverwrite =
-                    ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .someField(S, SOME_FIELD_VALUE_OVERWRITTEN)
-                            .build();
+                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE_OVERWRITTEN)
+                    .build();
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE1).withItem(itemToOverwrite);
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             assertEquals(new HashMap<>(itemToOverwrite), putItemRequest.getItem()); // assert no side effects
@@ -100,51 +100,51 @@ class PutTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void putHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> item = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                        HASH_KEY_VALUE_NEW)
-                    .someField(S, SOME_FIELD_VALUE_NEW)
-                    .rangeKey(S, RANGE_KEY_VALUE_NEW)
-                    .build();
+                HASH_KEY_VALUE_NEW)
+                .someField(S, SOME_FIELD_VALUE_NEW)
+                .rangeKey(S, RANGE_KEY_VALUE_NEW)
+                .build();
             assertNull(getItem(testArgument.getAmazonDynamoDb(),
-                    TABLE3,
-                    HASH_KEY_VALUE_NEW,
-                    testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE_NEW))); // assert before state
+                TABLE3,
+                HASH_KEY_VALUE_NEW,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_VALUE_NEW))); // assert before state
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE3).withItem(item);
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             assertEquals(new HashMap<>(item), putItemRequest.getItem()); // assert no side effects
             assertEquals(TABLE3, putItemRequest.getTableName()); // assert no side effects
             assertEquals(item, getItem(testArgument.getAmazonDynamoDb(),
-                    TABLE3,
-                    HASH_KEY_VALUE_NEW,
-                    testArgument.getHashKeyAttrType(),
-                    Optional.of(RANGE_KEY_VALUE_NEW)));
+                TABLE3,
+                HASH_KEY_VALUE_NEW,
+                testArgument.getHashKeyAttrType(),
+                Optional.of(RANGE_KEY_VALUE_NEW)));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void putOverwriteHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // assert before state
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                .rangeKey(S, RANGE_KEY_S_VALUE)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
                     testArgument.getHashKeyAttrType(),
                     Optional.of(RANGE_KEY_S_VALUE)));
             Map<String, AttributeValue> itemToOverwrite =
-                    ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .someField(S, SOME_FIELD_VALUE_OVERWRITTEN)
-                            .rangeKey(S, RANGE_KEY_S_VALUE)
-                            .build();
+                ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE_OVERWRITTEN)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build();
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(TABLE3).withItem(itemToOverwrite);
             testArgument.getAmazonDynamoDb().putItem(putItemRequest);
             assertEquals(new HashMap<>(itemToOverwrite), putItemRequest.getItem()); // assert no side effects
@@ -160,7 +160,7 @@ class PutTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void putAttributeNotExists(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             PutItemRequest putItemRequest = new PutItemRequest()
@@ -184,7 +184,7 @@ class PutTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void putMissingHk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             PutItemRequest putItemRequest = new PutItemRequest()
@@ -202,7 +202,7 @@ class PutTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void putMissingRk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             PutItemRequest putItemRequest = new PutItemRequest()

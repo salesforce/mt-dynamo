@@ -67,7 +67,7 @@ class HashPartitioningConditionMapperTest {
             .addExpressionAttributeValuesEntry(":value2", gsiRkValue);
 
         RequestWrapper requestWrapper = new HashPartitioningConditionMapper.UpdateExpressionRequestWrapper(request);
-        Map<String, AttributeValue> result = HashPartitioningConditionMapper.parseUpdateExpression(requestWrapper,
+        Map<String, AttributeValue> result = AbstractConditionMapper.parseUpdateExpression(requestWrapper,
             null);
         assertEquals(ImmutableMap.of(VIRTUAL_GSI_HK, gsiHkValue, VIRTUAL_GSI_RK, gsiRkValue), result);
     }
@@ -257,12 +257,12 @@ class HashPartitioningConditionMapperTest {
         private static final DynamoTableDescription VIRTUAL_HK_TABLE = buildVirtualHkTable(HK_TYPE);
         private static final DynamoTableDescription VIRTUAL_HK_RK_TABLE =
             buildVirtualHkRkTable(HK_TYPE, RK_TYPE, HK_TYPE, RK_TYPE);
-        private static final byte[] VIRTUAL_HK_BYTES = new byte[] {1, 2, 3};
+        private static final byte[] VIRTUAL_HK_BYTES = new byte[] { 1, 2, 3 };
         private static final TestHashKeyValue VIRTUAL_HK_VALUE = new TestHashKeyValue(VIRTUAL_HK_BYTES);
         private static final int MAX_VIRTUAL_RK_LENGTH = 1024 - 2 - VIRTUAL_HK_BYTES.length;
 
         private static Stream<Arguments> get() {
-            Stream.Builder inputs = Stream.builder();
+            Stream.Builder<Arguments> inputs = Stream.builder();
             for (Boolean useSecondaryIndex : ImmutableList.of(Boolean.FALSE, Boolean.TRUE)) {
                 String virtualRkField = useSecondaryIndex ? VIRTUAL_GSI_RK : VIRTUAL_RK;
                 // HK table: "vhk = :vhk"
@@ -364,8 +364,8 @@ class HashPartitioningConditionMapperTest {
         // ":value1" is already taken
         Map<String, AttributeValue> values = ImmutableMap.of(
             ":vhk", KeyConditionTestInputs.VIRTUAL_HK_VALUE.getAttributeValue(),
-            ":vrk1", KeyConditionTestInputs.getVirtualRkValue(new byte[]{1, 2, 3}),
-            ":vrk2", KeyConditionTestInputs.getVirtualRkValue(new byte[]{4, 5}),
+            ":vrk1", KeyConditionTestInputs.getVirtualRkValue(new byte[] { 1, 2, 3 }),
+            ":vrk2", KeyConditionTestInputs.getVirtualRkValue(new byte[] { 4, 5 }),
             ":value1", new AttributeValue("someValue"));
 
         String expectedExpression = "#field2 = :value2 AND #field3 BETWEEN :value3 AND :value4";
@@ -375,7 +375,7 @@ class HashPartitioningConditionMapperTest {
             .put(":value1", new AttributeValue("someValue"))
             .put(":value2", getPhysicalHkValue(KeyConditionTestInputs.VIRTUAL_HK_VALUE))
             .putAll(KeyConditionTestInputs.getPhysicalRkValueMap(
-                ":value3", new byte[]{1, 2, 3}, ":value4", new byte[]{4, 5}))
+                ":value3", new byte[] { 1, 2, 3 }, ":value4", new byte[] { 4, 5 }))
             .build();
 
         runApplyToKeyConditionTest(KeyConditionTestInputs.VIRTUAL_HK_RK_TABLE, false /*useSecondaryIndex*/,
