@@ -650,7 +650,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             if (getMtContext().getContextOpt().isEmpty()) {
                 throw new MtBackupException("Cannot do restore of backup without tenant specifier", null);
             }
-            
+
             TenantTableBackupMetadata backupMetadata = backupManager.get()
                 .getTenantTableBackupFromArn(restoreTableFromBackupRequest.getBackupArn());
             RestoreMtBackupRequest mtRestoreRequest = new RestoreMtBackupRequest(backupMetadata.getBackupName(),
@@ -705,6 +705,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
         if (backupManager.isPresent()) {
+            Preconditions.checkArgument(getMtContext().getContextOpt().isEmpty(),
+                "Cannot delete tenant scoped backup");
             Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
             MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
             if (backupMetadata != null) {
