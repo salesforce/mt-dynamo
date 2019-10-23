@@ -67,14 +67,12 @@ class TableMappingTestUtil {
         assertEquals(expectedUpdateItem, actualUpdateItem);
 
         if (conditionExpressionFieldPlaceholders != null) {
-            conditionExpressionFieldPlaceholders.forEach((placeholder, field) -> {
-                assertEquals(field, request.getExpressionAttributeNames().get(placeholder));
-            });
+            conditionExpressionFieldPlaceholders.forEach((placeholder, field)
+                -> assertEquals(field, request.getExpressionAttributeNames().get(placeholder)));
         }
         if (conditionExpressionValuePlaceholders != null) {
-            conditionExpressionValuePlaceholders.forEach((placeholder, value) -> {
-                assertEquals(value, request.getExpressionAttributeValues().get(placeholder));
-            });
+            conditionExpressionValuePlaceholders.forEach((placeholder, value)
+                -> assertEquals(value, request.getExpressionAttributeValues().get(placeholder)));
         }
     }
 }

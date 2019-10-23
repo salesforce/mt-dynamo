@@ -47,23 +47,23 @@ class RandomPartitioningQueryAndScanMapperTest {
         () -> Optional.of("ctx")
     );
     private static final RandomPartitioningQueryAndScanMapper QUERY_AND_SCAN_MAPPER =
-        (RandomPartitioningQueryAndScanMapper)TABLE_MAPPING.getQueryAndScanMapper();
+        (RandomPartitioningQueryAndScanMapper) TABLE_MAPPING.getQueryAndScanMapper();
 
     @Test
     void nonIndexQuery() {
         QueryRequest queryRequest = new QueryRequest()
-                .withKeyConditionExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualHk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
+            .withKeyConditionExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualHk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
 
         QUERY_AND_SCAN_MAPPER.apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value1",
-                                new AttributeValue().withS("ctx/virtualTable/hkValue"))),
-                queryRequest);
+                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value1",
+                    new AttributeValue().withS("ctx/virtualTable/hkValue"))),
+            queryRequest);
     }
 
     /*
@@ -74,54 +74,54 @@ class RandomPartitioningQueryAndScanMapperTest {
     @EnumSource(value = ComparisonOperator.class, names = { "EQ" })
     void queryWithKeyConditions(ComparisonOperator comparisonOperator) {
         QueryRequest queryRequest = new QueryRequest()
-                .withKeyConditions(ImmutableMap.of("virtualHk",
-                        new Condition()
-                                .withComparisonOperator(comparisonOperator)
-                                .withAttributeValueList(new AttributeValue().withS("hkValue"))));
+            .withKeyConditions(ImmutableMap.of("virtualHk",
+                new Condition()
+                    .withComparisonOperator(comparisonOperator)
+                    .withAttributeValueList(new AttributeValue().withS("hkValue"))));
 
         QUERY_AND_SCAN_MAPPER.apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value1",
-                                new AttributeValue().withS("ctx/virtualTable/hkValue"))),
-                queryRequest);
+                .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value1",
+                    new AttributeValue().withS("ctx/virtualTable/hkValue"))),
+            queryRequest);
     }
 
     @Test
     void nonIndexQueryWithLiterals() {
         QueryRequest queryRequest = new QueryRequest()
-                .withKeyConditionExpression("virtualHk = :value")
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
+            .withKeyConditionExpression("virtualHk = :value")
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkValue")));
 
         QUERY_AND_SCAN_MAPPER.apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression("#field1 = :value1")
-                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value1", new
-                                AttributeValue().withS("ctx/virtualTable/hkValue"))),
-                queryRequest);
+                .withKeyConditionExpression("#field1 = :value1")
+                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value1", new
+                    AttributeValue().withS("ctx/virtualTable/hkValue"))),
+            queryRequest);
     }
 
     @Test
     void indexQuery() {
         QueryRequest queryRequest = new QueryRequest()
-                .withIndexName("virtualGsi")
-                .withKeyConditionExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
+            .withIndexName("virtualGsi")
+            .withKeyConditionExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
 
         QUERY_AND_SCAN_MAPPER.apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withIndexName("physicalGsi")
-                        .withKeyConditionExpression("#field1 = :value1")
-                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalGsiHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value1",
-                                new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
-                queryRequest);
+                .withIndexName("physicalGsi")
+                .withKeyConditionExpression("#field1 = :value1")
+                .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalGsiHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value1",
+                    new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
+            queryRequest);
     }
 
     @ParameterizedTest
@@ -129,15 +129,15 @@ class RandomPartitioningQueryAndScanMapperTest {
     void queryWithKeyConditionExpressionAndKeyConditions(ComparisonOperator comparisonOperator) {
         try {
             QUERY_AND_SCAN_MAPPER
-                    .apply(new QueryRequest().withKeyConditions(ImmutableMap.of("virtualHk",
-                            new Condition()
-                                    .withComparisonOperator(comparisonOperator)
-                                    .withAttributeValueList(new AttributeValue().withS("hkValue"))))
-                            .withKeyConditionExpression("#field = :value"));
+                .apply(new QueryRequest().withKeyConditions(ImmutableMap.of("virtualHk",
+                    new Condition()
+                        .withComparisonOperator(comparisonOperator)
+                        .withAttributeValueList(new AttributeValue().withS("hkValue"))))
+                    .withKeyConditionExpression("#field = :value"));
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("ambiguous QueryRequest: both keyConditionExpression and keyConditions were provided",
-                    e.getMessage());
+                e.getMessage());
         }
     }
 
@@ -154,36 +154,36 @@ class RandomPartitioningQueryAndScanMapperTest {
     @Test
     void indexScan() {
         ScanRequest scanRequest = new ScanRequest()
-                .withIndexName("virtualGsi")
-                .withFilterExpression("#field = :value")
-                .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
-                .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
+            .withIndexName("virtualGsi")
+            .withFilterExpression("#field = :value")
+            .withExpressionAttributeNames(ImmutableMap.of("#field", "virtualGsiHk"))
+            .withExpressionAttributeValues(ImmutableMap.of(":value", new AttributeValue().withS("hkGsiValue")));
 
         QUERY_AND_SCAN_MAPPER.applyToScanInternal(scanRequest);
 
         assertEquals(new ScanRequest()
-                        .withIndexName("physicalGsi")
-                        .withFilterExpression(scanRequest.getFilterExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalGsiHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value",
-                                new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
-                scanRequest);
+                .withIndexName("physicalGsi")
+                .withFilterExpression(scanRequest.getFilterExpression())
+                .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalGsiHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":value",
+                    new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
+            scanRequest);
     }
 
     @Test
     void nonIndexScanMissingHkField() {
         ScanRequest scanRequest = new ScanRequest()
-                .withExpressionAttributeNames(new HashMap<>())
-                .withExpressionAttributeValues(new HashMap<>());
+            .withExpressionAttributeNames(new HashMap<>())
+            .withExpressionAttributeValues(new HashMap<>());
 
         QUERY_AND_SCAN_MAPPER.applyToScanInternal(scanRequest);
 
         assertEquals(new ScanRequest()
-                        .withFilterExpression("begins_with(#___name___, :___value___)")
-                        .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":___value___",
-                                new AttributeValue().withS("ctx/virtualTable/"))),
-                scanRequest);
+                .withFilterExpression("begins_with(#___name___, :___value___)")
+                .withExpressionAttributeNames(ImmutableMap.of("#___name___", "physicalHk"))
+                .withExpressionAttributeValues(ImmutableMap.of(":___value___",
+                    new AttributeValue().withS("ctx/virtualTable/"))),
+            scanRequest);
     }
 
     @ParameterizedTest
@@ -199,7 +199,7 @@ class RandomPartitioningQueryAndScanMapperTest {
             fail("expected exception not encountered");
         } catch (IllegalArgumentException e) {
             assertEquals("ambiguous ScanRequest: both filterExpression and scanFilter were provided",
-                    e.getMessage());
+                e.getMessage());
         }
     }
 

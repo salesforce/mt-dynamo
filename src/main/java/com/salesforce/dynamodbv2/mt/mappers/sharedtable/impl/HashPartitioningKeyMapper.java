@@ -40,8 +40,8 @@ class HashPartitioningKeyMapper {
             int totalLength = 2 + contextBytes.length + 2 + tableNameBytes.length + 4;
             checkArgument(totalLength <= MAX_HASH_KEY_LENGTH);
             ByteBuffer byteBuffer = ByteBuffer.allocate(totalLength)
-                .putShort((short)contextBytes.length).put(contextBytes)
-                .putShort((short)tableNameBytes.length).put(tableNameBytes)
+                .putShort((short) contextBytes.length).put(contextBytes)
+                .putShort((short) tableNameBytes.length).put(tableNameBytes)
                 .putInt(bucket)
                 .flip();
             return new AttributeValue().withB(byteBuffer);
@@ -115,7 +115,7 @@ class HashPartitioningKeyMapper {
     }
 
     static AttributeValue toPhysicalRangeKey(PrimaryKey primaryKey, byte[] hkBytes, byte[] rkBytes,
-                                      boolean padWithMaxUnsignedByte) {
+                                             boolean padWithMaxUnsignedByte) {
         checkArgument(primaryKey.getRangeKey().isPresent(), "Key should be composite");
         return new AttributeValue().withB(HashPartitioningKeyBytesConverter.toBytes(hkBytes, rkBytes,
             padWithMaxUnsignedByte));
@@ -266,7 +266,7 @@ class HashPartitioningKeyMapper {
 
         private static byte toSignumByte(int signum) {
             // map signum from range [-1, 1] to non-negative range [0, 2]
-            return (byte)(signum + 1);
+            return (byte) (signum + 1);
         }
 
         private static int fromSignumByte(byte signumByte) {
