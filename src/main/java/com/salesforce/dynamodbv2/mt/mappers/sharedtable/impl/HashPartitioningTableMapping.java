@@ -7,9 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyPrefixFunction;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 
@@ -29,6 +31,7 @@ public class HashPartitioningTableMapping implements TableMapping {
     private final HashPartitioningItemMapper itemMapper;
     private final HashPartitioningConditionMapper conditionMapper;
     private final HashPartitioningQueryAndScanMapper queryAndScanMapper;
+    private final RecordMapper recordMapper;
 
     public HashPartitioningTableMapping(DynamoTableDescription virtualTable,
                                         DynamoTableDescription physicalTable,
@@ -41,9 +44,13 @@ public class HashPartitioningTableMapping implements TableMapping {
         HashPartitioningKeyMapper keyMapper = new HashPartitioningKeyMapper(virtualTable.getTableName(), mtContext,
             numBucketsPerVirtualTable);
         this.itemMapper = new HashPartitioningItemMapper(virtualTable, physicalTable, secondaryIndexMapper, keyMapper);
-        this.conditionMapper = new HashPartitioningConditionMapper(keyMapper);
+        this.conditionMapper = new HashPartitioningConditionMapper(virtualTable, itemMapper, keyMapper);
         this.queryAndScanMapper = new HashPartitioningQueryAndScanMapper(physicalTable, this::getRequestIndex,
             conditionMapper, itemMapper, keyMapper);
+        this.recordMapper = new RecordMapper(mtContext, virtualTable.getTableName(),
+            physicalTable.getPrimaryKey().getHashKey(),
+            v -> isMatchingPhysicalHashKey(mtContext, virtualTable.getTableName(), v),
+            itemMapper);
     }
 
     @Override
@@ -63,8 +70,7 @@ public class HashPartitioningTableMapping implements TableMapping {
 
     @Override
     public RecordMapper getRecordMapper() {
-        // TODO
-        return null;
+        return recordMapper;
     }
 
     @Override
@@ -88,5 +94,13 @@ public class HashPartitioningTableMapping implements TableMapping {
         return String.format("%s -> %s, virtual: %s, physical: %s",
             getVirtualTable().getTableName(), getPhysicalTable().getTableName(),
             getVirtualTable().toString(), getPhysicalTable().toString());
+    }
+
+    private static boolean isMatchingPhysicalHashKey(MtAmazonDynamoDbContextProvider mtContext,
+                                                     String virtualTableName,
+                                                     AttributeValue value) {
+        MtContextAndTable mtContextAndTable = HashPartitioningKeyPrefixFunction.fromPhysicalHashKey(value);
+        return mtContextAndTable.getContext().equals(mtContext.getContext())
+            && mtContextAndTable.getTableName().equals(virtualTableName);
     }
 }

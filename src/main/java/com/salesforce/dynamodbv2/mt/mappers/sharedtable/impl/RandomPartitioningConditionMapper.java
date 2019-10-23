@@ -1,22 +1,16 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MappingUtils.getNextFieldPlaceholder;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MappingUtils.getNextPlaceholder;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MappingUtils.getNextValuePlaceholder;
 
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.google.common.annotations.VisibleForTesting;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RequestWrapper.AbstractRequestWrapper;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
@@ -29,54 +23,74 @@ import java.util.stream.Collectors;
  *
  * @author msgroi
  */
-class RandomPartitioningConditionMapper implements ConditionMapper {
+class RandomPartitioningConditionMapper extends AbstractConditionMapper {
 
     static final String NAME_PLACEHOLDER = "#___name___";
     private static final String COMPARISON_OP_PATTERN = "(=|<>|<|<=|>|>=)";
-    private static final Pattern ATTR_NAME_PLACEHOLDER_PATTERN = Pattern.compile("#[a-zA-Z0-9]+");
 
     private final RandomPartitioningTableMapping tableMapping;
     private final FieldMapper fieldMapper;
 
     RandomPartitioningConditionMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
+        super(tableMapping.getVirtualTable(), tableMapping.getItemMapper());
         this.tableMapping = tableMapping;
         this.fieldMapper = fieldMapper;
     }
 
     @Override
-    public void applyForUpdate(UpdateItemRequest updateItemRequest) {
-        RequestWrapper updateExprWrapper = new UpdateExpressionRequestWrapper(updateItemRequest);
-        Set<String> virtualFieldNames = tableMapping.getAllMappingsPerField().keySet();
-
-        convertFieldNameLiteralsToExpressionNames(updateExprWrapper, virtualFieldNames);
-        validateNotUpdatingTablePrimaryKeyFields(updateExprWrapper);
-
-        if (updateItemRequest.getConditionExpression() != null) {
-            UpdateConditionExpressionRequestWrapper conditionExprWrapper =
-                new UpdateConditionExpressionRequestWrapper(updateItemRequest);
-            convertFieldNameLiteralsToExpressionNames(conditionExprWrapper, virtualFieldNames);
-            makePlaceholdersDistinct(updateItemRequest.getUpdateExpression(), conditionExprWrapper);
-            applyToFilterExpression(conditionExprWrapper);
-        }
-
-        for (Entry<String, List<FieldMapping>> entry : tableMapping.getAllMappingsPerField().entrySet()) {
-            mapFieldInUpdateExpression(updateExprWrapper, entry.getKey(), entry.getValue());
-        }
-    }
-
-    @Override
-    public void applyToKeyCondition(RequestWrapper request, RequestIndex requestIndex, String filterExpression) {
-        Collection<FieldMapping> fieldMappings = requestIndex.getVirtualSecondaryIndex().isPresent()
+    String mapKeyConditionExpression(RequestWrapper request, RequestIndex requestIndex, AttributeValue virtualHkValue,
+                                     Optional<KeyFieldCondition> virtualRkCondition) {
+        List<FieldMapping> fieldMappings = requestIndex.getVirtualSecondaryIndex().isPresent()
             ? tableMapping.getIndexPrimaryKeyFieldMappings(requestIndex.getVirtualSecondaryIndex().get())
             : tableMapping.getTablePrimaryKeyFieldMappings();
+        FieldMapping hkFieldMapping = fieldMappings.get(0);
+        Optional<FieldMapping> rkFieldMapping = virtualRkCondition.map(r -> fieldMappings.get(1));
 
-        // if the hash key value placeholder is also in the filter expression, then we need to use two different
-        // value placeholders, since the hash key value will become different but the other not
-        if (filterExpression != null) {
-            makePlaceholdersDistinct(filterExpression, request);
+        String hkFieldPlaceholder = getNextFieldPlaceholder(request);
+        request.putExpressionAttributeName(hkFieldPlaceholder, requestIndex.getPhysicalPk().getHashKey());
+        String hkValuePlaceholder = getNextValuePlaceholder(request);
+        request.putExpressionAttributeValue(hkValuePlaceholder, applyFieldMapping(hkFieldMapping, virtualHkValue));
+        String expression = hkFieldPlaceholder + " = " + hkValuePlaceholder;
+
+        if (virtualRkCondition.isPresent()) {
+            String rkFieldPlaceholder = getNextFieldPlaceholder(request);
+            request.putExpressionAttributeName(rkFieldPlaceholder, requestIndex.getPhysicalPk().getRangeKey().get());
+            List<String> rkValuePlaceholders = new ArrayList<>();
+            for (AttributeValue value : virtualRkCondition.get().getValues()) {
+                String valuePlaceholder = getNextValuePlaceholder(request);
+                rkValuePlaceholders.add(valuePlaceholder);
+                request.putExpressionAttributeValue(valuePlaceholder, applyFieldMapping(rkFieldMapping.get(), value));
+            }
+            expression += " AND " + getRangeKeyCondition(virtualRkCondition.get().getOperator(), rkFieldPlaceholder,
+                rkValuePlaceholders);
         }
 
-        mapFieldsInConditionExpression(request, fieldMappings);
+        return expression;
+    }
+
+    private AttributeValue applyFieldMapping(FieldMapping fieldMapping, AttributeValue value) {
+        return fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, value) : value;
+    }
+
+    private String getRangeKeyCondition(ComparisonOperator operator, String fieldPlaceholder,
+                                        List<String> valuePlaceholders) {
+        switch (operator) {
+            case EQ:
+                return fieldPlaceholder + " = " + valuePlaceholders.get(0);
+            case LT:
+                return fieldPlaceholder + " < " + valuePlaceholders.get(0);
+            case LE:
+                return fieldPlaceholder + " <= " + valuePlaceholders.get(0);
+            case GT:
+                return fieldPlaceholder + " > " + valuePlaceholders.get(0);
+            case GE:
+                return fieldPlaceholder + " >= " + valuePlaceholders.get(0);
+            case BETWEEN:
+                return fieldPlaceholder + " BETWEEN " + valuePlaceholders.get(0) + " AND " + valuePlaceholders.get(1);
+            default:
+                throw new IllegalArgumentException(
+                    "Comparison operator not supported in query range key condition: " + operator.name());
+        }
     }
 
     @Override
@@ -133,69 +147,6 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
                 request.putExpressionAttributeName(fieldPlaceholder, fieldMapping.getTarget().getName());
             }
             request.setExpression(expression);
-        }
-    }
-
-    private void mapFieldInUpdateExpression(RequestWrapper request,
-                                            String virtualField, // "virtualHk"
-                                            List<FieldMapping> fieldMappings) {
-        String expression = request.getExpression(); // "#field1 = :value"
-        if (expression != null) {
-            Set<String> virtualFieldPlaceholders = getPlaceholdersForVirtualField(virtualField, request); // {#field1};
-            for (String virtualFieldPlaceholder : virtualFieldPlaceholders) {
-                // each placeholder should appear at most once in update expression, assuming we support only SET
-                Optional<String> virtualValuePlaceholderOpt =
-                    findVirtualValuePlaceholder(expression, virtualFieldPlaceholder); // "Optional[:value]"
-                if (virtualValuePlaceholderOpt.isPresent()) {
-                    String virtualValuePlaceholder = virtualValuePlaceholderOpt.get();
-                    AttributeValue virtualValue =
-                        request.getExpressionAttributeValues().get(virtualValuePlaceholder); // {S: hkValue,}
-
-                    List<String> equalsClauses = new ArrayList<>(fieldMappings.size());
-                    for (FieldMapping fieldMapping : fieldMappings) {
-                        String physicalField = fieldMapping.getTarget().getName(); // physicalHk
-                        String physicalFieldPlaceholder = equalsClauses.isEmpty()
-                            ? virtualFieldPlaceholder
-                            : getNextFieldPlaceholder(request);
-                        request.putExpressionAttributeName(physicalFieldPlaceholder, physicalField);
-
-                        AttributeValue physicalValue = fieldMapping.isContextAware()
-                            ? fieldMapper.apply(fieldMapping, virtualValue) // {S: ctx.virtualTable.hkValue,}
-                            : virtualValue;
-                        String physicalValuePlaceholder = equalsClauses.isEmpty()
-                            ? virtualValuePlaceholder
-                            : getNextValuePlaceholder(request);
-                        request.putExpressionAttributeValue(physicalValuePlaceholder, physicalValue);
-
-                        equalsClauses.add(physicalFieldPlaceholder + " = " + physicalValuePlaceholder);
-                    }
-
-                    // possibly fan out to assigning multiple fields for SET
-                    String physicalClause = String.join(", ", equalsClauses);
-                    expression = expression.replaceAll(
-                        virtualFieldPlaceholder + " *= *" + virtualValuePlaceholder + "\\b", physicalClause);
-                }
-            }
-            request.setExpression(expression);
-        }
-    }
-
-    private void validateNotUpdatingTablePrimaryKeyFields(RequestWrapper request) {
-        if (request.getExpression() != null) {
-            PrimaryKey primaryKey = tableMapping.getVirtualTable().getPrimaryKey();
-            Set<String> tablePrimaryKeyFields = new HashSet<>();
-            tablePrimaryKeyFields.add(primaryKey.getHashKey());
-            primaryKey.getRangeKey().ifPresent(tablePrimaryKeyFields::add);
-
-            Matcher m = ATTR_NAME_PLACEHOLDER_PATTERN.matcher(request.getExpression());
-            while (m.find()) {
-                String placeholder = m.group();
-                String field = request.getExpressionAttributeNames().get(placeholder);
-                if (field != null && tablePrimaryKeyFields.contains(field)) {
-                    // not the best error message but this is what local dynamo does?
-                    throw new AmazonServiceException("This attribute is part of the key");
-                }
-            }
         }
     }
 
@@ -257,43 +208,6 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
         }
     }
 
-    @VisibleForTesting
-    static void makePlaceholdersDistinct(String expression1, RequestWrapper expression2Request) {
-        String expression2 = expression2Request.getExpression();
-        expression2 = makePlaceholdersDistinct(expression1, expression2,
-            "#field", expression2Request.getExpressionAttributeNames());
-        expression2 = makePlaceholdersDistinct(expression1, expression2,
-            ":value", expression2Request.getExpressionAttributeValues());
-        expression2Request.setExpression(expression2);
-    }
-
-    private static <T> String makePlaceholdersDistinct(String primaryExpression,
-                                                       String expression,
-                                                       String newPlaceholderPrefix,
-                                                       Map<String, T> placeholderToLiteralMap) {
-        if (primaryExpression != null && expression != null && placeholderToLiteralMap != null) {
-            Set<String> originalPlaceholders = new HashSet<>(placeholderToLiteralMap.keySet());
-            for (String placeholder : originalPlaceholders) {
-                Pattern pattern = Pattern.compile(placeholder + "(?=($|[^a-zA-Z0-9]))");
-                // if the placeholder appears in the primary expression
-                if (pattern.matcher(primaryExpression).find()) {
-                    Matcher matcher = pattern.matcher(expression);
-                    // and also in the expression being modified
-                    if (matcher.find()) {
-                        // then generate a new placeholder
-                        String newPlaceholder = getNextPlaceholder(placeholderToLiteralMap, newPlaceholderPrefix);
-                        // replace all instances of the original with the new placeholder
-                        expression = matcher.replaceAll(newPlaceholder);
-                        // and map the new placeholder to the corresponding literal
-                        T literal = placeholderToLiteralMap.get(placeholder);
-                        placeholderToLiteralMap.put(newPlaceholder, literal);
-                    }
-                }
-            }
-        }
-        return expression;
-    }
-
     /**
      * Finds the value in the right-hand side operand of an expression where the left-hand operator is a given field.
      *
@@ -309,25 +223,6 @@ class RandomPartitioningConditionMapper implements ConditionMapper {
         final Matcher m = p.matcher(expression);
         boolean found = m.find();
         return found ? Optional.of(m.group("val")) : Optional.empty();
-    }
-
-    private static class UpdateExpressionRequestWrapper extends AbstractRequestWrapper {
-
-        UpdateExpressionRequestWrapper(UpdateItemRequest updateItemRequest) {
-            super(updateItemRequest::getExpressionAttributeNames, updateItemRequest::setExpressionAttributeNames,
-                updateItemRequest::getExpressionAttributeValues, updateItemRequest::setExpressionAttributeValues,
-                updateItemRequest::getUpdateExpression, updateItemRequest::setUpdateExpression);
-        }
-    }
-
-    @VisibleForTesting
-    static class UpdateConditionExpressionRequestWrapper extends AbstractRequestWrapper {
-
-        UpdateConditionExpressionRequestWrapper(UpdateItemRequest updateItemRequest) {
-            super(updateItemRequest::getExpressionAttributeNames, updateItemRequest::setExpressionAttributeNames,
-                updateItemRequest::getExpressionAttributeValues, updateItemRequest::setExpressionAttributeValues,
-                updateItemRequest::getConditionExpression, updateItemRequest::setConditionExpression);
-        }
     }
 
 }

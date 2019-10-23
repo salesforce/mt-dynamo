@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.BETWEEN;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
@@ -56,6 +57,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
+import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -202,12 +204,11 @@ class QueryTest {
 
         // RK condition: rk BETWEEN RANGE_KEY_N_MIN + 1 AND RANGE_KEY_N_MAX - 1
         // expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)
-        // TODO: random partitioning doesn't support BETWEEN yet
-        /*runHkRkTableKeyConditionTest(testArgument, useLegacy, BETWEEN,
+        runHkRkTableKeyConditionTest(testArgument, useLegacy, BETWEEN,
             ImmutableList.of(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX - 1),
             IntStream.rangeClosed(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX - 1),
             "RK condition: rk BETWEEN RANGE_KEY_N_MIN + 1 AND RANGE_KEY_N_MAX - 1, "
-                + "expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)");*/
+                + "expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)");
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
@@ -423,11 +424,9 @@ class QueryTest {
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                         ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
@@ -444,11 +443,9 @@ class QueryTest {
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                         ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
@@ -478,11 +475,9 @@ class QueryTest {
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(hkValue)))
                     .withIndexName(indexName)).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
@@ -502,10 +497,9 @@ class QueryTest {
                     .withFilterExpression(HASH_KEY_FIELD + " = :hkValue")
                     .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                .withDefaults()
-                .build(), items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE5, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
@@ -515,20 +509,16 @@ class QueryTest {
     void queryGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
-            Map<String, AttributeValue> secondRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
+            Map<String, AttributeValue> secondRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org)
                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
                 .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
                 .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
                 .build();
             testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
 
-            Map<String, AttributeValue> firstRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .build();
+            Map<String, AttributeValue> firstRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
             List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
 
             assertEquals(expectedRecords, executeQueryWithPaging(
@@ -574,10 +564,9 @@ class QueryTest {
                 .withIndexName("testLsi");
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .withDefaults()
-                .build(), items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
