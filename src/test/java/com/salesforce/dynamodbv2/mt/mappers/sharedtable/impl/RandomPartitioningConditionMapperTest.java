@@ -53,13 +53,13 @@ class RandomPartitioningConditionMapperTest {
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
         RandomPartitioningConditionMapper sut = new RandomPartitioningConditionMapper(tableMapping,
-                new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
+            new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.mapFieldInConditionExpression(requestWrapper, inputs.getFieldMapping());
         expected.getAttributeNames().forEach((name, value) ->
-                verify(requestWrapper).putExpressionAttributeName(name, value));
+            verify(requestWrapper).putExpressionAttributeName(name, value));
         expected.getAttributeValues().forEach((name, attributeValue) ->
-                verify(requestWrapper).putExpressionAttributeValue(name, attributeValue));
+            verify(requestWrapper).putExpressionAttributeValue(name, attributeValue));
     }
 
     private static class KeyConditionTestInputs {
@@ -140,11 +140,11 @@ class RandomPartitioningConditionMapperTest {
 
         KeyConditionTestInputs build() {
             return new KeyConditionTestInputs(org,
-                    virtualTableName,
-                    attributeNames,
-                    attributeValues,
-                    fieldMapping,
-                    primaryExpression);
+                virtualTableName,
+                attributeNames,
+                attributeValues,
+                fieldMapping,
+                primaryExpression);
         }
 
     }
@@ -204,203 +204,203 @@ class RandomPartitioningConditionMapperTest {
 
     private static Stream<KeyConditionTestInvocation> applyKeyConditionToFieldInvocations() {
         return ImmutableList.of(
-                // map table's hash-key field name field and value on a primary expression on a table with hk only
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx")
-                                .virtualTableName("virtualTable")
-                                .attributeNames("#field1", "virtualHk")
-                                .attributeValues(":value", "hkValue")
-                                .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
-                                        "virtualTable",
-                                        "null",
-                                        TABLE,
-                                        true))
-                                .primaryExpression("#field1 = :value")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#field1", "physicalHk")
-                                .attributeValues(":value", "ctx/virtualTable/hkValue").build()
-                ),
-                // map gsi hash-key field name and value on a primary expression on a table with hk only
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx")
-                                .virtualTableName("virtualTable")
-                                .attributeNames("#field", "virtualGsiHk")
-                                .attributeValues(":value", "hkGsiValue")
-                                .fieldMapping(new FieldMapping(
-                                        new Field("virtualGsiHk", S), new Field("physicalGsiHk", S),
-                                        "virtualGsi",
-                                        "physicalGsi",
-                                    SECONDARY_INDEX,
-                                        true))
-                                .primaryExpression("#field = :value")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#field", "physicalGsiHk")
-                                .attributeValues(":value", "ctx/virtualTable/hkGsiValue").build()
-                ),
-                // map table's hash-key field name and value on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name2", "rk", "#name", "hashKeyField")
-                                .attributeValues(":value2", "rangeKeyValue", ":value", "1")
-                                .fieldMapping(new FieldMapping(new Field("hashKeyField", S), new Field("hk", S),
-                                        "Table3",
-                                        "mt_shared_table_static_s_s",
-                                        TABLE,
-                                        true))
-                                .primaryExpression("#name = :value AND #name2 = :value2")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1/Table3/1").build()
-                ),
-                // map table's range-key field name on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name2", "rangeKeyField", "#name", "hashKeyField")
-                                .attributeValues(":value2", "rangeKeyValue", ":value", "1")
-                                .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
-                                        "Table3",
-                                        "mt_shared_table_static_s_s",
-                                        TABLE,
-                                        false))
-                                .primaryExpression("#name = :value AND #name2 = :value2")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name2", "rk")
-                                .attributeValues(":value2", "rangeKeyValue").build()
-                ),
-                // map table's range-key field name on a filter expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("Org-51")
-                                .virtualTableName("Table3")
-                                .attributeNames("#someField", "someField", "#hk", "hashKeyField", "#rk",
-                                        "rangeKeyField")
-                                .attributeValues(":currentRkValue", "rangeKeyValue", ":currentHkValue", "1",
-                                        ":newValue", "someValueTable3Org-51Updated")
-                                .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
-                                        "Table3",
-                                        "mt_shared_table_static_s_s",
-                                        TABLE,
-                                        false))
-                                .primaryExpression("#hk = :currentHkValue and #rk = :currentRkValue")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#rk", "rk")
-                                .attributeValues(":currentRkValue", "rangeKeyValue").build()
-                ),
-                // map gsi hash-key field name and value on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name", "indexField")
-                                .attributeValues(":value", "indexFieldValue")
-                                .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
-                                        "testGsi",
-                                        "gsi_s",
-                                    SECONDARY_INDEX,
-                                        true))
-                                .primaryExpression("#name = :value")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
-                ),
-                // map lsi hash-key field name and value on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name", "hashKeyField", "#name2", "indexField")
-                                .attributeValues(":value", "1", ":value2", "indexFieldValue")
-                                .fieldMapping(new FieldMapping(
-                                        new Field("hashKeyField", S), new Field("hk", S),
-                                        "testLsi",
-                                        "lsi_s_s",
-                                        TABLE,
-                                        true))
-                                .primaryExpression("#name = :value and #name2 = :value2")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name", "hk")
-                                .attributeValues(":value", "ctx1/Table3/1").build()
-                ),
-                // map lsi range-key field name on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#name", "hk", "#name2", "indexField")
-                                .attributeValues(":value", "ctx1/Table3/1", ":value2", "indexFieldValue")
-                                .fieldMapping(new FieldMapping(
-                                        new Field("indexField", S), new Field("lsi_s_s_rk", S),
-                                        "testLsi",
-                                        "lsi_s_s",
-                                    SECONDARY_INDEX,
-                                        false))
-                                .primaryExpression("#name = :value and #name2 = :value2")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name2", "lsi_s_s_rk")
-                                .attributeValues(":value2", "indexFieldValue").build()
-                ),
-                // map gsi hash-key field name and value on a primary expression on a table with hk and rk
-                new KeyConditionTestInvocation(
-                        new KeyConditionTestInputs()
-                                .org("ctx1")
-                                .virtualTableName("Table3")
-                                .attributeNames("#___name___", "hk", "#name", "indexField")
-                                .attributeValues(":___value___", "ctx1.Table3.", ":value", "indexFieldValue")
-                                .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
-                                        "testGsi",
-                                        "gsi_s",
-                                    SECONDARY_INDEX,
-                                        true))
-                                .primaryExpression("#name = :value and begins_with(#___name___, :___value___)")
-                                .build(),
-                        new KeyConditionTestExpected()
-                                .attributeNames("#name", "gsi_s_hk")
-                                .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
-                ),
-                // map attribute_exists expression
-                new KeyConditionTestInvocation(
-                    new KeyConditionTestInputs()
-                        .org("ctx")
-                        .virtualTableName("virtualTable")
-                        .attributeNames("#field1", "virtualHk")
-                        .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
-                            "virtualTable",
-                            "null",
-                            TABLE,
-                            true))
-                        .primaryExpression("attribute_exists(#field1)")
-                        .build(),
-                    new KeyConditionTestExpected()
-                        .attributeNames("#field1", "physicalHk").build()
-                )
+            // map table's hash-key field name field and value on a primary expression on a table with hk only
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx")
+                    .virtualTableName("virtualTable")
+                    .attributeNames("#field1", "virtualHk")
+                    .attributeValues(":value", "hkValue")
+                    .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
+                        "virtualTable",
+                        "null",
+                        TABLE,
+                        true))
+                    .primaryExpression("#field1 = :value")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#field1", "physicalHk")
+                    .attributeValues(":value", "ctx/virtualTable/hkValue").build()
+            ),
+            // map gsi hash-key field name and value on a primary expression on a table with hk only
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx")
+                    .virtualTableName("virtualTable")
+                    .attributeNames("#field", "virtualGsiHk")
+                    .attributeValues(":value", "hkGsiValue")
+                    .fieldMapping(new FieldMapping(
+                        new Field("virtualGsiHk", S), new Field("physicalGsiHk", S),
+                        "virtualGsi",
+                        "physicalGsi",
+                        SECONDARY_INDEX,
+                        true))
+                    .primaryExpression("#field = :value")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#field", "physicalGsiHk")
+                    .attributeValues(":value", "ctx/virtualTable/hkGsiValue").build()
+            ),
+            // map table's hash-key field name and value on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#name2", "rk", "#name", "hashKeyField")
+                    .attributeValues(":value2", "rangeKeyValue", ":value", "1")
+                    .fieldMapping(new FieldMapping(new Field("hashKeyField", S), new Field("hk", S),
+                        "Table3",
+                        "mt_shared_table_static_s_s",
+                        TABLE,
+                        true))
+                    .primaryExpression("#name = :value AND #name2 = :value2")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name", "hk")
+                    .attributeValues(":value", "ctx1/Table3/1").build()
+            ),
+            // map table's range-key field name on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#name2", "rangeKeyField", "#name", "hashKeyField")
+                    .attributeValues(":value2", "rangeKeyValue", ":value", "1")
+                    .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
+                        "Table3",
+                        "mt_shared_table_static_s_s",
+                        TABLE,
+                        false))
+                    .primaryExpression("#name = :value AND #name2 = :value2")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name2", "rk")
+                    .attributeValues(":value2", "rangeKeyValue").build()
+            ),
+            // map table's range-key field name on a filter expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("Org-51")
+                    .virtualTableName("Table3")
+                    .attributeNames("#someField", "someField", "#hk", "hashKeyField", "#rk",
+                        "rangeKeyField")
+                    .attributeValues(":currentRkValue", "rangeKeyValue", ":currentHkValue", "1",
+                        ":newValue", "someValueTable3Org-51Updated")
+                    .fieldMapping(new FieldMapping(new Field("rangeKeyField", S), new Field("rk", S),
+                        "Table3",
+                        "mt_shared_table_static_s_s",
+                        TABLE,
+                        false))
+                    .primaryExpression("#hk = :currentHkValue and #rk = :currentRkValue")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#rk", "rk")
+                    .attributeValues(":currentRkValue", "rangeKeyValue").build()
+            ),
+            // map gsi hash-key field name and value on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#name", "indexField")
+                    .attributeValues(":value", "indexFieldValue")
+                    .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
+                        "testGsi",
+                        "gsi_s",
+                        SECONDARY_INDEX,
+                        true))
+                    .primaryExpression("#name = :value")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name", "gsi_s_hk")
+                    .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
+            ),
+            // map lsi hash-key field name and value on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#name", "hashKeyField", "#name2", "indexField")
+                    .attributeValues(":value", "1", ":value2", "indexFieldValue")
+                    .fieldMapping(new FieldMapping(
+                        new Field("hashKeyField", S), new Field("hk", S),
+                        "testLsi",
+                        "lsi_s_s",
+                        TABLE,
+                        true))
+                    .primaryExpression("#name = :value and #name2 = :value2")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name", "hk")
+                    .attributeValues(":value", "ctx1/Table3/1").build()
+            ),
+            // map lsi range-key field name on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#name", "hk", "#name2", "indexField")
+                    .attributeValues(":value", "ctx1/Table3/1", ":value2", "indexFieldValue")
+                    .fieldMapping(new FieldMapping(
+                        new Field("indexField", S), new Field("lsi_s_s_rk", S),
+                        "testLsi",
+                        "lsi_s_s",
+                        SECONDARY_INDEX,
+                        false))
+                    .primaryExpression("#name = :value and #name2 = :value2")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name2", "lsi_s_s_rk")
+                    .attributeValues(":value2", "indexFieldValue").build()
+            ),
+            // map gsi hash-key field name and value on a primary expression on a table with hk and rk
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx1")
+                    .virtualTableName("Table3")
+                    .attributeNames("#___name___", "hk", "#name", "indexField")
+                    .attributeValues(":___value___", "ctx1.Table3.", ":value", "indexFieldValue")
+                    .fieldMapping(new FieldMapping(new Field("indexField", S), new Field("gsi_s_hk", S),
+                        "testGsi",
+                        "gsi_s",
+                        SECONDARY_INDEX,
+                        true))
+                    .primaryExpression("#name = :value and begins_with(#___name___, :___value___)")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#name", "gsi_s_hk")
+                    .attributeValues(":value", "ctx1/Table3/indexFieldValue").build()
+            ),
+            // map attribute_exists expression
+            new KeyConditionTestInvocation(
+                new KeyConditionTestInputs()
+                    .org("ctx")
+                    .virtualTableName("virtualTable")
+                    .attributeNames("#field1", "virtualHk")
+                    .fieldMapping(new FieldMapping(new Field("virtualHk", S), new Field("physicalHk", S),
+                        "virtualTable",
+                        "null",
+                        TABLE,
+                        true))
+                    .primaryExpression("attribute_exists(#field1)")
+                    .build(),
+                new KeyConditionTestExpected()
+                    .attributeNames("#field1", "physicalHk").build()
+            )
         ).stream();
     }
 
     private static Map<String, String> toAttributeNames(String... attributeNames) {
         return IntStream.range(0, attributeNames.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m, i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
+            .collect(HashMap::new, (m, i) -> m.put(attributeNames[i], attributeNames[i + 1]), Map::putAll);
     }
 
     private static Map<String, AttributeValue> toAttributeValues(String... attributeValues) {
         return attributeValues == null
             ? new HashMap<>()
             : IntStream.range(0, attributeValues.length / 2).map(i -> i * 2)
-                .collect(HashMap::new, (m, i) -> m.put(attributeValues[i],
-                        new AttributeValue().withS(attributeValues[i + 1])), Map::putAll);
+            .collect(HashMap::new, (m, i) -> m.put(attributeValues[i],
+                new AttributeValue().withS(attributeValues[i + 1])), Map::putAll);
     }
 
     @Test
@@ -450,11 +450,11 @@ class RandomPartitioningConditionMapperTest {
     @Test
     void getNextPlaceholder() {
         assertEquals("#field1", MappingUtils.getNextPlaceholder(
-                new HashMap<>(), "#field"));
+            new HashMap<>(), "#field"));
         assertEquals("#field2", MappingUtils.getNextPlaceholder(
-                ImmutableMap.of("#field1", "literal"), "#field"));
+            ImmutableMap.of("#field1", "literal"), "#field"));
         assertEquals(":value3", MappingUtils.getNextPlaceholder(
-                ImmutableMap.of(":value1", "someValue1", ":value2", "someValue2"), ":value"));
+            ImmutableMap.of(":value1", "someValue1", ":value2", "someValue2"), ":value"));
     }
 
     @Test
