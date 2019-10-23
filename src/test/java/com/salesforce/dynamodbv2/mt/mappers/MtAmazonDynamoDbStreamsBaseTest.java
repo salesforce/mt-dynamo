@@ -15,6 +15,7 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -58,14 +59,6 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
 
-            MeterRegistry indexMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
-            CachingAmazonDynamoDbStreams indexMtDynamoDbStreamsCache =
-                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withMeterRegistry(indexMtDynamoDbStreamsMeterRegistry)
-                    .build();
-            MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
-                indexMtDynamoDbStreamsCache);
-
             MtAmazonDynamoDbBySharedTable indexBinaryHkMtDynamoDb = SharedTableBuilder.builder()
                 .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
                     .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
@@ -74,13 +67,17 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
-            MeterRegistry indexBinaryHkMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
-            CachingAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreamsCache =
-                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
-                    .withMeterRegistry(indexBinaryHkMtDynamoDbStreamsMeterRegistry)
-                    .build();
-            MtAmazonDynamoDbStreams indexBinaryHkMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(
-                indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreamsCache);
+
+            MtAmazonDynamoDbBySharedTable indexHashPartitioningMtDynamoDb = SharedTableBuilder.builder()
+                .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
+                    .newHashPartitioningCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME))
+                .withAmazonDynamoDb(dynamoDb)
+                .withTablePrefix(prefix)
+                .withContext(MT_CONTEXT)
+                .withPartitioningStrategy(new HashPartitioningStrategy(64))
+                .withBinaryHashKey(true)
+                .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
+                .build();
 
             MtAmazonDynamoDbByTable tableMtDynamoDb = MtAmazonDynamoDbByTable.builder()
                 .withTablePrefix(prefix)
@@ -91,12 +88,23 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal());
 
             return java.util.stream.Stream.of(
-                Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams, indexMtDynamoDbStreamsCache,
-                    indexMtDynamoDbStreamsMeterRegistry),
-                Arguments.of(indexBinaryHkMtDynamoDb, indexBinaryHkMtDynamoDbStreams,
-                    indexBinaryHkMtDynamoDbStreamsCache, indexBinaryHkMtDynamoDbStreamsMeterRegistry),
+                getArgumentsForSharedTableStrategy(indexMtDynamoDb),
+                getArgumentsForSharedTableStrategy(indexBinaryHkMtDynamoDb),
+                getArgumentsForSharedTableStrategy(indexHashPartitioningMtDynamoDb),
                 Arguments.of(tableMtDynamoDb, tableMtDynamoDbStreams, null, null)
             );
+        }
+
+        private Arguments getArgumentsForSharedTableStrategy(MtAmazonDynamoDbBySharedTable indexMtDynamoDb) {
+            MeterRegistry indexMtDynamoDbStreamsMeterRegistry = new SimpleMeterRegistry();
+            CachingAmazonDynamoDbStreams indexMtDynamoDbStreamsCache =
+                new CachingAmazonDynamoDbStreams.Builder(AmazonDynamoDbLocal.getAmazonDynamoDbStreamsLocal())
+                    .withMeterRegistry(indexMtDynamoDbStreamsMeterRegistry)
+                    .build();
+            MtAmazonDynamoDbStreams indexMtDynamoDbStreams = MtAmazonDynamoDbStreams.createFromDynamo(indexMtDynamoDb,
+                indexMtDynamoDbStreamsCache);
+            return Arguments.of(indexMtDynamoDb, indexMtDynamoDbStreams, indexMtDynamoDbStreamsCache,
+                indexMtDynamoDbStreamsMeterRegistry);
         }
     }
 

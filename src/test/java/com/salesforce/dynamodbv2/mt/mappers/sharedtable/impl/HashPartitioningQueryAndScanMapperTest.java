@@ -39,7 +39,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyPrefixFunction;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -307,8 +306,8 @@ class HashPartitioningQueryAndScanMapperTest {
         }
 
         private int getBucketFromPhysicalHkValue(AttributeValue value) {
-            String[] parts = HashPartitioningKeyPrefixFunction.fromPhysicalHashKeyToParts(value);
-            return Integer.parseInt(parts[2]);
+            ByteBuffer byteBuffer = value.getB();
+            return byteBuffer.getInt(byteBuffer.limit() - 4);
         }
 
         private int comparePhysicalRkValues(AttributeValue v1, AttributeValue v2) {

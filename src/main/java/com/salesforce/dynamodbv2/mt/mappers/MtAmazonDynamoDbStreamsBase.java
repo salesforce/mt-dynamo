@@ -17,7 +17,7 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningRecordMapper;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RecordMapper;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
@@ -239,7 +239,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
 
 
     private MtRecord getMissingMapper(Record record) {
-        return RandomPartitioningRecordMapper.getDefaultMtRecord(record)
+        return RecordMapper.getDefaultMtRecord(record)
             .withDynamodb(record.getDynamodb())
             .withContext(null)
             .withTableName(null);

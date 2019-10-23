@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -55,6 +56,51 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
         new MtAmazonDynamoDbContextProviderThreadLocalImpl();
 
+    public enum AmazonDynamoDbStrategy {
+
+        ByAccount(root -> MtAmazonDynamoDbByAccount.accountMapperBuilder()
+            .withAccountMapper(new DynamicAccountMtMapper())
+            .withContext(MT_CONTEXT).build()),
+
+        ByTable(root -> MtAmazonDynamoDbByTable.builder()
+            .withAmazonDynamoDb(wrapWithLogger(root))
+            .withContext(MT_CONTEXT).build()),
+
+        RandomPartitioning(root -> SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(wrapWithLogger(root))
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .build()),
+
+        RandomPartitioningBinaryHk(root -> SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(wrapWithLogger(root))
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .withBinaryHashKey(true)
+            .build()),
+
+        HashPartitioning(root -> SharedTableBuilder.builder()
+            .withPollIntervalSeconds(getPollInterval())
+            .withAmazonDynamoDb(wrapWithLogger(root))
+            .withContext(MT_CONTEXT)
+            .withTruncateOnDeleteTable(true)
+            .withBinaryHashKey(true)
+            .withPartitioningStrategy(new HashPartitioningStrategy(64))
+            .build());
+
+        private final UnaryOperator<AmazonDynamoDB> buildClientFromRoot;
+
+        AmazonDynamoDbStrategy(UnaryOperator<AmazonDynamoDB> buildClientFromRoot) {
+            this.buildClientFromRoot = buildClientFromRoot;
+        }
+
+        AmazonDynamoDB getAmazonDynamoDb(AmazonDynamoDB rootAmazonDynamoDb) {
+            return buildClientFromRoot.apply(rootAmazonDynamoDb);
+        }
+    }
+
     private AmazonDynamoDB rootAmazonDynamoDb = DEFAULT_ROOT_AMAZON_DYNAMO_DB;
 
     public ArgumentBuilder withAmazonDynamoDb(AmazonDynamoDB rootAmazonDynamoDb) {
@@ -65,7 +111,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     @Override
     public List<TestArgument> get() {
         List<TestArgument> ret = Lists.newArrayList();
-        for (AmazonDynamoDB mtStrategy : getAmazonDynamoDbStrategies()) {
+        for (AmazonDynamoDbStrategy mtStrategy : getAmazonDynamoDbStrategies()) {
             for (ScalarAttributeType hashKeyAttributes : getHashKeyAttrTypes()) {
                 ret.add(new TestArgument(mtStrategy, getOrgs(), hashKeyAttributes, rootAmazonDynamoDb));
             }
@@ -88,68 +134,21 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         return Arrays.stream(ScalarAttributeType.values()).collect(Collectors.toList());
     }
 
+
     /**
      * Returns a list of AmazonDynamoDB instances to be tested.
      */
-    private List<AmazonDynamoDB> getAmazonDynamoDbStrategies() {
-        AmazonDynamoDB amazonDynamoDb = wrapWithLogger(rootAmazonDynamoDb);
-
-        /*
-         * byAccount
-         */
-        AmazonDynamoDB byAccount = MtAmazonDynamoDbByAccount.accountMapperBuilder()
-            .withAccountMapper(new DynamicAccountMtMapper())
-            .withContext(MT_CONTEXT).build();
-
-        /*
-         * byTable
-         */
-        AmazonDynamoDB byTable = MtAmazonDynamoDbByTable.builder()
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT).build();
-
-        /*
-         * bySharedTable
-         */
-        AmazonDynamoDB sharedTable = SharedTableBuilder.builder()
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT)
-            .withTruncateOnDeleteTable(true).build();
-
-        /*
-         * bySharedTable w/ binary hash key
-         */
-        AmazonDynamoDB sharedTableBinaryHashKey = SharedTableBuilder.builder()
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT)
-            .withTruncateOnDeleteTable(true)
-            .withBinaryHashKey(true)
-            .build();
-
-        /*
-         * bySharedTable w/ hash partitioning
-         */
-        AmazonDynamoDB sharedTableHashPartitioning = SharedTableBuilder.builder()
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(amazonDynamoDb)
-            .withContext(MT_CONTEXT)
-            .withTruncateOnDeleteTable(true)
-            .withBinaryHashKey(true)
-            .withPartitioningStrategy(new HashPartitioningStrategy(64))
-            .build();
-
+    private List<AmazonDynamoDbStrategy> getAmazonDynamoDbStrategies() {
         return ImmutableList.of(
             /*
              * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
              * concurrently with any of the sharedTable* strategies.
              */
-            //byAccount,
-            byTable,
-            sharedTable,
-            sharedTableBinaryHashKey/*,
-            sharedTableHashPartitioning*/
+            //AmazonDynamoDbStrategy..ByAccount,
+            AmazonDynamoDbStrategy.ByTable,
+            AmazonDynamoDbStrategy.RandomPartitioning,
+            AmazonDynamoDbStrategy.RandomPartitioningBinaryHk,
+            AmazonDynamoDbStrategy.HashPartitioning
         );
     }
 
@@ -191,6 +190,8 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      * when testing that instance.  See the {@link ArgumentBuilder} Javadoc for details.
      */
     public static class TestArgument {
+
+        private final AmazonDynamoDbStrategy amazonDynamoDbStrategy;
         private final AmazonDynamoDB amazonDynamoDb;
         private final AmazonDynamoDB rootAmazonDynamoDb;
         private final List<String> orgs;
@@ -199,12 +200,17 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         /**
          * Takes the arguments that make up the inputs to a test invocation.
          */
-        TestArgument(AmazonDynamoDB amazonDynamoDb, List<String> orgs,
+        TestArgument(AmazonDynamoDbStrategy amazonDynamoDbStrategy, List<String> orgs,
                      ScalarAttributeType hashKeyAttrType, AmazonDynamoDB rootAmazonDynamoDb) {
-            this.amazonDynamoDb = amazonDynamoDb;
+            this.amazonDynamoDbStrategy = amazonDynamoDbStrategy;
+            this.amazonDynamoDb = amazonDynamoDbStrategy.getAmazonDynamoDb(rootAmazonDynamoDb);
             this.orgs = orgs;
             this.hashKeyAttrType = hashKeyAttrType;
             this.rootAmazonDynamoDb = rootAmazonDynamoDb;
+        }
+
+        public AmazonDynamoDbStrategy getAmazonDynamoDbStrategy() {
+            return amazonDynamoDbStrategy;
         }
 
         public AmazonDynamoDB getAmazonDynamoDb() {
@@ -229,7 +235,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
         @Override
         public String toString() {
-            return amazonDynamoDb.getClass().getSimpleName()
+            return amazonDynamoDbStrategy.name()
                 + ", orgs=" + orgs
                 + ", hashKeyAttrType=" + hashKeyAttrType.name();
         }

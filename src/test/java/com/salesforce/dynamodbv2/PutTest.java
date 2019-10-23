@@ -4,14 +4,17 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ConditionalCheckFailedException;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
@@ -179,4 +182,41 @@ class PutTest {
         });
     }
 
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    void putMissingHk(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            PutItemRequest putItemRequest = new PutItemRequest()
+                .withTableName(TABLE1)
+                .withItem(ImmutableMap.of(SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE_NEW)));
+            try {
+                testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+                fail("expected exception not encountered");
+            } catch (AmazonServiceException e) {
+                assertEquals(e.getMessage(), "One of the required keys was not given a value"
+                    + " (Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)");
+            }
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    void putMissingRk(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            PutItemRequest putItemRequest = new PutItemRequest()
+                .withTableName(TABLE3)
+                .withItem(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE_NEW)
+                    .someField(S, SOME_FIELD_VALUE_NEW)
+                    .build());
+            try {
+                testArgument.getAmazonDynamoDb().putItem(putItemRequest);
+                fail("expected exception not encountered");
+            } catch (AmazonServiceException e) {
+                assertEquals(e.getMessage(), "One of the required keys was not given a value"
+                    + " (Service: null; Status Code: 400; Error Code: ValidationException; Request ID: null)");
+            }
+        });
+    }
 }

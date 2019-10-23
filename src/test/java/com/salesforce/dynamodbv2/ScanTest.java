@@ -18,7 +18,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_V
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
@@ -188,20 +187,16 @@ class ScanTest {
     void scanGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
-            Map<String, AttributeValue> secondRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
+            Map<String, AttributeValue> secondRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org)
                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
                 .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
                 .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
                 .build();
             testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
 
-            Map<String, AttributeValue> firstRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .build();
+            Map<String, AttributeValue> firstRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
             List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
 
             assertEquals(expectedRecords, executeScan(

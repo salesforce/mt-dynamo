@@ -60,8 +60,8 @@ class RandomPartitioningQueryAndScanMapperTest {
 
         assertEquals(new QueryRequest()
                         .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value",
+                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value1",
                                 new AttributeValue().withS("ctx/virtualTable/hkValue"))),
                 queryRequest);
     }
@@ -98,9 +98,9 @@ class RandomPartitioningQueryAndScanMapperTest {
         QUERY_AND_SCAN_MAPPER.apply(queryRequest);
 
         assertEquals(new QueryRequest()
-                        .withKeyConditionExpression("#field1 = :value")
+                        .withKeyConditionExpression("#field1 = :value1")
                         .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value", new
+                        .withExpressionAttributeValues(ImmutableMap.of(":value1", new
                                 AttributeValue().withS("ctx/virtualTable/hkValue"))),
                 queryRequest);
     }
@@ -117,9 +117,9 @@ class RandomPartitioningQueryAndScanMapperTest {
 
         assertEquals(new QueryRequest()
                         .withIndexName("physicalGsi")
-                        .withKeyConditionExpression(queryRequest.getKeyConditionExpression())
-                        .withExpressionAttributeNames(ImmutableMap.of("#field", "physicalGsiHk"))
-                        .withExpressionAttributeValues(ImmutableMap.of(":value",
+                        .withKeyConditionExpression("#field1 = :value1")
+                        .withExpressionAttributeNames(ImmutableMap.of("#field1", "physicalGsiHk"))
+                        .withExpressionAttributeValues(ImmutableMap.of(":value1",
                                 new AttributeValue().withS("ctx/virtualTable/hkGsiValue"))),
                 queryRequest);
     }
