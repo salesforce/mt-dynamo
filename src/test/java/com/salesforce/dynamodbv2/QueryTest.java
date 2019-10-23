@@ -87,7 +87,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void query(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#name = :value";
@@ -115,14 +115,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithKeyCondition(TestArgument testArgument) {
         runHkTableKeyConditionTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithKeyCondition_legacy(TestArgument testArgument) {
         runHkTableKeyConditionTest(testArgument, true);
     }
@@ -142,14 +142,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryHkRkWithKeyConditions(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryHkRkWithKeyConditions_legacy(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, true);
     }
@@ -335,7 +335,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -353,7 +353,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
     void queryUsingAttributeNameLiterals(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
@@ -372,7 +372,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithHkValueInFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
@@ -392,7 +392,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryWithRkValueInFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
@@ -413,7 +413,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -432,7 +432,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryHkRkWithFilterExpression_lessThanOrEqual(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -451,14 +451,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryGsi(TestArgument testArgument) {
         runQueryGsiTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryGsiWithRk(TestArgument testArgument) {
         runQueryGsiTest(testArgument, true);
     }
@@ -483,7 +483,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void queryGsi_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String table = TABLE5;
@@ -505,7 +505,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
@@ -552,7 +552,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryLsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
@@ -624,7 +624,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             int maxPageSize = 4;
@@ -692,8 +692,8 @@ class QueryTest {
                 .build();
             new AmazonDynamoDbAdminUtils(amazonDynamoDb).createTableIfNotExists(createTableRequest, 0);
 
-            ByteBuffer startKey = ByteBuffer.wrap(new byte[]{0, 1, 2});
-            ByteBuffer upperBound = ByteBuffer.wrap(new byte[]{0, 1, -1});
+            ByteBuffer startKey = ByteBuffer.wrap(new byte[] { 0, 1, 2 });
+            ByteBuffer upperBound = ByteBuffer.wrap(new byte[] { 0, 1, -1 });
             amazonDynamoDb.query(
                 new QueryRequest().withTableName(tableName)
                     .withKeyConditionExpression(HASH_KEY_FIELD + " = :hk AND " + RANGE_KEY_FIELD + " <= :rk")

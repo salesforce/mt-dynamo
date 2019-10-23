@@ -266,9 +266,9 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         }
 
         private ComparisonOperator getRangeKeyComparisonOp(KeyConditionContext rangeKeyCondition) {
-            ComparatorContext singelValueComparator = rangeKeyCondition.comparator();
-            if (singelValueComparator != null) {
-                return getSingleRangeKeyValueComparisonOp(singelValueComparator.getText());
+            ComparatorContext singleValueComparator = rangeKeyCondition.comparator();
+            if (singleValueComparator != null) {
+                return getSingleRangeKeyValueComparisonOp(singleValueComparator.getText());
             } else {
                 checkArgument(rangeKeyCondition.BETWEEN() != null,
                     "Invalid range key condition: %s", rangeKeyCondition.getText());

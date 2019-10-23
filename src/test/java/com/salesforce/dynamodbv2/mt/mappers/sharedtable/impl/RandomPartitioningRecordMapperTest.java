@@ -35,7 +35,7 @@ class RandomPartitioningRecordMapperTest {
         buildTable("physicalTable", new PrimaryKey(physicalHk, S, physicalRk, S)),
         index -> null,
         provider
-        );
+    );
     private final RecordMapper sut = tableMapping.getRecordMapper();
 
     @ParameterizedTest
