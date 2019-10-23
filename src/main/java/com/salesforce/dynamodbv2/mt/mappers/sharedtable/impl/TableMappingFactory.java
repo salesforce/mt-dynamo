@@ -27,6 +27,7 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactor
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,7 @@ public class TableMappingFactory {
     private final TablePartitioningStrategy partitioningStrategy;
     private final VirtualTableCreationValidator virtualTableCreationValidator;
     private final int pollIntervalSeconds;
+    private final Map<String, DynamoTableDescription> physicalTableDescriptions;
 
     /**
      * TODO: write Javadoc.
@@ -74,6 +76,7 @@ public class TableMappingFactory {
         this.partitioningStrategy = partitioningStrategy;
         this.virtualTableCreationValidator = new VirtualTableCreationValidator(partitioningStrategy);
         this.pollIntervalSeconds = pollIntervalSeconds;
+        this.physicalTableDescriptions = new ConcurrentHashMap<>();
         if (createTablesEagerly) {
             createTablesEagerly(createTableRequestFactory);
         }
@@ -193,15 +196,20 @@ public class TableMappingFactory {
         return tableMapping;
     }
 
-    private DynamoTableDescriptionImpl createTableIfNotExists(CreateTableRequest physicalTable) {
+    private DynamoTableDescription createTableIfNotExists(CreateTableRequest physicalTable) {
         // does not exist, create
-        if (getTableDescription(physicalTable.getTableName()).isPresent()) {
-            LOG.debug(format("using existing physical table %s", physicalTable.getTableName()));
-        } else {
-            LOG.info(format("creating physical table %s", physicalTable.getTableName()));
-            dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
-        }
-        return new DynamoTableDescriptionImpl(amazonDynamoDb.describeTable(physicalTable.getTableName()).getTable());
+        final String tableName = physicalTable.getTableName();
+        return physicalTableDescriptions.computeIfAbsent(tableName, ignored ->
+            new DynamoTableDescriptionImpl(getTableDescription(tableName)
+                .map(description -> {
+                    LOG.info(format("using existing physical table %s", tableName));
+                    return description;
+                }).orElseGet(() -> {
+                    LOG.info(format("creating physical table %s", physicalTable.getTableName()));
+                    dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
+                    return amazonDynamoDb.describeTable(tableName).getTable();
+                }))
+        );
     }
 
     private Optional<TableDescription> getTableDescription(String tableName) {
