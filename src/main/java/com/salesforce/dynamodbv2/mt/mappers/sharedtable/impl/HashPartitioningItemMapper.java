@@ -8,7 +8,8 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.PhysicalRangeKeyBytesConverter.fromBytes;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter.fromBytes;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.toPhysicalRangeKey;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
@@ -53,7 +54,7 @@ class HashPartitioningItemMapper implements ItemMapper {
         Map<String, AttributeValue> physicalItem = new HashMap<>(virtualItem);
 
         // copy table primary key fields
-        addPhysicalKeys(virtualItem, physicalItem, virtualTable.getPrimaryKey(), physicalTable.getPrimaryKey(), true);
+        addPhysicalKeys(virtualItem, physicalItem, virtualTable.getPrimaryKey(), physicalTable.getPrimaryKey(), false);
 
         // copy secondary index fields
         for (DynamoSecondaryIndex virtualSi : virtualTable.getSis()) {
@@ -100,7 +101,7 @@ class HashPartitioningItemMapper implements ItemMapper {
 
                 // add physical RK
                 physicalItem.put(physicalPK.getRangeKey().get(),
-                    keyMapper.toPhysicalRangeKey(virtualPK, virtualHkValue, virtualRkValue));
+                    toPhysicalRangeKey(virtualPK, virtualHkValue, virtualRkValue));
             }
         } else {
             if (virtualHkValue != null) {
@@ -108,8 +109,7 @@ class HashPartitioningItemMapper implements ItemMapper {
                 physicalItem.put(physicalPK.getHashKey(), keyMapper.toPhysicalHashKey(virtualHkType, virtualHkValue));
 
                 // add physical RK
-                physicalItem.put(physicalPK.getRangeKey().get(),
-                    keyMapper.toPhysicalRangeKey(virtualPK, virtualHkValue));
+                physicalItem.put(physicalPK.getRangeKey().get(), toPhysicalRangeKey(virtualPK, virtualHkValue));
             }
         }
     }

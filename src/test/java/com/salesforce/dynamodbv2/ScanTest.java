@@ -18,7 +18,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_OTHER_V
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.attributeValueToString;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
@@ -67,7 +66,7 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void scanWithHk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -91,7 +90,7 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void scanWithScanFilter(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> assertEquals(
             ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -108,7 +107,7 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void scanByNonPk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String filterExpression = "#name = :value";
@@ -133,7 +132,7 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void scanAll(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = executeScan(
@@ -156,7 +155,7 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1, TABLE2, TABLE3, TABLE4, TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE1, TABLE2, TABLE3, TABLE4, TABLE5 })
     void scanAllTenants(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
@@ -184,24 +183,20 @@ class ScanTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void scanGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
-            Map<String, AttributeValue> secondRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
+            Map<String, AttributeValue> secondRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org)
                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
                 .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
                 .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
                 .build();
             testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
 
-            Map<String, AttributeValue> firstRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .build();
+            Map<String, AttributeValue> firstRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
             List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
 
             assertEquals(expectedRecords, executeScan(
@@ -263,7 +258,7 @@ class ScanTest {
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         ScanTestSetup() {
-            super(new String[]{TABLE1});
+            super(new String[] { TABLE1 });
         }
 
         @Override

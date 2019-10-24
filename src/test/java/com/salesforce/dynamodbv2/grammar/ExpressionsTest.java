@@ -61,8 +61,7 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "SET #field1 = :value1",
-        "sEt CreatedBy = if_not_exists(CreatedBy, :value)",
-        "set Score = :value1, CreatedBy = if_not_exists(CreatedBy, :value2)"
+        "sEt Score = :value1, CreatedBy = :value2"
     })
     void testParseUpdateExpression(String expression) {
         // our grammar
@@ -83,7 +82,7 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "#hk = :hk",
-        "HashKey = :hk AND RangeKey > :rk",
+        "((HashKey = :hk) AND (RangeKey > :rk))",
         "HashKey = :hk AND #rk BETWEEN :value1 AND :value2"
     })
     void testParseKeyConditionExpression(String expression) {
@@ -93,6 +92,13 @@ class ExpressionsTest {
         KeyConditionExpressionContext context = parser.keyConditionExpression();
 
         System.out.println("Our tree: " + TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames)));
+
+        // dynamodb local grammar (they don't have a separate parser for key condition expressions)
+        ANTLRErrorListener listener = new ExpressionErrorListener(new LocalDBEnv());
+        ParseTree tree = DynamoDbExpressionParser.parseCondition(expression, listener);
+
+        System.out.println("Their tree: "
+            + TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames)));
     }
 
     @ParameterizedTest

@@ -791,7 +791,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * When doing multi-tenant scans on a shared table, this column name is injected into each rows scan result to
+     * When doing multitenant scans on a shared table, this column name is injected into each row's scan result to
      * add tenant context to each scan result. This is mt-dynamo client overrideable, and returns the value the
      * client was built with.
      */
@@ -800,7 +800,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     /**
-     * When doing multi-tenant scans on a shared table, this column name is injected into each rows scan result to
+     * When doing multitenant scans on a shared table, this column name is injected into each row's scan result to
      * add tenant-table context to each scan result. This is mt-dynamo client overrideable, and returns the value the
      * client was built with.
      */
