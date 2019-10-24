@@ -115,6 +115,7 @@ interface MtBackupManager {
  * @param creationTime timestamp this backup began processing in milliseconds since epoch
  */
 data class MtBackupMetadata(
+    val s3BucketName: String,
     val mtBackupName: String,
     val status: Status,
     val tenantTables: Map<TenantTableBackupMetadata, Long>,
@@ -134,7 +135,8 @@ data class MtBackupMetadata(
             tenantTableCount.put(tenantTable, tenantTables.getOrDefault(tenantTable, 0L) +
                     newBackupMetadata.tenantTables.get(tenantTable)!!)
         }
-        return MtBackupMetadata(mtBackupName,
+        return MtBackupMetadata(s3BucketName,
+                mtBackupName,
                 newBackupMetadata.status, // use status of new metadata
                 tenantTableCount,
                 creationTime) // maintain existing create time for all merges
@@ -142,6 +144,7 @@ data class MtBackupMetadata(
 }
 
 data class TenantTableBackupMetadata(
+    val s3BucketName: String,
     val backupName: String,
     val tenantId: String,
     val virtualTableName: String
@@ -174,4 +177,10 @@ enum class StatusDetail {
     FAILED
 }
 
-data class TenantBackupMetadata(val tenantTable: MtAmazonDynamoDb.TenantTable, val backupName: String, val status: Status, val snapshotTime: Long)
+data class TenantBackupMetadata(
+    val s3BucketName: String,
+    val tenantTable: MtAmazonDynamoDb.TenantTable,
+    val backupName: String,
+    val status: Status,
+    val snapshotTime: Long
+)

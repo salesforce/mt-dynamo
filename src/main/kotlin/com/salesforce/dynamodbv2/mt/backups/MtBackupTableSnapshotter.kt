@@ -6,6 +6,7 @@
 package com.salesforce.dynamodbv2.mt.backups
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
+import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.BackupStatus
 import com.amazonaws.services.dynamodbv2.model.ContinuousBackupsUnavailableException
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
@@ -18,7 +19,11 @@ import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
+import com.amazonaws.services.dynamodbv2.model.ScanRequest
+import com.amazonaws.services.dynamodbv2.model.TableDescription
+import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
 import org.slf4j.LoggerFactory
+import java.util.stream.Collectors
 
 /**
  *
@@ -103,6 +108,53 @@ open class MtBackupTableSnapshotter {
                 Thread.sleep(1000L)
             }
         } while (tableStatus.table.tableStatus.equals("CREATING"))
+    }
+}
+
+/**
+ * A mock table snapshotter that relies on naively scanning and copying table versus using on-demand backup features
+ * unavailable on local dynamo.
+ *
+ * This should not be used in production environments, as it is not nearly as performant, nor does it guard against
+ * interleaved writes during the backup, but is exposed to allow clients use a backup call that is actually performant.
+ *
+ * It is exposed in non-test code for clients test code to pull in when operating against local dynamo or dynalite.
+ */
+class MtScanningSnapshotter : MtBackupTableSnapshotter() {
+    override fun snapshotTableToTarget(snapshotRequest: SnapshotRequest): SnapshotResult {
+        val startTime = System.currentTimeMillis()
+        val sourceTableDescription: TableDescription = snapshotRequest.amazonDynamoDb
+                .describeTable(snapshotRequest.sourceTableName).table
+        val createTableBuilder = CreateTableRequestBuilder.builder()
+                .withTableName(snapshotRequest.targetTableName)
+                .withKeySchema(*sourceTableDescription.keySchema.toTypedArray())
+
+                .withProvisionedThroughput(
+                        snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
+                        snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
+                .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter { a ->
+                    sourceTableDescription.keySchema.stream().anyMatch { k -> a.attributeName.equals(k.attributeName) }
+                }.collect(Collectors.toList()).toTypedArray())
+        snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
+
+        var exclusiveStartKey: Map<String, AttributeValue>? = null
+
+        do {
+            var oldTableScanRequest: ScanRequest = ScanRequest().withTableName(snapshotRequest.sourceTableName)
+                    .withExclusiveStartKey(exclusiveStartKey)
+            val scanResult = snapshotRequest.amazonDynamoDb.scan(oldTableScanRequest)
+            for (item in scanResult.items) {
+                snapshotRequest.amazonDynamoDb.putItem(snapshotRequest.targetTableName, item)
+            }
+            exclusiveStartKey = scanResult.lastEvaluatedKey
+        } while (exclusiveStartKey != null)
+        return SnapshotResult(snapshotRequest.mtBackupName,
+                snapshotRequest.targetTableName,
+                System.currentTimeMillis() - startTime)
+    }
+
+    override fun cleanup(snapshotResult: SnapshotResult, amazonDynamoDb: AmazonDynamoDB) {
+        amazonDynamoDb.deleteTable(snapshotResult.tempSnapshotTable)
     }
 }
 
