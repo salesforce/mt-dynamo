@@ -12,6 +12,7 @@ import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition
 import com.amazonaws.services.dynamodbv2.model.AttributeValue
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.DeleteBackupRequest
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest
@@ -46,6 +47,7 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 import java.util.ArrayList
+import java.util.function.Supplier
 import java.util.stream.Collectors
 
 /**
@@ -117,28 +119,54 @@ internal class MtSharedTableBackupManagerS3It {
         basicBackupTest(srcTenantTable, targetTenantTable)
     }
 
+    @Test
+    fun testMultiTenantRestoreFails() {
+        val tenantTable = TenantTable(virtualTableName = "table", tenantName = "tenant")
+        createTestData(tenantTable)
+        val backupName = "testMultiTenantRestoreFails"
+        createBackup(backupName)
+        // now try restoring backed up data to new target table and validate data appears on target
+        val tenantTableBackups = MT_CONTEXT.withContext(
+                    tenantTable.tenantName,
+                    Supplier<ListBackupsResult> { sharedTableBinaryHashKey!!
+                        .listBackups(ListBackupsRequest()
+                            .withTableName(tenantTable.virtualTableName))
+                    })
+        assertEquals(1, tenantTableBackups.backupSummaries.size)
+        val backupArn = tenantTableBackups.backupSummaries[0].backupArn
+        MT_CONTEXT.withContext(null) {
+            try {
+                sharedTableBinaryHashKey!!.restoreTableFromBackup(RestoreTableFromBackupRequest()
+                    .withTargetTableName("table-copy")
+                    .withBackupArn(backupArn))
+                fail("Should not reach here") as Unit
+            } catch (e: MtBackupException) {
+                assertTrue(e.message!!.contains("Cannot do restore of backup without tenant specifier"))
+            }
+        }
+    }
+
     private fun byteBufferToString(b: ByteBuffer) = String(b.array(), Charsets.UTF_8)
 
     private fun stringToByteBuffer(s: String) = ByteBuffer.wrap(s.toByteArray(Charsets.UTF_8))
 
-    private fun basicBackupTest(sourceTenantTable: TenantTable, targetTenantTable: TenantTable) {
-        // create dummy virtual table and dummy data to backup
+    private fun createTestData(tenantTable: TenantTable): CreateTableRequest {
         val createdTableRequest = CreateTableRequestBuilder.builder()
-                .withTableName(sourceTenantTable.virtualTableName)
+                .withTableName(tenantTable.virtualTableName)
                 .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.B))
                 .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
                 .withProvisionedThroughput(1L, 1L).build()
-        MtSharedTableBackupManagerS3It.MT_CONTEXT.withContext(sourceTenantTable.tenantName) {
+        MtSharedTableBackupManagerS3It.MT_CONTEXT.withContext(tenantTable.tenantName) {
             sharedTableBinaryHashKey!!.createTable(createdTableRequest)
-            sharedTableBinaryHashKey!!.putItem(PutItemRequest(sourceTenantTable.virtualTableName,
+            sharedTableBinaryHashKey!!.putItem(PutItemRequest(tenantTable.virtualTableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue().withB(stringToByteBuffer("row1")), "value", AttributeValue("1"))))
-            sharedTableBinaryHashKey!!.putItem(PutItemRequest(sourceTenantTable.virtualTableName,
+            sharedTableBinaryHashKey!!.putItem(PutItemRequest(tenantTable.virtualTableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue().withB(stringToByteBuffer("row2")), "value", AttributeValue("2"))))
         }
+        return createdTableRequest
+    }
 
-        // create backup of dummy data
-        val backupName = "test-backup"
-
+    private fun createBackup(backupName: String) {
         MT_CONTEXT.withContext(null) {
             sharedTableBinaryHashKey!!.createBackup(CreateBackupRequest()
                     .withBackupName(backupName))
@@ -148,7 +176,17 @@ internal class MtSharedTableBackupManagerS3It {
             assertEquals(Status.COMPLETE, mtBackupMetadata.status)
             assertTrue(mtBackupMetadata.tenantTables.isNotEmpty())
             backupArns.add(backupName)
+        }
+    }
 
+    private fun basicBackupTest(sourceTenantTable: TenantTable, targetTenantTable: TenantTable) {
+        // create dummy virtual table and dummy data to backup
+        val createdTableRequest = createTestData(sourceTenantTable)
+        // create backup of dummy data
+        val backupName = "test-backup"
+
+        createBackup(backupName)
+        MT_CONTEXT.withContext(null) {
             val tenantBackupMetadata = backupManager!!.getTenantTableBackup(backupName, sourceTenantTable)
             assertNotNull(tenantBackupMetadata)
             assertEquals(backupName, tenantBackupMetadata!!.backupName)
