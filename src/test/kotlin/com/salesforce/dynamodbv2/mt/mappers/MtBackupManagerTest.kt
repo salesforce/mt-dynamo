@@ -29,9 +29,10 @@ internal class MtBackupManagerTest {
         val tenant = "tenant-1234"
         val table = "table-1234"
         val fakeDate = 10203040L
-        val backupMetadata = MtBackupMetadata(backupId,
+        val backupMetadata = MtBackupMetadata("s3-bucket",
+                backupId,
                 Status.IN_PROGRESS,
-                ImmutableMap.of(TenantTableBackupMetadata(backupId, tenant, table), 1L),
+                ImmutableMap.of(TenantTableBackupMetadata("s3-bucket", backupId, tenant, table), 1L),
                 fakeDate)
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
@@ -46,7 +47,7 @@ internal class MtBackupManagerTest {
         val tenant = "tenant-1234"
         val table = "table-1234"
         val fakeDate = 10203040L
-        val backupMetadata = TenantBackupMetadata(MtAmazonDynamoDb.TenantTable(table, tenant), backupId, Status.IN_PROGRESS, fakeDate)
+        val backupMetadata = TenantBackupMetadata("s3-bucket", MtAmazonDynamoDb.TenantTable(table, tenant), backupId, Status.IN_PROGRESS, fakeDate)
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
         assertEquals(MtBackupAwsAdaptor().getBackupArnForTenantTableBackup(backupMetadata), describeBackupResult.backupDescription.backupDetails.backupArn)

@@ -201,7 +201,7 @@ internal class MtSharedTableBackupManagerS3It {
             backupArn = tenantTableBackups.backupSummaries[0].backupArn
 
             val tenantBackupArn = backupManager!!.getBackupArnForTenantTableBackup(
-                    TenantTableBackupMetadata(
+                    TenantTableBackupMetadata(bucket,
                             backupName,
                             sourceTenantTable.tenantName,
                             sourceTenantTable.virtualTableName))

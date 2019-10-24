@@ -101,12 +101,13 @@ open class MtSharedTableBackupManager(
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
                     .map { metadata ->
                         TenantTableBackupMetadata(
+                                s3BucketName,
                                 createBackupRequest.backupName,
                                 metadata.tenantName,
                                 metadata.createTableRequest.tableName)
                     }
                     .associateBy({ it }, { 0L })
-            val newMetadata = MtBackupMetadata(createBackupRequest.backupName,
+            val newMetadata = MtBackupMetadata(s3BucketName, createBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, startTime)
 
             commitBackupMetadata(newMetadata)
@@ -180,7 +181,7 @@ open class MtSharedTableBackupManager(
             throw MtBackupException("Cannot mark $inProgressBackupMetadata backup complete.")
         }
 
-        val completedBackupMetadata = MtBackupMetadata(inProgressBackupMetadata.mtBackupName,
+        val completedBackupMetadata = MtBackupMetadata(s3BucketName, inProgressBackupMetadata.mtBackupName,
                 Status.COMPLETE,
                 inProgressBackupMetadata.tenantTables,
                 inProgressBackupMetadata.creationTime)
@@ -307,7 +308,7 @@ open class MtSharedTableBackupManager(
                 val tenantTableBackup = getTenantTableBackup(backup.backupName, TenantTable(listBackupRequest.tableName, tenantId))
                 if (tenantTableBackup != null) {
                     val tenantTableBackupArn = getBackupArnForTenantTableBackup(
-                            TenantTableBackupMetadata(tenantTableBackup.backupName, tenantTableBackup.tenantTable.tenantName, tenantTableBackup.tenantTable.virtualTableName))
+                            TenantTableBackupMetadata(s3BucketName, tenantTableBackup.backupName, tenantTableBackup.tenantTable.tenantName, tenantTableBackup.tenantTable.virtualTableName))
                     ret.add(mtBackupAwsAdaptor.getBackupSummary(tenantTableBackup, tenantTableBackupArn))
                     if (ret.size == listBackupRequest.limit) break
                 }
@@ -336,9 +337,12 @@ open class MtSharedTableBackupManager(
 
     override fun getTenantTableBackup(backupName: String, tenantTable: TenantTable): TenantBackupMetadata? {
         val mtBackup = getBackup(backupName)
-        val tenantTableBackupMetadata = TenantTableBackupMetadata(backupName, tenantTable.tenantName, tenantTable.virtualTableName)
-        if (mtBackup != null && mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
-            return TenantBackupMetadata(tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
+
+        if (mtBackup != null) {
+            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup!!.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
+            if (mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
+                return TenantBackupMetadata(mtBackup.s3BucketName, tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
+            }
         }
         return null
     }
@@ -459,12 +463,12 @@ open class MtSharedTableBackupManager(
             logger.info("Flushed ${rowsPerTenant.values().size} rows for " +
                     "${rowsPerTenant.keySet().size} tenants.")
             for (tenantTable in rowsPerTenant.keySet()) {
-                val tenantTableMetadata = TenantTableBackupMetadata(tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
+                val tenantTableMetadata = TenantTableBackupMetadata(s3BucketName = s3BucketName, tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
                 tenantTables[tenantTableMetadata] = tenantTables.getOrDefault(tenantTableMetadata, 1L)
             }
         } while (scanResult.count > 0 && ++numPasses > 1)
 
-        return MtBackupMetadata(createBackupRequest.backupName, Status.IN_PROGRESS,
+        return MtBackupMetadata(s3BucketName, createBackupRequest.backupName, Status.IN_PROGRESS,
                 tenantTables)
     }
 

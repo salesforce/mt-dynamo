@@ -62,20 +62,20 @@ class MtBackupAwsAdaptor {
             throw IllegalArgumentException("$backupArn does not include tenant-table specifier.")
         }
         val tenantTableParts = backupArn.split(':')
-        return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2])
+        return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2], tenantTableParts[3])
     }
 
-    private fun isTenantTableArn(backupArn: String): Boolean = backupArn.split(':').size == 3
+    private fun isTenantTableArn(backupArn: String): Boolean = backupArn.split(':').size == 4
 
     fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String =
-            "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
+            "${tenantTable.s3BucketName}:${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
 
     fun getBackupArnForTenantTableBackup(tenantTable: TenantBackupMetadata): String =
-            "${tenantTable.backupName}:${tenantTable.tenantTable.tenantName}:${tenantTable.tenantTable.virtualTableName}"
+            "${tenantTable.s3BucketName}:${tenantTable.backupName}:${tenantTable.tenantTable.tenantName}:${tenantTable.tenantTable.virtualTableName}"
 
     private fun getBackupDetails(mtBackupMetadata: MtBackupMetadata): BackupDetails = BackupDetails()
             .withBackupName(mtBackupMetadata.mtBackupName)
-            .withBackupArn(mtBackupMetadata.mtBackupName)
+            .withBackupArn(mtBackupMetadata.s3BucketName + ":" + mtBackupMetadata.mtBackupName)
             .withBackupCreationDateTime(Date(mtBackupMetadata.creationTime))
             .withBackupStatus(getBackupStatus(mtBackupMetadata.status))
 
