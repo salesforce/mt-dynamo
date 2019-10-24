@@ -36,7 +36,7 @@ internal class MtBackupManagerTest {
                 fakeDate)
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
-        assertEquals("s3-bucket:${backupId}", describeBackupResult.backupDescription.backupDetails.backupArn)
+        assertEquals("s3-bucket:$backupId", describeBackupResult.backupDescription.backupDetails.backupArn)
         assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupName)
         assertEquals(Date(fakeDate), describeBackupResult.backupDescription.backupDetails.backupCreationDateTime)
     }
