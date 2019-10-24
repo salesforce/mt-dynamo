@@ -177,8 +177,10 @@ enum class StatusDetail {
     FAILED
 }
 
-data class TenantBackupMetadata(val s3BucketName: String,
-                                val tenantTable: MtAmazonDynamoDb.TenantTable,
-                                val backupName: String,
-                                val status: Status,
-                                val snapshotTime: Long)
+data class TenantBackupMetadata(
+    val s3BucketName: String,
+    val tenantTable: MtAmazonDynamoDb.TenantTable,
+    val backupName: String,
+    val status: Status,
+    val snapshotTime: Long
+)
