@@ -120,7 +120,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
     }
 
     public static Optional<String> getShardIterator(AmazonDynamoDBStreams mtDynamoDbStreams,
-                                                       AmazonDynamoDB mtDynamoDb) {
+                                                    AmazonDynamoDB mtDynamoDb) {
         return getShardIterator(mtDynamoDbStreams,
             mtDynamoDb.describeTable(TENANT_TABLE_NAME).getTable().getLatestStreamArn());
     }
@@ -187,13 +187,13 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         final MtRecord mtRecord = (MtRecord) actual;
         boolean equals = Objects.equals(expected.getContext(), mtRecord.getContext())
             && Objects.equals(expected.getTableName(), mtRecord.getTableName());
-        /**
+        /*
          * This should happen temporarily while we do not properly process delete markers, so keys, and old/new
          * image are not properly mapped over on a deleted virtual table, as we lost the ability to
          * do that mapping.
          */
         if (mtRecord.getContext() != null) {
-            equals &=  Objects.equals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys())
+            equals &= Objects.equals(expected.getDynamodb().getKeys(), actual.getDynamodb().getKeys())
                 && Objects.equals(expected.getDynamodb().getNewImage(), actual.getDynamodb().getNewImage())
                 && Objects.equals(expected.getDynamodb().getOldImage(), actual.getDynamodb().getOldImage());
         }
@@ -222,7 +222,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
     }
 
     static void assertGetRecords(MtAmazonDynamoDbStreams streams, Collection<String> iterators,
-                                         Collection<MtRecord> expected) {
+                                 Collection<MtRecord> expected) {
         Function<MtRecord, String> keyFunction =
             record -> record.getContext() + record.getTableName() + record.getDynamodb().getKeys().get(ID_ATTR_NAME)
                 .getS();
