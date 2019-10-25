@@ -66,11 +66,11 @@ open class MtBackupTableSnapshotter {
         do {
             backupStatus = snapshotRequest.amazonDynamoDb.describeBackup(
                     DescribeBackupRequest().withBackupArn(backupResult.backupDetails.backupArn))
-            if (!backupStatus.backupDescription.backupDetails.backupStatus.equals(BackupStatus.CREATING)) {
+            if (backupStatus.backupDescription.backupDetails.backupStatus != BackupStatus.CREATING.toString()) {
                 Thread.sleep(1000L)
             }
-        } while (backupStatus.backupDescription.backupDetails.backupStatus.equals(BackupStatus.CREATING))
-        if (backupStatus.backupDescription.backupDetails.backupStatus.equals(BackupStatus.DELETED)) {
+        } while (backupStatus.backupDescription.backupDetails.backupStatus == BackupStatus.CREATING.toString())
+        if (backupStatus.backupDescription.backupDetails.backupStatus == BackupStatus.DELETED.toString()) {
             throw MtBackupException("Error while snapshotting ${snapshotRequest.sourceTableName}, " +
                     "snapshot backup marked DELETED")
         }
