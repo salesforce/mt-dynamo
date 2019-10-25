@@ -5,13 +5,19 @@
  */
 package com.salesforce.dynamodbv2.mt.backups
 
-import com.google.gson.*
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonParseException
+import com.google.gson.JsonPrimitive
+import com.google.gson.JsonSerializationContext
+import com.google.gson.JsonSerializer
 import java.lang.reflect.Type
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.Base64
 
 /**
- * This class was [shamelessly] plagiarized from
+ * This class was (shamelessly) plagiarized from
  * <pre>https://github.com/oktolab/gson-utils/blob/master/src/main/java/br/com/oktolab/gson/adapter/
  * GsonByteBufferTypeAdapter.java</pre>. It gives GSON the ability to serialize and deserialize byte buffers, which
  * are used extensively by the object service to compact primary keys into binary format. In order to support taking

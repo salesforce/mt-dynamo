@@ -29,7 +29,12 @@ import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.Lists
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
-import com.salesforce.dynamodbv2.mt.backups.*
+import com.salesforce.dynamodbv2.mt.backups.MtBackupException
+import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
+import com.salesforce.dynamodbv2.mt.backups.MtBackupTableSnapshotter
+import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter
+import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder
@@ -127,18 +132,19 @@ internal class MtSharedTableBackupManagerS3It {
         createBackup(backupName)
         // now try restoring backed up data to new target table and validate data appears on target
         val tenantTableBackups = MT_CONTEXT.withContext(
-                    tenantTable.tenantName,
-                    Supplier<ListBackupsResult> { sharedTableBinaryHashKey!!
-                        .listBackups(ListBackupsRequest()
-                            .withTableName(tenantTable.virtualTableName))
-                    })
+                tenantTable.tenantName,
+                Supplier<ListBackupsResult> {
+                    sharedTableBinaryHashKey!!
+                            .listBackups(ListBackupsRequest()
+                                    .withTableName(tenantTable.virtualTableName))
+                })
         assertEquals(1, tenantTableBackups.backupSummaries.size)
         val backupArn = tenantTableBackups.backupSummaries[0].backupArn
         MT_CONTEXT.withContext(null) {
             try {
                 sharedTableBinaryHashKey!!.restoreTableFromBackup(RestoreTableFromBackupRequest()
-                    .withTargetTableName("table-copy")
-                    .withBackupArn(backupArn))
+                        .withTargetTableName("table-copy")
+                        .withBackupArn(backupArn))
                 fail("Should not reach here") as Unit
             } catch (e: MtBackupException) {
                 assertTrue(e.message!!.contains("Cannot do restore of backup without tenant specifier"))
@@ -156,7 +162,7 @@ internal class MtSharedTableBackupManagerS3It {
                 .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.B))
                 .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
                 .withProvisionedThroughput(1L, 1L).build()
-        MtSharedTableBackupManagerS3It.MT_CONTEXT.withContext(tenantTable.tenantName) {
+        MT_CONTEXT.withContext(tenantTable.tenantName) {
             sharedTableBinaryHashKey!!.createTable(createdTableRequest)
             sharedTableBinaryHashKey!!.putItem(PutItemRequest(tenantTable.virtualTableName,
                     ImmutableMap.of(HASH_KEY_FIELD, AttributeValue().withB(stringToByteBuffer("row1")), "value", AttributeValue("1"))))
