@@ -672,9 +672,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public DescribeBackupResult describeBackup(DescribeBackupRequest describeBackupRequest) {
         if (backupManager.isPresent()) {
             if (getMtContext().getContextOpt().isPresent()) {
-                // tenant specific descibe backup
+                // tenant specific describe backup
                 TenantTableBackupMetadata tenantBackupMetadata = backupManager.get()
-                        .getTenantTableBackupFromArn(describeBackupRequest.getBackupArn());
+                    .getTenantTableBackupFromArn(describeBackupRequest.getBackupArn());
                 TenantBackupMetadata backupMetadata =
                     backupManager.get().getTenantTableBackup(tenantBackupMetadata.getBackupName(),
                         new TenantTable(
@@ -683,7 +683,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                     return MtBackupAwsAdaptorKt.getBackupAdaptorSingleton().getDescribeBackupResult(backupMetadata);
                 } else {
                     throw new BackupNotFoundException("No backup with arn "
-                       + describeBackupRequest.getBackupArn() + " found");
+                        + describeBackupRequest.getBackupArn() + " found");
                 }
             } else {
                 //multi tenant backup describe

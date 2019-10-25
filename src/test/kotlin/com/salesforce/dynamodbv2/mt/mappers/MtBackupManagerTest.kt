@@ -11,7 +11,12 @@ import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.s3.AmazonS3
 import com.google.common.collect.ImmutableMap
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
-import com.salesforce.dynamodbv2.mt.backups.*
+import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
+import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter
+import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
 import org.junit.jupiter.api.Assertions.assertEquals
