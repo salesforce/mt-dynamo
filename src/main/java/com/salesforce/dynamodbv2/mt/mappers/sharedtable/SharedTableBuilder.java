@@ -342,7 +342,7 @@ public class SharedTableBuilder implements TableBuilder {
             clock,
             tableMappingCache,
             meterRegistry,
-            Optional.ofNullable(backupManagerBuilder),
+            Optional.ofNullable(backupManagerBuilder).map(b -> b.withClock(clock)),
             scanTenantKey,
             scanVirtualTableKey,
             backupTablePrefix);
