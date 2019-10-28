@@ -69,7 +69,7 @@ open class MtSharedTableBackupManager(
     val s3BucketName: String,
     val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
     val tableSnapshotter: MtBackupTableSnapshotter,
-    val clock : Clock
+    val clock: Clock
 ) : MtBackupManager {
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
@@ -519,12 +519,12 @@ open class MtSharedTableBackupManager(
 data class TenantTableRow(val attributeMap: Map<String, AttributeValue>)
 
 data class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String, val tableSnapshotter: MtBackupTableSnapshotter) {
-    var clock : Clock = Clock.systemUTC()
+    var clock: Clock = Clock.systemUTC()
     fun build(sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable): MtSharedTableBackupManager {
         return MtSharedTableBackupManager(s3, s3BucketName, sharedTableMtDynamo, tableSnapshotter, clock)
     }
 
-    fun withClock(clock : Clock) : MtSharedTableBackupManagerBuilder {
+    fun withClock(clock: Clock): MtSharedTableBackupManagerBuilder {
         this.clock = clock
         return this
     }

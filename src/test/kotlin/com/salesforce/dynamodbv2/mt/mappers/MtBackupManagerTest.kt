@@ -123,19 +123,6 @@ internal class MtBackupManagerTest {
             } catch (ex: IllegalArgumentException) {
                 assertTrue(ex.message!!.contains("Listing backups by table name unsupported for multitenant backups"))
             }
-
-            try {
-                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date()))
-                fail("Should have failed trying to list backups with time ranges") as Unit
-            } catch (ex: IllegalArgumentException) {
-                assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
-            }
-            try {
-                sharedTableBinaryHashKey.listBackups(ListBackupsRequest().withTimeRangeUpperBound(Date()))
-                fail("Should have failed trying to list backups with time ranges") as Unit
-            } catch (ex: IllegalArgumentException) {
-                assertTrue(ex.message!!.contains("Listing backups filtered by time range unsupported"))
-            }
         }
     }
 }

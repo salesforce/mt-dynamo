@@ -287,27 +287,25 @@ internal class MtSharedTableBackupManagerS3It {
 
     @Test
     fun testListTenantBackupsWithBounds() {
-        val clock : Clock = mock(Clock::class.java)
+        val clock: Clock = mock(Clock::class.java)
         val now = System.currentTimeMillis()
         Mockito.`when`(clock.millis()).thenReturn(now)
 
-        val numBackups = 3
+        val numBackups = 1
         val firstBatchIds = createOnlyBackupMetadataList("testListBackups_day_one", numBackups, ImmutableList.of(), clock)
         Mockito.`when`(clock.millis()).thenReturn(now + TimeUnit.DAYS.toMillis(1))
         val firstBatch = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now)))
         assertEquals(numBackups, firstBatch.backupSummaries.size)
         assertEquals(firstBatchIds, firstBatch.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
-        val secondBatchIds = createOnlyBackupMetadataList("testListBackups_day_two", 3, ImmutableList.of(), clock)
+        val secondBatchIds = createOnlyBackupMetadataList("testListBackups_day_two", numBackups, ImmutableList.of(), clock)
         val allBackups = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now)))
         assertEquals(numBackups * 2, allBackups.backupSummaries.size)
         val secondBatch = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now + 1L)))
         assertEquals(secondBatchIds, secondBatch.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
         val firstBatchFiltered = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeUpperBound(Date(now + 1L)))
         assertEquals(firstBatch, firstBatchFiltered)
-
         assertTrue(backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now + 1L)).withTimeRangeUpperBound(Date(now + 10L))).backupSummaries.isEmpty())
     }
-
 
     @Test
     fun testListTenantBackups_empty() {
@@ -345,8 +343,12 @@ internal class MtSharedTableBackupManagerS3It {
     /**
      * Create only backup metadata list used to validate list backup tests, and return List of backup IDs created.
      */
-    private fun createOnlyBackupMetadataList(backupPrefix: String, numBackups: Int, tenantTableMetadataList: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of(),
-                                             clock : Clock = Clock.systemUTC()): ArrayList<String> {
+    private fun createOnlyBackupMetadataList(
+        backupPrefix: String,
+        numBackups: Int,
+        tenantTableMetadataList: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of(),
+        clock: Clock = Clock.systemUTC()
+    ): ArrayList<String> {
         val ret = Lists.newArrayList<String>()
         backupManager =
                 object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!,
