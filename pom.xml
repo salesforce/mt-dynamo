@@ -21,7 +21,7 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <junit.version>5.5.2</junit.version>
-        <aws.sdk.version>1.11.654</aws.sdk.version>
+        <aws.sdk.version>1.11.661</aws.sdk.version>
         <skipITs>true</skipITs>
         <kotlin.version>1.3.50</kotlin.version>
         <spotless-maven-plugin.version>1.25.1</spotless-maven-plugin.version>
@@ -133,7 +133,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>dynalite</artifactId>
-            <version>1.12.2</version>
+            <version>1.12.3</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -292,7 +292,7 @@
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>8.25</version>
+                        <version>8.26</version>
                     </dependency>
                 </dependencies>
                 <executions>

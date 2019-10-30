@@ -18,6 +18,10 @@ import org.antlr.v4.runtime.Token;
 
 class MappingUtils {
 
+    static Set<String> getFieldPlaceholders(String expression) {
+        return getTokensOfType(expression, ExpressionsLexer.FIELD_PLACEHOLDER);
+    }
+
     static Set<String> getValuePlaceholders(String expression) {
         return getTokensOfType(expression, ExpressionsLexer.VALUE_PLACEHOLDER);
     }

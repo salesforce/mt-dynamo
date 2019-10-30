@@ -65,7 +65,7 @@ public class DefaultTestSetup implements TestSetup {
     public static final String TABLE3 = "Table3"; // has hk, rk(S), GSI and LSI
     public static final String TABLE4 = "Table4"; // has hk, rk(N), GSI and LSI
     public static final String TABLE5 = "Table5"; // has hk, rk(S), GSI whose HK field is the table's RK field, no LSI
-    public static final String[] ALL_TABLES = {TABLE1, TABLE2, TABLE3, TABLE4, TABLE5};
+    public static final String[] ALL_TABLES = { TABLE1, TABLE2, TABLE3, TABLE4, TABLE5 };
     public static final String[] NO_TABLES = {};
 
     private final Set<String> tableNames;
@@ -84,9 +84,9 @@ public class DefaultTestSetup implements TestSetup {
                 new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
                     .createTableIfNotExists(createTableRequest, getPollInterval());
                 setupTableData(testArgument.getAmazonDynamoDb(),
-                               testArgument.getHashKeyAttrType(),
-                               org,
-                               createTableRequest);
+                    testArgument.getHashKeyAttrType(),
+                    org,
+                    createTableRequest);
             });
         });
     }
@@ -103,15 +103,15 @@ public class DefaultTestSetup implements TestSetup {
             // (hk1, {no rk}, table-and-org-specific-field-value1)
             // (hk2, {no rk}, table-and-org-specific-field-value2)
             amazonDynamoDb.putItem(
-                    new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                    .someField(S, SOME_FIELD_VALUE + table + org)
-                                    .build()));
+                new PutItemRequest().withTableName(table)
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+                        .someField(S, SOME_FIELD_VALUE + table + org)
+                        .build()));
             amazonDynamoDb.putItem(
-                    new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_OTHER_VALUE)
-                                    .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + table + org)
-                                    .build()));
+                new PutItemRequest().withTableName(table)
+                    .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_OTHER_VALUE)
+                        .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + table + org)
+                        .build()));
         } else { // there is a range key
             // (hk-rk tables) add two rows:
             // (hk1, rk1, table-and-org-specific-field-value1)
@@ -121,20 +121,10 @@ public class DefaultTestSetup implements TestSetup {
                 case S:
                     amazonDynamoDb.putItem(
                         new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_FIELD_VALUE + table + org)
-                                .rangeKey(S, TestSupport.RANGE_KEY_S_VALUE)
-                                .build()));
+                            .withItem(getSimpleItemWithStringRk(hashKeyAttrType, table, org).build()));
                     amazonDynamoDb.putItem(
                         new PutItemRequest().withTableName(table)
-                            .withItem(ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
-                                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                                .indexField(S, INDEX_FIELD_VALUE)
-                                .gsiHkField(S, GSI_HK_FIELD_VALUE)
-                                .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
-                                .gsi2RkField(N, GSI2_RK_FIELD_VALUE)
-                                .build()));
+                            .withItem(getAllIndexFieldsItemWithStringRk(hashKeyAttrType, table, org).build()));
                     break;
                 case N:
                     IntStream.rangeClosed(RANGE_KEY_N_MIN, RANGE_KEY_N_MAX).forEach(i -> amazonDynamoDb
@@ -149,6 +139,23 @@ public class DefaultTestSetup implements TestSetup {
                         + " encountered");
             }
         }
+    }
+
+    public static ItemBuilder getSimpleItemWithStringRk(ScalarAttributeType hashKeyAttrType, String table, String org) {
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+            .someField(S, SOME_FIELD_VALUE + table + org)
+            .rangeKey(S, TestSupport.RANGE_KEY_S_VALUE);
+    }
+
+    public static ItemBuilder getAllIndexFieldsItemWithStringRk(ScalarAttributeType hashKeyAttrType, String table,
+                                                                String org) {
+        return ItemBuilder.builder(hashKeyAttrType, HASH_KEY_VALUE)
+            .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
+            .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+            .indexField(S, INDEX_FIELD_VALUE)
+            .gsiHkField(S, GSI_HK_FIELD_VALUE)
+            .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
+            .gsi2RkField(N, GSI2_RK_FIELD_VALUE);
     }
 
     protected MtAmazonDynamoDbContextProvider getMtContext() {

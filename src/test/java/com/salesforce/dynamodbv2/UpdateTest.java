@@ -2,9 +2,11 @@ package com.salesforce.dynamodbv2;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.AmazonDynamoDbStrategy.HashPartitioning;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
@@ -38,7 +40,9 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
+import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,12 +59,12 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void update(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                        HASH_KEY_VALUE)
-                    .build();
+                HASH_KEY_VALUE)
+                .build();
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
@@ -70,8 +74,8 @@ class UpdateTest {
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
@@ -84,7 +88,7 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updatePrimaryKeyFieldFails(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -108,7 +112,7 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateSetFieldMultipleTimesFails(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -132,13 +136,13 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateConditionalSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .build())
+                    .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#someField = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -147,8 +151,8 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
@@ -159,13 +163,13 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateConditionalOnHkSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .build())
+                    .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#hk = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -175,8 +179,8 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
@@ -187,7 +191,7 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateConditionalOnHkSuccessWithLiterals(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
@@ -214,14 +218,14 @@ class UpdateTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateConditionalOnGsiRkSuccess_usePlaceholder(TestArgument testArgument) {
         runUpdateConditionalOnGsiRkTest(testArgument, true);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateConditionalOnGsiRkSuccess_useLiteral(TestArgument testArgument) {
         runUpdateConditionalOnGsiRkTest(testArgument, false);
     }
@@ -233,26 +237,30 @@ class UpdateTest {
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .rangeKey(S, RANGE_KEY_OTHER_S_VALUE).build())
                 .addExpressionAttributeValuesEntry(
-                    ":newValue", createStringAttribute(INDEX_FIELD_VALUE + TABLE3 + org + "Updated"))
+                    ":hkValue", createAttributeValue(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated"))
                 .addExpressionAttributeValuesEntry(
-                    ":currentValue", createStringAttribute(INDEX_FIELD_VALUE));
+                    ":rkValue", createAttributeValue(N, GSI2_RK_FIELD_VALUE + "999"))
+                .addExpressionAttributeValuesEntry(
+                    ":currentValue", createAttributeValue(N, GSI2_RK_FIELD_VALUE));
             if (usePlaceHolder) {
-                updateItemRequest.withUpdateExpression("set #indexField = :newValue")
-                    .withConditionExpression("#indexField = :currentValue")
-                    .addExpressionAttributeNamesEntry("#indexField", INDEX_FIELD);
+                updateItemRequest.withUpdateExpression("set #hkField = :hkValue, #rkField = :rkValue")
+                    .withConditionExpression("#rkField = :currentValue")
+                    .addExpressionAttributeNamesEntry("#hkField", GSI2_HK_FIELD)
+                    .addExpressionAttributeNamesEntry("#rkField", GSI2_RK_FIELD);
             } else {
-                updateItemRequest.withUpdateExpression("set " + INDEX_FIELD + " = :newValue")
-                    .withConditionExpression(INDEX_FIELD + " = :currentValue");
+                updateItemRequest.withUpdateExpression("set " + GSI2_HK_FIELD + " = :hkValue, "
+                    + GSI2_RK_FIELD + " = :rkValue")
+                    .withConditionExpression(GSI2_RK_FIELD + " = :currentValue");
             }
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
 
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
                     .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .indexField(S, INDEX_FIELD_VALUE)
                     .gsiHkField(S, GSI_HK_FIELD_VALUE)
-                    .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
-                    .gsi2RkField(N, GSI2_RK_FIELD_VALUE)
+                    .gsi2HkField(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "999")
                     .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
@@ -264,14 +272,14 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateConditionalFail(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE1)
                     .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .build())
+                        .build())
                     .withUpdateExpression("set #name = :newValue")
                     .withConditionExpression("#name = :currentValue")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
@@ -283,8 +291,8 @@ class UpdateTest {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
                     HASH_KEY_VALUE,
@@ -295,41 +303,54 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateHkRkTable(TestArgument testArgument) {
-        runUpdateHkRkTableTest(testArgument, TABLE3);
+        runUpdateHkRkTableTest(testArgument, TABLE3, ImmutableMap.of(
+            GSI_HK_FIELD, createStringAttribute(GSI_HK_FIELD_VALUE + "Updated")));
     }
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void updateHkRkTableWithTableRkInGsi(TestArgument testArgument) {
-        runUpdateHkRkTableTest(testArgument, TABLE5);
+        runUpdateHkRkTableTest(testArgument, TABLE5, ImmutableMap.of(
+            GSI_HK_FIELD, createStringAttribute(GSI_HK_FIELD_VALUE + "Updated"),
+            INDEX_FIELD, createStringAttribute(INDEX_FIELD_VALUE + "Updated"),
+            GSI2_RK_FIELD, createAttributeValue(N, GSI2_RK_FIELD_VALUE + "999")));
     }
 
-    private void runUpdateHkRkTableTest(TestArgument testArgument, String tableName) {
+    private void runUpdateHkRkTableTest(TestArgument testArgument, String tableName,
+                                        Map<String, AttributeValue> gsiFieldUpdates) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
                 .rangeKey(S, RANGE_KEY_S_VALUE)
                 .build();
 
+            Map<String, AttributeValue> fieldUpdates = new HashMap<>(gsiFieldUpdates);
+            fieldUpdates.put(SOME_FIELD, createStringAttribute(SOME_FIELD_VALUE + tableName + org + "Updated"));
+
+            List<String> setClauses = new ArrayList<>(fieldUpdates.size());
+            Map<String, AttributeValue> valuePlaceholders = new HashMap<>();
+            fieldUpdates.forEach((field, value) -> {
+                String placeholder = ":" + field + "Value";
+                valuePlaceholders.put(placeholder, value);
+                setClauses.add(field + " = " + placeholder);
+            });
+            String updateExpression = "SET " + String.join(", ", setClauses);
+
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(tableName)
                 .withKey(updateItemKey)
-                .withUpdateExpression("set #indexField = :indexValue, #someField = :someValue")
-                .withExpressionAttributeNames(ImmutableMap.of(
-                    "#indexField", INDEX_FIELD,
-                    "#someField", SOME_FIELD))
-                .withExpressionAttributeValues(ImmutableMap.of(
-                    ":indexValue", createStringAttribute(INDEX_FIELD_VALUE + tableName + org + "Updated"),
-                    ":someValue", createStringAttribute(SOME_FIELD_VALUE + tableName + org + "Updated")));
+                .withUpdateExpression(updateExpression)
+                .withExpressionAttributeValues(valuePlaceholders);
             testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_FIELD_VALUE + tableName + org + "Updated")
-                    .indexField(S, INDEX_FIELD_VALUE + tableName + org + "Updated")
-                    .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build(),
+
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getSimpleItemWithStringRk(
+                testArgument.getHashKeyAttrType(), tableName, org)
+                .putAll(fieldUpdates)
+                .build();
+            assertEquals(expectedItem,
                 getItem(testArgument.getAmazonDynamoDb(),
                     tableName,
                     HASH_KEY_VALUE,
@@ -342,7 +363,7 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateGsiFieldAndQueryGsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String tableName = TABLE3;
@@ -389,8 +410,13 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void updateFieldInMultipleGsis(TestArgument testArgument) {
+        // skip if using hash partitioning, which doesn't allow updating only 1 but not all fields of a secondary index
+        if (testArgument.getAmazonDynamoDbStrategy() == HashPartitioning) {
+            return;
+        }
+
         testArgument.forEachOrgContext(org -> {
             String tableName = TABLE5;
 
@@ -463,14 +489,14 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateConditionalSuccessHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .rangeKey(S, RANGE_KEY_S_VALUE)
-                        .build())
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#someField = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -479,9 +505,9 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                .rangeKey(S, RANGE_KEY_S_VALUE)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
@@ -492,14 +518,14 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateConditionalOnHkRkSuccessHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE3)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                        .rangeKey(S, RANGE_KEY_S_VALUE)
-                        .build())
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build())
                 .withUpdateExpression("set #someField = :newValue")
                 .withConditionExpression("#hk = :currentHkValue and #rk = :currentRkValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
@@ -511,9 +537,9 @@ class UpdateTest {
                 .addExpressionAttributeValuesEntry(":newValue",
                     createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
-                .rangeKey(S, RANGE_KEY_S_VALUE)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
@@ -524,15 +550,15 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateConditionalFailHkRkTable(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                     .withTableName(TABLE3)
                     .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                            .rangeKey(S, RANGE_KEY_S_VALUE)
-                            .build())
+                        .rangeKey(S, RANGE_KEY_S_VALUE)
+                        .build())
                     .withUpdateExpression("set #name = :newValue")
                     .withConditionExpression("#name = :currentValue")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
@@ -544,9 +570,9 @@ class UpdateTest {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
             }
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
-                .rangeKey(S, RANGE_KEY_S_VALUE)
-                .build(),
+                    .someField(S, SOME_FIELD_VALUE + TABLE3 + org)
+                    .rangeKey(S, RANGE_KEY_S_VALUE)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,
@@ -557,7 +583,7 @@ class UpdateTest {
 
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void attributeUpdatesNotSupportedInSharedTable(TestArgument testArgument) {
         if (testArgument.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable) {
             try {
@@ -583,7 +609,7 @@ class UpdateTest {
      */
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateWithoutUpdateExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
@@ -605,7 +631,7 @@ class UpdateTest {
      */
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateNewKeyWithoutUpdateExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -632,7 +658,7 @@ class UpdateTest {
      */
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void updateNewKey(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> key = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)

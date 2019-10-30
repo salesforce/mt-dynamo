@@ -61,8 +61,7 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "SET #field1 = :value1",
-        "sEt CreatedBy = if_not_exists(CreatedBy, :value)",
-        "set Score = :value1, CreatedBy = if_not_exists(CreatedBy, :value2)"
+        "sEt Score = :value1, CreatedBy = :value2"
     })
     void testParseUpdateExpression(String expression) {
         // our grammar
@@ -83,7 +82,7 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "#hk = :hk",
-        "HashKey = :hk AND RangeKey > :rk",
+        "((HashKey = :hk) AND (RangeKey > :rk))",
         "HashKey = :hk AND #rk BETWEEN :value1 AND :value2"
     })
     void testParseKeyConditionExpression(String expression) {
@@ -93,6 +92,13 @@ class ExpressionsTest {
         KeyConditionExpressionContext context = parser.keyConditionExpression();
 
         System.out.println("Our tree: " + TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames)));
+
+        // dynamodb local grammar (they don't have a separate parser for key condition expressions)
+        ANTLRErrorListener listener = new ExpressionErrorListener(new LocalDBEnv());
+        ParseTree tree = DynamoDbExpressionParser.parseCondition(expression, listener);
+
+        System.out.println("Their tree: "
+            + TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames)));
     }
 
     @ParameterizedTest
@@ -124,23 +130,23 @@ class ExpressionsTest {
         /**
          * Platform dependent end-of-line marker.
          */
-        static final String Eol = System.lineSeparator();
+        static final String EOL = System.lineSeparator();
         /**
          * The literal indent char(s) used for pretty-printing.
          */
-        static final String Indents = "  ";
+        static final String INDENTS = "  ";
         private static int level;
 
         private TreeUtils() {
         }
 
         /**
-         * Pretty print out a whole tree. {@link #getNodeText} is used on the node payloads to get the text
-         * for the nodes. (Derived from Trees.toStringTree(....))
+         * Pretty print a whole tree. {@link Trees#getNodeText} is used on the node payloads to get the text for the
+         * nodes. (Derived from {@link Trees#toStringTree}.)
          */
         static String toPrettyTree(final Tree t, final List<String> ruleNames) {
             level = 0;
-            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", Eol);
+            return process(t, ruleNames).replaceAll("(?m)^\\s+$", "").replaceAll("\\r?\\n\\r?\\n", EOL);
         }
 
         private static String process(final Tree t, final List<String> ruleNames) {
@@ -151,7 +157,7 @@ class ExpressionsTest {
             sb.append(lead(level));
             level++;
             String s = Utils.escapeWhitespace(Trees.getNodeText(t, ruleNames), false);
-            sb.append(s + ' ');
+            sb.append(s).append(' ');
             for (int i = 0; i < t.getChildCount(); i++) {
                 sb.append(process(t.getChild(i), ruleNames));
             }
@@ -163,10 +169,8 @@ class ExpressionsTest {
         private static String lead(int level) {
             StringBuilder sb = new StringBuilder();
             if (level > 0) {
-                sb.append(Eol);
-                for (int cnt = 0; cnt < level; cnt++) {
-                    sb.append(Indents);
-                }
+                sb.append(EOL);
+                sb.append(INDENTS.repeat(level));
             }
             return sb.toString();
         }

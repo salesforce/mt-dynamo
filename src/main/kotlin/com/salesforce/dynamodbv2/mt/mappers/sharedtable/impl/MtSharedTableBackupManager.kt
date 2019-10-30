@@ -22,6 +22,7 @@ import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
 import com.google.common.base.Preconditions
+import com.google.common.base.Strings
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
 import com.google.common.collect.Lists
@@ -35,6 +36,7 @@ import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import com.salesforce.dynamodbv2.mt.backups.GsonByteBufferTypeAdapter
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
@@ -51,6 +53,7 @@ import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.util.ArrayList
 import java.util.HashMap
@@ -87,7 +90,10 @@ open class MtSharedTableBackupManager(
                 override fun shouldSkipField(field: FieldAttributes): Boolean {
                     return false
                 }
-            }).enableComplexMapKeySerialization().create()
+            })
+            .enableComplexMapKeySerialization()
+            .registerTypeAdapter(ByteBuffer::class.java, GsonByteBufferTypeAdapter())
+            .create()
     val ignoreClassesOfCreateTableRequest: Set<String> = ImmutableSet.of(
             "com.amazonaws.RequestClientOptions",
             "com.amazonaws.event.ProgressListener"
@@ -105,12 +111,13 @@ open class MtSharedTableBackupManager(
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
                     .map { metadata ->
                         TenantTableBackupMetadata(
+                                s3BucketName,
                                 createBackupRequest.backupName,
                                 metadata.tenantName,
                                 metadata.createTableRequest.tableName)
                     }
                     .associateBy({ it }, { 0L })
-            val newMetadata = MtBackupMetadata(createBackupRequest.backupName,
+            val newMetadata = MtBackupMetadata(s3BucketName, createBackupRequest.backupName,
                     Status.IN_PROGRESS, tenantTableCounts, startTime)
 
             commitBackupMetadata(newMetadata)
@@ -184,7 +191,7 @@ open class MtSharedTableBackupManager(
             throw MtBackupException("Cannot mark $inProgressBackupMetadata backup complete.")
         }
 
-        val completedBackupMetadata = MtBackupMetadata(inProgressBackupMetadata.mtBackupName,
+        val completedBackupMetadata = MtBackupMetadata(s3BucketName, inProgressBackupMetadata.mtBackupName,
                 Status.COMPLETE,
                 inProgressBackupMetadata.tenantTables,
                 inProgressBackupMetadata.creationTime)
@@ -266,24 +273,32 @@ open class MtSharedTableBackupManager(
         Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
-        val startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
-        else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
-
-        val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
-                ListObjectsV2Request()
-                        .withMaxKeys(listBackupRequest.limit)
-                        .withDelimiter("/")
-                        .withBucketName(s3BucketName)
-                        .withStartAfter(startAfter)
-                        .withPrefix(backupMetadataDir + "/"))
-        for (o in listBucketResult.objectSummaries) {
-            val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
-            ret.add(backup)
-        }
+        var startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
+            else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
         var lastEvaluatedBackupArn: String? = null
-        if (listBucketResult.isTruncated) {
-            lastEvaluatedBackupArn = Iterables.getLast(ret).backupArn
-        }
+        var continuationToken: String? = null
+        val limit = if (listBackupRequest.limit == null) 10 else listBackupRequest.limit
+        do {
+            val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
+                    ListObjectsV2Request()
+                            .withMaxKeys(limit)
+                            .withDelimiter("/")
+                            .withContinuationToken(continuationToken)
+                            .withBucketName(s3BucketName)
+                            .withStartAfter(startAfter)
+                            .withPrefix(backupMetadataDir + "/"))
+            for (o in listBucketResult.objectSummaries) {
+                if (ret.size < limit) {
+                    val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
+                    ret.add(backup)
+                }
+            }
+            continuationToken = listBucketResult.nextContinuationToken
+            if (ret.size == limit) {
+                lastEvaluatedBackupArn = Iterables.getLast(ret).backupArn
+            }
+        } while (!Strings.isNullOrEmpty(continuationToken) && ret.size < limit)
+
         return ListBackupsResult().withBackupSummaries(ret)
                 .withLastEvaluatedBackupArn(lastEvaluatedBackupArn)
     }
@@ -303,7 +318,7 @@ open class MtSharedTableBackupManager(
                 val tenantTableBackup = getTenantTableBackup(backup.backupName, TenantTable(listBackupRequest.tableName, tenantId))
                 if (tenantTableBackup != null) {
                     val tenantTableBackupArn = getBackupArnForTenantTableBackup(
-                            TenantTableBackupMetadata(tenantTableBackup.backupName, tenantTableBackup.tenantTable.tenantName, tenantTableBackup.tenantTable.virtualTableName))
+                            TenantTableBackupMetadata(s3BucketName, tenantTableBackup.backupName, tenantTableBackup.tenantTable.tenantName, tenantTableBackup.tenantTable.virtualTableName))
                     ret.add(mtBackupAwsAdaptor.getBackupSummary(tenantTableBackup, tenantTableBackupArn))
                     if (ret.size == listBackupRequest.limit) break
                 }
@@ -332,9 +347,12 @@ open class MtSharedTableBackupManager(
 
     override fun getTenantTableBackup(backupName: String, tenantTable: TenantTable): TenantBackupMetadata? {
         val mtBackup = getBackup(backupName)
-        val tenantTableBackupMetadata = TenantTableBackupMetadata(backupName, tenantTable.tenantName, tenantTable.virtualTableName)
-        if (mtBackup != null && mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
-            return TenantBackupMetadata(tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
+
+        if (mtBackup != null) {
+            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup!!.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
+            if (mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
+                return TenantBackupMetadata(mtBackup.s3BucketName, tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
+            }
         }
         return null
     }
@@ -365,18 +383,9 @@ open class MtSharedTableBackupManager(
         return ret
     }
 
-    override fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata {
-        if (!isTenantTableArn(backupArn)) {
-            throw IllegalArgumentException("$backupArn does not include tenant-table specifier.")
-        }
-        val tenantTableParts = backupArn.split(':')
-        return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2])
-    }
+    override fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata = mtBackupAwsAdaptor.getTenantTableBackupFromArn(backupArn)
 
-    private fun isTenantTableArn(backupArn: String): Boolean = backupArn.split(':').size == 3
-
-    override fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String =
-            "${tenantTable.backupName}:${tenantTable.tenantId}:${tenantTable.virtualTableName}"
+    override fun getBackupArnForTenantTableBackup(tenantTable: TenantTableBackupMetadata): String = mtBackupAwsAdaptor.getBackupArnForTenantTableBackup(tenantTable)
 
     private fun commitTenantTableMetadata(
         backupId: String,
@@ -387,8 +396,9 @@ open class MtSharedTableBackupManager(
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
             objectMetadata.contentType = "application/json"
+            val tenantTableMetadataFile = getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName))
             val putObjectReq = PutObjectRequest(s3BucketName,
-                    getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName)),
+                    tenantTableMetadataFile,
                     gson.toJson(tenantTableMetadata.createTableRequest).byteInputStream(charset),
                     objectMetadata)
             s3.putObject(putObjectReq)
@@ -453,6 +463,8 @@ open class MtSharedTableBackupManager(
                 val row = scanResult.items[i]
                 val tenant = row.get(sharedTableMtDynamo.scanTenantKey)!!.s
                 val virtualTable = row.get(sharedTableMtDynamo.scanVirtualTableKey)!!.s
+                row.remove(sharedTableMtDynamo.scanTenantKey)
+                row.remove(sharedTableMtDynamo.scanVirtualTableKey)
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
                         TenantTableRow(scanResult.items[i]))
             }
@@ -461,12 +473,12 @@ open class MtSharedTableBackupManager(
             logger.info("Flushed ${rowsPerTenant.values().size} rows for " +
                     "${rowsPerTenant.keySet().size} tenants.")
             for (tenantTable in rowsPerTenant.keySet()) {
-                val tenantTableMetadata = TenantTableBackupMetadata(tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
+                val tenantTableMetadata = TenantTableBackupMetadata(s3BucketName = s3BucketName, tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
                 tenantTables[tenantTableMetadata] = tenantTables.getOrDefault(tenantTableMetadata, 1L)
             }
         } while (scanResult.count > 0 && ++numPasses > 1)
 
-        return MtBackupMetadata(createBackupRequest.backupName, Status.IN_PROGRESS,
+        return MtBackupMetadata(s3BucketName, createBackupRequest.backupName, Status.IN_PROGRESS,
                 tenantTables)
     }
 

@@ -13,11 +13,12 @@ import com.google.common.collect.ImmutableMap
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptor
 import com.salesforce.dynamodbv2.mt.backups.MtBackupMetadata
+import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter
 import com.salesforce.dynamodbv2.mt.backups.Status
+import com.salesforce.dynamodbv2.mt.backups.TenantBackupMetadata
 import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder
-import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerS3It
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
@@ -33,13 +34,28 @@ internal class MtBackupManagerTest {
         val tenant = "tenant-1234"
         val table = "table-1234"
         val fakeDate = 10203040L
-        val backupMetadata = MtBackupMetadata(backupId,
+        val backupMetadata = MtBackupMetadata("s3-bucket",
+                backupId,
                 Status.IN_PROGRESS,
-                ImmutableMap.of(TenantTableBackupMetadata(backupId, tenant, table), 1L),
+                ImmutableMap.of(TenantTableBackupMetadata("s3-bucket", backupId, tenant, table), 1L),
                 fakeDate)
         val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
         assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
-        assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupArn)
+        assertEquals("s3-bucket:$backupId", describeBackupResult.backupDescription.backupDetails.backupArn)
+        assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupName)
+        assertEquals(Date(fakeDate), describeBackupResult.backupDescription.backupDetails.backupCreationDateTime)
+    }
+
+    @Test
+    fun testDescribeTenantBackup() {
+        val backupId = "backup-id-1234"
+        val tenant = "tenant-1234"
+        val table = "table-1234"
+        val fakeDate = 10203040L
+        val backupMetadata = TenantBackupMetadata("s3-bucket", MtAmazonDynamoDb.TenantTable(table, tenant), backupId, Status.IN_PROGRESS, fakeDate)
+        val describeBackupResult = MtBackupAwsAdaptor().getDescribeBackupResult(backupMetadata)
+        assertEquals(BackupStatus.CREATING.name, describeBackupResult.backupDescription.backupDetails.backupStatus)
+        assertEquals(MtBackupAwsAdaptor().getBackupArnForTenantTableBackup(backupMetadata), describeBackupResult.backupDescription.backupDetails.backupArn)
         assertEquals(backupId, describeBackupResult.backupDescription.backupDetails.backupName)
         assertEquals(Date(fakeDate), describeBackupResult.backupDescription.backupDetails.backupCreationDateTime)
     }
@@ -57,7 +73,7 @@ internal class MtBackupManagerTest {
         val sharedTableBinaryHashKey = SharedTableBuilder.builder()
                 .withAmazonDynamoDb(dynamo)
                 .withContext(mtContext)
-                .withBackupSupport(s3Client, "fake-bucket", MtSharedTableBackupManagerS3It.MtScanningSnapshotter())
+                .withBackupSupport(s3Client, "fake-bucket", MtScanningSnapshotter())
                 .withTruncateOnDeleteTable(true)
                 .withBinaryHashKey(true)
                 .build()
@@ -89,7 +105,7 @@ internal class MtBackupManagerTest {
         val sharedTableBinaryHashKey = SharedTableBuilder.builder()
                 .withAmazonDynamoDb(dynamo)
                 .withContext(mtContext)
-                .withBackupSupport(s3Client, "fake-bucket", MtSharedTableBackupManagerS3It.MtScanningSnapshotter())
+                .withBackupSupport(s3Client, "fake-bucket", MtScanningSnapshotter())
                 .withTruncateOnDeleteTable(true)
                 .withBinaryHashKey(true)
                 .build()

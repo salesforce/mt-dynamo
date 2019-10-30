@@ -2,44 +2,43 @@ grammar Expressions;
 
 // not supported: REMOVE, ADD, DELETE
 updateExpression
-    : SET setAction
+    : setSection EOF
     ;
 
+setSection
+    : SET setAction (COMMA setAction)*
+    ;
+
+// not supported: path = setValue + setValue, path = setValue - setValue
 setAction
-    : setFieldToValue
-    | setAction COMMA setAction
+    : path '=' setValue
     ;
 
-setFieldToValue
-    : id '=' literal
+// not supported: non-literal value, if_not_exists, list_append
+setValue
+    : literal
     ;
 
 keyConditionExpression
-    : keyConditionPart
-    | keyConditionPart AND keyConditionPart
+    : keyCondition EOF
     ;
 
-// not suppoorted: begins_with
-keyConditionPart
+// not supported: begins_with
+keyCondition
     : id comparator literal
     | id BETWEEN literal AND literal
-    | LPAREN keyConditionPart RPAREN
+    | keyCondition AND keyCondition
+    | LPAREN keyCondition RPAREN
     ;
 
 /*condition
     : operand comparator operand
     | operand BETWEEN operand AND operand
-    | operand IN LPAREN inValues RPAREN
     | function
     | condition AND condition
     | condition OR condition
     | NOT condition
     | LPAREN condition RPAREN
-    ;
-
-inValues
-    : operand
-    | inValues COMMA operand
     ;*/
 
 comparator
@@ -51,10 +50,10 @@ comparator
     | '>='
     ;
 
-operand
+/*operand
     : path
     | literal
-    ;
+    ;*/
 
 // not supported: complex paths paths containing '.' or '[n]'
 path

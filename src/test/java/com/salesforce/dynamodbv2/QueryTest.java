@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2;
 
+import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.BETWEEN;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.EQ;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GE;
 import static com.amazonaws.services.dynamodbv2.model.ComparisonOperator.GT;
@@ -56,6 +57,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
+import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -85,7 +87,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void query(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String keyConditionExpression = "#name = :value";
@@ -113,14 +115,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithKeyCondition(TestArgument testArgument) {
         runHkTableKeyConditionTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithKeyCondition_legacy(TestArgument testArgument) {
         runHkTableKeyConditionTest(testArgument, true);
     }
@@ -140,14 +142,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryHkRkWithKeyConditions(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryHkRkWithKeyConditions_legacy(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, true);
     }
@@ -202,12 +204,11 @@ class QueryTest {
 
         // RK condition: rk BETWEEN RANGE_KEY_N_MIN + 1 AND RANGE_KEY_N_MAX - 1
         // expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)
-        // TODO: random partitioning doesn't support BETWEEN yet
-        /*runHkRkTableKeyConditionTest(testArgument, useLegacy, BETWEEN,
+        runHkRkTableKeyConditionTest(testArgument, useLegacy, BETWEEN,
             ImmutableList.of(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX - 1),
             IntStream.rangeClosed(RANGE_KEY_N_MIN + 1, RANGE_KEY_N_MAX - 1),
             "RK condition: rk BETWEEN RANGE_KEY_N_MIN + 1 AND RANGE_KEY_N_MAX - 1, "
-                + "expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)");*/
+                + "expected: (hk, RANGE_KEY_N_MIN + 1), ..., (hk, RANGE_KEY_N_MAX - 1)");
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
@@ -217,7 +218,7 @@ class QueryTest {
                                               IntStream expectedValues,
                                               String errorMessage) {
         runHkRkTableKeyConditionTest(testArgument, useLegacyKeyConditions, op, comparisonValues,
-            expectedValues.mapToObj(Integer::valueOf).collect(Collectors.toSet()), errorMessage);
+            expectedValues.boxed().collect(Collectors.toSet()), errorMessage);
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
@@ -225,7 +226,7 @@ class QueryTest {
                                               IntStream expectedValues,
                                               String errorMessage) {
         runHkRkTableKeyConditionTest(testArgument, queryRequestModifier,
-            expectedValues.mapToObj(Integer::valueOf).collect(Collectors.toSet()), errorMessage);
+            expectedValues.boxed().collect(Collectors.toSet()), errorMessage);
     }
 
     private void runHkRkTableKeyConditionTest(TestArgument testArgument,
@@ -334,7 +335,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryUsingAttributeNamePlaceholders(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -352,7 +353,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     // Note: field names with '-' will fail if you use literals instead of expressionAttributeNames()
     void queryUsingAttributeNameLiterals(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
@@ -371,7 +372,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void queryWithHkValueInFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
@@ -391,7 +392,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryWithRkValueInFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             AttributeValue hkValue = createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE);
@@ -412,7 +413,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -423,17 +424,15 @@ class QueryTest {
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                         ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryHkRkWithFilterExpression_lessThanOrEqual(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -444,24 +443,22 @@ class QueryTest {
                         testArgument.getHashKeyAttrType(), HASH_KEY_VALUE),
                         ":value2", createStringAttribute(SOME_OTHER_FIELD_VALUE + TABLE3 + org)))).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryGsi(TestArgument testArgument) {
         runQueryGsiTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryGsiWithRk(TestArgument testArgument) {
         runQueryGsiTest(testArgument, true);
     }
@@ -478,17 +475,15 @@ class QueryTest {
                     .withExpressionAttributeValues(ImmutableMap.of(":value", createStringAttribute(hkValue)))
                     .withIndexName(indexName)).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .withDefaults()
-                    .build(),
-                items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void queryGsi_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String table = TABLE5;
@@ -502,33 +497,28 @@ class QueryTest {
                     .withFilterExpression(HASH_KEY_FIELD + " = :hkValue")
                     .withIndexName("testGsi_table_rk_as_index_hk")).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_OTHER_FIELD_VALUE + table + org)
-                .withDefaults()
-                .build(), items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE5, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
     void queryGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
-            Map<String, AttributeValue> secondRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
+            Map<String, AttributeValue> secondRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org)
                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE + "1")
                 .gsi2HkField(S, GSI2_HK_FIELD_VALUE)
                 .gsi2RkField(N, GSI2_RK_FIELD_VALUE + "1")
                 .build();
             testArgument.getAmazonDynamoDb().putItem(new PutItemRequest().withTableName(TABLE3).withItem(secondRecord));
 
-            Map<String, AttributeValue> firstRecord = ItemBuilder
-                .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .withDefaults()
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .build();
+            Map<String, AttributeValue> firstRecord = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
             List<Map<String, AttributeValue>> expectedRecords = ImmutableList.of(firstRecord, secondRecord);
 
             assertEquals(expectedRecords, executeQueryWithPaging(
@@ -562,7 +552,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryLsi(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             QueryRequest queryRequest = new QueryRequest().withTableName(TABLE3)
@@ -574,10 +564,9 @@ class QueryTest {
                 .withIndexName("testLsi");
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(queryRequest).getItems();
             assertEquals(1, items.size());
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                .withDefaults()
-                .build(), items.get(0));
+            Map<String, AttributeValue> expectedItem = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                testArgument.getHashKeyAttrType(), TABLE3, org).build();
+            assertEquals(expectedItem, items.get(0));
         });
     }
 
@@ -635,7 +624,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE4}, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
     void queryWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             int maxPageSize = 4;
@@ -703,8 +692,8 @@ class QueryTest {
                 .build();
             new AmazonDynamoDbAdminUtils(amazonDynamoDb).createTableIfNotExists(createTableRequest, 0);
 
-            ByteBuffer startKey = ByteBuffer.wrap(new byte[]{0, 1, 2});
-            ByteBuffer upperBound = ByteBuffer.wrap(new byte[]{0, 1, -1});
+            ByteBuffer startKey = ByteBuffer.wrap(new byte[] { 0, 1, 2 });
+            ByteBuffer upperBound = ByteBuffer.wrap(new byte[] { 0, 1, -1 });
             amazonDynamoDb.query(
                 new QueryRequest().withTableName(tableName)
                     .withKeyConditionExpression(HASH_KEY_FIELD + " = :hk AND " + RANGE_KEY_FIELD + " <= :rk")

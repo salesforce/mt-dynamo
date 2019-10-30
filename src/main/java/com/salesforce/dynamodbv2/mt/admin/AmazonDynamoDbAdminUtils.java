@@ -123,7 +123,7 @@ public class AmazonDynamoDbAdminUtils {
     private TableStatus getTableStatus(String tableName, TableStatus expectedTableStatus) throws TableInUseException {
         try {
             final TableStatus currentTableStatus = TableStatus.fromValue(describeTable(tableName).getTableStatus());
-            log.info("table=" + tableName + " is " + currentTableStatus);
+            log.debug("table=" + tableName + " is " + currentTableStatus);
 
             switch (currentTableStatus) {
                 case ACTIVE:

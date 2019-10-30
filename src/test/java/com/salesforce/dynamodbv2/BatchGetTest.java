@@ -9,7 +9,6 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
-import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.batchGetItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,6 +19,7 @@ import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
+import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.ItemBuilder;
 import java.util.Arrays;
 import java.util.List;
@@ -39,25 +39,25 @@ class BatchGetTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void batchGet(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
                 final List<String> hashKeyValues = Arrays.asList(HASH_KEY_VALUE, HASH_KEY_OTHER_VALUE);
                 final List<Optional<String>> rangeKeyValueOpts = Arrays.asList(Optional.empty(), Optional.empty());
                 final Set<Map<String, AttributeValue>> gottenItems = batchGetItem(testArgument.getHashKeyAttrType(),
-                        testArgument.getAmazonDynamoDb(),
-                        TABLE1,
-                        hashKeyValues,
-                        rangeKeyValueOpts);
+                    testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    hashKeyValues,
+                    rangeKeyValueOpts);
                 final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                            hashKeyValues.get(0))
-                        .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
-                        .build();
+                    hashKeyValues.get(0))
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .build();
                 final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                            hashKeyValues.get(1))
-                        .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
-                        .build();
+                    hashKeyValues.get(1))
+                    .someField(S, SOME_OTHER_OTHER_FIELD_VALUE + TABLE1 + org)
+                    .build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
@@ -75,7 +75,7 @@ class BatchGetTest {
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE1})
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void batchGetWithUnprocessedKeys(TestArgument testArgument) {
         testArgument.forEachOrgContext(
             org -> {
@@ -101,14 +101,14 @@ class BatchGetTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE3})
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void batchGetHkRkTable(TestArgument testArgument) {
         runBatchGetHkRkTableTest(testArgument, TABLE3);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = {TABLE5})
+    @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void batchGetHkRkTableWithPkFieldInGsi(TestArgument testArgument) {
         runBatchGetHkRkTableTest(testArgument, TABLE5);
     }
@@ -124,16 +124,10 @@ class BatchGetTest {
                     tableName,
                     hashKeyValues,
                     rangeKeyValueOpts);
-                final Map<String, AttributeValue> expectedItem0 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                    hashKeyValues.get(0))
-                    .someField(S, SOME_FIELD_VALUE + tableName + org)
-                    .rangeKey(S, RANGE_KEY_S_VALUE)
-                    .build();
-                final Map<String, AttributeValue> expectedItem1 = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
-                    hashKeyValues.get(1))
-                    .someField(S, SOME_OTHER_FIELD_VALUE + tableName + org)
-                    .withDefaults()
-                    .build();
+                final Map<String, AttributeValue> expectedItem0 = DefaultTestSetup.getSimpleItemWithStringRk(
+                    testArgument.getHashKeyAttrType(), tableName, org).build();
+                Map<String, AttributeValue> expectedItem1 = DefaultTestSetup.getAllIndexFieldsItemWithStringRk(
+                    testArgument.getHashKeyAttrType(), tableName, org).build();
                 assertEquals(ImmutableSet.of(expectedItem0, expectedItem1), gottenItems);
             });
     }
