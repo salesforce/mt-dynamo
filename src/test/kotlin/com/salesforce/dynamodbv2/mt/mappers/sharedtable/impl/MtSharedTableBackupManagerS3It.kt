@@ -50,8 +50,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
+import org.mockito.Mockito
 import java.nio.ByteBuffer
-import java.util.ArrayList
+import java.time.Clock
+import java.util.*
+import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 import java.util.stream.Collectors
 
@@ -255,24 +259,52 @@ internal class MtSharedTableBackupManagerS3It {
 
     @Test
     fun testListTenantBackups() {
-        val tenant1 = "tenant-1"
-        val tenant2 = "tenant-2"
         val table1 = "table-1"
         val table2 = "table-2"
-        val createdTableRequestBuilder = CreateTableRequestBuilder.builder()
-                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
-                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(1L, 1L)
+        val tenant1 = "tenant-1"
+        val tenant2 = "tenant-2"
         val tenantTableMetadataList = ArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
-        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant1, createTableRequest = createdTableRequestBuilder.withTableName(table1).build()))
-
+        tenantTableMetadataList.add(getCreateTableRequests(tenant1, table1))
         createOnlyBackupMetadataList("testListBackup", 3, tenantTableMetadataList)
-        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant2, createTableRequest = createdTableRequestBuilder.withTableName(table2).build()))
+        tenantTableMetadataList.add(getCreateTableRequests(tenant2, table2))
         createOnlyBackupMetadataList("testListBackup-2", 3, tenantTableMetadataList)
         val listBackupResult1: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName(table1), tenant1)
         assertEquals(6, listBackupResult1.backupSummaries.size)
         val listBackupResult2: ListBackupsResult = backupManager!!.listTenantTableBackups(ListBackupsRequest().withTableName(table2), tenant2)
         assertEquals(3, listBackupResult2.backupSummaries.size)
+    }
+
+    private fun getCreateTableRequests(tenant: String, table: String): MtTableDescriptionRepo.MtCreateTableRequest {
+        val createTableBuilder = CreateTableRequestBuilder.builder()
+                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
+                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
+                .withProvisionedThroughput(1L, 1L)
+                .withTableName(table)
+        return MtTableDescriptionRepo.MtCreateTableRequest(
+                tenantName = tenant,
+                createTableRequest = createTableBuilder.build())
+    }
+
+    @Test
+    fun testListTenantBackupsWithBounds() {
+        val clock: Clock = mock(Clock::class.java)
+        val now = System.currentTimeMillis()
+        Mockito.`when`(clock.millis()).thenReturn(now)
+
+        val numBackups = 1
+        val firstBatchIds = createOnlyBackupMetadataList("testListBackups_day_one", numBackups, ImmutableList.of(), clock)
+        Mockito.`when`(clock.millis()).thenReturn(now + TimeUnit.DAYS.toMillis(1))
+        val firstBatch = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now)))
+        assertEquals(numBackups, firstBatch.backupSummaries.size)
+        assertEquals(firstBatchIds, firstBatch.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
+        val secondBatchIds = createOnlyBackupMetadataList("testListBackups_day_two", numBackups, ImmutableList.of(), clock)
+        val allBackups = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now)))
+        assertEquals(numBackups * 2, allBackups.backupSummaries.size)
+        val secondBatch = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now + 1L)))
+        assertEquals(secondBatchIds, secondBatch.backupSummaries.stream().map { s -> s.backupName }.collect(Collectors.toList()))
+        val firstBatchFiltered = backupManager!!.listBackups(ListBackupsRequest().withTimeRangeUpperBound(Date(now + 1L)))
+        assertEquals(firstBatch, firstBatchFiltered)
+        assertTrue(backupManager!!.listBackups(ListBackupsRequest().withTimeRangeLowerBound(Date(now + 1L)).withTimeRangeUpperBound(Date(now + 10L))).backupSummaries.isEmpty())
     }
 
     @Test
@@ -286,12 +318,8 @@ internal class MtSharedTableBackupManagerS3It {
     fun testListTenantBackups_pagination() {
         val tenant = "tenant"
         val table = "table"
-        val createdTableRequestBuilder = CreateTableRequestBuilder.builder()
-                .withAttributeDefinitions(AttributeDefinition(HASH_KEY_FIELD, ScalarAttributeType.S))
-                .withKeySchema(KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH))
-                .withProvisionedThroughput(1L, 1L)
         val tenantTableMetadataList = ArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
-        tenantTableMetadataList.add(MtTableDescriptionRepo.MtCreateTableRequest(tenantName = tenant, createTableRequest = createdTableRequestBuilder.withTableName(table).build()))
+        tenantTableMetadataList.add(getCreateTableRequests(tenant, table))
         val backupIds = createOnlyBackupMetadataList("testListBackups_pagination", 7, ImmutableList.of())
         val expectedBackupIds = createOnlyBackupMetadataList("testListBackups_pagination2-", 7, tenantTableMetadataList)
         backupIds.addAll(expectedBackupIds)
@@ -315,11 +343,16 @@ internal class MtSharedTableBackupManagerS3It {
     /**
      * Create only backup metadata list used to validate list backup tests, and return List of backup IDs created.
      */
-    private fun createOnlyBackupMetadataList(backupPrefix: String, numBackups: Int, tenantTableMetadataList: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of()): ArrayList<String> {
+    private fun createOnlyBackupMetadataList(
+        backupPrefix: String,
+        numBackups: Int,
+        tenantTableMetadataList: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of(),
+        clock: Clock = Clock.systemUTC()
+    ): ArrayList<String> {
         val ret = Lists.newArrayList<String>()
         backupManager =
                 object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!,
-                        MtBackupTableSnapshotter()) {
+                        MtBackupTableSnapshotter(), clock) {
 
                     // don't actually scan and backup metadata
                     override fun backupVirtualTableMetadata(

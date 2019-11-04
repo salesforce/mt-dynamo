@@ -55,6 +55,7 @@ import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.time.Clock
 import java.util.ArrayList
 import java.util.HashMap
 import java.util.stream.Collectors
@@ -67,7 +68,8 @@ open class MtSharedTableBackupManager(
     val s3: AmazonS3,
     val s3BucketName: String,
     val sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable,
-    val tableSnapshotter: MtBackupTableSnapshotter
+    val tableSnapshotter: MtBackupTableSnapshotter,
+    val clock: Clock
 ) : MtBackupManager {
     private val logger = LoggerFactory.getLogger(MtSharedTableBackupManager::class.java)
 
@@ -106,7 +108,7 @@ open class MtSharedTableBackupManager(
         if (backup != null) {
             throw MtBackupException("Backup with that ID already exists: $backup")
         } else {
-            val startTime = System.currentTimeMillis()
+            val startTime = clock.millis()
             val virtualMetadata = backupVirtualTableMetadata(createBackupRequest)
             val tenantTableCounts: Map<TenantTableBackupMetadata, Long> = virtualMetadata
                     .map { metadata ->
@@ -128,7 +130,7 @@ open class MtSharedTableBackupManager(
     open fun backupVirtualTableMetadata(
         createBackupRequest: CreateBackupRequest
     ): List<MtTableDescriptionRepo.MtCreateTableRequest> {
-        val startTime = System.currentTimeMillis()
+        val startTime = clock.millis()
         // write out table metadata
         val startKey: TenantTable? = null
         val batchSize = 100
@@ -145,7 +147,7 @@ open class MtSharedTableBackupManager(
             tenantTableCount += listTenantMetadataResult.createTableRequests.size
         } while (listTenantMetadataResult.lastEvaluatedTable != null)
         logger.info("${createBackupRequest.backupName}: Finished generating backup metadata for " +
-                "${tenantTables.size} virtual table in ${System.currentTimeMillis() - startTime} ms")
+                "${tenantTables.size} virtual table in ${clock.millis() - startTime} ms")
         return tenantTables
     }
 
@@ -171,13 +173,13 @@ open class MtSharedTableBackupManager(
         createBackupRequest: CreateBackupRequest,
         physicalTableName: String
     ): MtBackupMetadata {
-        val startTime = System.currentTimeMillis()
+        val startTime = clock.millis()
         val backupMetadata = createBackupData(createBackupRequest, physicalTableName, sharedTableMtDynamo)
         // write out actual backup data
         commitBackupMetadata(backupMetadata)
 
         logger.info("${createBackupRequest.backupName}: Finished generating backup for " +
-                "$physicalTableName in ${System.currentTimeMillis() - startTime} ms")
+                "$physicalTableName in ${clock.millis() - startTime} ms")
         return backupMetadata
     }
 
@@ -210,7 +212,7 @@ open class MtSharedTableBackupManager(
         restoreMtBackupRequest: RestoreMtBackupRequest,
         mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
-        val startTime = System.currentTimeMillis()
+        val startTime = clock.millis()
         // restore tenant-table metadata
         val createTableReq: CreateTableRequest = getTenantTableMetadata(restoreMtBackupRequest.backupName,
                 restoreMtBackupRequest.tenantTableBackup)
@@ -232,7 +234,7 @@ open class MtSharedTableBackupManager(
             }
         }
         logger.info("${restoreMtBackupRequest.backupName}: Finished restoring ${restoreMtBackupRequest.tenantTableBackup}" +
-                " to ${restoreMtBackupRequest.newTenantTable} in ${System.currentTimeMillis() - startTime} ms")
+                " to ${restoreMtBackupRequest.newTenantTable} in ${clock.millis() - startTime} ms")
 
         return TenantRestoreMetadata(restoreMtBackupRequest.backupName,
                 Status.COMPLETE,
@@ -269,8 +271,11 @@ open class MtSharedTableBackupManager(
 
         Preconditions.checkArgument(listBackupRequest.backupType == null, "Listing backups by backupType unsupported")
         Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multitenant backups")
-        Preconditions.checkArgument(listBackupRequest.timeRangeLowerBound == null, "Listing backups filtered by time range unsupported [currently]")
-        Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
+
+        val backupUpperBound: Long = if (listBackupRequest.timeRangeUpperBound == null)
+            Long.MAX_VALUE else listBackupRequest.timeRangeUpperBound.time
+        val backupLowerBound: Long = if (listBackupRequest.timeRangeLowerBound == null)
+            Long.MIN_VALUE else listBackupRequest.timeRangeLowerBound.time
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
         var startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
@@ -290,7 +295,10 @@ open class MtSharedTableBackupManager(
             for (o in listBucketResult.objectSummaries) {
                 if (ret.size < limit) {
                     val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
-                    ret.add(backup)
+                    val backupTime = backup.backupCreationDateTime.time
+                    if (backupTime in backupLowerBound..backupUpperBound) {
+                        ret.add(backup)
+                    }
                 }
             }
             continuationToken = listBucketResult.nextContinuationToken
@@ -510,8 +518,14 @@ open class MtSharedTableBackupManager(
 
 data class TenantTableRow(val attributeMap: Map<String, AttributeValue>)
 
-class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String, val tableSnapshotter: MtBackupTableSnapshotter) {
+data class MtSharedTableBackupManagerBuilder(val s3: AmazonS3, val s3BucketName: String, val tableSnapshotter: MtBackupTableSnapshotter) {
+    var clock: Clock = Clock.systemUTC()
     fun build(sharedTableMtDynamo: MtAmazonDynamoDbBySharedTable): MtSharedTableBackupManager {
-        return MtSharedTableBackupManager(s3, s3BucketName, sharedTableMtDynamo, tableSnapshotter)
+        return MtSharedTableBackupManager(s3, s3BucketName, sharedTableMtDynamo, tableSnapshotter, clock)
+    }
+
+    fun withClock(clock: Clock): MtSharedTableBackupManagerBuilder {
+        this.clock = clock
+        return this
     }
 }
