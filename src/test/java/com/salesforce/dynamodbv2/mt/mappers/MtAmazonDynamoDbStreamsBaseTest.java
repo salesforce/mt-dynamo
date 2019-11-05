@@ -271,7 +271,7 @@ class MtAmazonDynamoDbStreamsBaseTest {
                     .orElseThrow();
                 final int expectedRecordCount = mtDynamoDbStreams instanceof MtAmazonDynamoDbStreamsByTable ? 1 : 2;
                 String lastSn = assertGetRecords(mtDynamoDbStreams, thIterator, 1, expectedRecordCount, expected1)
-                    .getLastSequenceNumber();
+                    .getStreamSegmentMetrics().getLastRecordMetrics().getSequenceNumber();
                 assertNotNull(lastSn);
 
                 // now start at last record: expect to get next record

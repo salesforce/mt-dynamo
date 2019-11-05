@@ -25,97 +25,12 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
     class MtGetRecordsResult extends GetRecordsResult {
 
         /**
-         * The sequence number of the first record loaded from the underlying multitenant stream.
+         * Metrics about the stream segment that was scanned to create the tenant-specific result.
          */
-        private String firstSequenceNumber;
-
-        /**
-         * The approximate creation time of the first record loaded from the underlying multitenant stream.
-         */
-        private Date firstApproximateCreationDateTime;
-
-        /**
-         * The sequence number of the last record loaded from the underlying multitenant stream.
-         */
-        private String lastSequenceNumber;
-
-        /**
-         * The approximate creation time of the last record loaded from the underlying multitenant stream.
-         */
-        private Date lastApproximateCreationDateTime;
-
-        /**
-         * The total number of records loaded from the underlying multitenant stream.
-         */
-        private Integer recordCount;
+        private StreamSegmentMetrics streamSegmentMetrics;
 
         public MtGetRecordsResult() {
             super();
-        }
-
-        public String getFirstSequenceNumber() {
-            return firstSequenceNumber;
-        }
-
-        public void setFirstSequenceNumber(String firstSequenceNumber) {
-            this.firstSequenceNumber = firstSequenceNumber;
-        }
-
-        public MtGetRecordsResult withFirstSequenceNumber(String firstSequenceNumber) {
-            setFirstSequenceNumber(firstSequenceNumber);
-            return this;
-        }
-
-        public Date getFirstApproximateCreationDateTime() {
-            return firstApproximateCreationDateTime;
-        }
-
-        public void setFirstApproximateCreationDateTime(Date firstApproximateCreationDateTime) {
-            this.firstApproximateCreationDateTime = firstApproximateCreationDateTime;
-        }
-
-        public MtGetRecordsResult withFirstApproximateCreationDateTime(Date firstApproximateCreationDateTime) {
-            setFirstApproximateCreationDateTime(firstApproximateCreationDateTime);
-            return this;
-        }
-
-        public String getLastSequenceNumber() {
-            return lastSequenceNumber;
-        }
-
-        public void setLastSequenceNumber(String lastSequenceNumber) {
-            this.lastSequenceNumber = lastSequenceNumber;
-        }
-
-        public MtGetRecordsResult withLastSequenceNumber(String lastSequenceNumber) {
-            setLastSequenceNumber(lastSequenceNumber);
-            return this;
-        }
-
-        public Date getLastApproximateCreationDateTime() {
-            return lastApproximateCreationDateTime;
-        }
-
-        public void setLastApproximateCreationDateTime(Date lastApproximateCreationDateTime) {
-            this.lastApproximateCreationDateTime = lastApproximateCreationDateTime;
-        }
-
-        public MtGetRecordsResult withLastApproximateCreationDateTime(Date lastApproximateCreationDateTime) {
-            setLastApproximateCreationDateTime(lastApproximateCreationDateTime);
-            return this;
-        }
-
-        public Integer getRecordCount() {
-            return recordCount;
-        }
-
-        public void setRecordCount(Integer recordCount) {
-            this.recordCount = recordCount;
-        }
-
-        public MtGetRecordsResult withRecordCount(Integer recordCount) {
-            setRecordCount(recordCount);
-            return this;
         }
 
         @Override
@@ -127,6 +42,19 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
         @Override
         public MtGetRecordsResult withNextShardIterator(String nextShardIterator) {
             setNextShardIterator(nextShardIterator);
+            return this;
+        }
+
+        public StreamSegmentMetrics getStreamSegmentMetrics() {
+            return streamSegmentMetrics;
+        }
+
+        public void setStreamSegmentMetrics(StreamSegmentMetrics streamSegmentMetrics) {
+            this.streamSegmentMetrics = streamSegmentMetrics;
+        }
+
+        public MtGetRecordsResult withStreamSegmentMetrics(StreamSegmentMetrics scannedStreamSegment) {
+            setStreamSegmentMetrics(scannedStreamSegment);
             return this;
         }
 
@@ -142,27 +70,18 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
                 return false;
             }
             MtGetRecordsResult that = (MtGetRecordsResult) o;
-            return Objects.equals(firstSequenceNumber, that.firstSequenceNumber)
-                && Objects.equals(firstApproximateCreationDateTime, that.firstApproximateCreationDateTime)
-                && Objects.equals(lastSequenceNumber, that.lastSequenceNumber)
-                && Objects.equals(lastApproximateCreationDateTime, that.lastApproximateCreationDateTime)
-                && Objects.equals(recordCount, that.recordCount);
+            return Objects.equals(streamSegmentMetrics, that.streamSegmentMetrics);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), firstSequenceNumber, firstApproximateCreationDateTime,
-                lastSequenceNumber, lastApproximateCreationDateTime, recordCount);
+            return Objects.hash(super.hashCode(), streamSegmentMetrics);
         }
 
         @Override
         public String toString() {
             return MoreObjects.toStringHelper(this)
-                .add("firstSequenceNumber", firstSequenceNumber)
-                .add("firstApproximateCreationDateTime", firstApproximateCreationDateTime)
-                .add("lastSequenceNumber", lastSequenceNumber)
-                .add("lastApproximateCreationDateTime", lastApproximateCreationDateTime)
-                .add("recordCount", recordCount)
+                .add("streamSegmentMetrics", streamSegmentMetrics)
                 .toString();
         }
 
@@ -171,6 +90,159 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
             return (MtGetRecordsResult) super.clone();
         }
 
+    }
+
+    /**
+     * Metrics about a segment in a record stream shard.
+     */
+    class StreamSegmentMetrics {
+
+        /**
+         * Metrics about the first record in this stream segment.
+         */
+        private StreamRecordMetrics firstRecordMetrics;
+
+        /**
+         * Metrics about the last record in this stream segment.
+         */
+        private StreamRecordMetrics lastRecordMetrics;
+
+        /**
+         * The number of records in this stream segment.
+         */
+        private Integer recordCount;
+
+        public StreamSegmentMetrics() {
+            super();
+        }
+
+        public Integer getRecordCount() {
+            return recordCount;
+        }
+
+        public void setRecordCount(Integer recordCount) {
+            this.recordCount = recordCount;
+        }
+
+        public StreamSegmentMetrics withRecordCount(Integer recordCount) {
+            setRecordCount(recordCount);
+            return this;
+        }
+
+        public StreamRecordMetrics getFirstRecordMetrics() {
+            return firstRecordMetrics;
+        }
+
+        public void setFirstRecordMetrics(StreamRecordMetrics firstRecordMetrics) {
+            this.firstRecordMetrics = firstRecordMetrics;
+        }
+
+        public StreamSegmentMetrics withFirstRecordMetrics(StreamRecordMetrics firstRecordMetrics) {
+            setFirstRecordMetrics(firstRecordMetrics);
+            return this;
+        }
+
+        public StreamRecordMetrics getLastRecordMetrics() {
+            return lastRecordMetrics;
+        }
+
+        public void setLastRecordMetrics(StreamRecordMetrics lastRecordMetrics) {
+            this.lastRecordMetrics = lastRecordMetrics;
+        }
+
+        public StreamSegmentMetrics withLastRecordMetrics(StreamRecordMetrics lastRecordMetrics) {
+            setLastRecordMetrics(lastRecordMetrics);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            StreamSegmentMetrics that = (StreamSegmentMetrics) o;
+            return Objects.equals(firstRecordMetrics, that.firstRecordMetrics)
+                && Objects.equals(lastRecordMetrics, that.lastRecordMetrics)
+                && Objects.equals(recordCount, that.recordCount);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(firstRecordMetrics, lastRecordMetrics, recordCount);
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("firstRecordMetrics", firstRecordMetrics)
+                .add("lastRecordMetrics", lastRecordMetrics)
+                .add("recordCount", recordCount)
+                .toString();
+        }
+    }
+
+    /**
+     * A projection of {@link com.amazonaws.services.dynamodbv2.model.StreamRecord} that includes only metrics about the
+     * record, such as sequence number and creation time, not the actual data.
+     */
+    class StreamRecordMetrics {
+        private String sequenceNumber;
+        private Date approximateCreationDateTime;
+
+        public void setSequenceNumber(String sequenceNumber) {
+            this.sequenceNumber = sequenceNumber;
+        }
+
+        public String getSequenceNumber() {
+            return this.sequenceNumber;
+        }
+
+        public StreamRecordMetrics withSequenceNumber(String sequenceNumber) {
+            this.setSequenceNumber(sequenceNumber);
+            return this;
+        }
+
+        public void setApproximateCreationDateTime(Date approximateCreationDateTime) {
+            this.approximateCreationDateTime = approximateCreationDateTime;
+        }
+
+        public Date getApproximateCreationDateTime() {
+            return this.approximateCreationDateTime;
+        }
+
+        public StreamRecordMetrics withApproximateCreationDateTime(Date approximateCreationDateTime) {
+            this.setApproximateCreationDateTime(approximateCreationDateTime);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            StreamRecordMetrics that = (StreamRecordMetrics) o;
+            return Objects.equals(sequenceNumber, that.sequenceNumber)
+                && Objects.equals(approximateCreationDateTime, that.approximateCreationDateTime);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(sequenceNumber, approximateCreationDateTime);
+        }
+
+        @Override
+        public String toString() {
+            return MoreObjects.toStringHelper(this)
+                .add("sequenceNumber", sequenceNumber)
+                .add("approximateCreationDateTime", approximateCreationDateTime)
+                .toString();
+        }
     }
 
     /**

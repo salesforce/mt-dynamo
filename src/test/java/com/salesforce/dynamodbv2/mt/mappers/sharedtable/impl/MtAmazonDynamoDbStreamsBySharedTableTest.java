@@ -41,6 +41,8 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.MtGetRecordsResult;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.StreamRecordMetrics;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.StreamSegmentMetrics;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
@@ -367,7 +369,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
         // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
         assertEquals(100, result.getRecords().size());
         assertEquals(mockMtArn + "|it2", result.getNextShardIterator());
-        assertMtResult(result, 1000, 0, 999);
+        assertStreamSegmentMetrics(result, 1000, 0, 999);
     }
 
     /**
@@ -429,7 +431,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
         // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
         assertEquals(150, result.getRecords().size());
         assertEquals(mockMtArn + "|it1500", result.getNextShardIterator());
-        assertMtResult(result, 1500, 0, 1499);
+        assertStreamSegmentMetrics(result, 1500, 0, 1499);
     }
 
     /**
@@ -482,7 +484,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
         // expect no records (and no retry attempt)
         assertEquals(0, result.getRecords().size());
-        assertMtResult(result,0, null, null);
+        assertStreamSegmentMetrics(result,0, null, null);
     }
 
     private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
@@ -520,31 +522,26 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
         return records;
     }
 
-    private static void assertMtResult(GetRecordsResult result,
-                                       int expectedRecordCount,
-                                       Integer expectedFirstRecord,
-                                       Integer expectedLastRecord) {
-        assertMtResult(result,
-            expectedRecordCount,
-            expectedFirstRecord == null ? null : expectedFirstRecord.toString(),
-            expectedFirstRecord == null ? null : new Date(expectedFirstRecord),
-            expectedLastRecord == null ? null : expectedLastRecord.toString(),
-            expectedLastRecord == null ? null : new Date(expectedLastRecord));
-    }
-
-    private static void assertMtResult(GetRecordsResult result,
-                                                 int expectedRecordCount,
-                                                 String expectedFirstSequenceNumber,
-                                                 Date expectedFirstApproximateCreationDateTime,
-                                                 String expectedLastSequenceNumber,
-                                                 Date expectedLastApproximateCreationDateTime) {
+    private static void assertStreamSegmentMetrics(GetRecordsResult result,
+                                                   int expectedRecordCount,
+                                                   Integer expectedFirstRecord,
+                                                   Integer expectedLastRecord) {
+        final StreamSegmentMetrics expected = new StreamSegmentMetrics()
+            .withRecordCount(expectedRecordCount);
+        if (expectedFirstRecord != null) {
+            expected.setFirstRecordMetrics(new StreamRecordMetrics()
+                .withSequenceNumber(expectedFirstRecord.toString())
+                .withApproximateCreationDateTime(new Date(expectedFirstRecord))
+            );
+        }
+        if (expectedLastRecord != null) {
+            expected.setLastRecordMetrics(new StreamRecordMetrics()
+                .withSequenceNumber(expectedLastRecord.toString())
+                .withApproximateCreationDateTime(new Date(expectedLastRecord))
+            );
+        }
         assertTrue(result instanceof MtGetRecordsResult);
-        MtGetRecordsResult mtResult = (MtGetRecordsResult) result;
-        assertEquals(expectedRecordCount, mtResult.getRecordCount());
-        assertEquals(expectedFirstSequenceNumber, mtResult.getFirstSequenceNumber());
-        assertEquals(expectedFirstApproximateCreationDateTime, mtResult.getFirstApproximateCreationDateTime());
-        assertEquals(expectedLastSequenceNumber, mtResult.getLastSequenceNumber());
-        assertEquals(expectedLastApproximateCreationDateTime, mtResult.getLastApproximateCreationDateTime());
+        assertEquals(expected, ((MtGetRecordsResult)result).getStreamSegmentMetrics());
     }
 
 }

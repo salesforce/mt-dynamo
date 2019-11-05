@@ -68,7 +68,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
         return getAllRecordsTime.record(() -> {
             final MtGetRecordsResult result = getMtRecords(request, getRecordMapper(streamArn.getTableName()));
-            getAllRecordsSize.record(result.getRecordCount());
+            getAllRecordsSize.record(result.getStreamSegmentMetrics().getRecordCount());
             return result;
         });
     }
@@ -119,22 +119,43 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
             final MtGetRecordsResult result = new MtGetRecordsResult()
                 .withRecords(new ArrayList<>(limit))
-                .withNextShardIterator(request.getShardIterator())
-                .withRecordCount(0);
+                .withNextShardIterator(request.getShardIterator());
 
-            MtGetRecordsResult partialResult;
+            int loaded;
             do {
-                partialResult = getRecords(result.getNextShardIterator(),limit - result.getRecords().size(),
-                    recordFilter, recordMapper, null);
-                updateResult(result, partialResult);
-            } while (result.getRecords().size() < limit        // only continue if we need more tenant records,
-                && partialResult.getRecordCount() == MAX_LIMIT // have not reached current end of the underlying stream,
-                && result.getNextShardIterator() != null       // have not reached absolute end of underlying stream,
+                // Load a chunk of records
+                final MtGetRecordsResult partialResult = getRecords(
+                    result.getNextShardIterator(),
+                    limit - result.getRecords().size(),
+                    recordFilter,
+                    recordMapper,
+                    null);
+                // Update result with what we got
+                result.getRecords().addAll(partialResult.getRecords());
+                result.setNextShardIterator(partialResult.getNextShardIterator());
+                final StreamSegmentMetrics metrics = result.getStreamSegmentMetrics();
+                if (metrics == null) {
+                    result.setStreamSegmentMetrics(partialResult.getStreamSegmentMetrics());
+                } else {
+                    final StreamSegmentMetrics partialMetrics = partialResult.getStreamSegmentMetrics();
+                    metrics.setRecordCount(metrics.getRecordCount() + partialMetrics.getRecordCount());
+                    metrics.setLastRecordMetrics(partialMetrics.getLastRecordMetrics());
+                }
+                // Keep track of how much we we loaded to determine whether to keep going
+                // Note: this heuristic is only accurate if we hit the streams cache or if DynamoDB happens to return
+                // the max number of records. If we miss the cache and DynamoDB reaches the max result size (1MB) before
+                // hitting the 1k record limit, we will stop. Also, DynamoDB sometimes has gaps in the stream where it
+                // returns fewer records regardless of the limit.
+                // TODO add a builder extensions that allows clients to specify the shard end tracked externally
+                loaded = partialResult.getStreamSegmentMetrics().getRecordCount();
+            } while (result.getRecords().size() < limit     // only continue if we need more tenant records,
+                && loaded == MAX_LIMIT                      // have not reached current end of the underlying stream,
+                && result.getNextShardIterator() != null    // have not reached absolute end of underlying stream,
                 && (mtDynamoDb.getClock().millis() - time) <= timeLimit // and have not exceeded the soft time limit
             );
 
             getRecordsSize.record(result.getRecords().size());
-            getRecordsLoadedCounter.record(result.getRecordCount());
+            getRecordsLoadedCounter.record(result.getStreamSegmentMetrics().getRecordCount());
 
             return result;
         });
@@ -172,10 +193,10 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
 
         // If we consumed all records, then we can return the records and next shard iterator
         if (consumed == records.size()) {
-            return withMtRecordProperties(new MtGetRecordsResult()
-                    .withRecords(mtRecords)
-                    .withNextShardIterator(result.getNextShardIterator()),
-                records);
+            return new MtGetRecordsResult()
+                .withRecords(mtRecords)
+                .withNextShardIterator(result.getNextShardIterator())
+                .withStreamSegmentMetrics(createStreamSegmentMetrics(records));
         } else {
             // If we did not consume all records, then the loaded segment contains more tenant records than what we can
             // return per the client-specified limit. In that case we cannot use the loaded result, since the next shard
@@ -187,22 +208,6 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
             }
             // if we recurse, we should always be able to consume all records
             throw new IllegalStateException("Failed to load mt records for iterator " + shardIterator);
-        }
-    }
-
-    private static void updateResult(MtGetRecordsResult result, MtGetRecordsResult partialResult) {
-        result.setNextShardIterator(partialResult.getNextShardIterator());
-        if (partialResult.getRecordCount() > 0) {
-            if (result.getFirstSequenceNumber() == null) { // initialize for first result with records
-                result
-                    .withFirstSequenceNumber(partialResult.getFirstSequenceNumber())
-                    .withFirstApproximateCreationDateTime(partialResult.getFirstApproximateCreationDateTime());
-            }
-            result
-                .withRecordCount(result.getRecordCount() + partialResult.getRecordCount())
-                .withLastSequenceNumber(partialResult.getLastSequenceNumber())
-                .withLastApproximateCreationDateTime(partialResult.getLastApproximateCreationDateTime());
-            result.getRecords().addAll(partialResult.getRecords());
         }
     }
 

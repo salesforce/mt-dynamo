@@ -42,7 +42,7 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
             final String[] tenantAndTableName = mtDynamoDb.getTenantAndTableName(streamArn.getTableName());
             final MtGetRecordsResult result =
                 getMtRecords(request, mapper(tenantAndTableName[0], tenantAndTableName[1]));
-            getAllRecordsSize.record(result.getRecordCount());
+            getAllRecordsSize.record(result.getStreamSegmentMetrics().getRecordCount());
             return result;
         });
     }
@@ -55,7 +55,7 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
         return getRecordsTime.record(() -> {
             final MtGetRecordsResult result =
                 getMtRecords(request, mapper(mtStreamArn.getContext(), mtStreamArn.getTenantTableName()));
-            getRecordsSize.record(result.getRecordCount());
+            getRecordsSize.record(result.getStreamSegmentMetrics().getRecordCount());
             return result;
         });
     }
