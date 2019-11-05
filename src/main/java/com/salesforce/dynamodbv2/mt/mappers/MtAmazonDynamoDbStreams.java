@@ -6,9 +6,11 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.google.common.base.MoreObjects;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
+import java.util.Date;
 import java.util.Objects;
 
 /**
@@ -23,9 +25,59 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
     class MtGetRecordsResult extends GetRecordsResult {
 
         /**
-         * The last sequence number observed in the underlying multitenant stream.
+         * The sequence number of the first record loaded from the underlying multitenant stream.
+         */
+        private String firstSequenceNumber;
+
+        /**
+         * The approximate creation time of the first record loaded from the underlying multitenant stream.
+         */
+        private Date firstApproximateCreationDateTime;
+
+        /**
+         * The sequence number of the last record loaded from the underlying multitenant stream.
          */
         private String lastSequenceNumber;
+
+        /**
+         * The approximate creation time of the last record loaded from the underlying multitenant stream.
+         */
+        private Date lastApproximateCreationDateTime;
+
+        /**
+         * The total number of records loaded from the underlying multitenant stream.
+         */
+        private Integer recordCount;
+
+        public MtGetRecordsResult() {
+            super();
+        }
+
+        public String getFirstSequenceNumber() {
+            return firstSequenceNumber;
+        }
+
+        public void setFirstSequenceNumber(String firstSequenceNumber) {
+            this.firstSequenceNumber = firstSequenceNumber;
+        }
+
+        public MtGetRecordsResult withFirstSequenceNumber(String firstSequenceNumber) {
+            setFirstSequenceNumber(firstSequenceNumber);
+            return this;
+        }
+
+        public Date getFirstApproximateCreationDateTime() {
+            return firstApproximateCreationDateTime;
+        }
+
+        public void setFirstApproximateCreationDateTime(Date firstApproximateCreationDateTime) {
+            this.firstApproximateCreationDateTime = firstApproximateCreationDateTime;
+        }
+
+        public MtGetRecordsResult withFirstApproximateCreationDateTime(Date firstApproximateCreationDateTime) {
+            setFirstApproximateCreationDateTime(firstApproximateCreationDateTime);
+            return this;
+        }
 
         public String getLastSequenceNumber() {
             return lastSequenceNumber;
@@ -37,6 +89,32 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
 
         public MtGetRecordsResult withLastSequenceNumber(String lastSequenceNumber) {
             setLastSequenceNumber(lastSequenceNumber);
+            return this;
+        }
+
+        public Date getLastApproximateCreationDateTime() {
+            return lastApproximateCreationDateTime;
+        }
+
+        public void setLastApproximateCreationDateTime(Date lastApproximateCreationDateTime) {
+            this.lastApproximateCreationDateTime = lastApproximateCreationDateTime;
+        }
+
+        public MtGetRecordsResult withLastApproximateCreationDateTime(Date lastApproximateCreationDateTime) {
+            setLastApproximateCreationDateTime(lastApproximateCreationDateTime);
+            return this;
+        }
+
+        public Integer getRecordCount() {
+            return recordCount;
+        }
+
+        public void setRecordCount(Integer recordCount) {
+            this.recordCount = recordCount;
+        }
+
+        public MtGetRecordsResult withRecordCount(Integer recordCount) {
+            setRecordCount(recordCount);
             return this;
         }
 
@@ -63,32 +141,30 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
             if (!super.equals(o)) {
                 return false;
             }
-            final MtGetRecordsResult that = (MtGetRecordsResult) o;
-            return Objects.equals(lastSequenceNumber, that.lastSequenceNumber);
+            MtGetRecordsResult that = (MtGetRecordsResult) o;
+            return Objects.equals(firstSequenceNumber, that.firstSequenceNumber)
+                && Objects.equals(firstApproximateCreationDateTime, that.firstApproximateCreationDateTime)
+                && Objects.equals(lastSequenceNumber, that.lastSequenceNumber)
+                && Objects.equals(lastApproximateCreationDateTime, that.lastApproximateCreationDateTime)
+                && Objects.equals(recordCount, that.recordCount);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(super.hashCode(), lastSequenceNumber);
+            return Objects.hash(super.hashCode(), firstSequenceNumber, firstApproximateCreationDateTime,
+                lastSequenceNumber, lastApproximateCreationDateTime, recordCount);
         }
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append("{");
-            if (getRecords() != null) {
-                sb.append("Records: ").append(getRecords()).append(",");
-            }
-            if (getNextShardIterator() != null) {
-                sb.append("NextShardIterator: ").append(getNextShardIterator());
-            }
-            if (getLastSequenceNumber() != null) {
-                sb.append("LastSequenceNumber: ").append(getLastSequenceNumber());
-            }
-            sb.append("}");
-            return sb.toString();
+            return MoreObjects.toStringHelper(this)
+                .add("firstSequenceNumber", firstSequenceNumber)
+                .add("firstApproximateCreationDateTime", firstApproximateCreationDateTime)
+                .add("lastSequenceNumber", lastSequenceNumber)
+                .add("lastApproximateCreationDateTime", lastApproximateCreationDateTime)
+                .add("recordCount", recordCount)
+                .toString();
         }
-
 
         @Override
         public MtGetRecordsResult clone() {

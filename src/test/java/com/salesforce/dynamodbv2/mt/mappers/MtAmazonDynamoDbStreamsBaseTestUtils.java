@@ -10,6 +10,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -37,7 +38,6 @@ import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamStatus;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.MtGetRecordsResult;
 import java.util.Collection;
@@ -204,21 +204,41 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         assertTrue(equals(expected, actual));
     }
 
-    public static void assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, MtRecord... expected) {
-        assertGetRecords(streams, iterator, null, expected);
+    public static void assertGetRecords(MtAmazonDynamoDbStreams streams,
+                                        String iterator,
+                                        int expectedRecordCount,
+                                        MtRecord... expected) {
+        assertGetRecords(streams, iterator, null, expectedRecordCount, expected);
     }
 
-    static String assertGetRecords(MtAmazonDynamoDbStreams streams, String iterator, Integer limit,
-                                   MtRecord... expected) {
-        GetRecordsResult result = streams
-            .getRecords(new GetRecordsRequest().withShardIterator(iterator).withLimit(limit));
+    static MtGetRecordsResult assertGetRecords(MtAmazonDynamoDbStreams streams,
+                                               String iterator,
+                                               Integer limit,
+                                               int expectedRecordCount,
+                                               MtRecord... expected) {
+        GetRecordsRequest request = new GetRecordsRequest().withShardIterator(iterator).withLimit(limit);
+        GetRecordsResult result = streams.getRecords(request);
         assertNotNull(result.getNextShardIterator());
         List<Record> records = result.getRecords();
         assertEquals(expected.length, records.size());
         for (int i = 0; i < expected.length; i++) {
             assertMtRecord(expected[i], records.get(i));
         }
-        return records.isEmpty() ? null : Iterables.getLast(records).getDynamodb().getSequenceNumber();
+        assertTrue(result instanceof MtGetRecordsResult);
+        MtGetRecordsResult mtResult = (MtGetRecordsResult) result;
+        assertEquals(expectedRecordCount, mtResult.getRecordCount());
+        if (expectedRecordCount > 0) {
+            assertNotNull(mtResult.getFirstSequenceNumber());
+            assertNotNull(mtResult.getFirstApproximateCreationDateTime());
+            assertNotNull(mtResult.getLastSequenceNumber());
+            assertNotNull(mtResult.getLastApproximateCreationDateTime());
+        } else {
+            assertNull(mtResult.getFirstSequenceNumber());
+            assertNull(mtResult.getFirstApproximateCreationDateTime());
+            assertNull(mtResult.getLastSequenceNumber());
+            assertNull(mtResult.getLastApproximateCreationDateTime());
+        }
+        return mtResult;
     }
 
     static void assertGetRecords(MtAmazonDynamoDbStreams streams, Collection<String> iterators,

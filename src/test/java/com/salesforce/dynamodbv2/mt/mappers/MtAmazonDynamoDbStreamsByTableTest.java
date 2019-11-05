@@ -111,13 +111,13 @@ class MtAmazonDynamoDbStreamsByTableTest {
                 String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
+                    .assertGetRecords(mtDynamoDbStreams, tenantIterator,2, expected1, expected2);
             });
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], () -> {
                 String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
                 MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+                    .assertGetRecords(mtDynamoDbStreams, tenantIterator,2, expected3, expected4);
             });
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
