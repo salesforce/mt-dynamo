@@ -40,7 +40,10 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
         return getAllRecordsTime.record(() -> {
             final String[] tenantAndTableName = mtDynamoDb.getTenantAndTableName(streamArn.getTableName());
-            return getMtRecords(request, mapper(tenantAndTableName[0], tenantAndTableName[1]), getAllRecordsSize);
+            final MtGetRecordsResult result =
+                getMtRecords(request, mapper(tenantAndTableName[0], tenantAndTableName[1]));
+            getAllRecordsSize.record(result.getRecordCount());
+            return result;
         });
     }
 
@@ -49,8 +52,12 @@ class MtAmazonDynamoDbStreamsByTable extends MtAmazonDynamoDbStreamsBase<MtAmazo
      */
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
-        return getRecordsTime.record(() ->
-            getMtRecords(request, mapper(mtStreamArn.getContext(), mtStreamArn.getTenantTableName()), getRecordsSize));
+        return getRecordsTime.record(() -> {
+            final MtGetRecordsResult result =
+                getMtRecords(request, mapper(mtStreamArn.getContext(), mtStreamArn.getTenantTableName()));
+            getRecordsSize.record(result.getRecordCount());
+            return result;
+        });
     }
 
     private Function<Record, Optional<MtRecord>> mapper(String tenant, String tableName) {

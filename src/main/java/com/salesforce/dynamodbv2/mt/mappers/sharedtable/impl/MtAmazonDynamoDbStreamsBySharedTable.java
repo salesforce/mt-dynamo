@@ -66,8 +66,11 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      */
     @Override
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
-        return getAllRecordsTime.record(() ->
-            getMtRecords(request, getRecordMapper(streamArn.getTableName()), getAllRecordsSize));
+        return getAllRecordsTime.record(() -> {
+            final MtGetRecordsResult result = getMtRecords(request, getRecordMapper(streamArn.getTableName()));
+            getAllRecordsSize.record(result.getRecordCount());
+            return result;
+        });
     }
 
     private Function<Record, Optional<MtRecord>> getRecordMapper(String physicalTableName) {

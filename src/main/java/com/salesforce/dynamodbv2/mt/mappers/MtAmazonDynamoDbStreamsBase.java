@@ -22,7 +22,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RecordMapper;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
-import io.micrometer.core.instrument.DistributionSummary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -212,15 +211,10 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * @return MtGetRecordsResult result.
      */
     protected MtGetRecordsResult getMtRecords(GetRecordsRequest request,
-                                              Function<Record, Optional<MtRecord>> mapper,
-                                              DistributionSummary meter) {
+                                              Function<Record, Optional<MtRecord>> mapper) {
         final GetRecordsResult result = dynamoDbStreams.getRecords(request);
         final List<Record> records = result.getRecords();
         final String nextIterator = result.getNextShardIterator();
-        if (records.isEmpty()) {
-            meter.record(0);
-            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator).withRecordCount(0);
-        }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
             Optional<MtRecord> mtRecord = mapper.apply(record);
@@ -230,7 +224,6 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
                 mtRecords.add(getMissingMapper(record));
             }
         }
-        meter.record(records.size());
         return withMtRecordProperties(new MtGetRecordsResult()
             .withRecords(mtRecords)
             .withNextShardIterator(nextIterator), records);
