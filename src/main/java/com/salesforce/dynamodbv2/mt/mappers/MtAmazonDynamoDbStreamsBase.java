@@ -16,6 +16,7 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RecordMapper;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
@@ -218,7 +219,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         final String nextIterator = result.getNextShardIterator();
         if (records.isEmpty()) {
             meter.record(0);
-            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator);
+            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator).withRecordCount(0);
         }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
@@ -228,15 +229,12 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             } else {
                 mtRecords.add(getMissingMapper(record));
             }
-
         }
-        meter.record(mtRecords.size());
-        return new MtGetRecordsResult()
+        meter.record(records.size());
+        return withMtRecordProperties(new MtGetRecordsResult()
             .withRecords(mtRecords)
-            .withNextShardIterator(nextIterator)
-            .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
+            .withNextShardIterator(nextIterator), records);
     }
-
 
     private MtRecord getMissingMapper(Record record) {
         return RecordMapper.getDefaultMtRecord(record)
@@ -245,4 +243,17 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             .withTableName(null);
     }
 
+    protected static MtGetRecordsResult withMtRecordProperties(MtGetRecordsResult result, List<Record> records) {
+        result.setRecordCount(records.size());
+        if (!records.isEmpty()) {
+            final StreamRecord first = records.get(0).getDynamodb();
+            final StreamRecord last = getLast(records).getDynamodb();
+            result
+                .withFirstSequenceNumber(first.getSequenceNumber())
+                .withFirstApproximateCreationDateTime(first.getApproximateCreationDateTime())
+                .withLastSequenceNumber(last.getSequenceNumber())
+                .withLastApproximateCreationDateTime(last.getApproximateCreationDateTime());
+        }
+        return result;
+    }
 }

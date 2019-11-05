@@ -6,10 +6,12 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
 import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils.TENANT_TABLE_NAME;
+import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -38,6 +40,7 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.MtGetRecordsResult;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
@@ -47,6 +50,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -155,29 +159,25 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
             // test without context
             String iterator = getShardIterator(mtDynamoDbStreams);
-            MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+            assertGetRecords(mtDynamoDbStreams, iterator, 4, expected1, expected2, expected3, expected4);
 
             // test with each tenant context
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
                 String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected1, expected2);
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, 4, expected1, expected2);
             });
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], () -> {
                 String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, 4, expected3, expected4);
             });
 
             // fetched for cross-tenant call. Tenant calls should be served from cache.
             assertEquals(1, dynamoDbStreams.getRecordsCount);
             assertEquals(1, dynamoDbStreams.getShardIteratorCount);
             iterator = getShardIterator(mtDynamoDbStreams);
-            MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+            assertGetRecords(mtDynamoDbStreams, iterator, 4, expected1, expected2, expected3, expected4);
 
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
@@ -226,8 +226,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
             // test without context
             String iterator = getShardIterator(mtDynamoDbStreams);
-            MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2, expected3, expected4);
+            assertGetRecords(mtDynamoDbStreams, iterator, 4, expected1, expected2, expected3, expected4);
 
             // issue a delete of one tenant
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[0], () -> {
@@ -238,16 +237,14 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             MT_CONTEXT.withContext(MtAmazonDynamoDbStreamsBaseTestUtils.TENANTS[1], () -> {
                 String tenantIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, mtDynamoDb).orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, tenantIterator, expected3, expected4);
+                assertGetRecords(mtDynamoDbStreams, tenantIterator, 4, expected3, expected4);
             });
 
             MtRecord deletedExpected1 = expected1.withContext(null).withTableName(null);
             MtRecord deletedExpected2 = expected2.withContext(null).withTableName(null);
             // and validate fetching all multi tenant records filters out deleted tenant
             iterator = getShardIterator(mtDynamoDbStreams);
-            MtAmazonDynamoDbStreamsBaseTestUtils
-                .assertGetRecords(mtDynamoDbStreams, iterator,
+            assertGetRecords(mtDynamoDbStreams, iterator, 4,
                     deletedExpected1, deletedExpected2, expected3, expected4);
 
         } finally {
@@ -370,6 +367,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
         // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
         assertEquals(100, result.getRecords().size());
         assertEquals(mockMtArn + "|it2", result.getNextShardIterator());
+        assertMtResult(result, 1000, 0, 999);
     }
 
     /**
@@ -431,6 +429,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
         // expect only 100 records return (as opposed to two hundred if it weren't for timeout)
         assertEquals(150, result.getRecords().size());
         assertEquals(mockMtArn + "|it1500", result.getNextShardIterator());
+        assertMtResult(result, 1500, 0, 1499);
     }
 
     /**
@@ -483,6 +482,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
         // expect no records (and no retry attempt)
         assertEquals(0, result.getRecords().size());
+        assertMtResult(result,0, null, null);
     }
 
     private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
@@ -513,8 +513,38 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             final String val = (i % 10 == 0 ? "T1" : "T2") + "/tenantTableName/" + i;
             records.add(new Record().withDynamodb(new StreamRecord()
                 .withKeys(ImmutableMap.of("hk", new AttributeValue(val)))
-                .withSequenceNumber(String.valueOf(start + i))));
+                .withSequenceNumber(String.valueOf(start + i))
+                .withApproximateCreationDateTime(new Date(start + i))
+            ));
         }
         return records;
     }
+
+    private static void assertMtResult(GetRecordsResult result,
+                                       int expectedRecordCount,
+                                       Integer expectedFirstRecord,
+                                       Integer expectedLastRecord) {
+        assertMtResult(result,
+            expectedRecordCount,
+            expectedFirstRecord == null ? null : expectedFirstRecord.toString(),
+            expectedFirstRecord == null ? null : new Date(expectedFirstRecord),
+            expectedLastRecord == null ? null : expectedLastRecord.toString(),
+            expectedLastRecord == null ? null : new Date(expectedLastRecord));
+    }
+
+    private static void assertMtResult(GetRecordsResult result,
+                                                 int expectedRecordCount,
+                                                 String expectedFirstSequenceNumber,
+                                                 Date expectedFirstApproximateCreationDateTime,
+                                                 String expectedLastSequenceNumber,
+                                                 Date expectedLastApproximateCreationDateTime) {
+        assertTrue(result instanceof MtGetRecordsResult);
+        MtGetRecordsResult mtResult = (MtGetRecordsResult) result;
+        assertEquals(expectedRecordCount, mtResult.getRecordCount());
+        assertEquals(expectedFirstSequenceNumber, mtResult.getFirstSequenceNumber());
+        assertEquals(expectedFirstApproximateCreationDateTime, mtResult.getFirstApproximateCreationDateTime());
+        assertEquals(expectedLastSequenceNumber, mtResult.getLastSequenceNumber());
+        assertEquals(expectedLastApproximateCreationDateTime, mtResult.getLastApproximateCreationDateTime());
+    }
+
 }
