@@ -27,7 +27,6 @@ import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
-import com.google.common.collect.Lists
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager
@@ -51,6 +50,7 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import java.util.function.Supplier
 import java.util.stream.Collectors
@@ -75,7 +75,7 @@ internal class MtSharedTableBackupManagerS3It {
         var backupManager: MtBackupManager? = null
 
         var s3: AmazonS3? = null
-        val backupArns = Lists.newArrayList<String>()
+        val backupArns = arrayListOf<String>()
 
         @BeforeAll
         @JvmStatic
@@ -152,9 +152,9 @@ internal class MtSharedTableBackupManagerS3It {
         }
     }
 
-    private fun byteBufferToString(b: ByteBuffer) = String(b.array(), Charsets.UTF_8)
+    private fun byteBufferToString(b: ByteBuffer) = String(b.array(), StandardCharsets.UTF_8)
 
-    private fun stringToByteBuffer(s: String) = ByteBuffer.wrap(s.toByteArray(Charsets.UTF_8))
+    private fun stringToByteBuffer(s: String) = ByteBuffer.wrap(s.toByteArray(StandardCharsets.UTF_8))
 
     private fun createTestData(tenantTable: TenantTable): CreateTableRequest {
         val createdTableRequest = CreateTableRequestBuilder.builder()
@@ -235,7 +235,7 @@ internal class MtSharedTableBackupManagerS3It {
                     GetItemRequest(targetTenantTable.virtualTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue().withB(stringToByteBuffer("row1")))))
             assertNotNull(clonedRow)
             assertNotNull(clonedRow.item)
-            assertEquals("1", clonedRow.item["value"]!!.s)
+            assertEquals("1", clonedRow.item["value"]?.s)
         }
     }
 
@@ -316,7 +316,7 @@ internal class MtSharedTableBackupManagerS3It {
      * Create only backup metadata list used to validate list backup tests, and return List of backup IDs created.
      */
     private fun createOnlyBackupMetadataList(backupPrefix: String, numBackups: Int, tenantTableMetadataList: List<MtTableDescriptionRepo.MtCreateTableRequest> = ImmutableList.of()): ArrayList<String> {
-        val ret = Lists.newArrayList<String>()
+        val ret = arrayListOf<String>()
         backupManager =
                 object : MtSharedTableBackupManager(s3!!, bucket, sharedTableBinaryHashKey!!,
                         MtBackupTableSnapshotter()) {

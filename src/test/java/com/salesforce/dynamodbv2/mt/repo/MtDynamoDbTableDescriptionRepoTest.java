@@ -16,7 +16,6 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
@@ -25,6 +24,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequ
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableRequest;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -172,7 +172,7 @@ class MtDynamoDbTableDescriptionRepoTest {
     @Test
     void testListTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<MtCreateTableRequest> tablesCreated = Lists.newArrayList();
+        List<MtCreateTableRequest> tablesCreated = new ArrayList<>();
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table1"));
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table2"));
         tablesCreated.addAll(createPairOfVirtualTables(repo, "table3"));
