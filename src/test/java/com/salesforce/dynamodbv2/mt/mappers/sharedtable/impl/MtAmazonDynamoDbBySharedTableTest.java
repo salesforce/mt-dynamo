@@ -19,7 +19,6 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
@@ -30,6 +29,7 @@ import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -79,7 +79,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
         assertFalse(allTables.isEmpty());
         MtScanningSnapshotter tableSnapshotter = new MtScanningSnapshotter();
-        List<SnapshotResult> snapshots = Lists.newArrayList();
+        List<SnapshotResult> snapshots = new ArrayList<>();
         try {
             for (String table : allTables) {
                 snapshots.add(tableSnapshotter.snapshotTableToTarget(new SnapshotRequest("fake-backup",
@@ -113,7 +113,7 @@ class MtAmazonDynamoDbBySharedTableTest {
     public void testListTablesPagination_withContext(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String lastEvaluatedTable = null;
-            List<String> tablesSeen = Lists.newArrayList();
+            List<String> tablesSeen = new ArrayList<>();
             int limit = 1;
             do {
                 ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb()

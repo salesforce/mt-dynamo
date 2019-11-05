@@ -37,7 +37,6 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.google.gson.Gson;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
@@ -45,6 +44,7 @@ import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -316,7 +316,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
         // if tenant scoped virtual table list, keep scanning until we either run out of metadata rows in the
         // multitenant virtual table definitions, or we fill up our result set
-        List<MtCreateTableRequest> createTableRequests = Lists.newArrayList();
+        List<MtCreateTableRequest> createTableRequests = new ArrayList<>();
         do {
             ScanResult scanResult;
             scanReq.setExclusiveStartKey(lastEvaluatedKey);

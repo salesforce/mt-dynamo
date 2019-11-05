@@ -93,9 +93,9 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -360,7 +360,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
         if (mtContext.getContextOpt().isEmpty()) {
-            List<String> tableNames = Lists.newArrayList();
+            List<String> tableNames = new ArrayList<>();
             String innerExclusiveStartTableName = exclusiveStartTableName;
 
             // filter out any physical tables on this account that this mt-dynamo instance does not manage and eagerly

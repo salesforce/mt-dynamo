@@ -88,7 +88,7 @@ internal class MtBackupTableSnapshotterIt {
             val getItemResult = remoteDynamoDB.getItem(GetItemRequest(dummyTableSnapshot, ImmutableMap.of(
                     dummyPk, AttributeValue().withS("pk1"))))
             assertNotNull(getItemResult)
-            assertEquals("value1", getItemResult.item[dummyColumn]!!.s)
+            assertEquals("value1", getItemResult.item[dummyColumn]?.s)
         } finally {
             remoteDynamoDB.deleteTable(DeleteTableRequest(dummyTable))
             MtBackupTableSnapshotter().cleanup(snapshotResult, remoteDynamoDB)
