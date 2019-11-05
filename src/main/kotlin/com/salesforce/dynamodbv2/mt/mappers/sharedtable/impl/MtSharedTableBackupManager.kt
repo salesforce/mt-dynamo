@@ -54,7 +54,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import java.util.HashMap
 import java.util.stream.Collectors
@@ -98,7 +98,7 @@ open class MtSharedTableBackupManager(
             "com.amazonaws.RequestClientOptions",
             "com.amazonaws.event.ProgressListener"
     )
-    val charset = Charset.forName("utf-8")
+    val charset = StandardCharsets.UTF_8
 
     override fun createBackup(createBackupRequest: CreateBackupRequest): MtBackupMetadata {
 
@@ -187,7 +187,7 @@ open class MtSharedTableBackupManager(
 
     override fun markBackupComplete(createBackupRequest: CreateBackupRequest): MtBackupMetadata {
         val inProgressBackupMetadata = getBackup(createBackupRequest.backupName)
-        if (inProgressBackupMetadata == null || !inProgressBackupMetadata.status.equals(Status.IN_PROGRESS)) {
+        if (inProgressBackupMetadata == null || inProgressBackupMetadata.status != Status.IN_PROGRESS) {
             throw MtBackupException("Cannot mark $inProgressBackupMetadata backup complete.")
         }
 
@@ -286,7 +286,7 @@ open class MtSharedTableBackupManager(
                             .withContinuationToken(continuationToken)
                             .withBucketName(s3BucketName)
                             .withStartAfter(startAfter)
-                            .withPrefix(backupMetadataDir + "/"))
+                            .withPrefix("$backupMetadataDir/"))
             for (o in listBucketResult.objectSummaries) {
                 if (ret.size < limit) {
                     val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
@@ -337,7 +337,7 @@ open class MtSharedTableBackupManager(
             gson.fromJson(backupFileString,
                     MtBackupMetadata::class.java)
         } catch (e: AmazonS3Exception) {
-            if ("NoSuchKey".equals(e.errorCode)) {
+            if ("NoSuchKey" == e.errorCode) {
                 null
             } else {
                 throw e
@@ -349,7 +349,7 @@ open class MtSharedTableBackupManager(
         val mtBackup = getBackup(backupName)
 
         if (mtBackup != null) {
-            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup!!.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
+            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
             if (mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
                 return TenantBackupMetadata(mtBackup.s3BucketName, tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
             }
@@ -459,10 +459,10 @@ open class MtSharedTableBackupManager(
 
             val rowsPerTenant = MultimapBuilder.ListMultimapBuilder
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
-            for (i in 0..(scanResult.items.size - 1)) {
+            for (i in 0 until scanResult.items.size) {
                 val row = scanResult.items[i]
-                val tenant = row.get(sharedTableMtDynamo.scanTenantKey)!!.s
-                val virtualTable = row.get(sharedTableMtDynamo.scanVirtualTableKey)!!.s
+                val tenant = row[sharedTableMtDynamo.scanTenantKey]!!.s
+                val virtualTable = row[sharedTableMtDynamo.scanVirtualTableKey]!!.s
                 row.remove(sharedTableMtDynamo.scanTenantKey)
                 row.remove(sharedTableMtDynamo.scanVirtualTableKey)
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),

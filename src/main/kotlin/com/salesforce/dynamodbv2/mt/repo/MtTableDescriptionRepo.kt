@@ -72,10 +72,10 @@ interface MtTableDescriptionRepo {
         }
 
         fun withExclusiveStartCreateTableReq(startKey: MtCreateTableRequest?): ListMetadataRequest {
-            if (startKey == null) {
-                startTenantTableKey = null
+            startTenantTableKey = if (startKey == null) {
+                null
             } else {
-                startTenantTableKey = MtAmazonDynamoDb.TenantTable(startKey.createTableRequest.tableName, startKey.tenantName)
+                MtAmazonDynamoDb.TenantTable(startKey.createTableRequest.tableName, startKey.tenantName)
             }
             return this
         }

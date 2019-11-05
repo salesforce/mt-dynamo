@@ -58,9 +58,7 @@ class MtBackupAwsAdaptor {
     }
 
     fun getTenantTableBackupFromArn(backupArn: String): TenantTableBackupMetadata {
-        if (!isTenantTableArn(backupArn)) {
-            throw IllegalArgumentException("$backupArn does not include tenant-table specifier.")
-        }
+        require(isTenantTableArn(backupArn)) { "$backupArn does not include tenant-table specifier." }
         val tenantTableParts = backupArn.split(':')
         return TenantTableBackupMetadata(tenantTableParts[0], tenantTableParts[1], tenantTableParts[2], tenantTableParts[3])
     }

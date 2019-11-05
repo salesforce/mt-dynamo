@@ -104,10 +104,10 @@ open class MtBackupTableSnapshotter {
         var tableStatus: DescribeTableResult
         do {
             tableStatus = remoteDynamoDB.describeTable(DescribeTableRequest(tableName))
-            if (tableStatus.table.tableStatus.equals("CREATING")) {
+            if (tableStatus.table.tableStatus == "CREATING") {
                 Thread.sleep(1000L)
             }
-        } while (tableStatus.table.tableStatus.equals("CREATING"))
+        } while (tableStatus.table.tableStatus == "CREATING")
     }
 }
 
@@ -133,7 +133,7 @@ class MtScanningSnapshotter : MtBackupTableSnapshotter() {
                         snapshotRequest.targetTableProvisionedThroughput.readCapacityUnits,
                         snapshotRequest.targetTableProvisionedThroughput.writeCapacityUnits)
                 .withAttributeDefinitions(*sourceTableDescription.attributeDefinitions.stream().filter { a ->
-                    sourceTableDescription.keySchema.stream().anyMatch { k -> a.attributeName.equals(k.attributeName) }
+                    sourceTableDescription.keySchema.stream().anyMatch { k -> a.attributeName == k.attributeName }
                 }.collect(Collectors.toList()).toTypedArray())
         snapshotRequest.amazonDynamoDb.createTable(createTableBuilder.build())
 
