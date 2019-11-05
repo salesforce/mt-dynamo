@@ -61,10 +61,10 @@ internal class MtBackupTableSnapshotterIt {
         var dummyTableStatus: DescribeTableResult
         do {
             dummyTableStatus = remoteDynamoDB.describeTable(DescribeTableRequest(dummyTable))
-            if (dummyTableStatus.table.tableStatus.equals("CREATING")) {
+            if (dummyTableStatus.table.tableStatus == "CREATING") {
                 Thread.sleep(1000L)
             }
-        } while (dummyTableStatus.table.tableStatus.equals("CREATING"))
+        } while (dummyTableStatus.table.tableStatus == "CREATING")
 
         // insert dummy data
         assertEquals("ACTIVE", dummyTableStatus.table.tableStatus)
@@ -88,7 +88,7 @@ internal class MtBackupTableSnapshotterIt {
             val getItemResult = remoteDynamoDB.getItem(GetItemRequest(dummyTableSnapshot, ImmutableMap.of(
                     dummyPk, AttributeValue().withS("pk1"))))
             assertNotNull(getItemResult)
-            assertEquals("value1", getItemResult.item.get(dummyColumn)!!.s)
+            assertEquals("value1", getItemResult.item[dummyColumn]!!.s)
         } finally {
             remoteDynamoDB.deleteTable(DeleteTableRequest(dummyTable))
             MtBackupTableSnapshotter().cleanup(snapshotResult, remoteDynamoDB)
@@ -96,10 +96,10 @@ internal class MtBackupTableSnapshotterIt {
     }
 
     private fun tableExists(tableName: String, remoteAmazonDynamoDB: AmazonDynamoDB): Boolean {
-        try {
-            return remoteAmazonDynamoDB.describeTable(tableName).table.tableName.equals(tableName)
+        return try {
+            remoteAmazonDynamoDB.describeTable(tableName).table.tableName == tableName
         } catch (e: ResourceNotFoundException) {
-            return false
+            false
         }
     }
 }

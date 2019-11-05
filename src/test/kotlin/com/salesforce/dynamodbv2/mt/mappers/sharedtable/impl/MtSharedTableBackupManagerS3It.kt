@@ -235,7 +235,7 @@ internal class MtSharedTableBackupManagerS3It {
                     GetItemRequest(targetTenantTable.virtualTableName, ImmutableMap.of(HASH_KEY_FIELD, AttributeValue().withB(stringToByteBuffer("row1")))))
             assertNotNull(clonedRow)
             assertNotNull(clonedRow.item)
-            assertEquals("1", clonedRow.item.get("value")!!.s)
+            assertEquals("1", clonedRow.item["value"]!!.s)
         }
     }
 
