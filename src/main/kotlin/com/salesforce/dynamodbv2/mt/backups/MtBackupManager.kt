@@ -9,7 +9,6 @@ import com.amazonaws.AmazonServiceException
 import com.amazonaws.services.dynamodbv2.model.CreateBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult
-import com.google.common.collect.Maps
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 
@@ -129,7 +128,7 @@ data class MtBackupMetadata(
             throw MtBackupException("Trying to merge a backup with a different backup id, " +
                     "this: $mtBackupName, other: ${newBackupMetadata.mtBackupName}")
         }
-        val tenantTableCount: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
+        val tenantTableCount = hashMapOf<TenantTableBackupMetadata, Long>()
         tenantTableCount.putAll(tenantTables)
         for (tenantTable in newBackupMetadata.tenantTables.keys) {
             tenantTableCount[tenantTable] = tenantTables.getOrDefault(tenantTable, 0L) +
