@@ -40,6 +40,7 @@ import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.MtGetRecordsResult;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreams.StreamSegmentMetrics;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -226,17 +227,18 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         }
         assertTrue(result instanceof MtGetRecordsResult);
         MtGetRecordsResult mtResult = (MtGetRecordsResult) result;
-        assertEquals(expectedRecordCount, mtResult.getRecordCount());
+        final StreamSegmentMetrics metrics = ((MtGetRecordsResult) result).getStreamSegmentMetrics();
+        assertEquals(expectedRecordCount, metrics.getRecordCount());
         if (expectedRecordCount > 0) {
-            assertNotNull(mtResult.getFirstSequenceNumber());
-            assertNotNull(mtResult.getFirstApproximateCreationDateTime());
-            assertNotNull(mtResult.getLastSequenceNumber());
-            assertNotNull(mtResult.getLastApproximateCreationDateTime());
+            assertNotNull(metrics.getFirstRecordMetrics());
+            assertNotNull(metrics.getFirstRecordMetrics().getSequenceNumber());
+            assertNotNull(metrics.getFirstRecordMetrics().getApproximateCreationDateTime());
+            assertNotNull(metrics.getLastRecordMetrics());
+            assertNotNull(metrics.getLastRecordMetrics().getSequenceNumber());
+            assertNotNull(metrics.getLastRecordMetrics().getApproximateCreationDateTime());
         } else {
-            assertNull(mtResult.getFirstSequenceNumber());
-            assertNull(mtResult.getFirstApproximateCreationDateTime());
-            assertNull(mtResult.getLastSequenceNumber());
-            assertNull(mtResult.getLastApproximateCreationDateTime());
+            assertNull(metrics.getFirstRecordMetrics());
+            assertNull(metrics.getLastRecordMetrics());
         }
         return mtResult;
     }
@@ -251,7 +253,8 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         iterators.forEach(iterator -> {
             GetRecordsResult result = streams.getRecords(new GetRecordsRequest().withShardIterator(iterator));
             assertTrue(result instanceof MtGetRecordsResult);
-            assertNotNull(((MtGetRecordsResult) result).getLastSequenceNumber());
+            assertNotNull(((MtGetRecordsResult) result).getStreamSegmentMetrics().getLastRecordMetrics()
+                .getSequenceNumber());
             result.getRecords().forEach(record -> {
                 assertTrue(record instanceof MtRecord);
                 MtRecord expectedRecord = expectedByKey.remove(keyFunction.apply((MtRecord) record));

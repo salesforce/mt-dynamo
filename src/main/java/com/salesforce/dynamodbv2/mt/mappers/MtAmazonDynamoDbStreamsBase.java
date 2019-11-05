@@ -224,9 +224,10 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
                 mtRecords.add(getMissingMapper(record));
             }
         }
-        return withMtRecordProperties(new MtGetRecordsResult()
+        return new MtGetRecordsResult()
             .withRecords(mtRecords)
-            .withNextShardIterator(nextIterator), records);
+            .withNextShardIterator(nextIterator)
+            .withStreamSegmentMetrics(createStreamSegmentMetrics(records));
     }
 
     private MtRecord getMissingMapper(Record record) {
@@ -236,17 +237,20 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             .withTableName(null);
     }
 
-    protected static MtGetRecordsResult withMtRecordProperties(MtGetRecordsResult result, List<Record> records) {
-        result.setRecordCount(records.size());
+    public static StreamSegmentMetrics createStreamSegmentMetrics(List<Record> records) {
+        final StreamSegmentMetrics metrics = new StreamSegmentMetrics().withRecordCount(records.size());
         if (!records.isEmpty()) {
-            final StreamRecord first = records.get(0).getDynamodb();
-            final StreamRecord last = getLast(records).getDynamodb();
-            result
-                .withFirstSequenceNumber(first.getSequenceNumber())
-                .withFirstApproximateCreationDateTime(first.getApproximateCreationDateTime())
-                .withLastSequenceNumber(last.getSequenceNumber())
-                .withLastApproximateCreationDateTime(last.getApproximateCreationDateTime());
+            metrics.setFirstRecordMetrics(createStreamRecordMetrics(records.get(0)));
+            metrics.setLastRecordMetrics(createStreamRecordMetrics(getLast(records)));
         }
-        return result;
+        return metrics;
     }
+
+    private static StreamRecordMetrics createStreamRecordMetrics(Record record) {
+        final StreamRecord streamRecord = record.getDynamodb();
+        return new StreamRecordMetrics()
+            .withSequenceNumber(streamRecord.getSequenceNumber())
+            .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime());
+    }
+
 }
