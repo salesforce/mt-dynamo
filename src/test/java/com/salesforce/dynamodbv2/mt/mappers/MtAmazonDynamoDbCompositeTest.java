@@ -8,21 +8,134 @@
 package com.salesforce.dynamodbv2.mt.mappers;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
+import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class MtAmazonDynamoDbCompositeTest {
+
+    private static final AtomicReference<String> CONTEXT = new AtomicReference<>(null);
+    private static MtAmazonDynamoDbContextProvider MT_CONTEXT_PROVIDER = () -> Optional.ofNullable(CONTEXT.get());
+    private static String SCAN_TENANT_KEY = "testScanTenantKey";
+    private static String SCAN_VIRTUAL_TABLE_KEY = "testScanVirtualTableKey";
+
+    private AmazonDynamoDB amazonDynamoDb;
+    private MeterRegistry meterRegistry;
+
+    @BeforeEach
+    void beforeEach() {
+        amazonDynamoDb = mock(AmazonDynamoDB.class);
+        meterRegistry = mock(MeterRegistry.class);
+    }
+
+    @Test
+    void testGetDelegate() {
+        MtAmazonDynamoDbBase first = getMockMtAmazonDynamoDb("table1");
+        MtAmazonDynamoDbBase second = getMockMtAmazonDynamoDb("table2");
+        MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
+            () -> CONTEXT.get().equals("1") ? first : second,
+            physicalTableName -> physicalTableName.equals("table1") ? first : second);
+
+        CONTEXT.set("1");
+        assertSame(first, composite.getDelegateFromContext());
+        CONTEXT.set("2");
+        assertSame(second, composite.getDelegateFromContext());
+
+        assertSame(first, composite.getDelegateFromPhysicalTableName("table1"));
+        assertSame(second, composite.getDelegateFromPhysicalTableName("table2"));
+    }
+
+    @Test
+    void testIsMtTable() {
+        MtAmazonDynamoDbBase first = getMockMtAmazonDynamoDb("table1");
+        MtAmazonDynamoDbBase second = getMockMtAmazonDynamoDb("table2");
+        MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
+            null, null);
+
+        assertTrue(composite.isMtTable("table1"));
+        assertTrue(composite.isMtTable("table2"));
+        assertFalse(composite.isMtTable("table3"));
+    }
+
+    @Test
+    void testScan() {
+        MtAmazonDynamoDbBase first = getMockMtAmazonDynamoDb("table1");
+        MtAmazonDynamoDbBase second = getMockMtAmazonDynamoDb("table2");
+        MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
+            () -> CONTEXT.get().equals("1") ? first : second,
+            physicalTableName -> physicalTableName.equals("table1") ? first : second);
+
+        CONTEXT.set("1");
+        ScanRequest scanRequest = new ScanRequest();
+        composite.scan(scanRequest);
+        verify(first).scan(scanRequest);
+
+        CONTEXT.set("2");
+        composite.scan(scanRequest);
+        verify(second).scan(scanRequest);
+
+        CONTEXT.set(null);
+        scanRequest.withTableName("table1");
+        composite.scan(scanRequest);
+        verify(first, times(2)).scan(scanRequest);
+    }
+
+    @Test
+    void testListTables() {
+        MtAmazonDynamoDbBase first = getMockMtAmazonDynamoDb("table1");
+        MtAmazonDynamoDbBase second = getMockMtAmazonDynamoDb("table2");
+        MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
+            () -> CONTEXT.get().equals("1") ? first : second,
+            physicalTableName -> physicalTableName.equals("table1") ? first : second);
+
+        CONTEXT.set("1");
+        composite.listTables();
+        verify(first).listTables(any(), any());
+
+        CONTEXT.set("2");
+        composite.listTables();
+        verify(second).listTables(any(), any());
+
+        CONTEXT.set(null);
+        when(amazonDynamoDb.listTables(any(), any())).thenReturn(
+            new ListTablesResult().withTableNames("table1", "table2", "table3"));
+        assertEquals(ImmutableList.of("table1", "table2"), composite.listTables().getTableNames());
+    }
+
+    private MtAmazonDynamoDbBase getMockMtAmazonDynamoDb(String physicalTable) {
+        MtAmazonDynamoDbBase mockMtAmazonDynamoDb = mock(MtAmazonDynamoDbBase.class);
+        when(mockMtAmazonDynamoDb.getMtContext()).thenReturn(MT_CONTEXT_PROVIDER);
+        when(mockMtAmazonDynamoDb.getAmazonDynamoDb()).thenReturn(amazonDynamoDb);
+        when(mockMtAmazonDynamoDb.getMeterRegistry()).thenReturn(meterRegistry);
+        when(mockMtAmazonDynamoDb.getScanTenantKey()).thenReturn(SCAN_TENANT_KEY);
+        when(mockMtAmazonDynamoDb.getScanVirtualTableKey()).thenReturn(SCAN_VIRTUAL_TABLE_KEY);
+        when(mockMtAmazonDynamoDb.isMtTable(eq(physicalTable))).thenReturn(true);
+        return mockMtAmazonDynamoDb;
+    }
 
     @ParameterizedTest
     @MethodSource("dataForValidateTest")
@@ -40,16 +153,12 @@ class MtAmazonDynamoDbCompositeTest {
     }
 
     private static Stream<Arguments> dataForValidateTest() {
-        MtAmazonDynamoDbContextProvider mtContext = mock(MtAmazonDynamoDbContextProvider.class);
         AmazonDynamoDB amazonDynamoDb = mock(AmazonDynamoDB.class);
         MeterRegistry meterRegistry = mock(MeterRegistry.class);
-        String scanTenantKey = "testScanTenantKey";
-        String scanVirtualTableKey = "testScanVirtualTableKey";
-
-        MtAmazonDynamoDbBase first = new MtAmazonDynamoDbBase(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey,
-            scanVirtualTableKey);
-        MtAmazonDynamoDbBase second = new MtAmazonDynamoDbBase(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey,
-            scanVirtualTableKey);
+        MtAmazonDynamoDbBase first = new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, amazonDynamoDb, meterRegistry,
+            SCAN_TENANT_KEY, SCAN_VIRTUAL_TABLE_KEY);
+        MtAmazonDynamoDbBase second = new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, amazonDynamoDb, meterRegistry,
+            SCAN_TENANT_KEY, SCAN_VIRTUAL_TABLE_KEY);
 
         return Stream.of(
             // valid
@@ -58,20 +167,26 @@ class MtAmazonDynamoDbCompositeTest {
             Arguments.of(null, "Must provide at least one delegate"),
             Arguments.of(Collections.emptyList(), "Must provide at least one delegate"),
             Arguments.of(ImmutableList.of(first, second,
-                new MtAmazonDynamoDbBase(null, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey)),
+                new MtAmazonDynamoDbBase(null, amazonDynamoDb, meterRegistry, SCAN_TENANT_KEY,
+                    SCAN_VIRTUAL_TABLE_KEY)),
                 "Delegates must share the same mt context provider"),
             Arguments.of(ImmutableList.of(first, second,
-                new MtAmazonDynamoDbBase(mtContext, null, meterRegistry, scanTenantKey, scanVirtualTableKey)),
+                new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, null, meterRegistry, SCAN_TENANT_KEY,
+                    SCAN_VIRTUAL_TABLE_KEY)),
                 "Delegates must share the same parent AmazonDynamoDB"),
             Arguments.of(ImmutableList.of(first, second,
-                new MtAmazonDynamoDbBase(mtContext, amazonDynamoDb, null, scanTenantKey, scanVirtualTableKey)),
+                new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, amazonDynamoDb, null, SCAN_TENANT_KEY,
+                    SCAN_VIRTUAL_TABLE_KEY)),
                 "Delegates must share the same meter registry"),
             Arguments.of(ImmutableList.of(first, second,
-                new MtAmazonDynamoDbBase(mtContext, amazonDynamoDb, meterRegistry, null, scanVirtualTableKey)),
+                new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, amazonDynamoDb, meterRegistry, null,
+                    SCAN_VIRTUAL_TABLE_KEY)),
                 "Delegates must share the same scan tenant key"),
             Arguments.of(ImmutableList.of(first, second,
-                new MtAmazonDynamoDbBase(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, null)),
+                new MtAmazonDynamoDbBase(MT_CONTEXT_PROVIDER, amazonDynamoDb, meterRegistry, SCAN_TENANT_KEY,
+                    null)),
                 "Delegates must share the same scan virtual table key")
         );
     }
+
 }
