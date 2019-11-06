@@ -10,6 +10,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import java.util.Collections;
 import org.junit.jupiter.api.Test;
 
 class MtAmazonDynamoDbStreamsTest {
@@ -58,4 +59,17 @@ class MtAmazonDynamoDbStreamsTest {
             "Expected an instance of MtAmazonDynamoDbStreamsBySharedTable");
     }
 
+    @Test
+    void testCreateFromDynamoComposite() {
+        MtAmazonDynamoDbComposite composite = mock(MtAmazonDynamoDbComposite.class);
+        MtAmazonDynamoDbBySharedTable delegate = mock(MtAmazonDynamoDbBySharedTable.class);
+        when(delegate.getMeterRegistry()).thenReturn(new CompositeMeterRegistry());
+        when(composite.getDelegates()).thenReturn(Collections.singleton(delegate));
+
+        AmazonDynamoDBStreams actual = MtAmazonDynamoDbStreams
+            .createFromDynamo(composite, mock(AmazonDynamoDBStreams.class));
+
+        assertTrue(actual instanceof MtAmazonDynamoDbStreamsComposite,
+            "Expected an instance of MtAmazonDynamoDbStreamsComposite");
+    }
 }

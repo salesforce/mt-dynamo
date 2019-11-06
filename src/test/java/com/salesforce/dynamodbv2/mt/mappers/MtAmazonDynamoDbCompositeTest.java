@@ -20,13 +20,19 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
+import com.amazonaws.services.dynamodbv2.model.GetRecordsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
+import com.salesforce.dynamodbv2.mt.util.StreamArn;
+import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
@@ -124,6 +130,42 @@ class MtAmazonDynamoDbCompositeTest {
         when(amazonDynamoDb.listTables(any(), any())).thenReturn(
             new ListTablesResult().withTableNames("table1", "table2", "table3"));
         assertEquals(ImmutableList.of("table1", "table2"), composite.listTables().getTableNames());
+    }
+
+    @Test
+    void testStreams() {
+        MtAmazonDynamoDbBase first = getMockMtAmazonDynamoDb("table1");
+        MtAmazonDynamoDbBase second = getMockMtAmazonDynamoDb("table2");
+        MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
+            () -> CONTEXT.get().equals("1") ? first : second,
+            physicalTableName -> physicalTableName.equals("table1") ? first : second);
+
+        MtAmazonDynamoDbStreamsBase firstStreams = mock(MtAmazonDynamoDbStreamsBase.class);
+        MtAmazonDynamoDbStreamsBase secondStreams = mock(MtAmazonDynamoDbStreamsBase.class);
+        Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDelegateDb = ImmutableMap.of(
+            first, firstStreams, second, secondStreams);
+        MtAmazonDynamoDbStreamsComposite streams = new MtAmazonDynamoDbStreamsComposite(
+            mock(AmazonDynamoDBStreams.class), composite, streamsPerDelegateDb);
+
+        CONTEXT.set("1");
+        GetRecordsRequest request = mock(GetRecordsRequest.class);
+        MtStreamArn mtStreamArn = mock(MtStreamArn.class);
+        streams.getRecords(request, mtStreamArn);
+        verify(firstStreams).getRecords(request, mtStreamArn);
+
+        CONTEXT.set("2");
+        streams.getRecords(request, mtStreamArn);
+        verify(secondStreams).getRecords(request, mtStreamArn);
+
+        CONTEXT.set(null);
+        StreamArn streamArn = mock(StreamArn.class);
+        when(streamArn.getTableName()).thenReturn("table1");
+        streams.getAllRecords(request, streamArn);
+        verify(firstStreams).getAllRecords(request, streamArn);
+
+        when(streamArn.getTableName()).thenReturn("table2");
+        streams.getAllRecords(request, streamArn);
+        verify(secondStreams).getAllRecords(request, streamArn);
     }
 
     private MtAmazonDynamoDbBase getMockMtAmazonDynamoDb(String physicalTable) {
