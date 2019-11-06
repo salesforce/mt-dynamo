@@ -247,7 +247,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             // and validate fetching all multi tenant records filters out deleted tenant
             iterator = getShardIterator(mtDynamoDbStreams);
             assertGetRecords(mtDynamoDbStreams, iterator, 4,
-                    deletedExpected1, deletedExpected2, expected3, expected4);
+                deletedExpected1, deletedExpected2, expected3, expected4);
 
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
@@ -484,7 +484,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
 
         // expect no records (and no retry attempt)
         assertEquals(0, result.getRecords().size());
-        assertStreamSegmentMetrics(result,0, null, null);
+        assertStreamSegmentMetrics(result, 0, null, null);
     }
 
     private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
@@ -541,7 +541,7 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
             );
         }
         assertTrue(result instanceof MtGetRecordsResult);
-        assertEquals(expected, ((MtGetRecordsResult)result).getStreamSegmentMetrics());
+        assertEquals(expected, ((MtGetRecordsResult) result).getStreamSegmentMetrics());
     }
 
 }
