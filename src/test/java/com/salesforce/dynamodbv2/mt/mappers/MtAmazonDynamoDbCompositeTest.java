@@ -30,7 +30,7 @@ class MtAmazonDynamoDbCompositeTest {
         if (error != null) {
             try {
                 new MtAmazonDynamoDbComposite(delegates, null, null);
-                fail("Should have thrown IlllegalArgumentException with message: " + error);
+                fail("Should have thrown IllegalArgumentException with message: " + error);
             } catch (IllegalArgumentException e) {
                 assertEquals(error, e.getMessage());
             }
