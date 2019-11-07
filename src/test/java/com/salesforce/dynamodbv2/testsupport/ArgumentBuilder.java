@@ -12,15 +12,18 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount.MtAccountMapper;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByTable;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbComposite;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbLogger;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,14 +84,14 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withBinaryHashKey(true)
             .build()),
 
-        HashPartitioning(root -> SharedTableBuilder.builder()
+        HashPartitioning(root -> getTrivialCompositeClient(SharedTableBuilder.builder()
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(wrapWithLogger(root))
             .withContext(MT_CONTEXT)
             .withTruncateOnDeleteTable(true)
             .withBinaryHashKey(true)
             .withPartitioningStrategy(new HashPartitioningStrategy(64))
-            .build());
+            .build()));
 
         private final UnaryOperator<AmazonDynamoDB> buildClientFromRoot;
 
@@ -99,6 +102,11 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         AmazonDynamoDB getAmazonDynamoDb(AmazonDynamoDB rootAmazonDynamoDb) {
             return buildClientFromRoot.apply(rootAmazonDynamoDb);
         }
+    }
+
+    private static MtAmazonDynamoDbComposite getTrivialCompositeClient(MtAmazonDynamoDbBase delegate) {
+        return new MtAmazonDynamoDbComposite(Collections.singletonList(delegate),
+            () -> delegate, table -> delegate);
     }
 
     private AmazonDynamoDB rootAmazonDynamoDb = DEFAULT_ROOT_AMAZON_DYNAMO_DB;

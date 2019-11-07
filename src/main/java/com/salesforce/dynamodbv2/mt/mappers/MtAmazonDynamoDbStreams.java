@@ -11,7 +11,9 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbByS
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbStreamsBySharedTable;
 import com.salesforce.dynamodbv2.mt.util.CachingAmazonDynamoDbStreams;
 import java.util.Date;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * A multitenant version of {@link AmazonDynamoDBStreams} that returns only results for the appropriate tenant.
@@ -257,7 +259,8 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
      * @param dynamoDbStreams the underlying {@link AmazonDynamoDBStreams} instance
      * @return the appropriate {@link MtAmazonDynamoDbStreams} instance for the given {@link AmazonDynamoDB}
      */
-    static MtAmazonDynamoDbStreams createFromDynamo(AmazonDynamoDB dynamoDb, AmazonDynamoDBStreams dynamoDbStreams) {
+    static MtAmazonDynamoDbStreamsBase createFromDynamo(AmazonDynamoDB dynamoDb,
+                                                        AmazonDynamoDBStreams dynamoDbStreams) {
         checkArgument(dynamoDb instanceof MtAmazonDynamoDbBase);
 
         if (dynamoDb instanceof MtAmazonDynamoDbByTable) {
@@ -266,6 +269,13 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
 
         if (dynamoDb instanceof MtAmazonDynamoDbBySharedTable) {
             return new MtAmazonDynamoDbStreamsBySharedTable(dynamoDbStreams, (MtAmazonDynamoDbBySharedTable) dynamoDb);
+        }
+
+        if (dynamoDb instanceof MtAmazonDynamoDbComposite) {
+            MtAmazonDynamoDbComposite compositeDb = (MtAmazonDynamoDbComposite) dynamoDb;
+            Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDb = compositeDb.getDelegates().stream()
+                .collect(Collectors.toMap(db -> db, db -> createFromDynamo(db, dynamoDbStreams)));
+            return new MtAmazonDynamoDbStreamsComposite(dynamoDbStreams, compositeDb, streamsPerDb);
         }
 
         throw new UnsupportedOperationException(dynamoDb.getClass().getName() + " is currently not supported");
