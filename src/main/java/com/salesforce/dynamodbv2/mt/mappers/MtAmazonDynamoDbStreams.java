@@ -259,8 +259,10 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
      * @param dynamoDbStreams the underlying {@link AmazonDynamoDBStreams} instance
      * @return the appropriate {@link MtAmazonDynamoDbStreams} instance for the given {@link AmazonDynamoDB}
      */
-    static MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> createFromDynamo(AmazonDynamoDB dynamoDb,
-                                                                                        AmazonDynamoDBStreams dynamoDbStreams) {
+    static MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> createFromDynamo(
+        AmazonDynamoDB dynamoDb,
+        AmazonDynamoDBStreams dynamoDbStreams
+    ) {
         checkArgument(dynamoDb instanceof MtAmazonDynamoDbBase);
 
         if (dynamoDb instanceof MtAmazonDynamoDbByTable) {
