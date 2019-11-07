@@ -45,9 +45,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 class MtAmazonDynamoDbCompositeTest {
 
     private static final AtomicReference<String> CONTEXT = new AtomicReference<>(null);
-    private static MtAmazonDynamoDbContextProvider MT_CONTEXT_PROVIDER = () -> Optional.ofNullable(CONTEXT.get());
-    private static String SCAN_TENANT_KEY = "testScanTenantKey";
-    private static String SCAN_VIRTUAL_TABLE_KEY = "testScanVirtualTableKey";
+    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT_PROVIDER = () -> Optional.ofNullable(CONTEXT.get());
+    private static final String SCAN_TENANT_KEY = "testScanTenantKey";
+    private static final String SCAN_VIRTUAL_TABLE_KEY = "testScanVirtualTableKey";
 
     private AmazonDynamoDB amazonDynamoDb;
     private MeterRegistry meterRegistry;
@@ -140,10 +140,12 @@ class MtAmazonDynamoDbCompositeTest {
             () -> CONTEXT.get().equals("1") ? first : second,
             physicalTableName -> physicalTableName.equals("table1") ? first : second);
 
-        MtAmazonDynamoDbStreamsBase firstStreams = mock(MtAmazonDynamoDbStreamsBase.class);
-        MtAmazonDynamoDbStreamsBase secondStreams = mock(MtAmazonDynamoDbStreamsBase.class);
-        Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDelegateDb = ImmutableMap.of(
-            first, firstStreams, second, secondStreams);
+        MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> firstStreams
+            = (MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>) mock(MtAmazonDynamoDbStreamsBase.class);
+        MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> secondStreams
+            = (MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>) mock(MtAmazonDynamoDbStreamsBase.class);
+        Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>> streamsPerDelegateDb
+            = ImmutableMap.of(first, firstStreams, second, secondStreams);
         MtAmazonDynamoDbStreamsComposite streams = new MtAmazonDynamoDbStreamsComposite(
             mock(AmazonDynamoDBStreams.class), composite, streamsPerDelegateDb);
 

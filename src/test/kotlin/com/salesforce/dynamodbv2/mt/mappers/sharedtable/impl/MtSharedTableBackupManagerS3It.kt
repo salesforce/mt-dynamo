@@ -50,7 +50,6 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import java.util.function.Supplier
 import java.util.stream.Collectors
@@ -152,9 +151,9 @@ internal class MtSharedTableBackupManagerS3It {
         }
     }
 
-    private fun byteBufferToString(b: ByteBuffer) = String(b.array(), StandardCharsets.UTF_8)
+    private fun byteBufferToString(b: ByteBuffer) = String(b.array(), Charsets.UTF_8)
 
-    private fun stringToByteBuffer(s: String) = ByteBuffer.wrap(s.toByteArray(StandardCharsets.UTF_8))
+    private fun stringToByteBuffer(s: String) = ByteBuffer.wrap(s.toByteArray(Charsets.UTF_8))
 
     private fun createTestData(tenantTable: TenantTable): CreateTableRequest {
         val createdTableRequest = CreateTableRequestBuilder.builder()

@@ -51,7 +51,6 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 import java.util.ArrayList
 import java.util.stream.Collectors
 
@@ -94,7 +93,7 @@ open class MtSharedTableBackupManager(
             "com.amazonaws.RequestClientOptions",
             "com.amazonaws.event.ProgressListener"
     )
-    val charset = StandardCharsets.UTF_8
+    val charset = Charsets.UTF_8
 
     override fun createBackup(createBackupRequest: CreateBackupRequest): MtBackupMetadata {
 

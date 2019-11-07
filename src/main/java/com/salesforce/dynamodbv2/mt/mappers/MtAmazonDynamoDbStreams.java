@@ -259,8 +259,10 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
      * @param dynamoDbStreams the underlying {@link AmazonDynamoDBStreams} instance
      * @return the appropriate {@link MtAmazonDynamoDbStreams} instance for the given {@link AmazonDynamoDB}
      */
-    static MtAmazonDynamoDbStreamsBase createFromDynamo(AmazonDynamoDB dynamoDb,
-                                                        AmazonDynamoDBStreams dynamoDbStreams) {
+    static MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> createFromDynamo(
+        AmazonDynamoDB dynamoDb,
+        AmazonDynamoDBStreams dynamoDbStreams
+    ) {
         checkArgument(dynamoDb instanceof MtAmazonDynamoDbBase);
 
         if (dynamoDb instanceof MtAmazonDynamoDbByTable) {
@@ -273,7 +275,8 @@ public interface MtAmazonDynamoDbStreams extends AmazonDynamoDBStreams {
 
         if (dynamoDb instanceof MtAmazonDynamoDbComposite) {
             MtAmazonDynamoDbComposite compositeDb = (MtAmazonDynamoDbComposite) dynamoDb;
-            Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDb = compositeDb.getDelegates().stream()
+            Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>> streamsPerDb = compositeDb
+                .getDelegates().stream()
                 .collect(Collectors.toMap(db -> db, db -> createFromDynamo(db, dynamoDbStreams)));
             return new MtAmazonDynamoDbStreamsComposite(dynamoDbStreams, compositeDb, streamsPerDb);
         }
