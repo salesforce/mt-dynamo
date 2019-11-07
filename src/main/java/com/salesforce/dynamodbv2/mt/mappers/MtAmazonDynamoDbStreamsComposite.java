@@ -22,10 +22,12 @@ import java.util.Map;
  */
 public class MtAmazonDynamoDbStreamsComposite extends MtAmazonDynamoDbStreamsBase<MtAmazonDynamoDbComposite> {
 
-    private final Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDelegateDb;
+    private final Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>> streamsPerDelegateDb;
 
-    public MtAmazonDynamoDbStreamsComposite(AmazonDynamoDBStreams streams, MtAmazonDynamoDbComposite mtDynamoDb,
-                                            Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase> streamsPerDelegateDb) {
+    public MtAmazonDynamoDbStreamsComposite(
+        AmazonDynamoDBStreams streams,
+        MtAmazonDynamoDbComposite mtDynamoDb,
+        Map<AmazonDynamoDB, MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase>> streamsPerDelegateDb) {
         super(streams, mtDynamoDb);
         this.streamsPerDelegateDb = streamsPerDelegateDb;
     }
@@ -33,7 +35,8 @@ public class MtAmazonDynamoDbStreamsComposite extends MtAmazonDynamoDbStreamsBas
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
         AmazonDynamoDB dbForContext = mtDynamoDb.getDelegateFromContext();
-        MtAmazonDynamoDbStreamsBase streamsForContext = streamsPerDelegateDb.get(dbForContext);
+        MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> streamsForContext = streamsPerDelegateDb
+            .get(dbForContext);
         checkState(streamsForContext != null, "Base db client not mapped to a streams client");
         return streamsForContext.getRecords(request, mtStreamArn);
     }
@@ -41,7 +44,8 @@ public class MtAmazonDynamoDbStreamsComposite extends MtAmazonDynamoDbStreamsBas
     @Override
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
         AmazonDynamoDB dbForPhysicalTable = mtDynamoDb.getDelegateFromPhysicalTableName(streamArn.getTableName());
-        MtAmazonDynamoDbStreamsBase streamsForPhysicalTable = streamsPerDelegateDb.get(dbForPhysicalTable);
+        MtAmazonDynamoDbStreamsBase<? extends MtAmazonDynamoDbBase> streamsForPhysicalTable = streamsPerDelegateDb
+            .get(dbForPhysicalTable);
         checkState(streamsForPhysicalTable != null, "Base db client not mapped to a streams client");
         return streamsForPhysicalTable.getAllRecords(request, streamArn);
     }
