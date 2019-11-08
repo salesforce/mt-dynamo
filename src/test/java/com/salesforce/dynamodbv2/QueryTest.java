@@ -486,9 +486,8 @@ class QueryTest {
     @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void queryGsi_TableWithGsiHkSameAsTableRk(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
-            String table = TABLE5;
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
-                new QueryRequest().withTableName(table).withKeyConditionExpression("#name = :value")
+                new QueryRequest().withTableName(TABLE5).withKeyConditionExpression("#name = :value")
                     .withExpressionAttributeNames(ImmutableMap.of("#name", RANGE_KEY_FIELD))
                     .withExpressionAttributeValues(ImmutableMap.of(
                         ":value", createStringAttribute(RANGE_KEY_OTHER_S_VALUE),

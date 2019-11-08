@@ -61,7 +61,6 @@ import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
@@ -733,7 +732,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
             ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
 
-            List<Future<SnapshotResult>> futures = Lists.newArrayList();
+            List<Future<SnapshotResult>> futures = new ArrayList<>();
             Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
             for (String tableName : origMtTables) {
                 String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." + tableName;
@@ -741,7 +740,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 futures.add(executorService.submit(
                     snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
-            List<SnapshotResult> snapshotResults = Lists.newArrayList();
+            List<SnapshotResult> snapshotResults = new ArrayList<>();
             try {
                 for (Future<SnapshotResult> future : futures) {
                     try {

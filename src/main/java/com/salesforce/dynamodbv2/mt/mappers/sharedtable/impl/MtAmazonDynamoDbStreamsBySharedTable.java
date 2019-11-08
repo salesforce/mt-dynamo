@@ -1,8 +1,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.collect.Iterables.getLast;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBStreams;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -11,6 +9,7 @@ import com.amazonaws.services.dynamodbv2.model.GetRecordsResult;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorRequest;
 import com.amazonaws.services.dynamodbv2.model.GetShardIteratorResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBase;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
@@ -67,8 +66,11 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      */
     @Override
     protected MtGetRecordsResult getAllRecords(GetRecordsRequest request, StreamArn streamArn) {
-        return getAllRecordsTime.record(() ->
-            getMtRecords(request, getRecordMapper(streamArn.getTableName()), getAllRecordsSize));
+        return getAllRecordsTime.record(() -> {
+            final MtGetRecordsResult result = getMtRecords(request, getRecordMapper(streamArn.getTableName()));
+            getAllRecordsSize.record(result.getStreamSegmentMetrics().getRecordCount());
+            return result;
+        });
     }
 
     private Function<Record, Optional<MtRecord>> getRecordMapper(String physicalTableName) {
@@ -104,9 +106,14 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
     @Override
     protected MtGetRecordsResult getRecords(GetRecordsRequest request, MtStreamArn mtStreamArn) {
         return getRecordsTime.record(() -> {
-            Optional.ofNullable(request.getLimit()).ifPresent(limit -> checkArgument(limit > 0 && limit <= MAX_LIMIT));
+            final int limit = request.getLimit() == null ? MAX_LIMIT : request.getLimit();
+            checkArgument(limit > 0 && limit <= MAX_LIMIT);
 
-            final int limit = Optional.ofNullable(request.getLimit()).orElse(MAX_LIMIT);
+            final RecordMapper recordMapper = mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName())
+                .orElseThrow(() -> new ResourceNotFoundException(mtStreamArn.getTenantTableName() + " does not exist"))
+                .getRecordMapper();
+            final Predicate<Record> recordFilter = recordMapper.createFilter();
+
             final long timeLimit = mtDynamoDb.getGetRecordsTimeLimit();
             final long time = mtDynamoDb.getClock().millis();
 
@@ -114,96 +121,65 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                 .withRecords(new ArrayList<>(limit))
                 .withNextShardIterator(request.getShardIterator());
 
-            final RecordMapper recordMapper =
-                mtDynamoDb.getTableMapping(mtStreamArn.getTenantTableName()).get().getRecordMapper();
-            final Predicate<Record> recordFilter = recordMapper.createFilter();
-
-            int recordsLoaded;
-            int recordsLoadedSum = 0;
+            int loaded;
             do {
-                recordsLoaded = loadRecords(result, limit, recordFilter, recordMapper);
-                recordsLoadedSum += recordsLoaded;
+                // Load a chunk of records
+                final MtGetRecordsResult partialResult = getRecords(
+                    result.getNextShardIterator(),
+                    limit - result.getRecords().size(),
+                    recordFilter,
+                    recordMapper,
+                    null);
+                // Update result with what we got
+                result.getRecords().addAll(partialResult.getRecords());
+                result.setNextShardIterator(partialResult.getNextShardIterator());
+                final StreamSegmentMetrics metrics = result.getStreamSegmentMetrics();
+                if (metrics == null) {
+                    result.setStreamSegmentMetrics(partialResult.getStreamSegmentMetrics());
+                } else {
+                    final StreamSegmentMetrics partialMetrics = partialResult.getStreamSegmentMetrics();
+                    metrics.setRecordCount(metrics.getRecordCount() + partialMetrics.getRecordCount());
+                    metrics.setLastRecordMetrics(partialMetrics.getLastRecordMetrics());
+                }
+                // Keep track of how much we we loaded to determine whether to keep going
+                // Note: this heuristic is only accurate if we hit the streams cache or if DynamoDB happens to return
+                // the max number of records. If we miss the cache and DynamoDB reaches the max result size (1MB) before
+                // hitting the 1k record limit, we will stop. Also, DynamoDB sometimes has gaps in the stream where it
+                // returns fewer records regardless of the limit.
+                // TODO add a builder extensions that allows clients to specify the shard end tracked externally
+                loaded = partialResult.getStreamSegmentMetrics().getRecordCount();
             } while (result.getRecords().size() < limit     // only continue if we need more tenant records,
-                && recordsLoaded == MAX_LIMIT               // have not reached current end of the underlying stream,
+                && loaded == MAX_LIMIT                      // have not reached current end of the underlying stream,
                 && result.getNextShardIterator() != null    // have not reached absolute end of underlying stream,
                 && (mtDynamoDb.getClock().millis() - time) <= timeLimit // and have not exceeded the soft time limit
             );
 
             getRecordsSize.record(result.getRecords().size());
-            getRecordsLoadedCounter.record(recordsLoadedSum);
+            getRecordsLoadedCounter.record(result.getStreamSegmentMetrics().getRecordCount());
 
             return result;
         });
-
     }
 
     /**
      * Fetches more records using the next iterator in the result and adds them to the result records. Returns the
      * number of records that were loaded from the underlying stream, so that the caller can decide whether to continue.
      */
-    private int loadRecords(MtGetRecordsResult mtResult,
-                            int limit,
-                            Predicate<Record> recordFilter,
-                            Function<Record, MtRecord> recordMapper) {
-        // retrieve max number of records from underlying stream (and retry below if we got too many)
-        final GetRecordsRequest request = new GetRecordsRequest().withLimit(MAX_LIMIT)
-            .withShardIterator(mtResult.getNextShardIterator());
+    private MtGetRecordsResult getRecords(String shardIterator,
+                                          int limit,
+                                          Predicate<Record> recordFilter,
+                                          Function<Record, MtRecord> recordMapper,
+                                          Integer retrieveMax) {
+        // retrieve records from underlying stream
+        final GetRecordsRequest request = new GetRecordsRequest()
+            .withShardIterator(shardIterator)
+            .withLimit(retrieveMax == null ? MAX_LIMIT : retrieveMax);
         final GetRecordsResult result = dynamoDbStreams.getRecords(request);
         final List<Record> records = result.getRecords();
 
         // otherwise, transform records and add those that match the createFilter
-        final int remaining = limit - mtResult.getRecords().size();
-        final List<Record> innerMtRecords = new ArrayList<>(remaining);
-        final int consumed = addRecords(innerMtRecords, remaining, records, recordFilter, recordMapper);
-
-        // If we consumed all records, then we can return the records and next shard iterator
-        if (consumed == records.size()) {
-            mtResult.setNextShardIterator(result.getNextShardIterator());
-            if (!records.isEmpty()) {
-                mtResult.getRecords().addAll(innerMtRecords);
-                mtResult.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
-            }
-            return records.size();
-        } else {
-            // If we did not consume all records, then the loaded segment contains more tenant records than what we can
-            // return per the client-specified limit. In that case we cannot use the loaded result, since the next shard
-            // iterator would skip the records that were not returned. Therefore, we retry the load request with the
-            // number of consumed records as the call limit, so that we get at most as many tenant records as needed for
-            // the client-specified limit.
-            return retryLoadRecords(mtResult, limit, recordFilter, recordMapper, consumed);
-        }
-    }
-
-    // helper method for loadRecords (extracted to avoid accidentally referencing the wrong local variables)
-    private int retryLoadRecords(MtGetRecordsResult mtResult,
-                                 int limit,
-                                 Predicate<Record> recordFilter,
-                                 Function<Record, MtRecord> recordMapper,
-                                 int innerLimit) {
-        final GetRecordsRequest request = new GetRecordsRequest().withLimit(innerLimit)
-            .withShardIterator(mtResult.getNextShardIterator());
-        final GetRecordsResult result = dynamoDbStreams.getRecords(request);
-        final List<Record> records = result.getRecords();
-        mtResult.setNextShardIterator(result.getNextShardIterator());
-        // shouldn't happen, but just to be safe
-        if (!records.isEmpty()) {
-            final int consumed = addRecords(mtResult.getRecords(), limit, records, recordFilter, recordMapper);
-            checkState(consumed == records.size()); // can't happen unless stream order changes
-            mtResult.setLastSequenceNumber(getLast(records).getDynamodb().getSequenceNumber());
-        }
-        return records.size();
-    }
-
-    /**
-     * Transforms and filters {@code records} and adds them to {@code mtRecords} until the limit is reached. Returns
-     * how many records were traversed before limit or end of collection was reached.
-     */
-    private static int addRecords(List<? super MtRecord> mtRecords,
-                                  int limit,
-                                  List<? extends Record> records,
-                                  Predicate<Record> recordFilter,
-                                  Function<Record, MtRecord> recordMapper) {
-        int consumedRecords = 0;
+        final List<Record> mtRecords = new ArrayList<>(limit);
+        int consumed = 0;
         for (Record record : records) {
             if (recordFilter.test(record)) {
                 if (mtRecords.size() >= limit) {
@@ -212,9 +188,27 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
                     mtRecords.add(recordMapper.apply(record));
                 }
             }
-            consumedRecords++;
+            consumed++;
         }
-        return consumedRecords;
+
+        // If we consumed all records, then we can return the records and next shard iterator
+        if (consumed == records.size()) {
+            return new MtGetRecordsResult()
+                .withRecords(mtRecords)
+                .withNextShardIterator(result.getNextShardIterator())
+                .withStreamSegmentMetrics(createStreamSegmentMetrics(records));
+        } else {
+            // If we did not consume all records, then the loaded segment contains more tenant records than what we can
+            // return per the client-specified limit. In that case we cannot use the loaded result, since the next shard
+            // iterator would skip the records that were not returned. Therefore, we retry the load request with the
+            // number of consumed records as the call limit, so that we get at most as many tenant records as needed for
+            // the client-specified limit.
+            if (retrieveMax == null) {
+                return getRecords(shardIterator, limit, recordFilter, recordMapper, consumed);
+            }
+            // if we recurse, we should always be able to consume all records
+            throw new IllegalStateException("Failed to load mt records for iterator " + shardIterator);
+        }
     }
 
 }

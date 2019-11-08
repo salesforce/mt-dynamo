@@ -2,6 +2,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.amazonaws.services.dynamodbv2.model.ShardIteratorType.AFTER_SEQUENCE_NUMBER;
 import static com.amazonaws.services.dynamodbv2.model.StreamViewType.NEW_AND_OLD_IMAGES;
+import static com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static java.util.stream.Collectors.toList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,7 +38,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 /**
  * Verifies behavior that applies all multitenant streams implementations.
  */
-public class MtAmazonDynamoDbStreamsBaseTest {
+class MtAmazonDynamoDbStreamsBaseTest {
 
     private static final String TABLE_PREFIX = MtAmazonDynamoDbStreamsBaseTest.class.getSimpleName() + ".";
 
@@ -144,7 +145,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 .map(Optional::get)
                 .collect(toList());
             // we are also not asserting which stream returns which records, just that we get them all
-            MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, iterators, expected);
+            assertGetRecords(mtDynamoDbStreams, iterators, expected);
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }
@@ -177,8 +178,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 assertNotNull(streamArn);
                 String iterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
                     .orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, iterator, expected1, expected2);
+                final int expectedRecordCount = mtDynamoDbStreams instanceof MtAmazonDynamoDbStreamsByTable ? 2 : 4;
+                assertGetRecords(mtDynamoDbStreams, iterator, expectedRecordCount, expected1, expected2);
             });
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
@@ -225,8 +226,8 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 assertNotNull(streamArn);
                 String iterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
                     .orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, iterator, streamsEnabledRecord);
+                final int expectedRecordCount = mtDynamoDbStreams instanceof MtAmazonDynamoDbStreamsByTable ? 1 : 2;
+                assertGetRecords(mtDynamoDbStreams, iterator, expectedRecordCount, streamsEnabledRecord);
             });
 
             // verify that either the streamArn is null(for ByTable or ByAccount) or the iterator returns no records
@@ -236,7 +237,7 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                     // for byIndex, the streamArn will not be null, but it should return no records
                     String iterator = MtAmazonDynamoDbStreamsBaseTestUtils
                         .getShardIterator(mtDynamoDbStreams, streamArn).orElseThrow();
-                    MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, iterator);
+                    assertGetRecords(mtDynamoDbStreams, iterator, 1);
                 }
             });
         } finally {
@@ -268,17 +269,17 @@ public class MtAmazonDynamoDbStreamsBaseTest {
                 // first start at trim horizon
                 String thIterator = MtAmazonDynamoDbStreamsBaseTestUtils.getShardIterator(mtDynamoDbStreams, streamArn)
                     .orElseThrow();
-                String lastSn = MtAmazonDynamoDbStreamsBaseTestUtils
-                    .assertGetRecords(mtDynamoDbStreams, thIterator, 1, expected1);
+                final int expectedRecordCount = mtDynamoDbStreams instanceof MtAmazonDynamoDbStreamsByTable ? 1 : 2;
+                String lastSn = assertGetRecords(mtDynamoDbStreams, thIterator, 1, expectedRecordCount, expected1)
+                    .getStreamSegmentMetrics().getLastRecordMetrics().getSequenceNumber();
                 assertNotNull(lastSn);
 
                 // now start at last record: expect to get next record
                 String afterIterator = MtAmazonDynamoDbStreamsBaseTestUtils
                     .getShardIterator(mtDynamoDbStreams, streamArn, AFTER_SEQUENCE_NUMBER, lastSn)
                     .orElseThrow();
-                MtAmazonDynamoDbStreamsBaseTestUtils.assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
+                assertGetRecords(mtDynamoDbStreams, afterIterator, 1, expected2);
             });
-
         } finally {
             MtAmazonDynamoDbStreamsBaseTestUtils.deleteMtTables(mtDynamoDb);
         }

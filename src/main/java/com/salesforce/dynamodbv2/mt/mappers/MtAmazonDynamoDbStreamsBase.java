@@ -16,12 +16,12 @@ import com.amazonaws.services.dynamodbv2.model.ListStreamsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListStreamsResult;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamDescription;
+import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RecordMapper;
 import com.salesforce.dynamodbv2.mt.util.ShardIterator;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import com.salesforce.dynamodbv2.mt.util.StreamArn.MtStreamArn;
-import io.micrometer.core.instrument.DistributionSummary;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -211,15 +211,10 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
      * @return MtGetRecordsResult result.
      */
     protected MtGetRecordsResult getMtRecords(GetRecordsRequest request,
-                                              Function<Record, Optional<MtRecord>> mapper,
-                                              DistributionSummary meter) {
+                                              Function<Record, Optional<MtRecord>> mapper) {
         final GetRecordsResult result = dynamoDbStreams.getRecords(request);
         final List<Record> records = result.getRecords();
         final String nextIterator = result.getNextShardIterator();
-        if (records.isEmpty()) {
-            meter.record(0);
-            return new MtGetRecordsResult().withRecords(records).withNextShardIterator(nextIterator);
-        }
         final List<Record> mtRecords = new ArrayList<>(records.size());
         for (Record record : records) {
             Optional<MtRecord> mtRecord = mapper.apply(record);
@@ -228,21 +223,34 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
             } else {
                 mtRecords.add(getMissingMapper(record));
             }
-
         }
-        meter.record(mtRecords.size());
         return new MtGetRecordsResult()
             .withRecords(mtRecords)
             .withNextShardIterator(nextIterator)
-            .withLastSequenceNumber(getLast(mtRecords).getDynamodb().getSequenceNumber());
+            .withStreamSegmentMetrics(createStreamSegmentMetrics(records));
     }
-
 
     private MtRecord getMissingMapper(Record record) {
         return RecordMapper.getDefaultMtRecord(record)
             .withDynamodb(record.getDynamodb())
             .withContext(null)
             .withTableName(null);
+    }
+
+    public static StreamSegmentMetrics createStreamSegmentMetrics(List<Record> records) {
+        final StreamSegmentMetrics metrics = new StreamSegmentMetrics().withRecordCount(records.size());
+        if (!records.isEmpty()) {
+            metrics.setFirstRecordMetrics(createStreamRecordMetrics(records.get(0)));
+            metrics.setLastRecordMetrics(createStreamRecordMetrics(getLast(records)));
+        }
+        return metrics;
+    }
+
+    private static StreamRecordMetrics createStreamRecordMetrics(Record record) {
+        final StreamRecord streamRecord = record.getDynamodb();
+        return new StreamRecordMetrics()
+            .withSequenceNumber(streamRecord.getSequenceNumber())
+            .withApproximateCreationDateTime(streamRecord.getApproximateCreationDateTime());
     }
 
 }

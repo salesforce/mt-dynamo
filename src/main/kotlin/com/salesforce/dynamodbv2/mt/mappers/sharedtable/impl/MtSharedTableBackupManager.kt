@@ -25,11 +25,8 @@ import com.google.common.base.Preconditions
 import com.google.common.base.Strings
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
-import com.google.common.collect.Lists
-import com.google.common.collect.Maps
 import com.google.common.collect.Multimap
 import com.google.common.collect.MultimapBuilder
-import com.google.common.collect.Sets
 import com.google.common.io.CharStreams
 import com.google.gson.ExclusionStrategy
 import com.google.gson.FieldAttributes
@@ -54,9 +51,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
-import java.nio.charset.Charset
 import java.util.ArrayList
-import java.util.HashMap
 import java.util.stream.Collectors
 
 /**
@@ -98,7 +93,7 @@ open class MtSharedTableBackupManager(
             "com.amazonaws.RequestClientOptions",
             "com.amazonaws.event.ProgressListener"
     )
-    val charset = Charset.forName("utf-8")
+    val charset = Charsets.UTF_8
 
     override fun createBackup(createBackupRequest: CreateBackupRequest): MtBackupMetadata {
 
@@ -133,7 +128,7 @@ open class MtSharedTableBackupManager(
         val startKey: TenantTable? = null
         val batchSize = 100
         var tenantTableCount = 0
-        val tenantTables = Lists.newArrayList<MtTableDescriptionRepo.MtCreateTableRequest>()
+        val tenantTables = arrayListOf<MtTableDescriptionRepo.MtCreateTableRequest>()
         do {
             val listTenantMetadataResult =
                     sharedTableMtDynamo.mtTableDescriptionRepo.listVirtualTableMetadata(
@@ -187,7 +182,7 @@ open class MtSharedTableBackupManager(
 
     override fun markBackupComplete(createBackupRequest: CreateBackupRequest): MtBackupMetadata {
         val inProgressBackupMetadata = getBackup(createBackupRequest.backupName)
-        if (inProgressBackupMetadata == null || !inProgressBackupMetadata.status.equals(Status.IN_PROGRESS)) {
+        if (inProgressBackupMetadata == null || inProgressBackupMetadata.status != Status.IN_PROGRESS) {
             throw MtBackupException("Cannot mark $inProgressBackupMetadata backup complete.")
         }
 
@@ -248,7 +243,7 @@ open class MtSharedTableBackupManager(
     }
 
     private fun getBackupFileKeys(backupId: String, tenantTable: TenantTable): Set<String> {
-        val ret = Sets.newHashSet<String>()
+        val ret = hashSetOf<String>()
         var continuationToken: String? = null
         do {
             val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
@@ -265,7 +260,7 @@ open class MtSharedTableBackupManager(
     }
 
     override fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult {
-        val ret = Lists.newArrayList<BackupSummary>()
+        val ret = arrayListOf<BackupSummary>()
 
         Preconditions.checkArgument(listBackupRequest.backupType == null, "Listing backups by backupType unsupported")
         Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multitenant backups")
@@ -286,7 +281,7 @@ open class MtSharedTableBackupManager(
                             .withContinuationToken(continuationToken)
                             .withBucketName(s3BucketName)
                             .withStartAfter(startAfter)
-                            .withPrefix(backupMetadataDir + "/"))
+                            .withPrefix("$backupMetadataDir/"))
             for (o in listBucketResult.objectSummaries) {
                 if (ret.size < limit) {
                     val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
@@ -337,7 +332,7 @@ open class MtSharedTableBackupManager(
             gson.fromJson(backupFileString,
                     MtBackupMetadata::class.java)
         } catch (e: AmazonS3Exception) {
-            if ("NoSuchKey".equals(e.errorCode)) {
+            if ("NoSuchKey" == e.errorCode) {
                 null
             } else {
                 throw e
@@ -349,7 +344,7 @@ open class MtSharedTableBackupManager(
         val mtBackup = getBackup(backupName)
 
         if (mtBackup != null) {
-            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup!!.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
+            val tenantTableBackupMetadata = TenantTableBackupMetadata(mtBackup.s3BucketName, backupName, tenantTable.tenantName, tenantTable.virtualTableName)
             if (mtBackup.tenantTables.containsKey(tenantTableBackupMetadata)) {
                 return TenantBackupMetadata(mtBackup.s3BucketName, tenantTable, backupName, mtBackup.status, mtBackup.creationTime)
             }
@@ -447,7 +442,7 @@ open class MtSharedTableBackupManager(
         mtDynamo: MtAmazonDynamoDbBase
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
-        val tenantTables: HashMap<TenantTableBackupMetadata, Long> = Maps.newHashMap()
+        val tenantTables = hashMapOf<TenantTableBackupMetadata, Long>()
         var numPasses = 0
         do {
             val scanRequest: ScanRequest = ScanRequest(physicalTableName)
@@ -459,10 +454,10 @@ open class MtSharedTableBackupManager(
 
             val rowsPerTenant = MultimapBuilder.ListMultimapBuilder
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
-            for (i in 0..(scanResult.items.size - 1)) {
+            for (i in 0 until scanResult.items.size) {
                 val row = scanResult.items[i]
-                val tenant = row.get(sharedTableMtDynamo.scanTenantKey)!!.s
-                val virtualTable = row.get(sharedTableMtDynamo.scanVirtualTableKey)!!.s
+                val tenant = row[sharedTableMtDynamo.scanTenantKey]!!.s
+                val virtualTable = row[sharedTableMtDynamo.scanVirtualTableKey]!!.s
                 row.remove(sharedTableMtDynamo.scanTenantKey)
                 row.remove(sharedTableMtDynamo.scanVirtualTableKey)
                 rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
