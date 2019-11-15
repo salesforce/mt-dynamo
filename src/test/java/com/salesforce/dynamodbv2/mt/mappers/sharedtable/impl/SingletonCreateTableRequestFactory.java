@@ -20,12 +20,22 @@ public class SingletonCreateTableRequestFactory implements CreateTableRequestFac
     }
 
     @Override
-    public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+    public Optional<CreateTableRequest> getStaticPhysicalTable(DynamoTableDescription virtualTableDescription) {
         return Optional.of(createTableRequest);
     }
 
     @Override
-    public List<CreateTableRequest> getPhysicalTables() {
+    public List<CreateTableRequest> getStaticPhysicalTables() {
         return Collections.singletonList(createTableRequest);
+    }
+
+    @Override
+    public CreateTableRequest getDynamicPhysicalTable(DynamoTableDescription virtualTableDescription) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public boolean isPhysicalTable(String tableName) {
+        return createTableRequest.getTableName().equals(tableName);
     }
 }

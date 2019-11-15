@@ -3,13 +3,19 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TOP_LEVEL_CONTEXT;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.HASH_KEY_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
+import com.amazonaws.services.dynamodbv2.model.GetItemResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
@@ -23,10 +29,14 @@ import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
 import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
+import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbComposite;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
+import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.AmazonDynamoDbStrategy;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.TestArgument;
 import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider;
+import com.salesforce.dynamodbv2.testsupport.DefaultArgumentProvider.DefaultArgumentProviderConfig;
 import com.salesforce.dynamodbv2.testsupport.DefaultTestSetup;
 import com.salesforce.dynamodbv2.testsupport.TestAmazonDynamoDbAdminUtils;
 import java.util.ArrayList;
@@ -73,7 +83,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(SharedTableArgumentProvider.class)
-    public void testListTables_noContext(TestArgument testArgument) {
+    void testListTables_noContext(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
         final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
 
@@ -84,7 +94,7 @@ class MtAmazonDynamoDbBySharedTableTest {
             for (String table : allTables) {
                 snapshots.add(tableSnapshotter.snapshotTableToTarget(new SnapshotRequest("fake-backup",
                     table,
-                    ((MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb()).getBackupTablePrefix() + table,
+                    getSharedTableClient(testArgument.getAmazonDynamoDb()).getBackupTablePrefix() + table,
                     testArgument.getRootAmazonDynamoDb(),
                     new ProvisionedThroughput(10L, 10L))));
             }
@@ -98,7 +108,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ListVirtualTableProvider.class)
-    public void testListTables_withContext(TestArgument testArgument) {
+    void testListTables_withContext(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             ListTablesResult listTablesResult = testArgument.getAmazonDynamoDb().listTables();
             assertEquals(TABLE_NAME_PREFIXES.size(), listTablesResult.getTableNames().size());
@@ -110,7 +120,7 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ListVirtualTableProvider.class)
-    public void testListTablesPagination_withContext(TestArgument testArgument) {
+    void testListTablesPagination_withContext(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             String lastEvaluatedTable = null;
             List<String> tablesSeen = new ArrayList<>();
@@ -135,8 +145,8 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ListVirtualTableProvider.class)
-    public void testPutItem_ScanColumnsReserved(TestArgument testArgument) {
-        MtAmazonDynamoDbBySharedTable mtDynamo = (MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb();
+    void testPutItem_ScanColumnsReserved(TestArgument testArgument) {
+        MtAmazonDynamoDbBySharedTable mtDynamo = getSharedTableClient(testArgument.getAmazonDynamoDb());
         final String pk = "row1";
         // post some global data
         testArgument.forEachOrgContext(org -> {
@@ -162,15 +172,14 @@ class MtAmazonDynamoDbBySharedTableTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(ListVirtualTableProvider.class)
-    public void testUpdateItem_ScanColumnsReserved(TestArgument testArgument) {
-        MtAmazonDynamoDbBySharedTable mtDynamo = (MtAmazonDynamoDbBySharedTable) testArgument.getAmazonDynamoDb();
+    void testUpdateItem_ScanColumnsReserved(TestArgument testArgument) {
+        MtAmazonDynamoDbBySharedTable mtDynamo = getSharedTableClient(testArgument.getAmazonDynamoDb());
         final String pk = "row1";
         // post some global data
         testArgument.forEachOrgContext(org -> {
             final List<String> allTables = testArgument.getAmazonDynamoDb().listTables().getTableNames();
             assertFalse(allTables.isEmpty());
             String arbitraryTable = allTables.get(0);
-
 
             Map<String, AttributeValue> row1 = ImmutableMap.of(HASH_KEY, new AttributeValue(pk));
             PutItemRequest putItemRequest = new PutItemRequest().withTableName(arbitraryTable)
@@ -197,18 +206,67 @@ class MtAmazonDynamoDbBySharedTableTest {
         });
     }
 
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(SharedTableArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = {})
+    void testCreateAndDeleteMtTable(TestArgument testArgument) {
+        MtAmazonDynamoDb mtDynamo = (MtAmazonDynamoDb) testArgument.getAmazonDynamoDb();
+        String tableName = "someMtTable";
+
+        // create table in top-level context
+        MT_CONTEXT.withContext(TOP_LEVEL_CONTEXT, () -> {
+            CreateTableRequest request = new CreateTableRequest().withTableName(tableName)
+                .withKeySchema(new KeySchemaElement().withKeyType(HASH).withAttributeName(HASH_KEY))
+                .withAttributeDefinitions(new AttributeDefinition().withAttributeName(HASH_KEY)
+                    .withAttributeType(testArgument.getHashKeyAttrType()));
+            mtDynamo.createMultitenantTable(request);
+        });
+        String physicalTableName = testArgument.getAmazonDynamoDbStrategy().name() + "_" + tableName;
+        assertTrue(testArgument.getRootAmazonDynamoDb().listTables().getTableNames().contains(physicalTableName));
+
+        // put and get a record in the context of each org
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> key = ImmutableMap.of(HASH_KEY,
+                createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE));
+            mtDynamo.putItem(new PutItemRequest().withTableName(tableName).withItem(key));
+
+            GetItemResult getItemResult = mtDynamo.getItem(new GetItemRequest().withTableName(tableName).withKey(key));
+            assertEquals(key, getItemResult.getItem());
+        });
+
+        // delete table in top-level context
+        MT_CONTEXT.withContext(TOP_LEVEL_CONTEXT, () -> {
+            mtDynamo.deleteTable(tableName);
+        });
+        assertFalse(testArgument.getRootAmazonDynamoDb().listTables().getTableNames().contains(physicalTableName));
+    }
+
+    private MtAmazonDynamoDbBySharedTable getSharedTableClient(AmazonDynamoDB dynamoDb) {
+        if (dynamoDb instanceof MtAmazonDynamoDbBySharedTable) {
+            return (MtAmazonDynamoDbBySharedTable) dynamoDb;
+        }
+        if (dynamoDb instanceof MtAmazonDynamoDbComposite) {
+            AmazonDynamoDB delegate = ((MtAmazonDynamoDbComposite) dynamoDb).getDelegateFromContext();
+            return (MtAmazonDynamoDbBySharedTable) delegate;
+        }
+        throw new IllegalArgumentException("Unable to find MtAmazonDynamoDbBySharedTable: " + dynamoDb);
+    }
+
+    private static ArgumentBuilder getSharedTableArgumentBuilder() {
+        return new ArgumentBuilder().withStrategies(AmazonDynamoDbStrategy.SHARED_TABLE_STRATEGIES);
+    }
+
     private static class SharedTableArgumentProvider extends DefaultArgumentProvider {
-        public SharedTableArgumentProvider() {
-            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(DefaultTestSetup.ALL_TABLES));
+        SharedTableArgumentProvider() {
+            super(getSharedTableArgumentBuilder(), new DefaultTestSetup(DefaultTestSetup.ALL_TABLES));
         }
     }
 
     private static final List<String> TABLE_NAME_PREFIXES = ImmutableList.of("table1-", "table2-", "table3-");
 
     private static class ListVirtualTableProvider extends DefaultArgumentProvider {
-        public ListVirtualTableProvider() {
-            super(new SharedTableArgumentBuilder(), new DefaultTestSetup(new String[0]) {
-
+        ListVirtualTableProvider() {
+            super(getSharedTableArgumentBuilder(), new DefaultTestSetup(DefaultTestSetup.NO_TABLES) {
                 @Override
                 public void setupTest(TestArgument testArgument) {
                     CreateTableRequestBuilder baseBuilder = CreateTableRequestBuilder.builder()
@@ -231,13 +289,4 @@ class MtAmazonDynamoDbBySharedTableTest {
         }
     }
 
-    private static class SharedTableArgumentBuilder extends ArgumentBuilder {
-        @Override
-        public List<TestArgument> get() {
-            List<TestArgument> allArgs = super.get();
-            return allArgs.stream()
-                .filter(a -> a.getAmazonDynamoDb() instanceof MtAmazonDynamoDbBySharedTable)
-                .collect(Collectors.toList());
-        }
-    }
 }

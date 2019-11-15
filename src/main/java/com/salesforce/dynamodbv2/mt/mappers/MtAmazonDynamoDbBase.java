@@ -149,13 +149,18 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     /**
-     * Determines if the table for the given name is a multitenant table associated with this instance.
+     * Determines if the table for the given name is a physical table associated with this instance.
      *
      * @param tableName Name of the table.
-     * @return true if the given table name is a multitenant table associated with this instance, false otherwise.
+     * @return true if the given table name is a physical table associated with this instance, false otherwise.
      */
-    protected boolean isMtTable(String tableName) {
+    protected boolean isPhysicalTable(String tableName) {
         return true;
+    }
+
+    @Override
+    public CreateTableResult createMultitenantTable(CreateTableRequest createTableRequest) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -368,7 +373,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
             do {
                 ListTablesResult rawResults = getAmazonDynamoDb().listTables(innerExclusiveStartTableName, limit);
                 tableNames.addAll(
-                    rawResults.getTableNames().stream().filter(this::isMtTable).collect(Collectors.toList()));
+                    rawResults.getTableNames().stream().filter(this::isPhysicalTable).collect(Collectors.toList()));
                 innerExclusiveStartTableName = rawResults.getLastEvaluatedTableName();
             } while (!(tableNames.size() >= limit || innerExclusiveStartTableName == null));
 
@@ -525,4 +530,5 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     public AmazonDynamoDBWaiters waiters() {
         throw new UnsupportedOperationException();
     }
+
 }

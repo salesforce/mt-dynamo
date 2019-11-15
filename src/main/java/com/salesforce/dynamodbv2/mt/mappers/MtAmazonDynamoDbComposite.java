@@ -30,6 +30,7 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
@@ -81,22 +82,23 @@ public class MtAmazonDynamoDbComposite extends MtAmazonDynamoDbBase {
         return first;
     }
 
-    Collection<MtAmazonDynamoDbBase> getDelegates() {
+    protected Collection<MtAmazonDynamoDbBase> getDelegates() {
         return delegates;
     }
 
-    MtAmazonDynamoDbBase getDelegateFromContext() {
+    @VisibleForTesting
+    public MtAmazonDynamoDbBase getDelegateFromContext() {
         return fromContextToDelegate.get();
     }
 
-    MtAmazonDynamoDbBase getDelegateFromPhysicalTableName(String physicalTableName) {
+    protected MtAmazonDynamoDbBase getDelegateFromPhysicalTableName(String physicalTableName) {
         return fromPhysicalTableNameToDelegate.apply(physicalTableName);
     }
 
     @Override
-    protected boolean isMtTable(String tableName) {
+    protected boolean isPhysicalTable(String tableName) {
         for (MtAmazonDynamoDbBase delegate : delegates) {
-            if (delegate.isMtTable(tableName)) {
+            if (delegate.isPhysicalTable(tableName)) {
                 return true;
             }
         }
@@ -111,6 +113,11 @@ public class MtAmazonDynamoDbComposite extends MtAmazonDynamoDbBase {
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
         return getDelegateFromContext().createTable(createTableRequest);
+    }
+
+    @Override
+    public CreateTableResult createMultitenantTable(CreateTableRequest createTableRequest) {
+        return getDelegateFromContext().createMultitenantTable(createTableRequest);
     }
 
     @Override

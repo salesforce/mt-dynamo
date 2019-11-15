@@ -97,6 +97,11 @@ public class CreateTableRequestBuilder {
         return this;
     }
 
+    public CreateTableRequestBuilder withTableKeySchema(PrimaryKey primaryKey) {
+        this.createTableRequest.withKeySchema(buildKeySchema(primaryKey));
+        return this;
+    }
+
     /**
      * Adds <code>AttributeDefinition</code>s.
      *

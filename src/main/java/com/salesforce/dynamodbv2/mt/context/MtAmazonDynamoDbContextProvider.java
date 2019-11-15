@@ -38,7 +38,7 @@ public interface MtAmazonDynamoDbContextProvider {
      * @return String representation of currently active context.
      */
     default String getContext() {
-        return getContextOpt().orElseThrow(IllegalStateException::new);
+        return getContextOpt().orElseThrow(() -> new IllegalStateException("Context is not present"));
     }
 
     /**

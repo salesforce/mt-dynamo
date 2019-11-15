@@ -77,6 +77,7 @@ internal class MtBackupManagerTest {
                 .withTruncateOnDeleteTable(true)
                 .withBinaryHashKey(true)
                 .build()
+        mtContext.context = null
         try {
             sharedTableBinaryHashKey.createBackup(CreateBackupRequest().withBackupName("foo")
                     .withTableName("bar"))

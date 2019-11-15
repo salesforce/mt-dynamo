@@ -25,7 +25,7 @@ import java.util.function.UnaryOperator;
 public interface TablePartitioningStrategy {
 
     /**
-     * How we map a virtual table to a physical table based on primary key field types.
+     * How we map a virtual table to a multi-type/abstract physical table based on primary key field types.
      */
     PrimaryKeyMapper getTablePrimaryKeyMapper();
 
@@ -33,6 +33,11 @@ public interface TablePartitioningStrategy {
      * How we map virtual secondary indexes to physical secondary indexes based on primary key field types.
      */
     PrimaryKeyMapper getSecondaryIndexPrimaryKeyMapper();
+
+    /**
+     * Returns a physical primary key that is compatible with the given virtual primary key.
+     */
+    PrimaryKey toCompatiblePhysicalPrimaryKey(PrimaryKey virtualPrimaryKey);
 
     /**
      * Returns whether a given physical table or index primary key is valid.

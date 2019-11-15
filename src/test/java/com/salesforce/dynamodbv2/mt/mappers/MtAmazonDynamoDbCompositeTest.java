@@ -82,9 +82,9 @@ class MtAmazonDynamoDbCompositeTest {
         MtAmazonDynamoDbComposite composite = new MtAmazonDynamoDbComposite(ImmutableList.of(first, second),
             null, null);
 
-        assertTrue(composite.isMtTable("table1"));
-        assertTrue(composite.isMtTable("table2"));
-        assertFalse(composite.isMtTable("table3"));
+        assertTrue(composite.isPhysicalTable("table1"));
+        assertTrue(composite.isPhysicalTable("table2"));
+        assertFalse(composite.isPhysicalTable("table3"));
     }
 
     @Test
@@ -177,7 +177,7 @@ class MtAmazonDynamoDbCompositeTest {
         when(mockMtAmazonDynamoDb.getMeterRegistry()).thenReturn(meterRegistry);
         when(mockMtAmazonDynamoDb.getScanTenantKey()).thenReturn(SCAN_TENANT_KEY);
         when(mockMtAmazonDynamoDb.getScanVirtualTableKey()).thenReturn(SCAN_VIRTUAL_TABLE_KEY);
-        when(mockMtAmazonDynamoDb.isMtTable(eq(physicalTable))).thenReturn(true);
+        when(mockMtAmazonDynamoDb.isPhysicalTable(eq(physicalTable))).thenReturn(true);
         return mockMtAmazonDynamoDb;
     }
 

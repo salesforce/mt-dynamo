@@ -108,8 +108,8 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.VirtualDynamoTableDescription;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.VirtualDynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
 import java.util.List;
 import java.util.Map;
@@ -120,7 +120,8 @@ import org.junit.jupiter.api.TestInfo;
 class TableMappingFactoryTest {
 
     // can't spy directly, because local DDB uses proxy
-    final AmazonDynamoDB dynamoDb = spy(new ForwardingAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal()));
+    private final AmazonDynamoDB dynamoDb =
+        spy(new ForwardingAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal()));
 
     /**
      * Verifies that TableMappingFactory creates physical table eagerly during construction if requested.
@@ -135,7 +136,7 @@ class TableMappingFactoryTest {
 
         // should not have called describe again
         reset(dynamoDb);
-        final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
+        VirtualDynamoTableDescription description = new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false);
         sut.getTableMapping(description);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
@@ -151,13 +152,12 @@ class TableMappingFactoryTest {
         assertThrows(ResourceNotFoundException.class, () -> dynamoDb.describeTable(tableName));
 
         // should create table lazily
-        final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
-        sut.getTableMapping(description);
+        sut.createNewTableMapping(simpleTable("vtable"), false);
         assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
 
         // subsequent requests should no longer call describe
         reset(dynamoDb);
-        sut.getTableMapping(description);
+        sut.getTableMapping(new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false));
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
@@ -173,7 +173,7 @@ class TableMappingFactoryTest {
 
         // expect that getting a table mapping describes the physical table
         final TableMappingFactory sut = createTestFactory(tableName, false);
-        final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
+        VirtualDynamoTableDescription description = new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false);
         sut.getTableMapping(description);
         verify(dynamoDb, atLeastOnce()).describeTable(tableName);
 
@@ -192,14 +192,14 @@ class TableMappingFactoryTest {
     private TableMappingFactory createTestFactory(String tableName, boolean createEagerly) {
         final TablePartitioningStrategy strategy = mock(TablePartitioningStrategy.class);
         when(strategy.createTableMapping(any(), any(), any(), any())).thenReturn(mock(TableMapping.class));
+        when(strategy.isPhysicalPrimaryKeyValid(any())).thenReturn(true);
 
         return new TableMappingFactory(
             new SingletonCreateTableRequestFactory(simpleTable(tableName)),
+            new PhysicalTableManager(dynamoDb, 0),
             Optional::empty,
-            dynamoDb,
             strategy,
-            createEagerly,
-            0
+            createEagerly
         );
     }
 
@@ -214,7 +214,7 @@ class TableMappingFactoryTest {
     private static class ForwardingAmazonDynamoDb implements AmazonDynamoDB {
         private final AmazonDynamoDB amazonDynamoDb;
 
-        public ForwardingAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
+        ForwardingAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
         }
 

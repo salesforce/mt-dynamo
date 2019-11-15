@@ -66,66 +66,62 @@ import org.jetbrains.annotations.NotNull;
  */
 public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
-    private static final String TABLE_METADATA_HK_FIELD = "table";
-    private static final String TABLE_METADATA_DATA_FIELD = "data";
-    private static final String DELIMITER = ".";
-
     private static final Gson GSON = new Gson();
+
     private final AmazonDynamoDB amazonDynamoDb;
+    private final AmazonDynamoDbAdminUtils adminUtils;
     private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
-    private final AmazonDynamoDbAdminUtils adminUtils;
+    private final Optional<String> topLevelContext;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
     private final int pollIntervalSeconds;
-    private final MtCache<TableDescription> cache;
+    private final MtCache<MtTableDescription> cache;
     private final String prefixedTableDescriptionTableName;
-    private final Supplier<TableDescription> tableDescriptionSupplier;
+    private final Supplier<TableDescription> tableDescriptionTableSupplier;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
                                            BillingMode billingMode,
                                            MtAmazonDynamoDbContextProvider mtContext,
+                                           Optional<String> topLevelContext,
                                            String tableDescriptionTableName,
                                            Optional<String> tablePrefix,
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds,
-                                           Cache<Object, TableDescription> tableDescriptionCache) {
+                                           Cache<Object, MtTableDescription> tableDescriptionCache) {
         this.amazonDynamoDb = amazonDynamoDb;
+        this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.billingMode = billingMode;
         this.mtContext = mtContext;
-        this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
+        this.topLevelContext = topLevelContext;
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
         this.prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
-        this.tableDescriptionSupplier = () -> {
+        this.tableDescriptionTableSupplier = () -> {
             createTableDescriptionTableIfNotExists(pollIntervalSeconds);
             return new TableDescription().withTableName(prefixedTableDescriptionTableName);
         };
     }
 
     @Override
-    public TableDescription createTable(CreateTableRequest createTableRequest) {
+    public MtTableDescription createTableMetadata(CreateTableRequest createTableRequest, boolean isMultitenant) {
         amazonDynamoDb.putItem(new PutItemRequest().withTableName(getTableDescriptionTableName())
-            .withItem(createItem(createTableRequest)));
+            .withItem(createItem(createTableRequest, isMultitenant)));
         return getTableDescription(createTableRequest.getTableName());
     }
 
     @Override
-    public TableDescription getTableDescription(String tableName) {
+    public MtTableDescription getTableDescription(String tableName) {
         return getTableDescriptionFromCache(tableName);
     }
 
-    public static MtDynamoDbTableDescriptionRepoBuilder builder() {
-        return new MtDynamoDbTableDescriptionRepoBuilder();
-    }
-
-    private TableDescription getTableDescriptionFromCache(String tableName) throws ResourceNotFoundException {
+    private MtTableDescription getTableDescriptionFromCache(String tableName) throws ResourceNotFoundException {
         try {
             return cache.get(tableName, () -> getTableDescriptionNoCache(tableName));
         } catch (UncheckedExecutionException e) {
@@ -139,32 +135,38 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         }
     }
 
-    private TableDescription getTableDescriptionNoCache(String tableName) {
+    private MtTableDescription getTableDescriptionNoCache(String tableName) {
+        // first get description for table name at the current context
+        Optional<MtTableDescription> tableDescription = getTableDescriptionFromDb(tableName);
+        // if no such entry exists at the current context, check if this name corresponds to a multitenant table at the
+        // top-level context
+        if (tableDescription.isEmpty() && topLevelContext.isPresent()
+            && !topLevelContext.get().equals(mtContext.getContext())) {
+            tableDescription = mtContext.withContext(topLevelContext.get(), () -> getTableDescriptionFromDb(tableName))
+                .filter(MtTableDescription::isMultitenant);
+        }
+        return tableDescription.orElseThrow(() -> new ResourceNotFoundException(
+            "table metadata entry for '" + tableName + "' does not exist in " + getTableDescriptionTableName()));
+    }
+
+    private Optional<MtTableDescription> getTableDescriptionFromDb(String tableName) {
         Map<String, AttributeValue> item = amazonDynamoDb.getItem(new GetItemRequest()
             .withTableName(getTableDescriptionTableName())
             .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
                 new AttributeValue(addPrefix(tableName)))))
             .withConsistentRead(true)).getItem();
-        if (item == null) {
-            throw new ResourceNotFoundException("table metadata entry for '" + tableName + "' does not exist in "
-                + getTableDescriptionTableName());
-        }
-        String tableDataJson = item.get(tableDescriptionTableDataField).getS();
-        return jsonToTableData(tableDataJson);
+        return Optional.ofNullable(item)
+            .map(i -> i.get(tableDescriptionTableDataField).getS())
+            .map(MtDynamoDbTableDescriptionRepo::jsonToTableData);
     }
 
     @Override
-    public TableDescription deleteTable(String tableName) {
-        TableDescription tableDescription = getTableDescription(tableName);
-
+    public void deleteTableMetadata(String tableName) {
         cache.invalidate(tableName);
-
         amazonDynamoDb.deleteItem(new DeleteItemRequest()
             .withTableName(getTableDescriptionTableName())
             .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
                 new AttributeValue(addPrefix(tableName))))));
-
-        return tableDescription;
     }
 
     private TenantTable getTenantTableFromHashKey(String hashKey) {
@@ -172,8 +174,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return new TenantTable(parts[1], parts[0]);
     }
 
-    private String getTableDescriptionTableName() {
-        return tableDescriptionSupplier.get().getTableName();
+    @Override
+    public String getTableDescriptionTableName() {
+        return tableDescriptionTableSupplier.get().getTableName();
     }
 
     public void createDefaultDescriptionTable() {
@@ -204,7 +207,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             .withGlobalSecondaryIndexes(getGlobalIndexes(description.getGlobalSecondaryIndexes()))
             .withLocalSecondaryIndexes(getLocalIndexes(description.getLocalSecondaryIndexes()));
     }
-
 
     private static List<GlobalSecondaryIndex> getGlobalIndexes(
         Collection<GlobalSecondaryIndexDescription> descriptions) {
@@ -241,8 +243,9 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 .withWriteCapacityUnits(throughput.getWriteCapacityUnits());
     }
 
-    private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest) {
-        TableDescription tableDescription = new TableDescription()
+    private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest, boolean isMultitenant) {
+        MtTableDescription tableDescription = new MtTableDescription();
+        tableDescription
             .withTableName(createTableRequest.getTableName())
             .withKeySchema(createTableRequest.getKeySchema())
             .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
@@ -266,18 +269,22 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withProvisionedThroughput(getProvisionedThroughputDesc(gsi.getProvisionedThroughput()))
             ).collect(Collectors.toList()));
         }
+
+        // add properties not defined in base TableDescription
+        tableDescription.withMultitenant(isMultitenant);
+
         String tableDataJson = tableDataToJson(tableDescription);
         return new HashMap<>(ImmutableMap.of(
             tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
             tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
     }
 
-    private static String tableDataToJson(TableDescription tableDescription) {
+    private static String tableDataToJson(MtTableDescription tableDescription) {
         return GSON.toJson(tableDescription);
     }
 
-    private static TableDescription jsonToTableData(String tableDataString) {
-        return GSON.fromJson(tableDataString, TableDescription.class);
+    private static MtTableDescription jsonToTableData(String tableDataString) {
+        return GSON.fromJson(tableDataString, MtTableDescription.class);
     }
 
     private String getHashKey(TenantTable tenantTable) {
@@ -322,11 +329,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             scanReq.setExclusiveStartKey(lastEvaluatedKey);
             scanResult = amazonDynamoDb.scan(scanReq);
             List<MtCreateTableRequest> createRequestsBatch = scanResult.getItems().stream()
-                .map(rowMap ->
-                    new MtCreateTableRequest(
-                        getTenantTableFromHashKey(
-                            rowMap.get(tableDescriptionTableHashKeyField).getS()).getTenantName(),
-                        getCreateTableRequest(jsonToTableData(rowMap.get(tableDescriptionTableDataField).getS()))))
+                .map(this::fromRowToMtCreateTableRequest)
                 .collect(Collectors.toList());
             if (filterTenant == null) {
                 createTableRequests.addAll(createRequestsBatch);
@@ -345,6 +348,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return new ListMetadataResult(createTableRequests, null);
         }
 
+    }
+
+    private MtCreateTableRequest fromRowToMtCreateTableRequest(Map<String, AttributeValue> item) {
+        MtTableDescription tableDescription = jsonToTableData(item.get(tableDescriptionTableDataField).getS());
+        TenantTable tenantTable = getTenantTableFromHashKey(item.get(tableDescriptionTableHashKeyField).getS());
+        // TODO include properties defined in MtTableDescription but not in TableDescription
+        return new MtCreateTableRequest(tenantTable.getTenantName(), getCreateTableRequest(tableDescription));
     }
 
     @NotNull
@@ -370,9 +380,19 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     }
 
+    public static MtDynamoDbTableDescriptionRepoBuilder builder() {
+        return new MtDynamoDbTableDescriptionRepoBuilder();
+    }
+
     public static class MtDynamoDbTableDescriptionRepoBuilder {
+
+        private static final String DEFAULT_TABLE_METADATA_HK_FIELD = "table";
+        private static final String DEFAULT_TABLE_METADATA_DATA_FIELD = "data";
+        private static final String DEFAULT_DELIMITER = ".";
+
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
+        private Optional<String> topLevelContext = Optional.empty();
         private String tableDescriptionTableName;
         private String tableDescriptionTableHashKeyField;
         private String tableDescriptionTableDataField;
@@ -380,7 +400,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         private Integer pollIntervalSeconds;
         private BillingMode billingMode;
         private Optional<String> tablePrefix = Optional.empty();
-        private Cache<Object, TableDescription> tableDescriptionCache;
+        private Cache<Object, MtTableDescription> tableDescriptionCache;
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -389,6 +409,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         public MtDynamoDbTableDescriptionRepoBuilder withContext(MtAmazonDynamoDbContextProvider mtContext) {
             this.mtContext = mtContext;
+            return this;
+        }
+
+        public MtDynamoDbTableDescriptionRepoBuilder withTopLevelContext(Optional<String> topLevelContext) {
+            this.topLevelContext = topLevelContext;
             return this;
         }
 
@@ -429,8 +454,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(Cache<Object, TableDescription>
-                                                                                   tableDescriptionCache) {
+        public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(
+            Cache<Object, MtTableDescription> tableDescriptionCache) {
             this.tableDescriptionCache = tableDescriptionCache;
             return this;
         }
@@ -448,6 +473,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 amazonDynamoDb,
                 billingMode,
                 mtContext,
+                topLevelContext,
                 tableDescriptionTableName,
                 tablePrefix,
                 tableDescriptionTableHashKeyField,
@@ -465,13 +491,13 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         private void setDefaults() {
             if (tableDescriptionTableHashKeyField == null) {
-                tableDescriptionTableHashKeyField = TABLE_METADATA_HK_FIELD;
+                tableDescriptionTableHashKeyField = DEFAULT_TABLE_METADATA_HK_FIELD;
             }
             if (tableDescriptionTableDataField == null) {
-                tableDescriptionTableDataField = TABLE_METADATA_DATA_FIELD;
+                tableDescriptionTableDataField = DEFAULT_TABLE_METADATA_DATA_FIELD;
             }
             if (delimiter == null) {
-                delimiter = DELIMITER;
+                delimiter = DEFAULT_DELIMITER;
             }
             if (pollIntervalSeconds == null) {
                 pollIntervalSeconds = 5;

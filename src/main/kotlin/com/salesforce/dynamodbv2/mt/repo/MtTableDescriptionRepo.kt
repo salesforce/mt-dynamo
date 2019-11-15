@@ -8,38 +8,39 @@ package com.salesforce.dynamodbv2.mt.repo
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult
-import com.amazonaws.services.dynamodbv2.model.TableDescription
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb
 
 /**
- * Interface for managing table metadata of multitenant virtual tables within mt-dynamo.
+ * Interface for managing table metadata of virtual tables within mt-dynamo.
  *
  * @author msgroi
  */
 interface MtTableDescriptionRepo {
 
     /**
-     * Create a multitenant (virtual) table with specs defined in param createTableRequest under the given multitenant
-     * context's namespace.
+     * Create a virtual table's metadata record with specs defined in param createTableRequest under the given
+     * multitenant context's namespace.
      *
      * @param createTableRequest specs of the table to create
+     * @param isMultitenant whether this is an explicitly multitenant table
      * @return the table's description
      */
-    fun createTable(createTableRequest: CreateTableRequest): TableDescription
+    fun createTableMetadata(createTableRequest: CreateTableRequest, isMultitenant: Boolean): MtTableDescription
 
     /**
      * @param tableName name of the table to look up
      * @return the table description of the given virtual table under the current multitenant context
      */
-    fun getTableDescription(tableName: String): TableDescription
+    fun getTableDescription(tableName: String): MtTableDescription
 
     /**
      * Delete the designated virtual table metadata for a given tenant context.
      *
      * @param tableName name of the table to delete
-     * @return the table description of the virtual table to be deleted
      */
-    fun deleteTable(tableName: String): TableDescription
+    fun deleteTableMetadata(tableName: String)
+
+    fun getTableDescriptionTableName(): String
 
     /**
      * Utility to enumerate all virtual table metadata managed by this instance. Return up to {@code limit} results,

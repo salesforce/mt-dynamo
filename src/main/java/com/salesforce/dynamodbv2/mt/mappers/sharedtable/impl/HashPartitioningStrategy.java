@@ -51,6 +51,11 @@ public class HashPartitioningStrategy implements TablePartitioningStrategy {
     }
 
     @Override
+    public PrimaryKey toCompatiblePhysicalPrimaryKey(PrimaryKey virtualPrimaryKey) {
+        return new PrimaryKey("hk", B, "rk", B);
+    }
+
+    @Override
     public boolean isPhysicalPrimaryKeyValid(PrimaryKey primaryKey) {
         return primaryKey.getHashKeyType() == B && primaryKey.getRangeKeyType().equals(Optional.of(B));
     }

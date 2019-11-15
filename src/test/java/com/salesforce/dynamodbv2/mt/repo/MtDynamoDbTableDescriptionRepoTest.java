@@ -70,10 +70,10 @@ class MtDynamoDbTableDescriptionRepoTest {
 
         MtDynamoDbTableDescriptionRepo repo = b.build();
         ctx.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
+            repo.createTableMetadata(new CreateTableRequest()
                 .withTableName("test")
                 .withKeySchema(new KeySchemaElement("id", KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)), false)
         );
 
         dynamoDb.updateTable(new UpdateTableRequest(tableName, new ProvisionedThroughput(
@@ -102,9 +102,9 @@ class MtDynamoDbTableDescriptionRepoTest {
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault() throws InterruptedException {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
+            repo.createTableMetadata(new CreateTableRequest()
                 .withTableName(tableName)
-                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)), false)
         );
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
@@ -116,9 +116,9 @@ class MtDynamoDbTableDescriptionRepoTest {
         mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
+            repo.createTableMetadata(new CreateTableRequest()
                 .withTableName(tableName)
-                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)), false)
         );
 
         TableUtils.waitUntilActive(localDynamoDb, fullTableName);
@@ -230,9 +230,9 @@ class MtDynamoDbTableDescriptionRepoTest {
             .withTableName(tableName2)
             .withKeySchema(new KeySchemaElement("id", KeyType.HASH));
         MT_CONTEXT.withContext(tenant1, () ->
-            repo.createTable(createReq1));
+            repo.createTableMetadata(createReq1, false));
         MT_CONTEXT.withContext(tenant2, () ->
-            repo.createTable(createReq2));
+            repo.createTableMetadata(createReq2, false));
 
         return ImmutableList.of(new MtCreateTableRequest(tenant1, createReq1),
             new MtCreateTableRequest(tenant2, createReq2));

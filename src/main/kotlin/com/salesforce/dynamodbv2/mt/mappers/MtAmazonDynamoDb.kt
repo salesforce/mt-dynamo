@@ -6,6 +6,8 @@
 package com.salesforce.dynamodbv2.mt.mappers
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest
+import com.amazonaws.services.dynamodbv2.model.CreateTableResult
 import com.amazonaws.services.dynamodbv2.model.Identity
 import com.amazonaws.services.dynamodbv2.model.OperationType
 import com.amazonaws.services.dynamodbv2.model.Record
@@ -16,6 +18,10 @@ import com.amazonaws.services.dynamodbv2.model.StreamRecord
  * experimental. It is subject to breaking changes. Use at your own risk.
  */
 interface MtAmazonDynamoDb : AmazonDynamoDB {
+
+    // TODO should definition include tenant id attribute / scan key?
+    fun createMultitenantTable(createTableRequest: CreateTableRequest): CreateTableResult
+
     class MtRecord : Record() {
 
         var context: String? = null
@@ -87,5 +93,6 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
         }
     }
 
+    // TODO consider merging with MtContextAndTable
     data class TenantTable(val virtualTableName: String, val tenantName: String)
 }

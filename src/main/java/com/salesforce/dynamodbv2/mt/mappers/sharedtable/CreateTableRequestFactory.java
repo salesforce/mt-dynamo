@@ -21,14 +21,26 @@ import java.util.Optional;
  */
 public interface CreateTableRequestFactory {
 
-    /*
-     * Takes a virtual table description and returns a CreateTableRequest corresponding physical table if one is found.
+    /**
+     * Takes a virtual table description and returns a CreateTableRequest for the corresponding static physical table
+     * if one is found.
      */
-    Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription);
+    Optional<CreateTableRequest> getStaticPhysicalTable(DynamoTableDescription virtualTableDescription);
 
-    /*
-     * Returns a list of CreateTableRequests that will be created when the factory is initialized.
+    /**
+     * Returns a list of CreateTableRequests for the static physical tables created when the factory is initialized.
      */
-    List<CreateTableRequest> getPhysicalTables();
+    List<CreateTableRequest> getStaticPhysicalTables();
+
+    /**
+     * Takes a virtual table description and returns a CreateTableRequest for the corresponding physical table to be
+     * created dynamically.
+     */
+    CreateTableRequest getDynamicPhysicalTable(DynamoTableDescription virtualTableDescription);
+
+    /**
+     * Returns whether the given table name is of a physical table (static or dynamic) belonging to this factory.
+     */
+    boolean isPhysicalTable(String tableName);
 
 }

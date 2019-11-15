@@ -55,7 +55,7 @@ class MtAmazonDynamoDbStreamsBaseTest {
                 .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
                     .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, false))
                 .withAmazonDynamoDb(dynamoDb)
-                .withTablePrefix(prefix)
+                .withTablePrefix(prefix + "randomPartitioning.")
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
@@ -64,7 +64,7 @@ class MtAmazonDynamoDbStreamsBaseTest {
                 .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
                     .newCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME, true))
                 .withAmazonDynamoDb(dynamoDb)
-                .withTablePrefix(prefix)
+                .withTablePrefix(prefix + "randomPartitioningBinaryHk.")
                 .withContext(MT_CONTEXT)
                 .withClock(Clock.fixed(Instant.now(), ZoneId.systemDefault()))
                 .build();
@@ -73,7 +73,7 @@ class MtAmazonDynamoDbStreamsBaseTest {
                 .withCreateTableRequests(MtAmazonDynamoDbStreamsBaseTestUtils
                     .newHashPartitioningCreateTableRequest(MtAmazonDynamoDbStreamsBaseTestUtils.SHARED_TABLE_NAME))
                 .withAmazonDynamoDb(dynamoDb)
-                .withTablePrefix(prefix)
+                .withTablePrefix(prefix + "hashPartitioning.")
                 .withContext(MT_CONTEXT)
                 .withPartitioningStrategy(new HashPartitioningStrategy(64))
                 .withBinaryHashKey(true)
@@ -81,7 +81,7 @@ class MtAmazonDynamoDbStreamsBaseTest {
                 .build();
 
             MtAmazonDynamoDbByTable tableMtDynamoDb = MtAmazonDynamoDbByTable.builder()
-                .withTablePrefix(prefix)
+                .withTablePrefix(prefix + "byTable.")
                 .withAmazonDynamoDb(dynamoDb)
                 .withContext(MT_CONTEXT)
                 .build();

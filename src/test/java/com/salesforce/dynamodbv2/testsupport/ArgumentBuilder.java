@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -58,6 +59,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
     public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
         new MtAmazonDynamoDbContextProviderThreadLocalImpl();
+    public static final String TOP_LEVEL_CONTEXT = "TopLevelContext";
 
     public enum AmazonDynamoDbStrategy {
 
@@ -70,28 +72,37 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withContext(MT_CONTEXT).build()),
 
         RandomPartitioning(root -> SharedTableBuilder.builder()
+            .withTablePrefix("RandomPartitioning_")
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(wrapWithLogger(root))
             .withContext(MT_CONTEXT)
+            .withTopLevelContext(Optional.of(TOP_LEVEL_CONTEXT))
             .withTruncateOnDeleteTable(true)
             .build()),
 
         RandomPartitioningBinaryHk(root -> SharedTableBuilder.builder()
+            .withTablePrefix("RandomPartitioningBinaryHk_")
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(wrapWithLogger(root))
             .withContext(MT_CONTEXT)
+            .withTopLevelContext(Optional.of(TOP_LEVEL_CONTEXT))
             .withTruncateOnDeleteTable(true)
             .withBinaryHashKey(true)
             .build()),
 
         HashPartitioning(root -> getTrivialCompositeClient(SharedTableBuilder.builder()
+            .withTablePrefix("HashPartitioning_")
             .withPollIntervalSeconds(getPollInterval())
             .withAmazonDynamoDb(wrapWithLogger(root))
             .withContext(MT_CONTEXT)
+            .withTopLevelContext(Optional.of(TOP_LEVEL_CONTEXT))
             .withTruncateOnDeleteTable(true)
             .withBinaryHashKey(true)
             .withPartitioningStrategy(new HashPartitioningStrategy(64))
             .build()));
+
+        public static final List<AmazonDynamoDbStrategy> SHARED_TABLE_STRATEGIES = ImmutableList.of(
+            RandomPartitioning, RandomPartitioningBinaryHk, HashPartitioning);
 
         private final UnaryOperator<AmazonDynamoDB> buildClientFromRoot;
 
@@ -111,8 +122,25 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     private AmazonDynamoDB rootAmazonDynamoDb = DEFAULT_ROOT_AMAZON_DYNAMO_DB;
 
+    private List<AmazonDynamoDbStrategy> strategies = ImmutableList.of(
+        /*
+         * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
+         * concurrently with any of the sharedTable* strategies.
+         */
+        //AmazonDynamoDbStrategy..ByAccount,
+        AmazonDynamoDbStrategy.ByTable,
+        AmazonDynamoDbStrategy.RandomPartitioning,
+        AmazonDynamoDbStrategy.RandomPartitioningBinaryHk,
+        AmazonDynamoDbStrategy.HashPartitioning
+    );
+
     public ArgumentBuilder withAmazonDynamoDb(AmazonDynamoDB rootAmazonDynamoDb) {
         this.rootAmazonDynamoDb = rootAmazonDynamoDb;
+        return this;
+    }
+
+    public ArgumentBuilder withStrategies(List<AmazonDynamoDbStrategy> strategies) {
+        this.strategies = strategies;
         return this;
     }
 
@@ -147,17 +175,7 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
      * Returns a list of AmazonDynamoDB instances to be tested.
      */
     private List<AmazonDynamoDbStrategy> getAmazonDynamoDbStrategies() {
-        return ImmutableList.of(
-            /*
-             * Testing byAccount by itself and with byTable succeeds, but SQLite failures occur when it runs
-             * concurrently with any of the sharedTable* strategies.
-             */
-            //AmazonDynamoDbStrategy..ByAccount,
-            AmazonDynamoDbStrategy.ByTable,
-            AmazonDynamoDbStrategy.RandomPartitioning,
-            AmazonDynamoDbStrategy.RandomPartitioningBinaryHk,
-            AmazonDynamoDbStrategy.HashPartitioning
-        );
+        return strategies;
     }
 
     private static int getPollInterval() {
