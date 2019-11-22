@@ -57,8 +57,8 @@ interface MtTableDescriptionRepo {
     fun listTables(listTablesRequest: ListTablesRequest): ListTablesResult
 
     data class ListMetadataResult(
-            val tenantTableDescriptions: List<MtTenantTableDesciption>,
-            val lastEvaluatedTable: MtTenantTableDesciption?
+        val tenantTableDescriptions: List<MtTenantTableDesciption>,
+        val lastEvaluatedTable: MtTenantTableDesciption?
     )
 
     data class ListMetadataRequest(var limit: Int = DEFAULT_SCAN_LIMIT, var startTenantTableKey: MtAmazonDynamoDb.TenantTable? = null) {
@@ -88,8 +88,8 @@ interface MtTableDescriptionRepo {
     }
 
     data class MtTenantTableDesciption(
-            val tenantName: String,
-            val tableDescription: MtTableDescription
+        val tenantName: String,
+        val tableDescription: MtTableDescription
     )
 }
 

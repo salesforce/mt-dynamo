@@ -29,13 +29,10 @@ import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
 import com.google.common.base.Preconditions
 import com.google.common.base.Strings
-import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
 import com.google.common.collect.Multimap
 import com.google.common.collect.MultimapBuilder
 import com.google.common.io.CharStreams
-import com.google.gson.ExclusionStrategy
-import com.google.gson.FieldAttributes
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
@@ -203,7 +200,7 @@ open class MtSharedTableBackupManager(
         val createTableReq = toCreateTableRequest(tableDescription)
                 .withTableName(restoreMtBackupRequest.newTenantTable.virtualTableName)
         mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
-            Preconditions.checkState(!tableDescription.isMultitenant, "Restoring virtual multitenant tables is not supported: %s", createTableReq.tableName);
+            Preconditions.checkState(!tableDescription.isMultitenant, "Restoring virtual multitenant tables is not supported: %s", createTableReq.tableName)
             sharedTableMtDynamo.createTable(createTableReq)
         }
 

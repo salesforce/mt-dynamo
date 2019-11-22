@@ -95,7 +95,7 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
 
     // TODO consider merging with MtContextAndTable
     data class TenantTable(
-            val virtualTableName: String,
-            val tenantName: String
+        val virtualTableName: String,
+        val tenantName: String
     )
 }

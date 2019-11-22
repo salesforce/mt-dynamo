@@ -24,7 +24,6 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.RestoreTableFromBackupRequest
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
-import com.amazonaws.services.dynamodbv2.model.TableDescription
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder
 import com.google.common.collect.ImmutableList
