@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -108,94 +107,143 @@ import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveResult;
 import com.amazonaws.services.dynamodbv2.model.WriteRequest;
 import com.amazonaws.services.dynamodbv2.waiters.AmazonDynamoDBWaiters;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.VirtualDynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.VirtualDynamoTableDescriptionImpl;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class TableMappingFactoryTest {
+
+    private static final CreateTableRequest VIRTUAL_CREATE_TABLE_REQUEST = simpleTable("vtable");
+    private static final VirtualDynamoTableDescription DESCRIPTION =
+        new VirtualDynamoTableDescriptionImpl(VIRTUAL_CREATE_TABLE_REQUEST, false);
+    private static final VirtualDynamoTableDescription MT_DESCRIPTION =
+        new VirtualDynamoTableDescriptionImpl(VIRTUAL_CREATE_TABLE_REQUEST, true);
 
     // can't spy directly, because local DDB uses proxy
     private final AmazonDynamoDB dynamoDb =
         spy(new ForwardingAmazonDynamoDb(AmazonDynamoDbLocal.getAmazonDynamoDbLocal()));
 
+    private String staticPhysicalTableName;
+    private String dynamicPhysicalTableName;
+
+    @BeforeEach
+    void before(TestInfo testInfo) {
+        staticPhysicalTableName = getTestTableName(testInfo, "static");
+        dynamicPhysicalTableName = getTestTableName(testInfo, "dynamic");
+    }
+
     /**
-     * Verifies that TableMappingFactory creates physical table eagerly during construction if requested.
+     * Verifies that TableMappingFactory creates static physical table eagerly during construction if requested.
      */
     @Test
-    void testCreateEager(TestInfo testInfo) {
-        final String tableName = getTestTableName(testInfo);
-        final TableMappingFactory sut = createTestFactory(tableName, true);
+    void testCreateEager() {
+        final TableMappingFactory sut = createTestFactory(true);
 
-        // physical table should exist
-        assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
+        // static physical table should exist
+        verifyPhysicalTableActive(staticPhysicalTableName);
 
-        // should not have called describe again
+        // createNewTableMapping should not result in create or describe again
         reset(dynamoDb);
-        VirtualDynamoTableDescription description = new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false);
-        sut.getTableMapping(description);
+        sut.createNewTableMapping(VIRTUAL_CREATE_TABLE_REQUEST, false);
+        verify(dynamoDb, never()).createTable(any());
+        verify(dynamoDb, never()).describeTable(any(String.class));
+
+        // getTableMapping should not result in describe again
+        sut.getTableMapping(DESCRIPTION);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
     /**
      * Verifies that table info cached after first use.
      */
-    @Test
-    void testCreateLazy(TestInfo testInfo) {
-        final String tableName = getTestTableName(testInfo);
-        final TableMappingFactory sut = createTestFactory(tableName, false);
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void testCreateLazy(boolean isMultitenant) {
+        final String physicalTableName = isMultitenant ? dynamicPhysicalTableName : staticPhysicalTableName;
+        final VirtualDynamoTableDescription virtualTableDescription = isMultitenant ? MT_DESCRIPTION : DESCRIPTION;
+
+        final TableMappingFactory sut = createTestFactory(false);
         // physical table should not have been created
-        assertThrows(ResourceNotFoundException.class, () -> dynamoDb.describeTable(tableName));
+        assertThrows(ResourceNotFoundException.class, () -> dynamoDb.describeTable(physicalTableName));
 
         // should create table lazily
-        sut.createNewTableMapping(simpleTable("vtable"), false);
-        assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
+        sut.createNewTableMapping(VIRTUAL_CREATE_TABLE_REQUEST, isMultitenant);
+        verifyPhysicalTableActive(physicalTableName);
 
         // subsequent requests should no longer call describe
         reset(dynamoDb);
-        sut.getTableMapping(new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false));
+        sut.getTableMapping(virtualTableDescription);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
     /**
      * Verifies that physical table is described on first access for lazy mode and cached afterwards.
      */
-    @Test
-    void testExistsLazy(TestInfo testInfo) {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void testExistsLazy(boolean isMultitenant) {
+        final String physicalTableName = isMultitenant ? dynamicPhysicalTableName : staticPhysicalTableName;
+        final VirtualDynamoTableDescription virtualTableDescription = isMultitenant ? MT_DESCRIPTION : DESCRIPTION;
+
         // simulate creating table in different instance
-        final String tableName = getTestTableName(testInfo);
-        createTestFactory(tableName, true);
-        assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
+        createTestFactory(false).createNewTableMapping(VIRTUAL_CREATE_TABLE_REQUEST, isMultitenant);
+        verifyPhysicalTableActive(physicalTableName);
 
         // expect that getting a table mapping describes the physical table
-        final TableMappingFactory sut = createTestFactory(tableName, false);
-        VirtualDynamoTableDescription description = new VirtualDynamoTableDescriptionImpl(simpleTable("vtable"), false);
-        sut.getTableMapping(description);
-        verify(dynamoDb, atLeastOnce()).describeTable(tableName);
+        reset(dynamoDb);
+        final TableMappingFactory sut = createTestFactory(false);
+        sut.getTableMapping(virtualTableDescription);
+        verify(dynamoDb).describeTable(physicalTableName);
 
         // subsequent requests should no longer call describe
         reset(dynamoDb);
-        sut.getTableMapping(description);
+        sut.getTableMapping(virtualTableDescription);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
-    private static String getTestTableName(TestInfo testInfo) {
-        return testInfo.getTestClass().get().getSimpleName()
-            + '.' + testInfo.getTestMethod().get().getName()
-            + '.' + System.currentTimeMillis();
+    /**
+     * Verifies that calling getTableMapping() does not result in creating the physical table.
+     */
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void testGetDoesNotCreate(boolean isMultitenant) {
+        // expect that getting a table mapping does not result in creating the physical table
+        final TableMappingFactory sut = createTestFactory(false);
+        VirtualDynamoTableDescription virtualTableDescription = isMultitenant ? MT_DESCRIPTION : DESCRIPTION;
+        assertThrows(ResourceNotFoundException.class, () -> sut.getTableMapping(virtualTableDescription));
+        verify(dynamoDb, never()).createTable(any());
     }
 
-    private TableMappingFactory createTestFactory(String tableName, boolean createEagerly) {
+    private void verifyPhysicalTableActive(String tableName) {
+        assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
+    }
+
+    private static String getTestTableName(TestInfo testInfo, String name) {
+        return testInfo.getTestClass().get().getSimpleName()
+            + '.' + testInfo.getTestMethod().get().getName()
+            + '.' + System.currentTimeMillis()
+            + '.' + name;
+    }
+
+    private TableMappingFactory createTestFactory(boolean createEagerly) {
         final TablePartitioningStrategy strategy = mock(TablePartitioningStrategy.class);
         when(strategy.createTableMapping(any(), any(), any(), any())).thenReturn(mock(TableMapping.class));
         when(strategy.isPhysicalPrimaryKeyValid(any())).thenReturn(true);
 
         return new TableMappingFactory(
-            new SingletonCreateTableRequestFactory(simpleTable(tableName)),
+            new TestCreateTableRequestFactory(simpleTable(staticPhysicalTableName),
+                simpleTable(dynamicPhysicalTableName)),
             new PhysicalTableManager(dynamoDb, 0),
             Optional::empty,
             strategy,
@@ -209,6 +257,37 @@ class TableMappingFactoryTest {
             .withKeySchema(new KeySchemaElement("id", KeyType.HASH))
             .withAttributeDefinitions(new AttributeDefinition("id", ScalarAttributeType.S))
             .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L));
+    }
+
+    private static class TestCreateTableRequestFactory implements CreateTableRequestFactory {
+
+        private final CreateTableRequest staticTable;
+        private final CreateTableRequest dynamicTable;
+
+        TestCreateTableRequestFactory(CreateTableRequest staticTable, CreateTableRequest dynamicTable) {
+            this.staticTable = staticTable;
+            this.dynamicTable = dynamicTable;
+        }
+
+        @Override
+        public Optional<CreateTableRequest> getStaticPhysicalTable(DynamoTableDescription virtualTableDescription) {
+            return Optional.of(staticTable);
+        }
+
+        @Override
+        public List<CreateTableRequest> getStaticPhysicalTables() {
+            return Collections.singletonList(staticTable);
+        }
+
+        @Override
+        public CreateTableRequest getDynamicPhysicalTable(DynamoTableDescription virtualTableDescription) {
+            return dynamicTable;
+        }
+
+        @Override
+        public boolean isPhysicalTable(String tableName) {
+            return staticTable.getTableName().equals(tableName) || dynamicTable.getTableName().equals(tableName);
+        }
     }
 
     private static class ForwardingAmazonDynamoDb implements AmazonDynamoDB {

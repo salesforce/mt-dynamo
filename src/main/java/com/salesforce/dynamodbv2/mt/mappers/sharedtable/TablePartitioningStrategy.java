@@ -35,9 +35,10 @@ public interface TablePartitioningStrategy {
     PrimaryKeyMapper getSecondaryIndexPrimaryKeyMapper();
 
     /**
-     * Returns a physical primary key that is compatible with the given virtual primary key.
+     * Returns a physical primary key compatible with the given virtual primary key, with the given physical hash key
+     * name and potential physical range key name.
      */
-    PrimaryKey toCompatiblePhysicalPrimaryKey(PrimaryKey virtualPrimaryKey);
+    PrimaryKey toPhysicalPrimaryKey(PrimaryKey virtualPrimaryKey, String hashKeyName, String rangeKeyName);
 
     /**
      * Returns whether a given physical table or index primary key is valid.

@@ -12,8 +12,12 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.DYNAMIC_PHYSICAL_TABLE_PREFIX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.validatePhysicalTablePrefix;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.validateStaticPhysicalTableName;
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
 
@@ -36,7 +40,6 @@ import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
@@ -57,8 +60,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 /**
@@ -192,7 +195,7 @@ public class SharedTableBuilder implements TableBuilder {
     private String name;
     private AmazonDynamoDB amazonDynamoDb;
     private MtAmazonDynamoDbContextProvider mtContext;
-    private Optional<String> topLevelContext = empty();
+    private Optional<String> globalContext = empty();
     private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
     private MtSharedTableBackupManagerBuilder backupManagerBuilder;
@@ -325,8 +328,7 @@ public class SharedTableBuilder implements TableBuilder {
         PhysicalTableManager physicalTableManager = new PhysicalTableManager(amazonDynamoDb, pollIntervalSeconds);
         if (tableMappingFactory == null) {
             CreateTableRequestFactory createTableRequestFactory = new SharedTableCreateTableRequestFactory(
-                partitioningStrategy.getTablePrimaryKeyMapper(), createTableRequests,
-                partitioningStrategy::toCompatiblePhysicalPrimaryKey, tablePrefix,
+                tablePrefix, createTableRequests, partitioningStrategy,
                 defaultProvisionedThroughput, billingMode, streamsEnabled);
             tableMappingFactory = new TableMappingFactory(
                 createTableRequestFactory,
@@ -338,7 +340,7 @@ public class SharedTableBuilder implements TableBuilder {
         }
         return new MtAmazonDynamoDbBySharedTable(name,
             mtContext,
-            topLevelContext,
+            globalContext,
             amazonDynamoDb,
             tableMappingFactory,
             partitioningStrategy,
@@ -385,9 +387,6 @@ public class SharedTableBuilder implements TableBuilder {
         if (name == null) {
             name = "MtAmazonDynamoDbBySharedTable";
         }
-        if (billingMode == null) {
-            billingMode = BillingMode.PROVISIONED;
-        }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
         }
@@ -414,7 +413,7 @@ public class SharedTableBuilder implements TableBuilder {
                 .withAmazonDynamoDb(amazonDynamoDb)
                 .withBillingMode(billingMode)
                 .withContext(mtContext)
-                .withTopLevelContext(topLevelContext)
+                .withGlobalContext(globalContext)
                 .withTableDescriptionTableName(tableDescriptionTableName)
                 .withPollIntervalSeconds(pollIntervalSeconds)
                 .withTablePrefix(tablePrefix)
@@ -584,8 +583,8 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTopLevelContext(Optional<String> topLevelContext) {
-        this.topLevelContext = topLevelContext;
+    public SharedTableBuilder withGlobalContext(Optional<String> globalContext) {
+        this.globalContext = globalContext;
         return this;
     }
 
@@ -629,22 +628,9 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    private Optional<String> getTablePrefix() {
-        return tablePrefix;
-    }
-
     private void validate() {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
-
-        boolean tableCollidesWithBackupPrefix = createTableRequests
-            .stream()
-            .map(CreateTableRequest::getTableName)
-            .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
-        Preconditions.checkState(!tableCollidesWithBackupPrefix,
-            "Cannot suffix a physical table name with "
-                + DEFAULT_BACKUP_TABLE_PREFIX
-                + ". Either change your table names or override the default backup suffix.");
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
@@ -672,28 +658,33 @@ public class SharedTableBuilder implements TableBuilder {
      */
     static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
 
-        private final PrimaryKeyMapper staticPrimaryKeyMapper;
-        private final List<CreateTableRequest> staticPhysicalTables;
-        private final UnaryOperator<PrimaryKey> dynamicPrimaryKeyMapper;
-        private final Optional<String> tablePrefix;
+
+        private final List<CreateTableRequest> staticTables;
+        private final Set<String> staticTableNames;
+        private final Optional<String> dynamicTablePrefix;
+        private final TablePartitioningStrategy partitioningStrategy;
         private final long provisionedThroughput;
         private final BillingMode billingMode;
         private final boolean streamsEnabled;
 
-        SharedTableCreateTableRequestFactory(PrimaryKeyMapper staticPrimaryKeyMapper,
-                                             List<CreateTableRequest> staticPhysicalTables,
-                                             UnaryOperator<PrimaryKey> dynamicPrimaryKeyMapper,
-                                             Optional<String> tablePrefix,
+        SharedTableCreateTableRequestFactory(Optional<String> tablePrefix,
+                                             List<CreateTableRequest> staticTables,
+                                             TablePartitioningStrategy partitioningStrategy,
                                              long provisionedThroughput,
                                              BillingMode billingMode,
                                              boolean streamsEnabled) {
-            this.staticPrimaryKeyMapper = staticPrimaryKeyMapper;
-            this.staticPhysicalTables = staticPhysicalTables.stream()
+            tablePrefix.ifPresent(p -> validatePhysicalTablePrefix(p));
+            staticTables.forEach(t -> validateStaticPhysicalTableName(t.getTableName()));
+
+            this.staticTables = staticTables.stream()
                 .map(createTableRequest -> createTableRequest.withTableName(
                     prefix(tablePrefix, createTableRequest.getTableName())))
                 .collect(Collectors.toList());
-            this.dynamicPrimaryKeyMapper = dynamicPrimaryKeyMapper;
-            this.tablePrefix = tablePrefix;
+            this.staticTableNames = this.staticTables.stream()
+                .map(CreateTableRequest::getTableName)
+                .collect(Collectors.toSet());
+            this.dynamicTablePrefix = tablePrefix.map(p -> p + DYNAMIC_PHYSICAL_TABLE_PREFIX);
+            this.partitioningStrategy = partitioningStrategy;
             this.provisionedThroughput = provisionedThroughput;
             this.billingMode = billingMode;
             this.streamsEnabled = streamsEnabled;
@@ -703,8 +694,8 @@ public class SharedTableBuilder implements TableBuilder {
         public Optional<CreateTableRequest> getStaticPhysicalTable(DynamoTableDescription virtualTableDescription) {
             try {
                 boolean hasLsis = !isEmpty(virtualTableDescription.getLsis());
-                return Optional.of(((CreateTableRequestWrapper) staticPrimaryKeyMapper
-                    .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), staticPhysicalTables.stream()
+                return Optional.of(((CreateTableRequestWrapper) partitioningStrategy.getTablePrimaryKeyMapper()
+                    .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), staticTables.stream()
                         .filter(createTableRequest1 -> hasLsis
                             == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
                         .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new)
@@ -721,29 +712,43 @@ public class SharedTableBuilder implements TableBuilder {
 
         @Override
         public List<CreateTableRequest> getStaticPhysicalTables() {
-            return staticPhysicalTables;
+            return staticTables;
         }
 
         @Override
         public CreateTableRequest getDynamicPhysicalTable(DynamoTableDescription virtualTable) {
-            String physicalTableName = prefix(tablePrefix, virtualTable.getTableName());
-            PrimaryKey physicalPrimaryKey = dynamicPrimaryKeyMapper.apply(virtualTable.getPrimaryKey());
+            checkState(dynamicTablePrefix.isPresent(),
+                "Can dynamically create physical tables only if a table prefix was specified.");
+
+            // add prefix for dynamic tables
+            String physicalTableName = prefix(dynamicTablePrefix, virtualTable.getTableName());
+
+            // map virtual table PK to a physical PK
+            PrimaryKey physicalTablePk = partitioningStrategy.toPhysicalPrimaryKey(virtualTable.getPrimaryKey(),
+                "hk", "rk");
             CreateTableRequestBuilder physicalTable = CreateTableRequestBuilder.builder()
                 .withTableName(physicalTableName)
-                .withTableKeySchema(physicalPrimaryKey);
+                .withTableKeySchema(physicalTablePk);
+            // map each virtual secondary index to a physical secondary index
             for (DynamoSecondaryIndex si : virtualTable.getSis()) {
-                PrimaryKey indexPrimaryKey = dynamicPrimaryKeyMapper.apply(si.getPrimaryKey());
-                physicalTable.addSi(si.getIndexName(), si.getType(), indexPrimaryKey, provisionedThroughput);
+                String physicalHk = si.getType() == LSI ? physicalTablePk.getHashKey() : si.getIndexName() + "-hk";
+                String physicalRk = si.getIndexName() + "-rk";
+                PrimaryKey indexPk = partitioningStrategy.toPhysicalPrimaryKey(virtualTable.getPrimaryKey(),
+                    physicalHk, physicalRk);
+                physicalTable.addSi(si.getIndexName(), si.getType(), indexPk, provisionedThroughput);
             }
+
+            // TODO: respect billing mode and/or provisioned throughput of virtual table?
             setBillingMode(physicalTable, billingMode, provisionedThroughput);
             addStreamSpecification(physicalTable, streamsEnabled);
             return physicalTable.build();
         }
 
+
         @Override
         public boolean isPhysicalTable(String tableName) {
-            // TODO should we throw exception if no table prefix is specified?
-            return tablePrefix.map(tableName::startsWith).orElse(true);
+            return staticTableNames.contains(tableName)
+                || dynamicTablePrefix.map(tableName::startsWith).orElse(false);
         }
     }
 

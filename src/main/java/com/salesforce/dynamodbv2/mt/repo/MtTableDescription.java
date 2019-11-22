@@ -48,4 +48,9 @@ public class MtTableDescription extends TableDescription {
         hashCode = 31 * hashCode + Boolean.hashCode(isMultitenant());
         return hashCode;
     }
+
+    @Override
+    public String toString() {
+        return super.toString() + "{IsMultitenant: " + isMultitenant() + "}";
+    }
 }

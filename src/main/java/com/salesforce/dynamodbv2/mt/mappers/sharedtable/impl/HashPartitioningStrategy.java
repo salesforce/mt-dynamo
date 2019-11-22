@@ -51,8 +51,8 @@ public class HashPartitioningStrategy implements TablePartitioningStrategy {
     }
 
     @Override
-    public PrimaryKey toCompatiblePhysicalPrimaryKey(PrimaryKey virtualPrimaryKey) {
-        return new PrimaryKey("hk", B, "rk", B);
+    public PrimaryKey toPhysicalPrimaryKey(PrimaryKey virtualPrimaryKey, String hashKeyName, String rangeKeyName) {
+        return new PrimaryKey(hashKeyName, B, rangeKeyName, B);
     }
 
     @Override

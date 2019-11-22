@@ -349,7 +349,7 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
-        throw new UnsupportedOperationException();
+        return listTables(listTablesRequest.getExclusiveStartTableName(), listTablesRequest.getLimit());
     }
 
     @Override
@@ -359,11 +359,14 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName) {
-        return listTables(exclusiveStartTableName, 100);
+        return listTables(exclusiveStartTableName, null);
     }
 
     @Override
     public ListTablesResult listTables(String exclusiveStartTableName, Integer limit) {
+        if (limit == null) {
+            limit = 100;
+        }
         if (mtContext.getContextOpt().isEmpty()) {
             List<String> tableNames = new ArrayList<>();
             String innerExclusiveStartTableName = exclusiveStartTableName;

@@ -4,6 +4,8 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.GLOBAL_CONTEXT;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI_HK_FIELD;
@@ -58,7 +60,7 @@ import java.util.stream.IntStream;
  */
 public class DefaultTestSetup implements TestSetup {
 
-    protected static final MtAmazonDynamoDbContextProvider mtContext = ArgumentBuilder.MT_CONTEXT;
+    protected static final MtAmazonDynamoDbContextProvider mtContext = MT_CONTEXT;
 
     public static final String TABLE1 = "Table1"; // has hk
     public static final String TABLE2 = "Table2"; // has hk
@@ -81,14 +83,23 @@ public class DefaultTestSetup implements TestSetup {
             List<CreateTableRequest> createTableRequests =
                 getCreateRequests(testArgument.getHashKeyAttrType(), tableNames);
             createTableRequests.forEach(createTableRequest -> {
-                new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
-                    .createTableIfNotExists(createTableRequest, getPollInterval());
+                createTable(testArgument, createTableRequest);
                 setupTableData(testArgument.getAmazonDynamoDb(),
                     testArgument.getHashKeyAttrType(),
                     org,
                     createTableRequest);
             });
         });
+    }
+
+    private void createTable(TestArgument testArgument, CreateTableRequest createTableRequest) {
+        if (testArgument.getAmazonDynamoDbStrategy().useMultitenantTables()) {
+            MT_CONTEXT.withContext(GLOBAL_CONTEXT,
+                () -> testArgument.getAmazonDynamoDb().createMultitenantTable(createTableRequest));
+        } else {
+            new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())
+                .createTableIfNotExists(createTableRequest, getPollInterval());
+        }
     }
 
     protected void setupTableData(AmazonDynamoDB amazonDynamoDb,

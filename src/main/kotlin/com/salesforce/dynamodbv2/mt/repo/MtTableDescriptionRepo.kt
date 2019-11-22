@@ -57,8 +57,8 @@ interface MtTableDescriptionRepo {
     fun listTables(listTablesRequest: ListTablesRequest): ListTablesResult
 
     data class ListMetadataResult(
-        val createTableRequests: List<MtCreateTableRequest>,
-        val lastEvaluatedTable: MtCreateTableRequest?
+            val tenantTableDescriptions: List<MtTenantTableDesciption>,
+            val lastEvaluatedTable: MtTenantTableDesciption?
     )
 
     data class ListMetadataRequest(var limit: Int = DEFAULT_SCAN_LIMIT, var startTenantTableKey: MtAmazonDynamoDb.TenantTable? = null) {
@@ -72,11 +72,11 @@ interface MtTableDescriptionRepo {
             return this
         }
 
-        fun withExclusiveStartCreateTableReq(startKey: MtCreateTableRequest?): ListMetadataRequest {
+        fun withExclusiveStartCreateTableReq(startKey: MtTenantTableDesciption?): ListMetadataRequest {
             startTenantTableKey = if (startKey == null) {
                 null
             } else {
-                MtAmazonDynamoDb.TenantTable(startKey.createTableRequest.tableName, startKey.tenantName)
+                MtAmazonDynamoDb.TenantTable(startKey.tableDescription.tableName, startKey.tenantName)
             }
             return this
         }
@@ -87,9 +87,9 @@ interface MtTableDescriptionRepo {
         }
     }
 
-    data class MtCreateTableRequest(
-        val tenantName: String,
-        val createTableRequest: CreateTableRequest
+    data class MtTenantTableDesciption(
+            val tenantName: String,
+            val tableDescription: MtTableDescription
     )
 }
 

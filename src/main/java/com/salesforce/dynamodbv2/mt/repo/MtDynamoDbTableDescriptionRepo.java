@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.VIRTUAL_MULTITENANT_TABLE_PREFIX;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -16,13 +17,11 @@ import com.amazonaws.services.dynamodbv2.model.BillingMode;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteItemRequest;
 import com.amazonaws.services.dynamodbv2.model.GetItemRequest;
-import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.GlobalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
-import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndex;
 import com.amazonaws.services.dynamodbv2.model.LocalSecondaryIndexDescription;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughputDescription;
@@ -32,6 +31,7 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -45,7 +45,6 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +71,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final AmazonDynamoDbAdminUtils adminUtils;
     private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
-    private final Optional<String> topLevelContext;
+    private final Optional<String> globalContext;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
@@ -84,7 +83,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
                                            BillingMode billingMode,
                                            MtAmazonDynamoDbContextProvider mtContext,
-                                           Optional<String> topLevelContext,
+                                           Optional<String> globalContext,
                                            String tableDescriptionTableName,
                                            Optional<String> tablePrefix,
                                            String tableDescriptionTableHashKeyField,
@@ -96,7 +95,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.billingMode = billingMode;
         this.mtContext = mtContext;
-        this.topLevelContext = topLevelContext;
+        this.globalContext = globalContext;
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
@@ -136,13 +135,12 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private MtTableDescription getTableDescriptionNoCache(String tableName) {
-        // first get description for table name at the current context
+        // first get description for table name in the current context
         Optional<MtTableDescription> tableDescription = getTableDescriptionFromDb(tableName);
-        // if no such entry exists at the current context, check if this name corresponds to a multitenant table at the
-        // top-level context
-        if (tableDescription.isEmpty() && topLevelContext.isPresent()
-            && !topLevelContext.get().equals(mtContext.getContext())) {
-            tableDescription = mtContext.withContext(topLevelContext.get(), () -> getTableDescriptionFromDb(tableName))
+        // if no entry exists, check if this name corresponds to a multitenant table in empty context
+        if (tableDescription.isEmpty() && globalContext.isPresent()
+            && !globalContext.get().equals(mtContext.getContext())) {
+            tableDescription = mtContext.withContext(globalContext.get(), () -> getTableDescriptionFromDb(tableName))
                 .filter(MtTableDescription::isMultitenant);
         }
         return tableDescription.orElseThrow(() -> new ResourceNotFoundException(
@@ -197,60 +195,22 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             pollIntervalSeconds);
     }
 
-    private static CreateTableRequest getCreateTableRequest(TableDescription description) {
-        return new CreateTableRequest().withTableName(description.getTableName())
-            .withKeySchema(description.getKeySchema())
-            .withAttributeDefinitions(description.getAttributeDefinitions())
-            .withStreamSpecification(description.getStreamSpecification())
-            .withProvisionedThroughput(
-                getProvisionedThroughput(description.getProvisionedThroughput()))
-            .withGlobalSecondaryIndexes(getGlobalIndexes(description.getGlobalSecondaryIndexes()))
-            .withLocalSecondaryIndexes(getLocalIndexes(description.getLocalSecondaryIndexes()));
-    }
-
-    private static List<GlobalSecondaryIndex> getGlobalIndexes(
-        Collection<GlobalSecondaryIndexDescription> descriptions) {
-        return descriptions == null ? null : descriptions
-            .stream()
-            .map(s ->
-                new GlobalSecondaryIndex().withIndexName(s.getIndexName())
-                    .withKeySchema(s.getKeySchema())
-                    .withProjection(s.getProjection())
-                    .withProvisionedThroughput(getProvisionedThroughput(s.getProvisionedThroughput())))
-            .collect(Collectors.toList());
-    }
-
-    private static List<LocalSecondaryIndex> getLocalIndexes(Collection<LocalSecondaryIndexDescription> descriptions) {
-        return descriptions == null ? null :
-            descriptions.stream()
-                .map(s ->
-                    new LocalSecondaryIndex()
-                        .withIndexName(s.getIndexName())
-                        .withKeySchema(s.getKeySchema())
-                        .withProjection(s.getProjection()))
-                .collect(Collectors.toList());
-    }
-
-    private static ProvisionedThroughput getProvisionedThroughput(ProvisionedThroughputDescription description) {
-        return description == null ? null :
-            new ProvisionedThroughput(description.getReadCapacityUnits(), description.getWriteCapacityUnits());
-    }
-
-    private static ProvisionedThroughputDescription getProvisionedThroughputDesc(ProvisionedThroughput throughput) {
+    private static ProvisionedThroughputDescription toProvisionedThroughputDesc(ProvisionedThroughput throughput) {
         return throughput == null ? null :
             new ProvisionedThroughputDescription()
                 .withReadCapacityUnits(throughput.getReadCapacityUnits())
                 .withWriteCapacityUnits(throughput.getWriteCapacityUnits());
     }
 
-    private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest, boolean isMultitenant) {
+    @VisibleForTesting
+    static MtTableDescription toTableDescription(CreateTableRequest createTableRequest, boolean isMultitenant) {
         MtTableDescription tableDescription = new MtTableDescription();
         tableDescription
             .withTableName(createTableRequest.getTableName())
             .withKeySchema(createTableRequest.getKeySchema())
             .withAttributeDefinitions(createTableRequest.getAttributeDefinitions())
             .withStreamSpecification(createTableRequest.getStreamSpecification())
-            .withProvisionedThroughput(getProvisionedThroughputDesc(createTableRequest.getProvisionedThroughput()));
+            .withProvisionedThroughput(toProvisionedThroughputDesc(createTableRequest.getProvisionedThroughput()));
 
         if (createTableRequest.getLocalSecondaryIndexes() != null) {
             tableDescription.withLocalSecondaryIndexes(createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
@@ -266,14 +226,18 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                         .withIndexName(gsi.getIndexName())
                         .withKeySchema(gsi.getKeySchema())
                         .withProjection(gsi.getProjection())
-                        .withProvisionedThroughput(getProvisionedThroughputDesc(gsi.getProvisionedThroughput()))
+                        .withProvisionedThroughput(toProvisionedThroughputDesc(gsi.getProvisionedThroughput()))
             ).collect(Collectors.toList()));
         }
 
         // add properties not defined in base TableDescription
         tableDescription.withMultitenant(isMultitenant);
 
-        String tableDataJson = tableDataToJson(tableDescription);
+        return tableDescription;
+    }
+
+    private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest, boolean isMultitenant) {
+        String tableDataJson = tableDataToJson(toTableDescription(createTableRequest, isMultitenant));
         return new HashMap<>(ImmutableMap.of(
             tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
             tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
@@ -287,97 +251,102 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, MtTableDescription.class);
     }
 
-    private String getHashKey(TenantTable tenantTable) {
-        return tenantTable.getTenantName()
-            + delimiter
-            + tenantTable.getVirtualTableName();
-    }
-
     private String addPrefix(String tableName) {
-        return getPrefix() + tableName;
+        return addPrefix(mtContext.getContext(), tableName);
     }
 
-    private String getPrefix() {
-        return mtContext.getContext() + delimiter;
+    private String addPrefix(String context, String tableName) {
+        return context + delimiter + tableName;
+    }
+
+    private String toStartHashKey(TenantTable tenantTable) {
+        if (tenantTable == null) {
+            return null;
+        }
+        return addPrefix(tenantTable.getTenantName(), tenantTable.getVirtualTableName());
+    }
+
+    private String toStartHashKey(String tableName) {
+        if (tableName == null) {
+            return null;
+        }
+        String context = tableName.startsWith(VIRTUAL_MULTITENANT_TABLE_PREFIX)
+            ? globalContext.get()
+            : mtContext.getContext();
+        return addPrefix(context, tableName);
     }
 
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        return listVirtualTableMetadata(listMetadataRequest, null);
+        String startHashKey = toStartHashKey(listMetadataRequest.getStartTenantTableKey());
+        // TODO support backing up
+        return listVirtualTableMetadata(startHashKey, listMetadataRequest.getLimit(), null);
     }
 
     /**
      * Do a scan of the description table, returning all virtual table metadata. If a filter is passed, continue
      * scanning until a full page of results is populated, or the description table is exhausted.
      */
-    private ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest, String filterTenant) {
+    private ListMetadataResult listVirtualTableMetadata(String startHashKey, Integer limit, String filterTenant) {
         Preconditions.checkArgument(mtContext.getContextOpt().map(t -> filterTenant.equals(t))
                 .orElse(filterTenant == null),
             "Tenant context does not match filter");
-        Map<String, AttributeValue> lastEvaluatedKey = null;
-        if (listMetadataRequest.getStartTenantTableKey() != null) {
-            lastEvaluatedKey = new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(getHashKey(listMetadataRequest.getStartTenantTableKey()))));
-        }
+        Map<String, AttributeValue> lastEvaluatedKey = startHashKey == null
+            ? null
+            : ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(startHashKey));
         ScanRequest scanReq = new ScanRequest(getTableDescriptionTableName());
+
         // if tenant scoped virtual table list, keep scanning until we either run out of metadata rows in the
-        // multitenant virtual table definitions, or we fill up our result set
-        List<MtCreateTableRequest> createTableRequests = new ArrayList<>();
+        // virtual table definitions, or we fill up our result set
+        List<MtTenantTableDesciption> tableDescriptions = new ArrayList<>();
         do {
             ScanResult scanResult;
             scanReq.setExclusiveStartKey(lastEvaluatedKey);
             scanResult = amazonDynamoDb.scan(scanReq);
-            List<MtCreateTableRequest> createRequestsBatch = scanResult.getItems().stream()
-                .map(this::fromRowToMtCreateTableRequest)
+            List<MtTenantTableDesciption> tableDescriptionsBatch = scanResult.getItems().stream()
+                .map(this::toMtTenantTableDescription)
                 .collect(Collectors.toList());
             if (filterTenant == null) {
-                createTableRequests.addAll(createRequestsBatch);
+                tableDescriptions.addAll(tableDescriptionsBatch);
             } else {
-                createTableRequests.addAll(createRequestsBatch.stream()
-                    .filter(t -> t.getTenantName().equals(filterTenant))
+                // include all descriptions with a matching tenant name, plus any multitenant tables
+                tableDescriptions.addAll(tableDescriptionsBatch.stream()
+                    .filter(t -> t.getTenantName().equals(filterTenant) || t.getTableDescription().isMultitenant())
                     .collect(Collectors.toList()));
             }
             lastEvaluatedKey = scanResult.getLastEvaluatedKey();
-        } while (lastEvaluatedKey != null && createTableRequests.size() < scanReq.getLimit());
+        } while (lastEvaluatedKey != null && tableDescriptions.size() < scanReq.getLimit());
 
-        if (createTableRequests.size() >= listMetadataRequest.getLimit()) {
-            List<MtCreateTableRequest> ret = createTableRequests.subList(0, listMetadataRequest.getLimit());
+        if (limit != null && tableDescriptions.size() >= limit) {
+            List<MtTenantTableDesciption> ret = tableDescriptions.subList(0, limit);
             return new ListMetadataResult(ret, Iterables.getLast(ret));
         } else {
-            return new ListMetadataResult(createTableRequests, null);
+            return new ListMetadataResult(tableDescriptions, null);
         }
-
     }
 
-    private MtCreateTableRequest fromRowToMtCreateTableRequest(Map<String, AttributeValue> item) {
+    private MtTenantTableDesciption toMtTenantTableDescription(Map<String, AttributeValue> item) {
         MtTableDescription tableDescription = jsonToTableData(item.get(tableDescriptionTableDataField).getS());
         TenantTable tenantTable = getTenantTableFromHashKey(item.get(tableDescriptionTableHashKeyField).getS());
-        // TODO include properties defined in MtTableDescription but not in TableDescription
-        return new MtCreateTableRequest(tenantTable.getTenantName(), getCreateTableRequest(tableDescription));
+        return new MtTenantTableDesciption(tenantTable.getTenantName(), tableDescription);
     }
 
     @NotNull
     @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
-        Preconditions.checkArgument(mtContext.getContextOpt().isPresent(),
-            "Must provide a tenant context.");
-        ListMetadataRequest listMetadataRequest = new ListMetadataRequest()
-            .withLimit(listTablesRequest.getLimit())
-            .withExclusiveStartKey(listTablesRequest.getExclusiveStartTableName() == null
-                ? null
-                : new TenantTable(listTablesRequest.getExclusiveStartTableName(),
-                mtContext.getContext()));
-        ListMetadataResult listMetadataResult = listVirtualTableMetadata(listMetadataRequest, mtContext.getContext());
+        Preconditions.checkArgument(mtContext.getContextOpt().isPresent(), "Must provide a tenant context.");
+        String startHashKey = toStartHashKey(listTablesRequest.getExclusiveStartTableName());
+        ListMetadataResult listMetadataResult = listVirtualTableMetadata(startHashKey, listTablesRequest.getLimit(),
+            mtContext.getContext());
         return new ListTablesResult()
             .withLastEvaluatedTableName(
                 Optional.ofNullable(listMetadataResult.getLastEvaluatedTable())
-                    .map(t -> t.getCreateTableRequest().getTableName())
+                    .map(t -> t.getTableDescription().getTableName())
                     .orElse(null))
-            .withTableNames(listMetadataResult.getCreateTableRequests()
-                .stream().map(t -> t.getCreateTableRequest().getTableName())
+            .withTableNames(listMetadataResult.getTenantTableDescriptions()
+                .stream().map(t -> t.getTableDescription().getTableName())
                 .collect(Collectors.toList()));
-
     }
 
     public static MtDynamoDbTableDescriptionRepoBuilder builder() {
@@ -392,7 +361,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
-        private Optional<String> topLevelContext = Optional.empty();
+        private Optional<String> globalContext;
         private String tableDescriptionTableName;
         private String tableDescriptionTableHashKeyField;
         private String tableDescriptionTableDataField;
@@ -412,8 +381,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withTopLevelContext(Optional<String> topLevelContext) {
-            this.topLevelContext = topLevelContext;
+        public MtDynamoDbTableDescriptionRepoBuilder withGlobalContext(Optional<String> globalContext) {
+            this.globalContext = globalContext;
             return this;
         }
 
@@ -473,7 +442,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 amazonDynamoDb,
                 billingMode,
                 mtContext,
-                topLevelContext,
+                globalContext,
                 tableDescriptionTableName,
                 tablePrefix,
                 tableDescriptionTableHashKeyField,

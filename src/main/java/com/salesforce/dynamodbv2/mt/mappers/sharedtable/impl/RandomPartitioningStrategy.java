@@ -51,9 +51,9 @@ public class RandomPartitioningStrategy implements TablePartitioningStrategy {
     }
 
     @Override
-    public PrimaryKey toCompatiblePhysicalPrimaryKey(PrimaryKey virtualPrimaryKey) {
-        return new PrimaryKey(virtualPrimaryKey.getHashKey(), physicalHashKeyType,
-            virtualPrimaryKey.getRangeKey(), virtualPrimaryKey.getRangeKeyType());
+    public PrimaryKey toPhysicalPrimaryKey(PrimaryKey virtualPrimaryKey, String hashKeyName, String rangeKeyName) {
+        return new PrimaryKey(hashKeyName, physicalHashKeyType,
+            virtualPrimaryKey.getRangeKey().map(ignored -> rangeKeyName), virtualPrimaryKey.getRangeKeyType());
     }
 
     @Override
