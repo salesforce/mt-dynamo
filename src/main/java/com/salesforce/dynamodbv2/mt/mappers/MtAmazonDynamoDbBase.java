@@ -293,7 +293,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public DescribeTableReplicaAutoScalingResult describeTableReplicaAutoScaling(DescribeTableReplicaAutoScalingRequest describeTableReplicaAutoScalingRequest) {
+    public DescribeTableReplicaAutoScalingResult describeTableReplicaAutoScaling(
+        DescribeTableReplicaAutoScalingRequest describeTableReplicaAutoScalingRequest) {
         throw new UnsupportedOperationException();
     }
 
@@ -517,7 +518,8 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     }
 
     @Override
-    public UpdateTableReplicaAutoScalingResult updateTableReplicaAutoScaling(UpdateTableReplicaAutoScalingRequest updateTableReplicaAutoScalingRequest) {
+    public UpdateTableReplicaAutoScalingResult updateTableReplicaAutoScaling(
+        UpdateTableReplicaAutoScalingRequest updateTableReplicaAutoScalingRequest) {
         throw new UnsupportedOperationException();
     }
 
