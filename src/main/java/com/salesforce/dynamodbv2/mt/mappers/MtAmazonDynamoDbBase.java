@@ -43,6 +43,8 @@ import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsReques
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsResult;
+import com.amazonaws.services.dynamodbv2.model.DescribeTableReplicaAutoScalingRequest;
+import com.amazonaws.services.dynamodbv2.model.DescribeTableReplicaAutoScalingResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTimeToLiveRequest;
@@ -86,6 +88,8 @@ import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
+import com.amazonaws.services.dynamodbv2.model.UpdateTableReplicaAutoScalingRequest;
+import com.amazonaws.services.dynamodbv2.model.UpdateTableReplicaAutoScalingResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
@@ -286,6 +290,12 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
     @Override
     public DescribeTableResult describeTable(String tableName) {
         return describeTable(new DescribeTableRequest().withTableName(tableName));
+    }
+
+    @Override
+    public DescribeTableReplicaAutoScalingResult describeTableReplicaAutoScaling(
+        DescribeTableReplicaAutoScalingRequest describeTableReplicaAutoScalingRequest) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -504,6 +514,12 @@ public class MtAmazonDynamoDbBase implements MtAmazonDynamoDb {
 
     @Override
     public UpdateTableResult updateTable(String tableName, ProvisionedThroughput provisionedThroughput) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UpdateTableReplicaAutoScalingResult updateTableReplicaAutoScaling(
+        UpdateTableReplicaAutoScalingRequest updateTableReplicaAutoScalingRequest) {
         throw new UnsupportedOperationException();
     }
 
