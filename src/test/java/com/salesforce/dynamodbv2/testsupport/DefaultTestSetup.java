@@ -4,7 +4,6 @@ import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.GLOBAL_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_HK_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.GSI2_RK_FIELD;
@@ -94,7 +93,7 @@ public class DefaultTestSetup implements TestSetup {
 
     private void createTable(TestArgument testArgument, CreateTableRequest createTableRequest) {
         if (testArgument.getAmazonDynamoDbStrategy().useMultitenantTables()) {
-            MT_CONTEXT.withContext(GLOBAL_CONTEXT,
+            MT_CONTEXT.withContext(null,
                 () -> testArgument.getAmazonDynamoDb().createMultitenantTable(createTableRequest));
         } else {
             new TestAmazonDynamoDbAdminUtils(testArgument.getAmazonDynamoDb())

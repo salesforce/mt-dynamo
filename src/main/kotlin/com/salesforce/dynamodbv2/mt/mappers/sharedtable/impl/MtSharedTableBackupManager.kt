@@ -187,21 +187,22 @@ open class MtSharedTableBackupManager(
      *  - Issue a CreateTable command with the metadata of the tenant-table snapshot to the new tenant-table context
      *  - Go through each backup file and insert each row serially into mt-dynamo with the new tenant-table context
      *
-     *  There iss a lot of room for improvement here, especially in parallelizing/bulkifying the restore operation.
+     *  There is a lot of room for improvement here, especially in parallelizing/bulkifying the restore operation.
      */
     override fun restoreTenantTableBackup(
         restoreMtBackupRequest: RestoreMtBackupRequest,
         mtContext: MtAmazonDynamoDbContextProvider
     ): TenantRestoreMetadata {
         val startTime = System.currentTimeMillis()
-        // restore tenant-table metadata
+        // restore tenant-table metadata, unless it's a multitenant table, which we assume to be already created
         val tableDescription: MtTableDescription = getTenantTableMetadata(restoreMtBackupRequest.backupName,
                 restoreMtBackupRequest.tenantTableBackup)
-        val createTableReq = toCreateTableRequest(tableDescription)
+        if (!tableDescription.isMultitenant) {
+            val createTableReq = toCreateTableRequest(tableDescription)
                 .withTableName(restoreMtBackupRequest.newTenantTable.virtualTableName)
-        mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
-            Preconditions.checkState(!tableDescription.isMultitenant, "Restoring virtual multitenant tables is not supported: %s", createTableReq.tableName)
-            sharedTableMtDynamo.createTable(createTableReq)
+            mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
+                sharedTableMtDynamo.createTable(createTableReq)
+            }
         }
 
         // restore tenant-table data

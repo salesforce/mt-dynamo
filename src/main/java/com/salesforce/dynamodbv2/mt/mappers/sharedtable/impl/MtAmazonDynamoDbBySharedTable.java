@@ -10,7 +10,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.validateVirtualTableName;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -99,6 +98,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,11 +118,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbBySharedTable.class);
 
     private final String name;
-    private final Optional<String> globalContext;
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<Object, Optional<TableMapping>> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final TablePartitioningStrategy partitioningStrategy;
+    private final Predicate<String> multitenantVirtualTableCheck;
     private final PhysicalTableManager physicalTableManager;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
@@ -153,10 +153,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     public MtAmazonDynamoDbBySharedTable(String name,
                                          MtAmazonDynamoDbContextProvider mtContext,
-                                         Optional<String> globalContext,
                                          AmazonDynamoDB amazonDynamoDb,
                                          TableMappingFactory tableMappingFactory,
                                          TablePartitioningStrategy partitioningStrategy,
+                                         Predicate<String> multitenantVirtualTableCheck,
                                          MtTableDescriptionRepo mtTableDescriptionRepo,
                                          PhysicalTableManager physicalTableManager,
                                          boolean deleteTableAsync,
@@ -171,11 +171,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          String backupTablePrefix) {
         super(mtContext, amazonDynamoDb, meterRegistry, scanTenantKey, scanVirtualTableKey);
         this.name = name;
-        this.globalContext = globalContext;
         this.mtTableDescriptionRepo = mtTableDescriptionRepo;
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
         this.partitioningStrategy = partitioningStrategy;
+        this.multitenantVirtualTableCheck = multitenantVirtualTableCheck;
         this.physicalTableManager = physicalTableManager;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
@@ -303,9 +303,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private void validateGlobalContextForMultitenantOp(String operation) {
-        checkState(globalContext.isPresent() && globalContext.get().equals(getMtContext().getContext()),
-            "Can %s multitenant tables only in the global context (global: %s, current: %s)",
-            operation, globalContext.orElse("<NONE>"), getMtContext().getContext());
+        checkState(getMtContext().getContextOpt().isEmpty(),
+            "Can %s multitenant tables only in the global context", operation);
     }
 
     /**
@@ -329,6 +328,15 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         MtTableDescription tableDescription = mtTableDescriptionRepo.createTableMetadata(createTableRequest,
             isMultitenant);
         return new CreateTableResult().withTableDescription(withTenantStreamArn(tableDescription));
+    }
+
+    private void validateVirtualTableName(String tableName, boolean isMultitenant) {
+        boolean isMultitenantTableName = multitenantVirtualTableCheck.test(tableName);
+        if (isMultitenant) {
+            checkArgument(isMultitenantTableName, "Invalid name for multitenant virtual table: %s", tableName);
+        } else {
+            checkArgument(!isMultitenantTableName, "Invalid name for single-tenant virtual table: %s", tableName);
+        }
     }
 
     /**

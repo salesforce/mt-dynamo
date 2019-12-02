@@ -6,13 +6,11 @@ import com.amazonaws.regions.Regions;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.dynamodblocal.LocalDynamoDbServer;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import com.salesforce.dynamodbv2.mt.mappers.AddTablePrefixMtAmazonDynamoDb;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbByAccount;
@@ -29,10 +27,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -52,16 +51,14 @@ import java.util.stream.IntStream;
 public class ArgumentBuilder implements Supplier<List<TestArgument>> {
 
     static final Regions REGION = Regions.US_EAST_1;
-    @VisibleForTesting
     private static final AmazonDynamoDB DEFAULT_ROOT_AMAZON_DYNAMO_DB = IS_LOCAL_DYNAMO
         ? AmazonDynamoDbLocal.getAmazonDynamoDbLocal()
         : AmazonDynamoDBClientBuilder.standard().withRegion(REGION).build();
+    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
+        new MtAmazonDynamoDbContextProviderThreadLocalImpl();
     private static final AtomicInteger ORG_COUNTER = new AtomicInteger();
     public static final int ORGS_PER_TEST = 2;
     private static final boolean LOGGING_ENABLED = false; // log DDL and DML operations
-    public static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
-        new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-    public static final String GLOBAL_CONTEXT = "TopLevelContext";
 
     public enum AmazonDynamoDbStrategy {
 
@@ -73,43 +70,46 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
             .withAmazonDynamoDb(wrapWithLogger(root))
             .withContext(MT_CONTEXT).build()),
 
-        RandomPartitioning(root -> SharedTableBuilder.builder()
-            .withTablePrefix("RandomPartitioning.")
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(wrapWithLogger(root))
-            .withContext(MT_CONTEXT)
-            .withGlobalContext(Optional.of(GLOBAL_CONTEXT))
-            .withTruncateOnDeleteTable(true)
-            .build()),
+        RandomPartitioning(root -> getSharedTableBuilder(root, "RandomPartitioning.").build()),
 
-        RandomPartitioningBinaryHk(root -> SharedTableBuilder.builder()
-            .withTablePrefix("RandomPartitioningBinaryHk.")
-            .withPollIntervalSeconds(getPollInterval())
-            .withAmazonDynamoDb(wrapWithLogger(root))
-            .withContext(MT_CONTEXT)
-            .withGlobalContext(Optional.of(GLOBAL_CONTEXT))
-            .withTruncateOnDeleteTable(true)
+        RandomPartitioningBinaryHk(root -> getSharedTableBuilder(root, "RandomPartitioningBinaryHk.")
             .withBinaryHashKey(true)
             .build()),
 
-        HashPartitioning(root -> buildHashPartitioning("HashPartitioning.", root), false),
+        HashPartitioning(root -> getTrivialCompositeClient(
+            addHashPartitioning(getSharedTableBuilder(root, "HashPartitioning.")).build())),
 
-        HashPartitioningMt(root -> new AddTablePrefixMtAmazonDynamoDb(
-            buildHashPartitioning("HashPartitioningMt.", root), "mt_",
-            Arrays.stream(DefaultTestSetup.ALL_TABLES).collect(Collectors.toSet())),
-            true);
+        // strategy where default test tables are created as multitenant tables
+        HashPartitioningMt(root -> buildHashPartitioningMt(root, "HashPartitioningMt."), true);
 
-        private static MtAmazonDynamoDbBase buildHashPartitioning(String prefix, AmazonDynamoDB root) {
-            return getTrivialCompositeClient(SharedTableBuilder.builder()
+        private static MtAmazonDynamoDbBase buildHashPartitioningMt(AmazonDynamoDB root, String prefix) {
+            Set<String> testTables = Arrays.stream(DefaultTestSetup.ALL_TABLES).collect(Collectors.toSet());
+            Predicate<String> isMultitenantVirtualTable = t -> testTables.contains(t)
+                || t.startsWith(TestSupport.MT_VIRTUAL_TABLE_PREFIX);
+            return addHashPartitioning(getSharedTableBuilder(root, prefix))
+                .withMultitenantVirtualTableCheck(isMultitenantVirtualTable)
+                .build();
+        }
+
+        private static SharedTableBuilder addHashPartitioning(SharedTableBuilder builder) {
+            return builder
+                .withBinaryHashKey(true)
+                .withPartitioningStrategy(new HashPartitioningStrategy(64));
+        }
+
+        private static SharedTableBuilder getSharedTableBuilder(AmazonDynamoDB root, String prefix) {
+            return SharedTableBuilder.builder()
                 .withTablePrefix(prefix)
                 .withPollIntervalSeconds(getPollInterval())
                 .withAmazonDynamoDb(wrapWithLogger(root))
                 .withContext(MT_CONTEXT)
-                .withGlobalContext(Optional.of(GLOBAL_CONTEXT))
                 .withTruncateOnDeleteTable(true)
-                .withBinaryHashKey(true)
-                .withPartitioningStrategy(new HashPartitioningStrategy(64))
-                .build());
+                .withMultitenantVirtualTableCheck(t -> t.startsWith(TestSupport.MT_VIRTUAL_TABLE_PREFIX));
+        }
+
+        private static MtAmazonDynamoDbComposite getTrivialCompositeClient(MtAmazonDynamoDbBase delegate) {
+            return new MtAmazonDynamoDbComposite(Collections.singletonList(delegate),
+                () -> delegate, table -> delegate);
         }
 
         public static final List<AmazonDynamoDbStrategy> SHARED_TABLE_STRATEGIES = ImmutableList.of(
@@ -135,11 +135,6 @@ public class ArgumentBuilder implements Supplier<List<TestArgument>> {
         boolean useMultitenantTables() {
             return useMultitenantTables;
         }
-    }
-
-    private static MtAmazonDynamoDbComposite getTrivialCompositeClient(MtAmazonDynamoDbBase delegate) {
-        return new MtAmazonDynamoDbComposite(Collections.singletonList(delegate),
-            () -> delegate, table -> delegate);
     }
 
     private AmazonDynamoDB rootAmazonDynamoDb = DEFAULT_ROOT_AMAZON_DYNAMO_DB;

@@ -2,13 +2,15 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
-import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.GLOBAL_CONTEXT;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder.DEFAULT_DYNAMIC_TABLE_PREFIX;
+import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.SharedTableBuilder.DEFAULT_TABLE_DESCRIPTION_TABLE_NAME;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE2;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE4;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.MT_VIRTUAL_TABLE_PREFIX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +23,6 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
-import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.ScanRequest;
@@ -29,12 +30,8 @@ import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.backups.MtScanningSnapshotter;
-import com.salesforce.dynamodbv2.mt.backups.SnapshotRequest;
-import com.salesforce.dynamodbv2.mt.backups.SnapshotResult;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb;
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbComposite;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.testsupport.ArgumentBuilder;
@@ -91,7 +88,10 @@ class MtAmazonDynamoDbBySharedTableTest {
     @DefaultArgumentProviderConfig(tables = { TABLE1, TABLE2, TABLE3, TABLE4, TABLE5 })
     void testListTables_noContext(TestArgument testArgument) {
         MT_CONTEXT.setContext(null);
-        List<String> expectedTables = testArgument.getRootAmazonDynamoDb().listTables().getTableNames();
+        List<String> expectedTables = testArgument.getRootAmazonDynamoDb().listTables().getTableNames().stream()
+            .filter(t -> t.startsWith(getTablePrefix(testArgument)))
+            .filter(t -> !t.equals(getTablePrefix(testArgument) + DEFAULT_TABLE_DESCRIPTION_TABLE_NAME))
+            .collect(Collectors.toList());
         assertEquals(expectedTables, testArgument.getAmazonDynamoDb().listTables().getTableNames());
     }
 
@@ -201,18 +201,19 @@ class MtAmazonDynamoDbBySharedTableTest {
     @ArgumentsSource(SharedTableArgumentProvider.class)
     void testCreateAndDeleteMtTable(TestArgument testArgument) {
         MtAmazonDynamoDb mtDynamo = testArgument.getAmazonDynamoDb();
-        String tableName = SharedTableNamingRules.VIRTUAL_MULTITENANT_TABLE_PREFIX + "someMtTable";
+        String tableName = MT_VIRTUAL_TABLE_PREFIX + "someMtTable";
         CreateTableRequest createTableRequest = new CreateTableRequest().withTableName(tableName)
             .withKeySchema(new KeySchemaElement().withKeyType(HASH).withAttributeName(HASH_KEY))
             .withAttributeDefinitions(new AttributeDefinition().withAttributeName(HASH_KEY)
                 .withAttributeType(testArgument.getHashKeyAttrType()));
+        MT_CONTEXT.setContext(null);
 
         // create table in global context
-        MT_CONTEXT.withContext(GLOBAL_CONTEXT, () -> mtDynamo.createMultitenantTable(createTableRequest));
+        MT_CONTEXT.withContext(null, () -> mtDynamo.createMultitenantTable(createTableRequest));
         // verify physical table is created
-        String physicalTableName = testArgument.getAmazonDynamoDbStrategy().name() + "."
-            + SharedTableNamingRules.DYNAMIC_PHYSICAL_TABLE_PREFIX + tableName;
-        assertTrue(testArgument.getRootAmazonDynamoDb().listTables().getTableNames().contains(physicalTableName));
+        String physicalTableName = getTablePrefix(testArgument) + DEFAULT_DYNAMIC_TABLE_PREFIX + tableName;
+        List<String> allPhysicalTableNames = testArgument.getRootAmazonDynamoDb().listTables().getTableNames();
+        assertTrue(allPhysicalTableNames.contains(physicalTableName));
 
         // verify actions in the context of a tenant
         testArgument.forEachOrgContext(org -> {
@@ -241,7 +242,7 @@ class MtAmazonDynamoDbBySharedTableTest {
         });
 
         // delete table in global context
-        MT_CONTEXT.withContext(GLOBAL_CONTEXT, () -> mtDynamo.deleteTable(tableName));
+        MT_CONTEXT.withContext(null, () -> mtDynamo.deleteTable(tableName));
         // verify physical table is deleted
         assertFalse(testArgument.getRootAmazonDynamoDb().listTables().getTableNames().contains(physicalTableName));
     }
@@ -257,22 +258,26 @@ class MtAmazonDynamoDbBySharedTableTest {
 
         // must use MT prefix when creating MT table
         try {
-            MT_CONTEXT.withContext(GLOBAL_CONTEXT, () -> mtDynamo.createMultitenantTable(createTableRequest));
+            MT_CONTEXT.withContext(null, () -> mtDynamo.createMultitenantTable(createTableRequest));
             fail("Should not be able to create multitenant table without correct prefix");
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().contains("Multitenant table name must start with"));
+            assertTrue(e.getMessage().contains("Invalid name"));
         }
 
         // cannot use MT prefix when creating non-MT table
-        createTableRequest.withTableName(SharedTableNamingRules.VIRTUAL_MULTITENANT_TABLE_PREFIX + "someTable");
+        createTableRequest.withTableName(MT_VIRTUAL_TABLE_PREFIX + "someTable");
         testArgument.forEachOrgContext(org -> {
             try {
                 MT_CONTEXT.withContext(org, () -> mtDynamo.createTable(createTableRequest));
                 fail("Should not be able to create single-tenant table with multitenant prefix");
             } catch (IllegalArgumentException e) {
-                assertTrue(e.getMessage().contains("Non-multitenant table name cannot start with"));
+                assertTrue(e.getMessage().contains("Invalid name"));
             }
         });
+    }
+
+    private String getTablePrefix(TestArgument testArgument) {
+        return testArgument.getAmazonDynamoDbStrategy().name() + ".";
     }
 
     private MtAmazonDynamoDbBySharedTable getSharedTableClient(AmazonDynamoDB dynamoDb) {
@@ -296,7 +301,7 @@ class MtAmazonDynamoDbBySharedTableTest {
         }
     }
 
-    private static final List<String> TABLE_NAME_PREFIXES = ImmutableList.of("table1_", "table2_", "table3_");
+    private static final List<String> TABLE_NAME_PREFIXES = ImmutableList.of("table1-", "table2-", "table3-");
 
     private static class ListVirtualTableProvider extends DefaultArgumentProvider {
         ListVirtualTableProvider() {
@@ -324,6 +329,6 @@ class MtAmazonDynamoDbBySharedTableTest {
     }
 
     private static String getOrgTableName(String prefix, String org) {
-        return (prefix + org).replaceAll("-", "_");
+        return prefix + org;
     }
 }

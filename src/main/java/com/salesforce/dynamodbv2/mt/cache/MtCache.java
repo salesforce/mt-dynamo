@@ -31,7 +31,7 @@ public class MtCache<V> implements Cache<Object, V> {
         private final String context;
         private final Object key;
 
-        Key(String context, Object key) {
+        Key(@Nullable String context, Object key) {
             this.context = context;
             this.key = key;
         }
@@ -64,7 +64,7 @@ public class MtCache<V> implements Cache<Object, V> {
     }
 
     private Key getKey(Object key) {
-        return new Key(contextProvider.getContext(), key);
+        return new Key(contextProvider.getContextOpt().orElse(null), key);
     }
 
     @Override

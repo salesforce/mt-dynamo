@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.SharedTableNamingRules.VIRTUAL_MULTITENANT_TABLE_PREFIX;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
@@ -45,11 +44,12 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbCapacity;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -71,7 +71,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final AmazonDynamoDbAdminUtils adminUtils;
     private final BillingMode billingMode;
     private final MtAmazonDynamoDbContextProvider mtContext;
-    private final Optional<String> globalContext;
+    private final String globalContextPlaceholder;
     private final String tableDescriptionTableHashKeyField;
     private final String tableDescriptionTableDataField;
     private final String delimiter;
@@ -79,33 +79,39 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     private final MtCache<MtTableDescription> cache;
     private final String prefixedTableDescriptionTableName;
     private final Supplier<TableDescription> tableDescriptionTableSupplier;
+    private final Predicate<String> multitenantVirtualTableCheck;
 
     private MtDynamoDbTableDescriptionRepo(AmazonDynamoDB amazonDynamoDb,
                                            BillingMode billingMode,
                                            MtAmazonDynamoDbContextProvider mtContext,
-                                           Optional<String> globalContext,
-                                           String tableDescriptionTableName,
-                                           Optional<String> tablePrefix,
+                                           String globalContextPlaceholder,
+                                           String prefixedTableDescriptionTableName,
                                            String tableDescriptionTableHashKeyField,
                                            String tableDescriptionTableDataField,
                                            String delimiter,
                                            int pollIntervalSeconds,
-                                           Cache<Object, MtTableDescription> tableDescriptionCache) {
+                                           Cache<Object, MtTableDescription> tableDescriptionCache,
+                                           Predicate<String> multitenantVirtualTableCheck) {
         this.amazonDynamoDb = amazonDynamoDb;
         this.adminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.billingMode = billingMode;
         this.mtContext = mtContext;
-        this.globalContext = globalContext;
+        this.globalContextPlaceholder = globalContextPlaceholder;
         this.tableDescriptionTableHashKeyField = tableDescriptionTableHashKeyField;
         this.tableDescriptionTableDataField = tableDescriptionTableDataField;
         this.delimiter = delimiter;
         this.pollIntervalSeconds = pollIntervalSeconds;
         this.cache = new MtCache<>(mtContext, tableDescriptionCache);
-        this.prefixedTableDescriptionTableName = prefix(tableDescriptionTableName, tablePrefix);
+        this.prefixedTableDescriptionTableName = prefixedTableDescriptionTableName;
         this.tableDescriptionTableSupplier = () -> {
             createTableDescriptionTableIfNotExists(pollIntervalSeconds);
             return new TableDescription().withTableName(prefixedTableDescriptionTableName);
         };
+        this.multitenantVirtualTableCheck = multitenantVirtualTableCheck;
+    }
+
+    private String getContextForHashKey() {
+        return mtContext.getContextOpt().orElse(globalContextPlaceholder);
     }
 
     @Override
@@ -136,22 +142,21 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private MtTableDescription getTableDescriptionNoCache(String tableName) {
         // first get description for table name in the current context
-        Optional<MtTableDescription> tableDescription = getTableDescriptionFromDb(tableName);
-        // if no entry exists, check if this name corresponds to a multitenant table in empty context
-        if (tableDescription.isEmpty() && globalContext.isPresent()
-            && !globalContext.get().equals(mtContext.getContext())) {
-            tableDescription = mtContext.withContext(globalContext.get(), () -> getTableDescriptionFromDb(tableName))
+        Optional<MtTableDescription> tableDescription = getTableDescriptionNoCache(getContextForHashKey(), tableName);
+        // if no entry exists, check if this name corresponds to a multitenant table in global context
+        if (tableDescription.isEmpty() && !mtContext.getContextOpt().isEmpty()) {
+            tableDescription = getTableDescriptionNoCache(globalContextPlaceholder, tableName)
                 .filter(MtTableDescription::isMultitenant);
         }
         return tableDescription.orElseThrow(() -> new ResourceNotFoundException(
-            "table metadata entry for '" + tableName + "' does not exist in " + getTableDescriptionTableName()));
+            "table metadata entry for '" + tableName + "' does not exist. context: " + getContextForHashKey()));
     }
 
-    private Optional<MtTableDescription> getTableDescriptionFromDb(String tableName) {
+    private Optional<MtTableDescription> getTableDescriptionNoCache(String context, String tableName) {
+        String hashKey = getHashKey(context, tableName);
         Map<String, AttributeValue> item = amazonDynamoDb.getItem(new GetItemRequest()
             .withTableName(getTableDescriptionTableName())
-            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(addPrefix(tableName)))))
+            .withKey(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(hashKey)))
             .withConsistentRead(true)).getItem();
         return Optional.ofNullable(item)
             .map(i -> i.get(tableDescriptionTableDataField).getS())
@@ -161,15 +166,10 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @Override
     public void deleteTableMetadata(String tableName) {
         cache.invalidate(tableName);
+        String hashKey = getHashKey(getContextForHashKey(), tableName);
         amazonDynamoDb.deleteItem(new DeleteItemRequest()
             .withTableName(getTableDescriptionTableName())
-            .withKey(new HashMap<>(ImmutableMap.of(tableDescriptionTableHashKeyField,
-                new AttributeValue(addPrefix(tableName))))));
-    }
-
-    private TenantTable getTenantTableFromHashKey(String hashKey) {
-        String[] parts = hashKey.split(Pattern.quote(delimiter));
-        return new TenantTable(parts[1], parts[0]);
+            .withKey(ImmutableMap.of(tableDescriptionTableHashKeyField, new AttributeValue(hashKey))));
     }
 
     @Override
@@ -237,10 +237,11 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     }
 
     private Map<String, AttributeValue> createItem(CreateTableRequest createTableRequest, boolean isMultitenant) {
+        String hashKey = getHashKey(getContextForHashKey(), createTableRequest.getTableName());
         String tableDataJson = tableDataToJson(toTableDescription(createTableRequest, isMultitenant));
-        return new HashMap<>(ImmutableMap.of(
-            tableDescriptionTableHashKeyField, new AttributeValue(addPrefix(createTableRequest.getTableName())),
-            tableDescriptionTableDataField, new AttributeValue(tableDataJson)));
+        return ImmutableMap.of(
+            tableDescriptionTableHashKeyField, new AttributeValue(hashKey),
+            tableDescriptionTableDataField, new AttributeValue(tableDataJson));
     }
 
     private static String tableDataToJson(MtTableDescription tableDescription) {
@@ -251,36 +252,36 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
         return GSON.fromJson(tableDataString, MtTableDescription.class);
     }
 
-    private String addPrefix(String tableName) {
-        return addPrefix(mtContext.getContext(), tableName);
-    }
-
-    private String addPrefix(String context, String tableName) {
+    private String getHashKey(String context, String tableName) {
         return context + delimiter + tableName;
     }
 
-    private String toStartHashKey(TenantTable tenantTable) {
-        if (tenantTable == null) {
-            return null;
-        }
-        return addPrefix(tenantTable.getTenantName(), tenantTable.getVirtualTableName());
+    private TenantTable toTenantTable(String hashKey) {
+        String[] parts = hashKey.split(Pattern.quote(delimiter));
+        return new TenantTable(parts[1], parts[0]);
     }
 
-    private String toStartHashKey(String tableName) {
-        if (tableName == null) {
-            return null;
-        }
-        String context = tableName.startsWith(VIRTUAL_MULTITENANT_TABLE_PREFIX)
-            ? globalContext.get()
-            : mtContext.getContext();
-        return addPrefix(context, tableName);
+    private String toStartHashKey(TenantTable startTenantTable) {
+        return getHashKey(startTenantTable.getTenantName(), startTenantTable.getVirtualTableName());
+    }
+
+    private String toStartHashKey(String startTableName) {
+        String context = isMtTable(startTableName) ? globalContextPlaceholder : mtContext.getContext();
+        return getHashKey(context, startTableName);
+    }
+
+    private boolean isMtTable(String tableName) {
+        return multitenantVirtualTableCheck.test(tableName);
+    }
+
+    private static <T, U> U mapIfNotNull(T original, Function<T, U> mapper) {
+        return original == null ? null : mapper.apply(original);
     }
 
     @NotNull
     @Override
     public ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest) {
-        String startHashKey = toStartHashKey(listMetadataRequest.getStartTenantTableKey());
-        // TODO support backing up
+        String startHashKey = mapIfNotNull(listMetadataRequest.getStartTenantTableKey(), this::toStartHashKey);
         return listVirtualTableMetadata(startHashKey, listMetadataRequest.getLimit(), null);
     }
 
@@ -328,7 +329,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
     private MtTenantTableDesciption toMtTenantTableDescription(Map<String, AttributeValue> item) {
         MtTableDescription tableDescription = jsonToTableData(item.get(tableDescriptionTableDataField).getS());
-        TenantTable tenantTable = getTenantTableFromHashKey(item.get(tableDescriptionTableHashKeyField).getS());
+        TenantTable tenantTable = toTenantTable(item.get(tableDescriptionTableHashKeyField).getS());
         return new MtTenantTableDesciption(tenantTable.getTenantName(), tableDescription);
     }
 
@@ -336,7 +337,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
     @Override
     public ListTablesResult listTables(ListTablesRequest listTablesRequest) {
         Preconditions.checkArgument(mtContext.getContextOpt().isPresent(), "Must provide a tenant context.");
-        String startHashKey = toStartHashKey(listTablesRequest.getExclusiveStartTableName());
+        String startHashKey = mapIfNotNull(listTablesRequest.getExclusiveStartTableName(), this::toStartHashKey);
         ListMetadataResult listMetadataResult = listVirtualTableMetadata(startHashKey, listTablesRequest.getLimit(),
             mtContext.getContext());
         return new ListTablesResult()
@@ -361,15 +362,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
 
         private AmazonDynamoDB amazonDynamoDb;
         private MtAmazonDynamoDbContextProvider mtContext;
-        private Optional<String> globalContext;
+        private String globalContextPlaceholder;
         private String tableDescriptionTableName;
         private String tableDescriptionTableHashKeyField;
         private String tableDescriptionTableDataField;
         private String delimiter;
         private Integer pollIntervalSeconds;
         private BillingMode billingMode;
-        private Optional<String> tablePrefix = Optional.empty();
         private Cache<Object, MtTableDescription> tableDescriptionCache;
+        private Predicate<String> multitenantVirtualTableCheck;
 
         public MtDynamoDbTableDescriptionRepoBuilder withAmazonDynamoDb(AmazonDynamoDB amazonDynamoDb) {
             this.amazonDynamoDb = amazonDynamoDb;
@@ -381,8 +382,8 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withGlobalContext(Optional<String> globalContext) {
-            this.globalContext = globalContext;
+        public MtDynamoDbTableDescriptionRepoBuilder withGlobalContextPlaceholder(String globalContextPlaceholder) {
+            this.globalContextPlaceholder = globalContextPlaceholder;
             return this;
         }
 
@@ -418,14 +419,15 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             return this;
         }
 
-        public MtDynamoDbTableDescriptionRepoBuilder withTablePrefix(Optional<String> tablePrefix) {
-            this.tablePrefix = tablePrefix;
-            return this;
-        }
-
         public MtDynamoDbTableDescriptionRepoBuilder withTableDescriptionCache(
             Cache<Object, MtTableDescription> tableDescriptionCache) {
             this.tableDescriptionCache = tableDescriptionCache;
+            return this;
+        }
+
+        public MtDynamoDbTableDescriptionRepoBuilder withMultitenantVirtualTableCheck(
+            Predicate<String> multitenantVirtualTableCheck) {
+            this.multitenantVirtualTableCheck = multitenantVirtualTableCheck;
             return this;
         }
 
@@ -442,14 +444,14 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
                 amazonDynamoDb,
                 billingMode,
                 mtContext,
-                globalContext,
+                globalContextPlaceholder,
                 tableDescriptionTableName,
-                tablePrefix,
                 tableDescriptionTableHashKeyField,
                 tableDescriptionTableDataField,
                 delimiter,
                 pollIntervalSeconds,
-                tableDescriptionCache);
+                tableDescriptionCache,
+                multitenantVirtualTableCheck);
         }
 
         private void validate() {
@@ -476,10 +478,6 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
             }
         }
 
-    }
-
-    private String prefix(String tableName, Optional<String> tablePrefix) {
-        return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
 }
