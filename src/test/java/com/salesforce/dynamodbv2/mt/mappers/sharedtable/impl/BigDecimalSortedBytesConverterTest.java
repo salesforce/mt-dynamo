@@ -44,6 +44,7 @@ class BigDecimalSortedBytesConverterTest {
             new BigDecimal("12.34567"),
             new BigDecimal("-987.654"),
             new BigDecimal("1000"),
+            new BigDecimal("14"),
             new BigDecimal("-0.00987"),
             new BigDecimal("-1.0000000000000000000000000000000000000E-130"),
             new BigDecimal("9.9999999999999999999999999999999999999E+125"),
