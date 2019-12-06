@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Objects;
 
-class HashPartitioningKeyMapper {
+public class HashPartitioningKeyMapper {
 
     static class HashPartitioningKeyPrefixFunction {
 
@@ -224,12 +224,12 @@ class HashPartitioningKeyMapper {
      * </ul></p>
      */
     @VisibleForTesting
-    static class BigDecimalSortedBytesConverter {
+    public static class BigDecimalSortedBytesConverter {
 
         private static final int MIN_EXPONENT = -130;
         private static final int MAX_EXPONENT = 125;
 
-        static byte[] encode(BigDecimal bigDecimal) {
+        public static byte[] encode(BigDecimal bigDecimal) {
             bigDecimal = bigDecimal.stripTrailingZeros();
             int precision = bigDecimal.precision();
             byte[] byteArray = new byte[2 + precision];
@@ -282,7 +282,7 @@ class HashPartitioningKeyMapper {
             return UnsignedBytes.toInt(exponentByte) + MIN_EXPONENT;
         }
 
-        static BigDecimal decode(byte[] byteArray) {
+        public static BigDecimal decode(byte[] byteArray) {
             // get signum from first byte
             int signum = fromSignumByte(byteArray[0]);
 
