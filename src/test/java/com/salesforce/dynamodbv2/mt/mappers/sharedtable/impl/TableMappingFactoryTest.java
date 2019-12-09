@@ -46,8 +46,6 @@ import com.amazonaws.services.dynamodbv2.model.DescribeBackupRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeBackupResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeContinuousBackupsResult;
-import com.amazonaws.services.dynamodbv2.model.DescribeContributorInsightsRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeContributorInsightsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeEndpointsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeEndpointsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableRequest;
@@ -56,8 +54,6 @@ import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsReques
 import com.amazonaws.services.dynamodbv2.model.DescribeGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeLimitsResult;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableReplicaAutoScalingRequest;
-import com.amazonaws.services.dynamodbv2.model.DescribeTableReplicaAutoScalingResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DescribeTableResult;
 import com.amazonaws.services.dynamodbv2.model.DescribeTimeToLiveRequest;
@@ -69,8 +65,6 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.KeysAndAttributes;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.ListBackupsResult;
-import com.amazonaws.services.dynamodbv2.model.ListContributorInsightsRequest;
-import com.amazonaws.services.dynamodbv2.model.ListContributorInsightsResult;
 import com.amazonaws.services.dynamodbv2.model.ListGlobalTablesRequest;
 import com.amazonaws.services.dynamodbv2.model.ListGlobalTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
@@ -101,16 +95,12 @@ import com.amazonaws.services.dynamodbv2.model.UntagResourceRequest;
 import com.amazonaws.services.dynamodbv2.model.UntagResourceResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateContinuousBackupsResult;
-import com.amazonaws.services.dynamodbv2.model.UpdateContributorInsightsRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateContributorInsightsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateGlobalTableSettingsResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
-import com.amazonaws.services.dynamodbv2.model.UpdateTableReplicaAutoScalingRequest;
-import com.amazonaws.services.dynamodbv2.model.UpdateTableReplicaAutoScalingResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableResult;
 import com.amazonaws.services.dynamodbv2.model.UpdateTimeToLiveRequest;
@@ -331,12 +321,6 @@ class TableMappingFactoryTest {
         }
 
         @Override
-        public DescribeContributorInsightsResult describeContributorInsights(
-            DescribeContributorInsightsRequest describeContributorInsightsRequest) {
-            return amazonDynamoDb.describeContributorInsights(describeContributorInsightsRequest);
-        }
-
-        @Override
         public DescribeEndpointsResult describeEndpoints(DescribeEndpointsRequest describeEndpointsRequest) {
             return amazonDynamoDb.describeEndpoints(describeEndpointsRequest);
         }
@@ -368,12 +352,6 @@ class TableMappingFactoryTest {
         }
 
         @Override
-        public DescribeTableReplicaAutoScalingResult describeTableReplicaAutoScaling(
-            DescribeTableReplicaAutoScalingRequest describeTableReplicaAutoScalingRequest) {
-            return amazonDynamoDb.describeTableReplicaAutoScaling(describeTableReplicaAutoScalingRequest);
-        }
-
-        @Override
         public DescribeTimeToLiveResult describeTimeToLive(DescribeTimeToLiveRequest describeTimeToLiveRequest) {
             return amazonDynamoDb.describeTimeToLive(describeTimeToLiveRequest);
         }
@@ -396,12 +374,6 @@ class TableMappingFactoryTest {
         @Override
         public ListBackupsResult listBackups(ListBackupsRequest listBackupsRequest) {
             return amazonDynamoDb.listBackups(listBackupsRequest);
-        }
-
-        @Override
-        public ListContributorInsightsResult listContributorInsights(
-            ListContributorInsightsRequest listContributorInsightsRequest) {
-            return amazonDynamoDb.listContributorInsights(listContributorInsightsRequest);
         }
 
         @Override
@@ -518,12 +490,6 @@ class TableMappingFactoryTest {
         }
 
         @Override
-        public UpdateContributorInsightsResult updateContributorInsights(
-            UpdateContributorInsightsRequest updateContributorInsightsRequest) {
-            return amazonDynamoDb.updateContributorInsights(updateContributorInsightsRequest);
-        }
-
-        @Override
         public UpdateGlobalTableResult updateGlobalTable(UpdateGlobalTableRequest updateGlobalTableRequest) {
             return amazonDynamoDb.updateGlobalTable(updateGlobalTableRequest);
         }
@@ -559,12 +525,6 @@ class TableMappingFactoryTest {
         @Override
         public UpdateTableResult updateTable(String tableName, ProvisionedThroughput provisionedThroughput) {
             return amazonDynamoDb.updateTable(tableName, provisionedThroughput);
-        }
-
-        @Override
-        public UpdateTableReplicaAutoScalingResult updateTableReplicaAutoScaling(
-            UpdateTableReplicaAutoScalingRequest updateTableReplicaAutoScalingRequest) {
-            return amazonDynamoDb.updateTableReplicaAutoScaling(updateTableReplicaAutoScalingRequest);
         }
 
         @Override
