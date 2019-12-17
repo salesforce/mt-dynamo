@@ -125,7 +125,8 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         Set<AttributeDefinition> filteredAttributeDefinitions = this.attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
             .collect(Collectors.toSet());
-        checkArgument(!filteredAttributeDefinitions.isEmpty());
+        checkArgument(!filteredAttributeDefinitions.isEmpty(),
+            "attribute with name '" + attributeName + "' not found in " + attributeDefinitions);
         return ScalarAttributeType.valueOf(Iterables.getOnlyElement(filteredAttributeDefinitions).getAttributeType());
     }
 
