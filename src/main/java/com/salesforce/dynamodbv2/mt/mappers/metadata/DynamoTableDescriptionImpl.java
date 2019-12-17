@@ -23,6 +23,7 @@ import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -199,7 +200,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         final DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
 
         return Objects.equals(streamSpecification, that.streamSpecification) && tableName.equals(that.tableName)
-            && attributeDefinitions.equals(that.attributeDefinitions)
+            && new HashSet<>(attributeDefinitions).equals(new HashSet<>(that.attributeDefinitions))
             && primaryKey.equals(that.primaryKey)
             && gsiMap.equals(that.gsiMap)
             && lsiMap.equals(that.lsiMap);
