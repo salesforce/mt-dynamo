@@ -122,11 +122,11 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     private ScalarAttributeType getAttributeType(String attributeName) {
-        Set<AttributeDefinition> attributeDefinitions = this.attributeDefinitions;
-        checkArgument(!attributeDefinitions.isEmpty());
-        return ScalarAttributeType.valueOf(Iterables.getOnlyElement(attributeDefinitions.stream()
+        Set<AttributeDefinition> filteredAttributeDefinitions = this.attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-            .collect(Collectors.toSet())).getAttributeType());
+            .collect(Collectors.toSet());
+        checkArgument(!filteredAttributeDefinitions.isEmpty());
+        return ScalarAttributeType.valueOf(Iterables.getOnlyElement(filteredAttributeDefinitions).getAttributeType());
     }
 
     @Override
