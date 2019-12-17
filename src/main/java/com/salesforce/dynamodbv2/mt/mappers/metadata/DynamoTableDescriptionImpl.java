@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
@@ -20,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -120,10 +122,11 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     private ScalarAttributeType getAttributeType(String attributeName) {
-        return ScalarAttributeType.valueOf(attributeDefinitions.stream()
+        Set<AttributeDefinition> attributeDefinitions = this.attributeDefinitions;
+        checkArgument(!attributeDefinitions.isEmpty());
+        return ScalarAttributeType.valueOf(Iterables.getOnlyElement(attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName
-                + "' not found in " + attributeDefinitions)).getAttributeType());
+            .collect(Collectors.toSet())).getAttributeType());
     }
 
     @Override
