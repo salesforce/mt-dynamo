@@ -60,7 +60,7 @@ class DynamoTableDescriptionImplTest {
                             new AttributeDefinition("gsihk", ScalarAttributeType.S),
                             new AttributeDefinition("lsihk", ScalarAttributeType.S)))
                     .withKeySchema(ImmutableList.of(
-                    new KeySchemaElement().withAttributeName("anotherhk").withKeyType(KeyType.HASH)))), false),
+                        new KeySchemaElement().withAttributeName("anotherhk").withKeyType(KeyType.HASH)))), false),
             Arguments.of(dynamoTableDescription, new DynamoTableDescriptionImpl(
                 buildCreateTableRequest().withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
                     .withIndexName("anothergsi")
