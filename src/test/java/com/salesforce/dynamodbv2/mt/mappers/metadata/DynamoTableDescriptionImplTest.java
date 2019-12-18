@@ -53,14 +53,18 @@ class DynamoTableDescriptionImplTest {
                 new DynamoTableDescriptionImpl(buildCreateTableRequest()
                     .withAttributeDefinitions(
                         new AttributeDefinition("anotherhk", ScalarAttributeType.S))), false),
-            Arguments.of(dynamoTableDescription, new DynamoTableDescriptionImpl(
-                buildCreateTableRequest()
-                    .withAttributeDefinitions(
-                        ImmutableList.of(new AttributeDefinition("anotherhk", ScalarAttributeType.S),
-                            new AttributeDefinition("gsihk", ScalarAttributeType.S),
-                            new AttributeDefinition("lsihk", ScalarAttributeType.S)))
-                    .withKeySchema(ImmutableList.of(
-                        new KeySchemaElement().withAttributeName("anotherhk").withKeyType(KeyType.HASH)))), false),
+            Arguments.of(dynamoTableDescription,
+                new DynamoTableDescriptionImpl(
+                    buildCreateTableRequest()
+                        .withAttributeDefinitions(
+                            ImmutableList.of(new AttributeDefinition("anotherhk", ScalarAttributeType.S),
+                                new AttributeDefinition("gsihk", ScalarAttributeType.S),
+                                new AttributeDefinition("lsihk", ScalarAttributeType.S)))
+                        .withKeySchema(ImmutableList.of(new KeySchemaElement()
+                            .withAttributeName("anotherhk")
+                            .withKeyType(KeyType.HASH)))
+                ),
+                false),
             Arguments.of(dynamoTableDescription, new DynamoTableDescriptionImpl(
                 buildCreateTableRequest().withGlobalSecondaryIndexes(new GlobalSecondaryIndex()
                     .withIndexName("anothergsi")
