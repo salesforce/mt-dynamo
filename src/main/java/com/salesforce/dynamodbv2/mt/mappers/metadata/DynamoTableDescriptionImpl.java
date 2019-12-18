@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers.metadata;
 
 import static com.amazonaws.services.dynamodbv2.model.KeyType.HASH;
 import static com.amazonaws.services.dynamodbv2.model.KeyType.RANGE;
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
@@ -20,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -39,7 +42,7 @@ import java.util.stream.Collectors;
 public class DynamoTableDescriptionImpl implements DynamoTableDescription {
 
     private final String tableName;
-    private final List<AttributeDefinition> attributeDefinitions;
+    private final Set<AttributeDefinition> attributeDefinitions;
     private final PrimaryKey primaryKey;
     private final Map<String, DynamoSecondaryIndex> gsiMap;
     private final Map<String, DynamoSecondaryIndex> lsiMap;
@@ -56,15 +59,18 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     public DynamoTableDescriptionImpl(CreateTableRequest createTableRequest) {
         this.createTableRequest = createTableRequest;
         tableName = createTableRequest.getTableName();
-        attributeDefinitions = createTableRequest.getAttributeDefinitions();
+        List<AttributeDefinition> attributeDefinitionsList = createTableRequest.getAttributeDefinitions();
+        this.attributeDefinitions = new HashSet<>(attributeDefinitionsList);
         primaryKey = getPrimaryKey(createTableRequest.getKeySchema());
         gsiMap = createTableRequest.getGlobalSecondaryIndexes() == null ? new HashMap<>() :
             createTableRequest.getGlobalSecondaryIndexes().stream().map(gsi ->
-                new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
+                new DynamoSecondaryIndex(attributeDefinitionsList,
+                    gsi.getIndexName(), gsi.getKeySchema(), GSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         lsiMap = createTableRequest.getLocalSecondaryIndexes() == null ? new HashMap<>() :
             createTableRequest.getLocalSecondaryIndexes().stream().map(lsi ->
-                new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
+                new DynamoSecondaryIndex(attributeDefinitionsList,
+                    lsi.getIndexName(), lsi.getKeySchema(), LSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         streamSpecification = createTableRequest.getStreamSpecification();
         lastStreamArn = null;
@@ -78,15 +84,16 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     public DynamoTableDescriptionImpl(TableDescription tableDescription) {
         this.createTableRequest = null;
         tableName = tableDescription.getTableName();
-        attributeDefinitions = tableDescription.getAttributeDefinitions();
+        List<AttributeDefinition> attributeDefinitionsList = tableDescription.getAttributeDefinitions();
+        this.attributeDefinitions = new HashSet<>(attributeDefinitionsList);
         primaryKey = getPrimaryKey(tableDescription.getKeySchema());
         gsiMap = tableDescription.getGlobalSecondaryIndexes() == null ? new HashMap<>() :
             tableDescription.getGlobalSecondaryIndexes().stream().map(gsi ->
-                new DynamoSecondaryIndex(attributeDefinitions, gsi.getIndexName(), gsi.getKeySchema(), GSI))
+                new DynamoSecondaryIndex(attributeDefinitionsList, gsi.getIndexName(), gsi.getKeySchema(), GSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         lsiMap = tableDescription.getLocalSecondaryIndexes() == null ? new HashMap<>() :
             tableDescription.getLocalSecondaryIndexes().stream().map(lsi ->
-                new DynamoSecondaryIndex(attributeDefinitions, lsi.getIndexName(), lsi.getKeySchema(), LSI))
+                new DynamoSecondaryIndex(attributeDefinitionsList, lsi.getIndexName(), lsi.getKeySchema(), LSI))
                 .collect(Collectors.toMap(DynamoSecondaryIndex::getIndexName, Function.identity()));
         lastStreamArn = tableDescription.getLatestStreamArn();
         streamSpecification = tableDescription.getStreamSpecification();
@@ -115,10 +122,12 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
     }
 
     private ScalarAttributeType getAttributeType(String attributeName) {
-        return ScalarAttributeType.valueOf(attributeDefinitions.stream()
+        Set<AttributeDefinition> filteredAttributeDefinitions = this.attributeDefinitions.stream()
             .filter(attributeDefinition -> attributeDefinition.getAttributeName().equals(attributeName))
-            .findFirst().orElseThrow(() -> new IllegalArgumentException("attribute with name '" + attributeName
-                + "' not found in " + attributeDefinitions)).getAttributeType());
+            .collect(Collectors.toSet());
+        checkArgument(!filteredAttributeDefinitions.isEmpty(),
+            "attribute with name '" + attributeName + "' not found in " + attributeDefinitions);
+        return ScalarAttributeType.valueOf(Iterables.getOnlyElement(filteredAttributeDefinitions).getAttributeType());
     }
 
     @Override
@@ -200,7 +209,7 @@ public class DynamoTableDescriptionImpl implements DynamoTableDescription {
         final DynamoTableDescriptionImpl that = (DynamoTableDescriptionImpl) o;
 
         return Objects.equals(streamSpecification, that.streamSpecification) && tableName.equals(that.tableName)
-            && new HashSet<>(attributeDefinitions).equals(new HashSet<>(that.attributeDefinitions))
+            && attributeDefinitions.equals(that.attributeDefinitions)
             && primaryKey.equals(that.primaryKey)
             && gsiMap.equals(that.gsiMap)
             && lsiMap.equals(that.lsiMap);
