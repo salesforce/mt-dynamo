@@ -36,15 +36,15 @@ public class DynamoSecondaryIndexMapperTrackingAssigned implements DynamoSeconda
         // if the given virtual index already has an assigned physical index, return that
         DynamoSecondaryIndex physicalSi = assignedVirtualToPhysicalIndexes.get(virtualSi);
 
-        if (physicalSi ==  null) {
+        if (physicalSi == null) {
             // if there isn't an assignment yet, look amongst the remaining physical indexes for one that is compatible,
             // according to our PrimaryKeyMapper
             Collection<DynamoSecondaryIndex> assignedPhysicalSis = assignedVirtualToPhysicalIndexes.values();
             List<HasPrimaryKey> unassignedPhysicalSis = physicalTable.getSis().stream()
-                    .filter(index -> index.getType() == virtualSi.getType() && !assignedPhysicalSis.contains(index))
-                    .collect(Collectors.toList());
+                .filter(index -> index.getType() == virtualSi.getType() && !assignedPhysicalSis.contains(index))
+                .collect(Collectors.toList());
             physicalSi = (DynamoSecondaryIndex) primaryKeyMapper.mapPrimaryKey(virtualSi.getPrimaryKey(),
-                    unassignedPhysicalSis);
+                unassignedPhysicalSis);
             // if we got here, then we found a compatible physical index to return. add the assignment to the map.
             assignedVirtualToPhysicalIndexes.put(virtualSi, physicalSi);
         }
