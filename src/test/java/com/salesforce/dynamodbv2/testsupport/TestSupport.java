@@ -34,6 +34,7 @@ import java.util.stream.IntStream;
 public class TestSupport {
 
     public static final boolean IS_LOCAL_DYNAMO = true;
+    public static final String MT_VIRTUAL_TABLE_PREFIX = "mt__";
     public static final int TIMEOUT_SECONDS = 60;
     // we use a number for [HASH|RANGE]_KEY_[|OTHER_]VALUE since it nicely works with each of Dynamo's scalar-attribute
     // types (S, N, B)

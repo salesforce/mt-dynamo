@@ -8,6 +8,8 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
@@ -53,13 +55,13 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
+import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemResult;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
@@ -75,10 +77,11 @@ import com.salesforce.dynamodbv2.mt.cache.MtCache;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.metadata.VirtualDynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RequestWrapper.AbstractRequestWrapper;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescription;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -89,13 +92,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,14 +118,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private static final Logger log = LoggerFactory.getLogger(MtAmazonDynamoDbBySharedTable.class);
 
     private final String name;
-
     private final MtTableDescriptionRepo mtTableDescriptionRepo;
     private final Cache<Object, Optional<TableMapping>> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final TablePartitioningStrategy partitioningStrategy;
+    private final Predicate<String> multitenantVirtualTableCheck;
+    private final PhysicalTableManager physicalTableManager;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
-    private final Map<String, DynamoTableDescription> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
     private final Optional<MtBackupManager> backupManager;
@@ -153,7 +156,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          AmazonDynamoDB amazonDynamoDb,
                                          TableMappingFactory tableMappingFactory,
                                          TablePartitioningStrategy partitioningStrategy,
+                                         Predicate<String> multitenantVirtualTableCheck,
                                          MtTableDescriptionRepo mtTableDescriptionRepo,
+                                         PhysicalTableManager physicalTableManager,
                                          boolean deleteTableAsync,
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
@@ -170,11 +175,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
         this.partitioningStrategy = partitioningStrategy;
+        this.multitenantVirtualTableCheck = multitenantVirtualTableCheck;
+        this.physicalTableManager = physicalTableManager;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
-        this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
-            .map(DynamoTableDescriptionImpl::new)
-            .collect(Collectors.toMap(DynamoTableDescription::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
 
@@ -195,16 +199,16 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    protected boolean isMtTable(String tableName) {
-        return mtTables.containsKey(tableName) && !tableName.startsWith(backupTablePrefix);
+    protected boolean isPhysicalTable(String tableName) {
+        return tableMappingFactory.getCreateTableRequestFactory().isPhysicalTable(tableName);
     }
 
     public MtTableDescriptionRepo getMtTableDescriptionRepo() {
         return mtTableDescriptionRepo;
     }
 
-    Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName) {
-        DynamoTableDescription table = mtTables.get(sharedTableName);
+    Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String physicalTableName) {
+        DynamoTableDescription table = physicalTableManager.describeTable(physicalTableName);
         checkArgument(table != null);
         String hashKeyName = table.getPrimaryKey().getHashKey();
         ScalarAttributeType hashKeyType = table.getPrimaryKey().getHashKeyType();
@@ -292,6 +296,17 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             "expressionAttributeNames are not supported on BatchGetItemRequest calls");
     }
 
+    @Override
+    public CreateTableResult createMultitenantTable(CreateTableRequest createTableRequest) {
+        validateGlobalContextForMultitenantOp("create");
+        return createTable(createTableRequest, true);
+    }
+
+    private void validateGlobalContextForMultitenantOp(String operation) {
+        checkState(getMtContext().getContextOpt().isEmpty(),
+            "Can %s multitenant tables only in the global context", operation);
+    }
+
     /**
      * Create a virtual table configured by {@code createTableRequest}. This does not create a physical table in dynamo,
      * rather it inserts a row into a metadata table, thus creating a virtual table, for the given mt_context tenant to
@@ -301,10 +316,27 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public CreateTableResult createTable(CreateTableRequest createTableRequest) {
-        tableMappingFactory.validateCreateVirtualTableRequest(createTableRequest);
-        // TODO: persist virtual to physical secondary index map in repo
-        return new CreateTableResult()
-            .withTableDescription(withTenantStreamArn(mtTableDescriptionRepo.createTable(createTableRequest)));
+        return createTable(createTableRequest, false);
+    }
+
+    private CreateTableResult createTable(CreateTableRequest createTableRequest, boolean isMultitenant) {
+        validateVirtualTableName(createTableRequest.getTableName(), isMultitenant);
+
+        TableMapping tableMapping = tableMappingFactory.createNewTableMapping(createTableRequest, isMultitenant);
+        tableMappingCache.put(createTableRequest.getTableName(), Optional.of(tableMapping));
+        // TODO persist physical table name and secondary index map in repo
+        MtTableDescription tableDescription = mtTableDescriptionRepo.createTableMetadata(createTableRequest,
+            isMultitenant);
+        return new CreateTableResult().withTableDescription(withTenantStreamArn(tableDescription));
+    }
+
+    private void validateVirtualTableName(String tableName, boolean isMultitenant) {
+        boolean isMultitenantTableName = multitenantVirtualTableCheck.test(tableName);
+        if (isMultitenant) {
+            checkArgument(isMultitenantTableName, "Invalid name for multitenant virtual table: %s", tableName);
+        } else {
+            checkArgument(!isMultitenantTableName, "Invalid name for single-tenant virtual table: %s", tableName);
+        }
     }
 
     /**
@@ -343,22 +375,26 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public DeleteTableResult deleteTable(DeleteTableRequest deleteTableRequest) {
-        if (deleteTableAsync) {
-            Executors.newSingleThreadExecutor().submit(() -> {
-                deleteTableInternal(deleteTableRequest);
-            });
-            return new DeleteTableResult()
-                .withTableDescription(mtTableDescriptionRepo.getTableDescription(deleteTableRequest.getTableName()));
-        } else {
-            return deleteTableInternal(deleteTableRequest);
+        MtTableDescription tableDescription = mtTableDescriptionRepo.getTableDescription(
+            deleteTableRequest.getTableName());
+        // multitenant table can be deleted only at the top-level context
+        if (tableDescription.isMultitenant()) {
+            validateGlobalContextForMultitenantOp("delete");
         }
+        if (deleteTableAsync) {
+            Executors.newSingleThreadExecutor().submit(() -> deleteTableInternal(tableDescription));
+        } else {
+            deleteTableInternal(tableDescription);
+        }
+        return new DeleteTableResult()
+            .withTableDescription(tableDescription.withTableStatus(TableStatus.DELETING));
     }
 
     @Override
     public DescribeTableResult describeTable(DescribeTableRequest describeTableRequest) {
         TableDescription tableDescription =
-            mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName()).withTableStatus("ACTIVE");
-        withTenantStreamArn(tableDescription);
+            mtTableDescriptionRepo.getTableDescription(describeTableRequest.getTableName())
+                .withTableStatus(TableStatus.ACTIVE);
         return new DescribeTableResult().withTable(withTenantStreamArn(tableDescription));
     }
 
@@ -408,9 +444,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         try {
             return tableMappingCache.get(virtualTableName, () -> {
                 try {
-
+                    MtTableDescription tableDescription = mtTableDescriptionRepo.getTableDescription(virtualTableName);
                     return Optional.of(tableMappingFactory.getTableMapping(
-                        new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
+                        new VirtualDynamoTableDescriptionImpl(tableDescription)));
                 } catch (ResourceNotFoundException e) {
                     // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual
                     // table, and thus, shouldn't be mapping records to MtRecords. Instead return null, but really,
@@ -484,7 +520,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
-            // if we are here, we are doing a multitenant scan on a shared table
+            // if we are here, we are doing a multitenant scan on a physical table
+            Preconditions.checkArgument(isPhysicalTable(scanRequest.getTableName()),
+                "Non-context scan called for table that's not a physical table of this client: %s",
+                scanRequest.getTableName());
             return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName()).get();
@@ -522,8 +561,14 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return scanResult;
     }
 
+    protected ScanResult scanAllTenantsOfBackupSnapshotTable(ScanRequest scanRequest) {
+        Preconditions.checkArgument(scanRequest.getTableName().startsWith(backupTablePrefix),
+            "Scan called on table that's not a backup snapshot table of this client: %s",
+            scanRequest.getTableName());
+        return scanAllTenants(scanRequest);
+    }
+
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
-        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we are working with,
@@ -594,13 +639,12 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // validate scan attributes are not being used
         if (updateItemRequest.getExpressionAttributeNames() != null) {
             Preconditions.checkArgument(
-                !updateItemRequest.getExpressionAttributeNames().containsKey(scanTenantKey),
+                !updateItemRequest.getExpressionAttributeNames().containsValue(scanTenantKey),
                 "Trying to update a reserved column name: " + scanTenantKey);
             Preconditions.checkArgument(
-                !updateItemRequest.getExpressionAttributeNames().containsKey(scanVirtualTableKey),
+                !updateItemRequest.getExpressionAttributeNames().containsValue(scanVirtualTableKey),
                 "Trying to update a reserved column name: " + scanVirtualTableKey);
         }
-
 
         // map table name
         updateItemRequest = updateItemRequest.clone();
@@ -706,7 +750,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         if (backupManager.isPresent()) {
             Preconditions.checkArgument(getMtContext().getContextOpt().isEmpty(),
                 "Cannot delete tenant scoped backup");
-            Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
+            checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
             MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
             if (backupMetadata != null) {
                 BackupDescription backupDescription = MtBackupAwsAdaptorKt.getBackupAdaptorSingleton()
@@ -725,18 +769,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
-            Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
+            Preconditions.checkArgument(getMtContext().getContextOpt().isEmpty(),
+                "Cannot create tenant-scoped backup");
+            checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
             Preconditions.checkArgument(createBackupRequest.getTableName() == null,
                 "Multitenant backups cannot backup individual tables, table-name arguments are disallowed");
             backupManager.get().createBackup(createBackupRequest);
 
-            ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
+            List<String> origPhysicalTables = listTables().getTableNames();
+            ExecutorService executorService = Executors.newFixedThreadPool(origPhysicalTables.size());
 
             List<Future<SnapshotResult>> futures = new ArrayList<>();
-            Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
-            for (String tableName : origMtTables) {
+            for (String tableName : origPhysicalTables) {
                 String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." + tableName;
-                mtTables.put(snapshottedTable, mtTables.get(tableName));
                 futures.add(executorService.submit(
                     snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
@@ -753,7 +798,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 executorService.shutdown();
                 for (SnapshotResult result : snapshotResults) {
                     backupManager.get().getMtBackupTableSnapshotter().cleanup(result, getAmazonDynamoDb());
-                    mtTables.remove(result.getTempSnapshotTable());
                 }
             }
 
@@ -830,35 +874,40 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return name;
     }
 
-    private DeleteTableResult deleteTableInternal(DeleteTableRequest deleteTableRequest) {
-        String tableDesc = "table=" + deleteTableRequest.getTableName() + " " + (deleteTableAsync ? "asynchronously"
+    private void deleteTableInternal(MtTableDescription tableDescription) {
+        String tableDesc = "table=" + tableDescription.getTableName() + " " + (deleteTableAsync ? "asynchronously"
             : "synchronously");
         log.warn("dropping " + tableDesc);
-        truncateTable(deleteTableRequest.getTableName());
-        DeleteTableResult deleteTableResult = new DeleteTableResult()
-            .withTableDescription(mtTableDescriptionRepo.deleteTable(deleteTableRequest.getTableName()));
+        truncateTable(tableDescription);
+        mtTableDescriptionRepo.deleteTableMetadata(tableDescription.getTableName());
+        tableMappingCache.invalidate(tableDescription.getTableName());
         log.warn("dropped " + tableDesc);
-        return deleteTableResult;
     }
 
-    private void truncateTable(String tableName) {
+    private void truncateTable(MtTableDescription tableDescription) {
+        String tableName = tableDescription.getTableName();
         if (truncateOnDeleteTable) {
-            long deletedCount = 0;
-            ScanRequest scanRequest = new ScanRequest().withTableName(tableName);
-            while (true) {
-                ScanResult scanResult = scan(scanRequest);
-                log.warn("truncating " + scanResult.getItems().size() + " items from table=" + tableName);
-                for (Map<String, AttributeValue> item : scanResult.getItems()) {
-                    deleteItem(new DeleteItemRequest().withTableName(tableName)
-                        .withKey(getKeyFromItem(item, tableName)));
+            if (tableDescription.isMultitenant()) {
+                String physicalTableName = getTableMapping(tableName).get().getPhysicalTable().getTableName();
+                physicalTableManager.deleteTableIfExists(physicalTableName, 60 /*timeout seconds*/);
+            } else {
+                long deletedCount = 0;
+                ScanRequest scanRequest = new ScanRequest().withTableName(tableName);
+                while (true) {
+                    ScanResult scanResult = scan(scanRequest);
+                    log.warn("truncating " + scanResult.getItems().size() + " items from table=" + tableName);
+                    for (Map<String, AttributeValue> item : scanResult.getItems()) {
+                        deleteItem(new DeleteItemRequest().withTableName(tableName)
+                            .withKey(getKeyFromItem(item, tableDescription.getKeySchema())));
+                    }
+                    deletedCount += scanResult.getItems().size();
+                    if (scanResult.getLastEvaluatedKey() == null) {
+                        break;
+                    }
+                    scanRequest.withExclusiveStartKey(scanResult.getLastEvaluatedKey());
                 }
-                deletedCount += scanResult.getItems().size();
-                if (scanResult.getLastEvaluatedKey() == null) {
-                    break;
-                }
-                scanRequest.withExclusiveStartKey(scanResult.getLastEvaluatedKey());
+                log.warn("truncation of " + deletedCount + " items from table=" + tableName + " complete.");
             }
-            log.warn("truncation of " + deletedCount + " items from table=" + tableName + " complete.");
         } else {
             log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
                 + "Data has been dropped, clean up on aisle "
@@ -866,8 +915,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    private Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item, String tableName) {
-        return describeTable(new DescribeTableRequest().withTableName(tableName)).getTable().getKeySchema().stream()
+    private Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item,
+                                                       List<KeySchemaElement> keySchema) {
+        return keySchema.stream()
             .collect(Collectors.toMap(KeySchemaElement::getAttributeName,
                 keySchemaElement -> item.get(keySchemaElement.getAttributeName())));
     }

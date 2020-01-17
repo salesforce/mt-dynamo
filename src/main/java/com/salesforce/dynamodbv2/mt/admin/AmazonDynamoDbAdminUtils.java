@@ -21,6 +21,7 @@ import com.amazonaws.services.dynamodbv2.model.TableStatus;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.time.Duration;
+import java.util.Optional;
 import org.awaitility.pollinterval.FixedPollInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -172,9 +173,15 @@ public class AmazonDynamoDbAdminUtils {
         }
     }
 
-    private TableDescription describeTable(String tableName) {
+    public TableDescription describeTable(String tableName) {
         return amazonDynamoDb.describeTable(tableName).getTable();
     }
 
-
+    public Optional<TableDescription> describeTableIfExists(String tableName) {
+        try {
+            return Optional.of(describeTable(tableName));
+        } catch (ResourceNotFoundException e) {
+            return Optional.empty();
+        }
+    }
 }

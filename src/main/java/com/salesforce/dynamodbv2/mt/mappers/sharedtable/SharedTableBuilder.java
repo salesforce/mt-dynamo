@@ -23,9 +23,9 @@ import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.StreamSpecification;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.s3.AmazonS3;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicates;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.ImmutableList;
@@ -34,19 +34,21 @@ import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.CreateTableRequestBuilder;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.TableBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType;
 import com.salesforce.dynamodbv2.mt.mappers.index.HasPrimaryKey;
-import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.PhysicalTableManager;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
 import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescription;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -55,7 +57,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -166,7 +170,7 @@ import java.util.stream.Collectors;
  */
 public class SharedTableBuilder implements TableBuilder {
 
-    private static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_table_metadata";
+    public static final String DEFAULT_TABLE_DESCRIPTION_TABLE_NAME = "_table_metadata";
 
     /**
      * Special default "column" key returned to client on multitenant scans. Configurable by clients if needed.
@@ -174,11 +178,14 @@ public class SharedTableBuilder implements TableBuilder {
     private static final String DEFAULT_SCAN_TENANT_KEY = "mt:context";
     private static final String DEFAULT_SCAN_VIRTUAL_TABLE_KEY = "mt:tableName";
 
-
     /**
      * Special default prefix to a physical table name use for temp snapshots of tables to generate tenant backups.
      */
     private static final String DEFAULT_BACKUP_TABLE_PREFIX = "mt-table-snapshot-";
+
+    public static final String DEFAULT_DYNAMIC_TABLE_PREFIX = "dyn__";
+
+    private static final String DEFAULT_GLOBAL_CONTEXT_PLACEHOLDER = "global";
 
     private List<CreateTableRequest> createTableRequests;
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
@@ -189,6 +196,7 @@ public class SharedTableBuilder implements TableBuilder {
     private String name;
     private AmazonDynamoDB amazonDynamoDb;
     private MtAmazonDynamoDbContextProvider mtContext;
+    private String globalContextPlaceholder = DEFAULT_GLOBAL_CONTEXT_PLACEHOLDER;
     private MtTableDescriptionRepo mtTableDescriptionRepo;
     private TableMappingFactory tableMappingFactory;
     private MtSharedTableBackupManagerBuilder backupManagerBuilder;
@@ -202,12 +210,15 @@ public class SharedTableBuilder implements TableBuilder {
     private Clock clock;
     private String tableDescriptionTableName;
     private Cache<Object, Optional<TableMapping>> tableMappingCache;
-    private Cache<Object, TableDescription> tableDescriptionCache;
+    private Cache<Object, MtTableDescription> tableDescriptionCache;
     private MeterRegistry meterRegistry;
     private String scanTenantKey = DEFAULT_SCAN_TENANT_KEY;
     private String scanVirtualTableKey = DEFAULT_SCAN_VIRTUAL_TABLE_KEY;
     private String backupTablePrefix = DEFAULT_BACKUP_TABLE_PREFIX;
+    private String dynamicTablePrefix = DEFAULT_DYNAMIC_TABLE_PREFIX;
     private TablePartitioningStrategy partitioningStrategy;
+    // virtual MT tables are not supported by default
+    private Predicate<String> multitenantVirtualTableCheck = Predicates.alwaysFalse();
 
     public static SharedTableBuilder builder() {
         return new SharedTableBuilder();
@@ -308,6 +319,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withMultitenantVirtualTableCheck(Predicate<String> multitenantVirtualTableCheck) {
+        this.multitenantVirtualTableCheck = multitenantVirtualTableCheck;
+        return this;
+    }
+
     /**
      * TODO: write Javadoc.
      *
@@ -318,16 +334,17 @@ public class SharedTableBuilder implements TableBuilder {
         setDefaults();
         withName("SharedTableBuilder");
         validate();
+        PhysicalTableManager physicalTableManager = new PhysicalTableManager(amazonDynamoDb, pollIntervalSeconds);
         if (tableMappingFactory == null) {
             CreateTableRequestFactory createTableRequestFactory = new SharedTableCreateTableRequestFactory(
-                partitioningStrategy.getTablePrimaryKeyMapper(), createTableRequests, getTablePrefix());
+                tablePrefix, dynamicTablePrefix, createTableRequests, partitioningStrategy,
+                defaultProvisionedThroughput, billingMode, streamsEnabled);
             tableMappingFactory = new TableMappingFactory(
                 createTableRequestFactory,
+                physicalTableManager,
                 mtContext,
-                amazonDynamoDb,
                 partitioningStrategy,
-                createTablesEagerly,
-                pollIntervalSeconds
+                createTablesEagerly
             );
         }
         return new MtAmazonDynamoDbBySharedTable(name,
@@ -335,7 +352,9 @@ public class SharedTableBuilder implements TableBuilder {
             amazonDynamoDb,
             tableMappingFactory,
             partitioningStrategy,
+            multitenantVirtualTableCheck,
             mtTableDescriptionRepo,
+            physicalTableManager,
             deleteTableAsync,
             truncateOnDeleteTable,
             getRecordsTimeLimit,
@@ -349,36 +368,33 @@ public class SharedTableBuilder implements TableBuilder {
     }
 
     private void setDefaults() {
-        if (this.defaultProvisionedThroughput == null) {
-            this.defaultProvisionedThroughput = 1L;
+        if (defaultProvisionedThroughput == null) {
+            defaultProvisionedThroughput = 1L;
         }
-        if (this.billingMode == null) {
-            this.billingMode = BillingMode.PROVISIONED;
+        if (billingMode == null) {
+            billingMode = BillingMode.PROVISIONED;
         }
-        if (this.streamsEnabled == null) {
+        if (streamsEnabled == null) {
             streamsEnabled = true;
         }
-        if (this.binaryHashKey == null) {
+        if (binaryHashKey == null) {
             binaryHashKey = false;
         }
         if (partitioningStrategy == null) {
-            partitioningStrategy = new RandomPartitioningStrategy();
+            partitioningStrategy = new RandomPartitioningStrategy(binaryHashKey ? B : S);
         }
-        if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
-            this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                this.billingMode, this.streamsEnabled, this.binaryHashKey, this.partitioningStrategy);
-        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
-            this.createTableRequests = createTableRequests.stream()
+        if (createTableRequests == null || createTableRequests.isEmpty()) {
+            createTableRequests = buildDefaultCreateTableRequests(defaultProvisionedThroughput,
+                billingMode, streamsEnabled, binaryHashKey, partitioningStrategy);
+        } else if (billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
+            createTableRequests = createTableRequests.stream()
                 .map(createTableRequest ->
                     createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
                 .collect(Collectors.toList());
         }
-        withBillingMode(this.billingMode);
+        withBillingMode(billingMode);
         if (name == null) {
             name = "MtAmazonDynamoDbBySharedTable";
-        }
-        if (this.billingMode == null) {
-            this.billingMode = BillingMode.PROVISIONED;
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
@@ -404,12 +420,13 @@ public class SharedTableBuilder implements TableBuilder {
         if (mtTableDescriptionRepo == null) {
             mtTableDescriptionRepo = MtDynamoDbTableDescriptionRepo.builder()
                 .withAmazonDynamoDb(amazonDynamoDb)
-                .withBillingMode(this.billingMode)
+                .withBillingMode(billingMode)
                 .withContext(mtContext)
-                .withTableDescriptionTableName(tableDescriptionTableName)
+                .withGlobalContextPlaceholder(globalContextPlaceholder)
+                .withTableDescriptionTableName(prefix(tablePrefix, tableDescriptionTableName))
                 .withPollIntervalSeconds(pollIntervalSeconds)
-                .withTablePrefix(tablePrefix)
                 .withTableDescriptionCache(tableDescriptionCache)
+                .withMultitenantVirtualTableCheck(multitenantVirtualTableCheck)
                 .build();
 
             ((MtDynamoDbTableDescriptionRepo) mtTableDescriptionRepo)
@@ -575,6 +592,11 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
+    public SharedTableBuilder withGlobalContextPlaceholder(String globalContextPlaceholder) {
+        this.globalContextPlaceholder = globalContextPlaceholder;
+        return this;
+    }
+
     public SharedTableBuilder withTablePrefix(String tablePrefix) {
         this.tablePrefix = of(tablePrefix);
         return this;
@@ -610,27 +632,14 @@ public class SharedTableBuilder implements TableBuilder {
         return this;
     }
 
-    public SharedTableBuilder withTableDescriptionCache(Cache<Object, TableDescription> tableDescriptionCache) {
+    public SharedTableBuilder withTableDescriptionCache(Cache<Object, MtTableDescription> tableDescriptionCache) {
         this.tableDescriptionCache = tableDescriptionCache;
         return this;
-    }
-
-    private Optional<String> getTablePrefix() {
-        return tablePrefix;
     }
 
     private void validate() {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
-
-        boolean tableCollidesWithBackupPrefix = createTableRequests
-            .stream()
-            .map(CreateTableRequest::getTableName)
-            .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
-        Preconditions.checkState(!tableCollidesWithBackupPrefix,
-            "Cannot suffix a physical table name with "
-                + DEFAULT_BACKUP_TABLE_PREFIX
-                + ". Either change your table names or override the default backup suffix.");
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
@@ -658,25 +667,48 @@ public class SharedTableBuilder implements TableBuilder {
      */
     static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
 
-        private final PrimaryKeyMapper primaryKeyMapper;
-        private final List<CreateTableRequest> createTableRequests;
+        private final List<CreateTableRequest> staticTables;
+        private final Set<String> staticTableNames;
+        private final String dynamicTablePrefix;
+        private final TablePartitioningStrategy partitioningStrategy;
+        private final long provisionedThroughput;
+        private final BillingMode billingMode;
+        private final boolean streamsEnabled;
 
-        SharedTableCreateTableRequestFactory(PrimaryKeyMapper primaryKeyMapper,
-                                             List<CreateTableRequest> createTableRequests,
-                                             Optional<String> tablePrefix) {
-            this.primaryKeyMapper = primaryKeyMapper;
-            this.createTableRequests = createTableRequests.stream()
+        SharedTableCreateTableRequestFactory(Optional<String> tablePrefix,
+                                             String dynamicTablePrefix,
+                                             List<CreateTableRequest> staticTables,
+                                             TablePartitioningStrategy partitioningStrategy,
+                                             long provisionedThroughput,
+                                             BillingMode billingMode,
+                                             boolean streamsEnabled) {
+            staticTables.forEach(t -> validateStaticTableName(t.getTableName(), dynamicTablePrefix));
+
+            this.staticTables = staticTables.stream()
                 .map(createTableRequest -> createTableRequest.withTableName(
                     prefix(tablePrefix, createTableRequest.getTableName())))
                 .collect(Collectors.toList());
+            this.staticTableNames = this.staticTables.stream()
+                .map(CreateTableRequest::getTableName)
+                .collect(Collectors.toSet());
+            this.dynamicTablePrefix = prefix(tablePrefix, dynamicTablePrefix);
+            this.partitioningStrategy = partitioningStrategy;
+            this.provisionedThroughput = provisionedThroughput;
+            this.billingMode = billingMode;
+            this.streamsEnabled = streamsEnabled;
+        }
+
+        private static void validateStaticTableName(String tableName, String dynamicTablePrefix) {
+            checkArgument(!tableName.startsWith(dynamicTablePrefix),
+                "Static table name '%s' has dynamic table prefix '%s'", tableName, dynamicTablePrefix);
         }
 
         @Override
-        public Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription) {
+        public Optional<CreateTableRequest> getStaticPhysicalTable(DynamoTableDescription virtualTableDescription) {
             try {
                 boolean hasLsis = !isEmpty(virtualTableDescription.getLsis());
-                return Optional.of(((CreateTableRequestWrapper) primaryKeyMapper
-                    .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), createTableRequests.stream()
+                return Optional.of(((CreateTableRequestWrapper) partitioningStrategy.getTablePrimaryKeyMapper()
+                    .mapPrimaryKey(virtualTableDescription.getPrimaryKey(), staticTables.stream()
                         .filter(createTableRequest1 -> hasLsis
                             == !isEmpty(createTableRequest1.getLocalSecondaryIndexes()))
                         .map((Function<CreateTableRequest, HasPrimaryKey>) CreateTableRequestWrapper::new)
@@ -692,10 +724,41 @@ public class SharedTableBuilder implements TableBuilder {
         }
 
         @Override
-        public List<CreateTableRequest> getPhysicalTables() {
-            return createTableRequests;
+        public List<CreateTableRequest> getStaticPhysicalTables() {
+            return staticTables;
         }
 
+        @Override
+        public CreateTableRequest getDynamicPhysicalTable(DynamoTableDescription virtualTable) {
+            // get physical table name by adding dynamic table prefix to virtual table name
+            String physicalTableName = dynamicTablePrefix + virtualTable.getTableName();
+
+            // map virtual table PK to a physical PK
+            PrimaryKey physicalTablePk = partitioningStrategy.toPhysicalPrimaryKey(virtualTable.getPrimaryKey(),
+                "hk", "rk");
+            CreateTableRequestBuilder physicalTable = CreateTableRequestBuilder.builder()
+                .withTableName(physicalTableName)
+                .withTableKeySchema(physicalTablePk);
+            // map each virtual secondary index to a physical secondary index
+            for (DynamoSecondaryIndex si : virtualTable.getSis()) {
+                String physicalHk = si.getType() == LSI ? physicalTablePk.getHashKey() : si.getIndexName() + "-hk";
+                String physicalRk = si.getIndexName() + "-rk";
+                PrimaryKey indexPk = partitioningStrategy.toPhysicalPrimaryKey(virtualTable.getPrimaryKey(),
+                    physicalHk, physicalRk);
+                physicalTable.addSi(si.getIndexName(), si.getType(), indexPk, provisionedThroughput);
+            }
+
+            // TODO: respect billing mode and/or provisioned throughput of virtual table?
+            setBillingMode(physicalTable, billingMode, provisionedThroughput);
+            addStreamSpecification(physicalTable, streamsEnabled);
+            return physicalTable.build();
+        }
+
+
+        @Override
+        public boolean isPhysicalTable(String tableName) {
+            return staticTableNames.contains(tableName) || tableName.startsWith(dynamicTablePrefix);
+        }
     }
 
 }

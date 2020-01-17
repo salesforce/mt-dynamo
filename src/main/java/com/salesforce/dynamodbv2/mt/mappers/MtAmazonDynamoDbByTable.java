@@ -80,7 +80,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     }
 
     @Override
-    protected boolean isMtTable(String tableName) {
+    protected boolean isPhysicalTable(String tableName) {
         String prefix = tablePrefix.orElse("");
         return tableName.startsWith(prefix) && tableName.indexOf(delimiter, prefix.length()) >= 0;
     }
@@ -205,7 +205,7 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     @Override
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
-            Preconditions.checkArgument(isMtTable(scanRequest.getTableName()));
+            Preconditions.checkArgument(isPhysicalTable(scanRequest.getTableName()));
             String[] tenantTable = getTenantAndTableName(scanRequest.getTableName());
             ScanResult result = getAmazonDynamoDb().scan(scanRequest);
             result.getItems().forEach(row -> {

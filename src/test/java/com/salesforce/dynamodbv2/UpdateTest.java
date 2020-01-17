@@ -3,6 +3,7 @@ package com.salesforce.dynamodbv2;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.AmazonDynamoDbStrategy.HashPartitioning;
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.AmazonDynamoDbStrategy.HashPartitioningMt;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE1;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE3;
 import static com.salesforce.dynamodbv2.testsupport.DefaultTestSetup.TABLE5;
@@ -413,7 +414,8 @@ class UpdateTest {
     @DefaultArgumentProviderConfig(tables = { TABLE5 })
     void updateFieldInMultipleGsis(TestArgument testArgument) {
         // skip if using hash partitioning, which doesn't allow updating only 1 but not all fields of a secondary index
-        if (testArgument.getAmazonDynamoDbStrategy() == HashPartitioning) {
+        if (testArgument.getAmazonDynamoDbStrategy() == HashPartitioning
+            || testArgument.getAmazonDynamoDbStrategy() == HashPartitioningMt) {
             return;
         }
 

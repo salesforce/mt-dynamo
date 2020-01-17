@@ -27,6 +27,7 @@
         Setting to error reduces verbosity during tests.
     -->
     <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory" level="error"/>
+    <logger name="com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.PhysicalTableManager" level="error"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />

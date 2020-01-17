@@ -33,6 +33,13 @@ import java.util.function.UnaryOperator;
  */
 public class RandomPartitioningStrategy implements TablePartitioningStrategy {
 
+    private final ScalarAttributeType physicalHashKeyType;
+
+    public RandomPartitioningStrategy(ScalarAttributeType physicalHashKeyType) {
+        checkArgument(physicalHashKeyType == S || physicalHashKeyType == B);
+        this.physicalHashKeyType = physicalHashKeyType;
+    }
+
     @Override
     public PrimaryKeyMapper getTablePrimaryKeyMapper() {
         return new PrimaryKeyMapperByTypeImpl(false);
@@ -41,6 +48,12 @@ public class RandomPartitioningStrategy implements TablePartitioningStrategy {
     @Override
     public PrimaryKeyMapper getSecondaryIndexPrimaryKeyMapper() {
         return new PrimaryKeyMapperByTypeImpl(true);
+    }
+
+    @Override
+    public PrimaryKey toPhysicalPrimaryKey(PrimaryKey virtualPrimaryKey, String hashKeyName, String rangeKeyName) {
+        return new PrimaryKey(hashKeyName, physicalHashKeyType,
+            virtualPrimaryKey.getRangeKey().map(ignored -> rangeKeyName), virtualPrimaryKey.getRangeKeyType());
     }
 
     @Override

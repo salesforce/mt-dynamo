@@ -115,7 +115,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
      * Test utility method.
      */
     public static void deleteMtTables(MtAmazonDynamoDbBase mtDynamoDb) {
-        mtDynamoDb.listTables().getTableNames().stream().filter(mtDynamoDb::isMtTable).forEach(
+        mtDynamoDb.listTables().getTableNames().stream().filter(mtDynamoDb::isPhysicalTable).forEach(
             name -> TableUtils.deleteTableIfExists(mtDynamoDb.getAmazonDynamoDb(),
                 new DeleteTableRequest(name)));
     }
@@ -145,7 +145,7 @@ public class MtAmazonDynamoDbStreamsBaseTestUtils {
         );
     }
 
-    static Optional<String> getShardId(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
+    private static Optional<String> getShardId(AmazonDynamoDBStreams mtDynamoDbStreams, String streamArn) {
         DescribeStreamResult dsResult = mtDynamoDbStreams.describeStream(
             new DescribeStreamRequest().withStreamArn(streamArn));
 

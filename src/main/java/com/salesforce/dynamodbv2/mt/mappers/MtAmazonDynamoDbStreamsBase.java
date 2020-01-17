@@ -79,7 +79,7 @@ public abstract class MtAmazonDynamoDbStreamsBase<T extends MtAmazonDynamoDbBase
         ListStreamsResult result = dynamoDbStreams.listStreams(listStreamsRequest);
 
         result.setStreams(result.getStreams().stream()
-            .filter(stream -> mtDynamoDb.isMtTable(stream.getTableName()))
+            .filter(stream -> mtDynamoDb.isPhysicalTable(stream.getTableName()))
             .collect(toList()));
 
         if (LOG.isDebugEnabled()) {

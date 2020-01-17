@@ -1,6 +1,10 @@
 package com.salesforce.dynamodbv2.mt.repo;
 
+import static com.salesforce.dynamodbv2.testsupport.ArgumentBuilder.MT_CONTEXT;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.MT_VIRTUAL_TABLE_PREFIX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -13,45 +17,40 @@ import com.amazonaws.services.dynamodbv2.model.KeyType;
 import com.amazonaws.services.dynamodbv2.model.ListTablesRequest;
 import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.UpdateTableRequest;
 import com.amazonaws.services.dynamodbv2.util.TableUtils;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
-import com.salesforce.dynamodbv2.mt.repo.MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataRequest;
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.ListMetadataResult;
-import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtCreateTableRequest;
+import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo.MtTenantTableDesciption;
 import com.salesforce.dynamodbv2.mt.util.DynamoDbTestUtils;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class MtDynamoDbTableDescriptionRepoTest {
 
-    private final AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-    private String tableName;
-    private String fullTableName;
+    private static final String GLOBAL_CONTEXT_PLACEHOLDER = "testGlobalPlaceholder";
 
-    private static final MtAmazonDynamoDbContextProvider MT_CONTEXT =
-        new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-    private static final Optional<String> tablePrefix = Optional.of("okToDelete-testBillingMode.");
+    private final AmazonDynamoDB localDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+    private String descriptionTableName;
     private MtDynamoDbTableDescriptionRepo.MtDynamoDbTableDescriptionRepoBuilder mtDynamoDbTableDescriptionRepoBuilder;
 
     @BeforeEach
     void beforeEach() {
-        tableName = String.valueOf(System.currentTimeMillis());
-        fullTableName = DynamoDbTestUtils.getTableNameWithPrefix(tablePrefix.orElseThrow(), tableName, "");
-
+        descriptionTableName = getClass().getSimpleName() + "." + System.currentTimeMillis();
         mtDynamoDbTableDescriptionRepoBuilder = MtDynamoDbTableDescriptionRepo.builder()
             .withAmazonDynamoDb(localDynamoDb)
             .withContext(MT_CONTEXT)
-            .withTablePrefix(tablePrefix)
-            .withTableDescriptionTableName(tableName);
+            .withGlobalContextPlaceholder(GLOBAL_CONTEXT_PLACEHOLDER)
+            .withMultitenantVirtualTableCheck(t -> t.startsWith(MT_VIRTUAL_TABLE_PREFIX))
+            .withTableDescriptionTableName(descriptionTableName)
+            .withPollIntervalSeconds(0);
     }
 
     /**
@@ -59,29 +58,20 @@ class MtDynamoDbTableDescriptionRepoTest {
      */
     @Test
     void testMetadataTableProvisioningThroughputChange() {
-        AmazonDynamoDB dynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
-        MtAmazonDynamoDbContextProvider ctx = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-        String tableName = "MtDynamoDbTableDescriptionRepoTest_testMetadataTableExists_metadata";
-
-        MtDynamoDbTableDescriptionRepoBuilder b = MtDynamoDbTableDescriptionRepo.builder()
-            .withAmazonDynamoDb(dynamoDb)
-            .withContext(ctx)
-            .withTableDescriptionTableName(tableName);
-
-        MtDynamoDbTableDescriptionRepo repo = b.build();
-        ctx.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        MT_CONTEXT.withContext("1", () ->
+            repo.createTableMetadata(new CreateTableRequest()
                 .withTableName("test")
                 .withKeySchema(new KeySchemaElement("id", KeyType.HASH))
-                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)))
+                .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L)), false)
         );
 
-        dynamoDb.updateTable(new UpdateTableRequest(tableName, new ProvisionedThroughput(
+        localDynamoDb.updateTable(new UpdateTableRequest(descriptionTableName, new ProvisionedThroughput(
             6L, 6L)));
 
-        MtDynamoDbTableDescriptionRepo repo2 = b.build();
+        MtDynamoDbTableDescriptionRepo repo2 = mtDynamoDbTableDescriptionRepoBuilder.build();
         try {
-            ctx.withContext("1", () -> repo2.getTableDescription("test"));
+            MT_CONTEXT.withContext("1", () -> repo2.getTableDescription("test"));
             // if no exception was thrown, the repo properly initialized using the existing metadata table
         } catch (Exception e) {
             // otherwise, check which exception was thrown to distinguish between test failure and error
@@ -102,13 +92,13 @@ class MtDynamoDbTableDescriptionRepoTest {
     void testMtDynamoDbTableDescriptionProvisionedThroughputIsSetWhenDefault() throws InterruptedException {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
-                .withTableName(tableName)
-                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+            repo.createTableMetadata(new CreateTableRequest()
+                .withTableName("test")
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)), false)
         );
 
-        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
-        DynamoDbTestUtils.assertProvisionedIsSet(fullTableName, localDynamoDb, 1L);
+        TableUtils.waitUntilActive(localDynamoDb, descriptionTableName);
+        DynamoDbTestUtils.assertProvisionedIsSet(descriptionTableName, localDynamoDb, 1L);
     }
 
     @Test
@@ -116,72 +106,71 @@ class MtDynamoDbTableDescriptionRepoTest {
         mtDynamoDbTableDescriptionRepoBuilder.withBillingMode(BillingMode.PAY_PER_REQUEST);
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
         MT_CONTEXT.withContext("1", () ->
-            repo.createTable(new CreateTableRequest()
-                .withTableName(tableName)
-                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)))
+            repo.createTableMetadata(new CreateTableRequest()
+                .withTableName("test")
+                .withKeySchema(new KeySchemaElement("id", KeyType.HASH)), false)
         );
 
-        TableUtils.waitUntilActive(localDynamoDb, fullTableName);
-        DynamoDbTestUtils.assertPayPerRequestIsSet(fullTableName, localDynamoDb);
+        TableUtils.waitUntilActive(localDynamoDb, descriptionTableName);
+        DynamoDbTestUtils.assertPayPerRequestIsSet(descriptionTableName, localDynamoDb);
     }
 
     @Test
     void testListVirtualTables() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
-        ListMetadataResult listMetadataResult =
-            ((MtTableDescriptionRepo) repo).listVirtualTableMetadata(new ListMetadataRequest());
-        assertEquals(new ListMetadataResult(tablesCreated, null), listMetadataResult);
+        Set<MtTenantTableDesciption> tablesCreated = createVirtualTables(repo);
+        ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest());
+        assertEquals(tablesCreated, new HashSet<>(listMetadataResult.getTenantTableDescriptions()));
+        assertNull(listMetadataResult.getLastEvaluatedTable());
     }
 
     @Test
     void testListVirtualTables_pagination() {
-        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<MtCreateTableRequest> tablesCreated = createPairOfVirtualTables(repo);
-        ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
-        ListMetadataResult expected = new ListMetadataResult(tablesCreated.subList(0, 1), tablesCreated.get(0));
-        assertEquals(expected, listMetadataResult);
+        final MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        final Set<MtTenantTableDesciption> tablesCreated = createVirtualTables(repo);
+        final Set<MtTenantTableDesciption> tablesReturned = new HashSet<>();
 
-        listMetadataResult =
-            repo.listVirtualTableMetadata(
-                new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0)));
-        assertEquals(listMetadataResult,
-            repo.listVirtualTableMetadata(new ListMetadataRequest()
-                .withExclusiveStartCreateTableReq(tablesCreated.get(0))
-                .withLimit(5)));
-        expected = new ListMetadataResult(ImmutableList.of(tablesCreated.get(1)), null);
-        assertEquals(expected,
-            repo.listVirtualTableMetadata(
-                new ListMetadataRequest().withExclusiveStartCreateTableReq(tablesCreated.get(0))));
+        ListMetadataResult listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(1));
+        assertEquals(1, listMetadataResult.getTenantTableDescriptions().size());
+        assertNotNull(listMetadataResult.getLastEvaluatedTable());
+        tablesReturned.add(listMetadataResult.getLastEvaluatedTable());
+
+        listMetadataResult = repo.listVirtualTableMetadata(new ListMetadataRequest().withLimit(5)
+            .withExclusiveStartCreateTableReq(listMetadataResult.getLastEvaluatedTable()));
+        assertEquals(2, listMetadataResult.getTenantTableDescriptions().size());
+        assertNull(listMetadataResult.getLastEvaluatedTable());
+        tablesReturned.addAll(listMetadataResult.getTenantTableDescriptions());
+
+        assertEquals(tablesCreated, tablesReturned);
     }
 
     @Test
     void testListTables() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<String> tablesCreated = createPairOfVirtualTables(repo).stream()
-            .filter(t -> t.getTenantName().equals("1"))
-            .map(t -> t.getCreateTableRequest().getTableName())
-            .collect(Collectors.toList());
+        Set<String> tablesCreated = createVirtualTables(repo).stream()
+            .filter(t -> t.getTenantName().equals("1") || t.getTableDescription().isMultitenant())
+            .map(t -> t.getTableDescription().getTableName())
+            .collect(Collectors.toSet());
         MT_CONTEXT.withContext("1", () -> {
             ListTablesResult listTablesResult =
                 ((MtTableDescriptionRepo) repo).listTables(new ListTablesRequest());
-            assertEquals(tablesCreated, listTablesResult.getTableNames());
+            assertEquals(tablesCreated, new HashSet<>(listTablesResult.getTableNames()));
         });
     }
 
     @Test
     void testListTables_pagination() {
         MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
-        List<MtCreateTableRequest> tablesCreated = new ArrayList<>();
-        tablesCreated.addAll(createPairOfVirtualTables(repo, "table1"));
-        tablesCreated.addAll(createPairOfVirtualTables(repo, "table2"));
-        tablesCreated.addAll(createPairOfVirtualTables(repo, "table3"));
+        Set<MtTenantTableDesciption> tablesCreated = new HashSet<>();
+        tablesCreated.addAll(createVirtualTables(repo, "table1"));
+        tablesCreated.addAll(createVirtualTables(repo, "table2"));
+        tablesCreated.addAll(createVirtualTables(repo, "table3"));
 
-        List<String> expectedReturnedTables = tablesCreated.stream()
-            .filter(t -> t.getTenantName().equals("1"))
-            .map(t -> t.getCreateTableRequest().getTableName())
-            .collect(Collectors.toList());
-        assertEquals(3, expectedReturnedTables.size());
+        Set<String> expectedReturnedTables = tablesCreated.stream()
+            .filter(t -> t.getTenantName().equals("1") || t.getTableDescription().isMultitenant())
+            .map(t -> t.getTableDescription().getTableName())
+            .collect(Collectors.toSet());
+        assertEquals(6, expectedReturnedTables.size());
 
         ListTablesRequest listTablesRequest = new ListTablesRequest().withLimit(1);
         MT_CONTEXT.withContext("1", () -> {
@@ -189,9 +178,10 @@ class MtDynamoDbTableDescriptionRepoTest {
             do {
                 ListTablesResult listTablesResult = repo.listTables(listTablesRequest);
                 listTablesRequest.withExclusiveStartTableName(listTablesResult.getLastEvaluatedTableName());
-                if (numScans < 3) {
+                if (numScans < 6) {
                     assertEquals(1, listTablesResult.getTableNames().size());
-                    assertTrue(expectedReturnedTables.remove(listTablesResult.getTableNames().get(0)));
+                    assertTrue(expectedReturnedTables.remove(listTablesResult.getTableNames().get(0)),
+                        "did not remove: " + listTablesResult.getTableNames().get(0));
                 } else {
                     assertTrue(listTablesResult.getTableNames().isEmpty());
                 }
@@ -209,11 +199,53 @@ class MtDynamoDbTableDescriptionRepoTest {
         assertEquals(new ListMetadataResult(ImmutableList.of(), null), listMetadataResult);
     }
 
-    private List<MtCreateTableRequest> createPairOfVirtualTables(MtDynamoDbTableDescriptionRepo repo) {
-        return createPairOfVirtualTables(repo, "table");
+    @Test
+    void testGetTableDescription() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        Set<MtTenantTableDesciption> tablesCreated = createVirtualTables(repo);
+        MT_CONTEXT.withContext("1", () -> {
+            for (MtTenantTableDesciption table : tablesCreated) {
+                if (table.getTenantName().equals("1") || table.getTableDescription().isMultitenant()) {
+                    assertEquals(table.getTableDescription(),
+                        repo.getTableDescription(table.getTableDescription().getTableName()));
+                } else {
+                    try {
+                        repo.getTableDescription(table.getTableDescription().getTableName());
+                        fail("Should not be able to get table of another tenant");
+                    } catch (ResourceNotFoundException e) {
+                        // expected
+                    }
+                }
+            }
+        });
     }
 
-    private List<MtCreateTableRequest> createPairOfVirtualTables(
+    @Test
+    void testGetTableDescription_empty() {
+        MtDynamoDbTableDescriptionRepo repo = mtDynamoDbTableDescriptionRepoBuilder.build();
+        Set<MtTenantTableDesciption> tablesCreated = createVirtualTables(repo);
+        MT_CONTEXT.withContext(null, () -> {
+            for (MtTenantTableDesciption table : tablesCreated) {
+                if (table.getTableDescription().isMultitenant()) {
+                    assertEquals(table.getTableDescription(),
+                        repo.getTableDescription(table.getTableDescription().getTableName()));
+                } else {
+                    try {
+                        repo.getTableDescription(table.getTableDescription().getTableName());
+                        fail("Should not be able to get single-tenant table when there is no context");
+                    } catch (ResourceNotFoundException e) {
+                        // expected
+                    }
+                }
+            }
+        });
+    }
+
+    private Set<MtTenantTableDesciption> createVirtualTables(MtDynamoDbTableDescriptionRepo repo) {
+        return createVirtualTables(repo, "table");
+    }
+
+    private Set<MtTenantTableDesciption> createVirtualTables(
         MtDynamoDbTableDescriptionRepo repo, String tablePrefix) {
         String tenant1 = "1";
         String tenant2 = "2";
@@ -229,12 +261,20 @@ class MtDynamoDbTableDescriptionRepoTest {
         CreateTableRequest createReq2 = new CreateTableRequest()
             .withTableName(tableName2)
             .withKeySchema(new KeySchemaElement("id", KeyType.HASH));
-        MT_CONTEXT.withContext(tenant1, () ->
-            repo.createTable(createReq1));
-        MT_CONTEXT.withContext(tenant2, () ->
-            repo.createTable(createReq2));
+        CreateTableRequest mtCreateReq = new CreateTableRequest()
+            .withTableName(MT_VIRTUAL_TABLE_PREFIX + tablePrefix + "3")
+            .withKeySchema(new KeySchemaElement("id", KeyType.HASH));
 
-        return ImmutableList.of(new MtCreateTableRequest(tenant1, createReq1),
-            new MtCreateTableRequest(tenant2, createReq2));
+        MtTableDescription table1 = MT_CONTEXT.withContext(tenant1, () -> repo.createTableMetadata(createReq1, false));
+        MtTableDescription table2 = MT_CONTEXT.withContext(tenant2, () -> repo.createTableMetadata(createReq2, false));
+        MtTableDescription mtTable = MT_CONTEXT.withContext(null, () -> repo.createTableMetadata(mtCreateReq, true));
+        assertEquals(MtDynamoDbTableDescriptionRepo.toTableDescription(createReq1, false), table1);
+        assertEquals(MtDynamoDbTableDescriptionRepo.toTableDescription(createReq2, false), table2);
+        assertEquals(MtDynamoDbTableDescriptionRepo.toTableDescription(mtCreateReq, true), mtTable);
+
+        return ImmutableSet.of(
+            new MtTenantTableDesciption(tenant1, table1),
+            new MtTenantTableDesciption(tenant2, table2),
+            new MtTenantTableDesciption(GLOBAL_CONTEXT_PLACEHOLDER, mtTable));
     }
 }

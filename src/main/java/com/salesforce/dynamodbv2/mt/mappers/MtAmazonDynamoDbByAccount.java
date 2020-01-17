@@ -162,7 +162,7 @@ public class MtAmazonDynamoDbByAccount extends MtAmazonDynamoDbBase {
          * @return a newly created {@code AmazonDynamoDB} based on the contents of the
          * {@code MtAmazonDynamoDbByAccountBuilder}
          */
-        public AmazonDynamoDB build() {
+        public MtAmazonDynamoDbByAccount build() {
             Preconditions.checkNotNull(mtContext, "mtContext is required");
             Preconditions.checkNotNull(accountMapper, "accountMapper is required");
             if (meterRegistry == null) {

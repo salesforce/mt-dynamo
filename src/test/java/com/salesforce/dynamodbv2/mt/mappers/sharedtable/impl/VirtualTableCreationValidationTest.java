@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 class VirtualTableCreationValidationTest {
 
-    private static final RandomPartitioningStrategy RANDOM_PARTITIONING_STRATEGY = new RandomPartitioningStrategy();
+    private static final RandomPartitioningStrategy RANDOM_PARTITIONING_STRATEGY = new RandomPartitioningStrategy(S);
     private static final HashPartitioningStrategy HASH_PARTITIONING_STRATEGY = new HashPartitioningStrategy(10);
 
     @Test
