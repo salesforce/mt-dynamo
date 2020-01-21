@@ -216,11 +216,11 @@ open class MtSharedTableBackupManager(
         // restore tenant-table data
         val backupFileKeys = getBackupFileKeys(restoreMtBackupRequest.backupName,
                 restoreMtBackupRequest.tenantTableBackup)
-        for (fileName in backupFileKeys) {
-            val backupFile: S3Object = s3.getObject(s3BucketName, fileName)
+        backupFileKeys.forEach {
+            val backupFile: S3Object = s3.getObject(s3BucketName, it)
             val rowsToInsert: List<TenantTableRow> = gson.fromJson(backupFile.objectContent.bufferedReader(),
                     object : TypeToken<List<TenantTableRow>>() {}.type)
-            for (row in rowsToInsert) {
+            rowsToInsert.forEach { row ->
                 mtContext.withContext(restoreMtBackupRequest.newTenantTable.tenantName) {
                     sharedTableMtDynamo.putItem(restoreMtBackupRequest.newTenantTable.virtualTableName, row.attributeMap)
                 }
@@ -252,9 +252,7 @@ open class MtSharedTableBackupManager(
                             .withContinuationToken(continuationToken)
                             .withPrefix("$backupDir/$backupId/${tenantTable.tenantName}/${tenantTable.virtualTableName}"))
             continuationToken = listBucketResult.continuationToken
-            for (o in listBucketResult.objectSummaries) {
-                ret.add(o.key)
-            }
+            listBucketResult.objectSummaries.forEach { ret.add(it.key) }
         } while (listBucketResult.isTruncated)
         return ret
     }
@@ -282,9 +280,9 @@ open class MtSharedTableBackupManager(
                             .withBucketName(s3BucketName)
                             .withStartAfter(startAfter)
                             .withPrefix("$backupMetadataDir/"))
-            for (o in listBucketResult.objectSummaries) {
+            listBucketResult.objectSummaries.forEach {
                 if (ret.size < limit) {
-                    val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(o.key))!!)
+                    val backup = mtBackupAwsAdaptor.getBackupSummary(getBackup(getBackupIdFromKey(it.key))!!)
                     ret.add(backup)
                 }
             }
@@ -386,15 +384,16 @@ open class MtSharedTableBackupManager(
         backupId: String,
         tenantTableMetadataList: MtTableDescriptionRepo.ListMetadataResult
     ) {
-        for (tenantTableMetadata in tenantTableMetadataList.createTableRequests) {
-            val tenantTableMetadataJson = gson.toJson(tenantTableMetadata.createTableRequest).toByteArray(charset)
+        tenantTableMetadataList.createTableRequests.forEach {
+            val tenantTableMetadataJson = gson.toJson(it.createTableRequest).toByteArray(charset)
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = tenantTableMetadataJson.size.toLong()
             objectMetadata.contentType = "application/json"
-            val tenantTableMetadataFile = getTenantTableMetadataFile(backupId, TenantTable(tenantTableMetadata.createTableRequest.tableName, tenantTableMetadata.tenantName))
+            val tenantTableMetadataFile = getTenantTableMetadataFile(backupId,
+                    TenantTable(it.createTableRequest.tableName, it.tenantName))
             val putObjectReq = PutObjectRequest(s3BucketName,
                     tenantTableMetadataFile,
-                    gson.toJson(tenantTableMetadata.createTableRequest).byteInputStream(charset),
+                    gson.toJson(it.createTableRequest).byteInputStream(charset),
                     objectMetadata)
             s3.putObject(putObjectReq)
         }
@@ -454,21 +453,22 @@ open class MtSharedTableBackupManager(
 
             val rowsPerTenant = MultimapBuilder.ListMultimapBuilder
                     .linkedHashKeys().hashSetValues().build<TenantTable, TenantTableRow>()
-            for (i in 0 until scanResult.items.size) {
-                val row = scanResult.items[i]
-                val tenant = row[sharedTableMtDynamo.scanTenantKey]!!.s
-                val virtualTable = row[sharedTableMtDynamo.scanVirtualTableKey]!!.s
-                row.remove(sharedTableMtDynamo.scanTenantKey)
-                row.remove(sharedTableMtDynamo.scanVirtualTableKey)
-                rowsPerTenant.put(TenantTable(tenantName = tenant, virtualTableName = virtualTable),
-                        TenantTableRow(scanResult.items[i]))
+            scanResult.items.forEach {
+                val tenant = it[sharedTableMtDynamo.scanTenantKey]!!.s
+                val virtualTable = it[sharedTableMtDynamo.scanVirtualTableKey]!!.s
+                it.remove(sharedTableMtDynamo.scanTenantKey)
+                it.remove(sharedTableMtDynamo.scanVirtualTableKey)
+                rowsPerTenant.put(TenantTable(virtualTable, tenant), TenantTableRow(it))
             }
 
             flushScanResult(createBackupRequest.backupName, numPasses, rowsPerTenant)
             logger.info("Flushed ${rowsPerTenant.values().size} rows for " +
                     "${rowsPerTenant.keySet().size} tenants.")
-            for (tenantTable in rowsPerTenant.keySet()) {
-                val tenantTableMetadata = TenantTableBackupMetadata(s3BucketName = s3BucketName, tenantId = tenantTable.tenantName, virtualTableName = tenantTable.virtualTableName, backupName = createBackupRequest.backupName)
+            rowsPerTenant.keySet().forEach {
+                val tenantTableMetadata = TenantTableBackupMetadata(s3BucketName,
+                        createBackupRequest.backupName,
+                        it.tenantName,
+                        it.virtualTableName)
                 tenantTables[tenantTableMetadata] = tenantTables.getOrDefault(tenantTableMetadata, 1L)
             }
         } while (scanResult.count > 0 && ++numPasses > 1)
@@ -491,7 +491,7 @@ open class MtSharedTableBackupManager(
             backupMetadataKey.split("/")[1].split("-metadata")[0]
 
     private fun flushScanResult(backupName: String, scanCount: Int, rowsPerTenant: Multimap<TenantTable, TenantTableRow>) {
-        for (tenantTable: TenantTable in rowsPerTenant.keySet()) {
+        rowsPerTenant.keySet().forEach { tenantTable ->
             val toFlush = gson.toJson(rowsPerTenant.get(tenantTable))
             val objectMetadata = ObjectMetadata()
             objectMetadata.contentLength = toFlush.toByteArray(charset).size.toLong()
