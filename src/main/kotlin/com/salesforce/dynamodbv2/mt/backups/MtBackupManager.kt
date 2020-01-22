@@ -130,9 +130,8 @@ data class MtBackupMetadata(
         }
         val tenantTableCount = hashMapOf<TenantTableBackupMetadata, Long>()
         tenantTableCount.putAll(tenantTables)
-        for (tenantTable in newBackupMetadata.tenantTables.keys) {
-            tenantTableCount[tenantTable] = tenantTables.getOrDefault(tenantTable, 0L) +
-                    newBackupMetadata.tenantTables[tenantTable]!!
+        newBackupMetadata.tenantTables.entries.forEach {
+            tenantTableCount[it.key] = tenantTables.getOrDefault(it.key, 0L) + it.value
         }
         return MtBackupMetadata(s3BucketName,
                 mtBackupName,
