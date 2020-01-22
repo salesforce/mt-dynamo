@@ -106,9 +106,9 @@ internal class MtSharedTableBackupManagerS3It {
 
     @AfterEach
     fun afterEach() {
-        for (backupArn in backupArns) {
-            sharedTableBinaryHashKey!!.deleteBackup(DeleteBackupRequest().withBackupArn(backupArn))
-            assertNull(backupManager!!.getBackup(backupArn))
+        backupArns.forEach {
+            sharedTableBinaryHashKey!!.deleteBackup(DeleteBackupRequest().withBackupArn(it))
+            assertNull(backupManager!!.getBackup(it))
         }
         backupArns.clear()
         assertTrue(backupManager!!.listBackups(ListBackupsRequest()).backupSummaries.isEmpty())
@@ -327,8 +327,8 @@ internal class MtSharedTableBackupManagerS3It {
                         return tenantTableMetadataList
                     }
                 }
-        for (i in 1..numBackups) {
-            val backupName = "$backupPrefix-$i"
+        (1..numBackups).forEach {
+            val backupName = "$backupPrefix-$it"
             ret.add(backupName)
             val createBackupRequest = CreateBackupRequest()
             createBackupRequest.backupName = backupName
