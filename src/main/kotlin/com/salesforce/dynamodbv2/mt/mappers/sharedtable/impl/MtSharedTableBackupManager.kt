@@ -21,7 +21,6 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
-import com.google.common.base.Preconditions
 import com.google.common.base.Strings
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Iterables
@@ -260,17 +259,22 @@ open class MtSharedTableBackupManager(
     override fun listBackups(listBackupRequest: ListBackupsRequest): ListBackupsResult {
         val ret = arrayListOf<BackupSummary>()
 
-        Preconditions.checkArgument(listBackupRequest.backupType == null, "Listing backups by backupType unsupported")
-        Preconditions.checkArgument(listBackupRequest.tableName == null, "Listing backups by table name unsupported for multitenant backups")
-        Preconditions.checkArgument(listBackupRequest.timeRangeLowerBound == null, "Listing backups filtered by time range unsupported [currently]")
-        Preconditions.checkArgument(listBackupRequest.timeRangeUpperBound == null, "Listing backups filtered by time range unsupported [currently]")
+        require(listBackupRequest.backupType == null) { "Listing backups by backupType unsupported" }
+        require(listBackupRequest.tableName == null) {
+            "Listing backups by table name unsupported for multitenant backups"
+        }
+        require(listBackupRequest.timeRangeLowerBound == null) {
+            "Listing backups filtered by time range unsupported [currently]"
+        }
+        require(listBackupRequest.timeRangeUpperBound == null) {
+            "Listing backups filtered by time range unsupported [currently]"
+        }
 
         // translate the last backupArn we saw to the file name on S3, to iterate from
-        var startAfter: String? = if (listBackupRequest.exclusiveStartBackupArn == null) null
-            else getBackupMetadataFile(listBackupRequest.exclusiveStartBackupArn)
+        val startAfter = listBackupRequest.exclusiveStartBackupArn?.let { getBackupMetadataFile(it) }
         var lastEvaluatedBackupArn: String? = null
         var continuationToken: String? = null
-        val limit = if (listBackupRequest.limit == null) 10 else listBackupRequest.limit
+        val limit = listBackupRequest.limit ?: 10
         do {
             val listBucketResult: ListObjectsV2Result = s3.listObjectsV2(
                     ListObjectsV2Request()
@@ -297,8 +301,7 @@ open class MtSharedTableBackupManager(
     }
 
     override fun listTenantTableBackups(listBackupRequest: ListBackupsRequest, tenantId: String): ListBackupsResult {
-        Preconditions.checkNotNull(tenantId, "Must pass tenant identifier")
-        Preconditions.checkNotNull(listBackupRequest.tableName, "Must pass virtual table name")
+        checkNotNull(listBackupRequest.tableName) { "Must pass virtual table name" }
         val mtBackupRequest = ListBackupsRequest().withLimit(listBackupRequest.limit)
         if (listBackupRequest.exclusiveStartBackupArn != null) {
             mtBackupRequest.withExclusiveStartBackupArn(getTenantTableBackupFromArn(listBackupRequest.exclusiveStartBackupArn).backupName)
