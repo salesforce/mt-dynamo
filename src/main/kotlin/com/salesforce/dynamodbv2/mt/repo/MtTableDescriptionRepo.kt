@@ -63,19 +63,13 @@ interface MtTableDescriptionRepo {
     data class ListMetadataRequest(var limit: Int = DEFAULT_SCAN_LIMIT, var startTenantTableKey: MtAmazonDynamoDb.TenantTable? = null) {
 
         fun withLimit(limit: Int?): ListMetadataRequest {
-            if (limit == null) {
-                this.limit = DEFAULT_SCAN_LIMIT
-            } else {
-                this.limit = limit
-            }
+            this.limit = limit ?: DEFAULT_SCAN_LIMIT
             return this
         }
 
         fun withExclusiveStartCreateTableReq(startKey: MtCreateTableRequest?): ListMetadataRequest {
-            startTenantTableKey = if (startKey == null) {
-                null
-            } else {
-                MtAmazonDynamoDb.TenantTable(startKey.createTableRequest.tableName, startKey.tenantName)
+            this.startTenantTableKey = startKey?.let {
+                MtAmazonDynamoDb.TenantTable(it.createTableRequest.tableName, it.tenantName)
             }
             return this
         }

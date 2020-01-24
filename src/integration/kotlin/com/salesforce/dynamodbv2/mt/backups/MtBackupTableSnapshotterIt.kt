@@ -17,7 +17,6 @@ import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType
-import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableList
 import com.google.common.collect.ImmutableMap
 import com.google.common.collect.ImmutableSet
@@ -35,8 +34,8 @@ internal class MtBackupTableSnapshotterIt {
 
     @Test
     fun testTableSnapshot() {
-        Preconditions.checkArgument(System.getenv("AWS_ACCESS_KEY_ID") != null)
-        Preconditions.checkArgument(System.getenv("AWS_SECRET_ACCESS_KEY") != null)
+        require(System.getenv("AWS_ACCESS_KEY_ID") != null)
+        require(System.getenv("AWS_SECRET_ACCESS_KEY") != null)
 
         // dynamo details
         val region = Regions.US_EAST_1
