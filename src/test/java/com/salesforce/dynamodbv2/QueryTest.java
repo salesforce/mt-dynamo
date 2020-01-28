@@ -142,14 +142,14 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 })
     void queryHkRkWithKeyConditions(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, false);
     }
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 })
     void queryHkRkWithKeyConditions_legacy(TestArgument testArgument) {
         runHkRkTableKeyConditionTest(testArgument, true);
     }
@@ -413,7 +413,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryHkRkWithFilterExpression(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -432,7 +432,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryHkRkWithFilterExpression_lessThanOrEqual(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             List<Map<String, AttributeValue>> items = testArgument.getAmazonDynamoDb().query(
@@ -458,7 +458,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryGsiWithRk(TestArgument testArgument) {
         runQueryGsiTest(testArgument, true);
     }
@@ -504,7 +504,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE3 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
     void queryGsiWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             // add another gsi2 record so there are multiple and we'd need paging
@@ -623,7 +623,7 @@ class QueryTest {
 
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(tables = { TABLE4 }, useDynalite = true)
+    @DefaultArgumentProviderConfig(tables = { TABLE4 })
     void queryWithPaging(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             int maxPageSize = 4;
@@ -677,7 +677,6 @@ class QueryTest {
      */
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
-    @DefaultArgumentProviderConfig(useDynalite = true)
     void queryBinaryExclusiveStartKey(TestArgument testArgument) {
         String tableName = "MyTable";
         AmazonDynamoDB amazonDynamoDb = testArgument.getAmazonDynamoDb();
