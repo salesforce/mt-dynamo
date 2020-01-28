@@ -74,7 +74,7 @@ class HashPartitioningTestUtil {
     }
 
     static AttributeValue getPhysicalHkValue(TestHashKeyValue value) {
-        int bucket = value.getRawValueHashCode() % NUM_BUCKETS;
+        int bucket = Math.abs(value.getRawValueHashCode()) % NUM_BUCKETS;
         return HashPartitioningKeyPrefixFunction.toPhysicalHashKey(CONTEXT, VIRTUAL_TABLE_NAME, bucket);
     }
 
