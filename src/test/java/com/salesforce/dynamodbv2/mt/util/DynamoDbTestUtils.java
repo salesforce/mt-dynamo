@@ -19,10 +19,11 @@ public class DynamoDbTestUtils {
 
     /**
      * For a given table, check that the table has the expected properties set for BillingMode.PAY_PER_REQUEST.
-     * @param tableName the table name
+     *
+     * @param tableName        the table name
      * @param dynamoDbInstance the AmazonDynamoDB instance
      */
-    public static void assertPayPerRequestIsSet(String tableName,  AmazonDynamoDB dynamoDbInstance) {
+    public static void assertPayPerRequestIsSet(String tableName, AmazonDynamoDB dynamoDbInstance) {
         TableDescription tableDescription = dynamoDbInstance.describeTable(tableName).getTable();
 
         assertEquals(BillingMode.PAY_PER_REQUEST.toString(), tableDescription.getBillingModeSummary().getBillingMode());
@@ -32,11 +33,12 @@ public class DynamoDbTestUtils {
 
     /**
      * For a given table, check that the table has the expected properties set for BillingMode.PROVISIONED.
-     * @param tableName the table name
-     * @param dynamoDbInstance the AmazonDynamoDB instance
+     *
+     * @param tableName          the table name
+     * @param dynamoDbInstance   the AmazonDynamoDB instance
      * @param expectedThroughput the expected ProvisionedThroughput value
      */
-    public static void assertProvisionedIsSet(String tableName,  AmazonDynamoDB dynamoDbInstance,
+    public static void assertProvisionedIsSet(String tableName, AmazonDynamoDB dynamoDbInstance,
                                               Long expectedThroughput) {
         TableDescription tableDescription = dynamoDbInstance.describeTable(tableName).getTable();
 
@@ -49,13 +51,14 @@ public class DynamoDbTestUtils {
 
     /**
      * For a list of tables, check that the table(s) have the expected properties set for BillingMode.PROVISIONED.
-     * @param testTables list of tables to verify
-     * @param dynamoDbInstance the AmazonDynamoDB instance
+     *
+     * @param testTables         list of tables to verify
+     * @param dynamoDbInstance   the AmazonDynamoDB instance
      * @param expectedThroughput the expected ProvisionedThroughput value
      */
     public static void assertProvisionedIsSetForSetOfTables(List<String> testTables, AmazonDynamoDB dynamoDbInstance,
-                                                      Long expectedThroughput) {
-        for (String table: testTables) {
+                                                            Long expectedThroughput) {
+        for (String table : testTables) {
             assertProvisionedIsSet(table, dynamoDbInstance, expectedThroughput);
         }
     }
@@ -72,12 +75,13 @@ public class DynamoDbTestUtils {
     /**
      * For an expected billing mode, check that the table has the expected billing mode set as well as associated
      * provisionedThroughput set where applicable.
-     * @param request the CreateTableRequest
-     * @param expectedBillingMode the expected BillingMode
+     *
+     * @param request                       the CreateTableRequest
+     * @param expectedBillingMode           the expected BillingMode
      * @param expectedProvisionedThroughput the expected ProvisionedThroughput value
      */
     public static void assertExpectedBillingModeIsSet(CreateTableRequest request, BillingMode expectedBillingMode,
-                                                Long expectedProvisionedThroughput) {
+                                                      Long expectedProvisionedThroughput) {
 
         if (expectedBillingMode == null || expectedBillingMode.equals(BillingMode.PROVISIONED)) {
 
