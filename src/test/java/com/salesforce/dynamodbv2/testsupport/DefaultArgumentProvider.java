@@ -77,8 +77,6 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
     @Retention(RetentionPolicy.RUNTIME)
     public @interface DefaultArgumentProviderConfig {
 
-        boolean useDynalite() default false;
-
         Class<? extends TestSetup> testSetup() default DefaultTestSetup.class;
 
         String[] tables() default {};
@@ -105,9 +103,6 @@ public class DefaultArgumentProvider implements ArgumentsProvider {
         Method testMethod = extensionContext.getRequiredTestMethod();
         DefaultArgumentProviderConfig config = testMethod.getAnnotation(DefaultArgumentProviderConfig.class);
         if (config != null) {
-            if (config.useDynalite()) {
-                argumentBuilder.withAmazonDynamoDb(DynaliteAmazonDynamoDb.getAmazonDynamoDB());
-            }
             if (config.testSetup().equals(DefaultTestSetup.class)) {
                 testSetup = new DefaultTestSetup(config.tables());
             } else {

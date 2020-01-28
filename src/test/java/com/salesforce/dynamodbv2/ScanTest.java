@@ -49,8 +49,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -254,7 +254,7 @@ class ScanTest {
     }
 
     private static class ScanTestSetup extends DefaultTestSetup {
-        final List<Integer> orgPutCounts = ImmutableList.of(100, 10, 0);
+        final List<Integer> orgPutCounts = ImmutableList.of(200, 10, 0);
         final Map<String, Set<Integer>> orgItemKeys = new HashMap<>();
 
         ScanTestSetup() {
@@ -269,13 +269,16 @@ class ScanTest {
             orgItemKeys.put(org, itemKeys);
             // insert some data for another tenant as noise
             int ordinal = (Integer.parseInt(org.substring(org.indexOf("-") + 1)) - 1) % ORGS_PER_TEST;
-            int putCount = ordinal < orgPutCounts.size() ? orgPutCounts.get(ordinal) : new Random().nextInt(10);
+            int putCount = ordinal < orgPutCounts.size()
+                ? orgPutCounts.get(ordinal)
+                : ThreadLocalRandom.current().nextInt(10);
             for (int i = 0; i < putCount; i++) {
-                amazonDynamoDb.putItem(
-                    new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD, createAttributeValue(
-                        hashKeyAttrType, String.valueOf(i)))));
-                itemKeys.add(i);
+                int randomInt = ThreadLocalRandom.current().nextInt(-100000, 100000);
+                itemKeys.add(randomInt);
             }
+            itemKeys.forEach(n -> amazonDynamoDb.putItem(
+                new PutItemRequest(TABLE1, ImmutableMap.of(HASH_KEY_FIELD,
+                    createAttributeValue(hashKeyAttrType, String.valueOf(n))))));
         }
     }
 

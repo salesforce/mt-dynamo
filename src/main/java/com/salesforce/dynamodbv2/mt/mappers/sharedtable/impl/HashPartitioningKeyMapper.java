@@ -79,7 +79,8 @@ public class HashPartitioningKeyMapper {
     }
 
     int getBucketNumber(ScalarAttributeType virtualHkType, AttributeValue virtualHkValue) {
-        return getPrimitiveValueHashCode(virtualHkType, virtualHkValue) % numBucketsPerVirtualTable;
+        int valueHashCode = getPrimitiveValueHashCode(virtualHkType, virtualHkValue);
+        return Math.abs(valueHashCode) % numBucketsPerVirtualTable;
     }
 
     int getNumberOfBucketsPerVirtualTable() {

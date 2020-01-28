@@ -40,7 +40,7 @@ public class DynamoDbTestUtils {
                                               Long expectedThroughput) {
         TableDescription tableDescription = dynamoDbInstance.describeTable(tableName).getTable();
 
-        assertEquals(BillingMode.PROVISIONED.toString(), tableDescription.getBillingModeSummary().getBillingMode());
+        assertNull(tableDescription.getBillingModeSummary());
 
         assertNotNull(tableDescription.getProvisionedThroughput());
         assert (tableDescription.getProvisionedThroughput().getReadCapacityUnits().equals(expectedThroughput));
