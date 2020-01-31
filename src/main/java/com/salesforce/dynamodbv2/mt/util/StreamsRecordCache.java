@@ -176,9 +176,9 @@ class StreamsRecordCache {
          *
          * @param predecessor Segment immediately preceding this one in the shard.
          * @param successor   Segment immediately succeeding this one in the shard. Must not overlap with predecessor.
-         * @return Sub-segment  That has no overlap with predecessor or successor.
+         * @return Subsegment  That has no overlap with predecessor or successor.
          */
-        Segment subSegment(@Nullable Segment predecessor, @Nullable Segment successor) {
+        Segment subsegment(@Nullable Segment predecessor, @Nullable Segment successor) {
             // if this is the first record
             if (predecessor == null && successor == null) {
                 return this;
@@ -246,7 +246,7 @@ class StreamsRecordCache {
 
         /**
          * Establishes order over segments across streams and shards by approximate creation time. The method
-         * {@link #subSegment(Segment, Segment)} ensures that {@link #creationTime} of segments for a given shard is
+         * {@link #subsegment(Segment, Segment)} ensures that {@link #creationTime} of segments for a given shard is
          * monotonically increasing. Tiebreakers are broken by starting sequence number. Since those are guaranteed to
          * be strictly monotonically increasing for a given stream shard, we guarantee that segments within a shard are
          * evicted in order of sequence numbers, i.e., oldest-out-first. Across stream shards, the order is roughly
@@ -463,7 +463,7 @@ class StreamsRecordCache {
                     segments.computeIfAbsent(streamShardId, k -> new TreeMap<>());
 
                 // lookup segments that immediately precede and succeed new segment to drop overlapping records
-                cacheSegment = segment.subSegment(
+                cacheSegment = segment.subsegment(
                     getValue(shardCache::floorEntry, sequenceNumber),
                     getValue(shardCache::higherEntry, sequenceNumber)
                 );

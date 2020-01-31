@@ -24,7 +24,7 @@ class StreamsRecordCacheTest {
         return at(mockSequenceNumber(sn));
     }
 
-    static List<Arguments> subSegmentArgs() {
+    static List<Arguments> subsegmentArgs() {
         final StreamShardId ssid = new StreamShardId("stream1", "shard1");
         return Arrays.asList(
             Arguments.of(
@@ -61,12 +61,12 @@ class StreamsRecordCacheTest {
     }
 
     /**
-     * Verifies that sub-segments are computed correctly.
+     * Verifies that subsegments are computed correctly.
      */
     @ParameterizedTest
-    @MethodSource("subSegmentArgs")
+    @MethodSource("subsegmentArgs")
     void testSubSegment(Segment segment, Segment predecessor, Segment successor, Segment expected) {
-        assertEquals(expected, segment.subSegment(predecessor, successor));
+        assertEquals(expected, segment.subsegment(predecessor, successor));
     }
 
     static List<Arguments> getRecordsArgs() {
@@ -97,7 +97,7 @@ class StreamsRecordCacheTest {
     }
 
     /**
-     * Verifies that sub-list of records is computed correctly.
+     * Verifies that sublist of records is computed correctly.
      */
     @ParameterizedTest
     @MethodSource("getRecordsArgs")

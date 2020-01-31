@@ -31,6 +31,7 @@
       <w>msgroi</w>
       <w>multitenancy</w>
       <w>multitenant</w>
+      <w>noncontiguous</w>
       <w>orgs</w>
       <w>parallelizing</w>
       <w>restorable</w>
@@ -41,6 +42,7 @@
       <w>signum</w>
       <w>sqlite</w>
       <w>streamsadapter</w>
+      <w>subsegement</w>
       <w>transactionality</w>
       <w>unchecks</w>
       <w>unprefixed</w>

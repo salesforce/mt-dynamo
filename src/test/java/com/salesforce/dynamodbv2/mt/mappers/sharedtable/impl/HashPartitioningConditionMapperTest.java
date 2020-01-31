@@ -287,7 +287,7 @@ class HashPartitioningConditionMapperTest {
                     "#field2 BETWEEN :value2 AND :value3",
                     getPhysicalRkValueMap(":value2", new byte[0],
                         ":value3", new byte[] { 4, 5, 6, 0 })));
-                // HK RK table: "vhk = :vhk AND vrk < :vrk" (flavor 2: vrk ends with non-zero)
+                // HK RK table: "vhk = :vhk AND vrk < :vrk" (flavor 2: vrk ends with nonzero)
                 inputs.add(Arguments.of(VIRTUAL_HK_RK_TABLE, useSecondaryIndex, virtualRkField + " < :vrk",
                     ImmutableMap.of(":vrk", getVirtualRkValue(new byte[] { 4, 5, 6 })),
                     "#field2 BETWEEN :value2 AND :value3",
