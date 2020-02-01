@@ -266,7 +266,7 @@ public class HashPartitioningKeyMapper {
         }
 
         private static byte toSignumByte(int signum) {
-            // map signum from range [-1, 1] to non-negative range [0, 2]
+            // map signum from range [-1, 1] to nonnegative range [0, 2]
             return (byte) (signum + 1);
         }
 

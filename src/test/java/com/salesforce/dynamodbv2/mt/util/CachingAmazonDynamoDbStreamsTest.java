@@ -280,7 +280,7 @@ class CachingAmazonDynamoDbStreamsTest {
     private static final String streamArn = "stream1";
     private static final String shardId = "shard1";
     private static final List<Record> records = IntStream.range(0, 10)
-        .map(i -> i * 10) // multiples of 10 to simulate non-contiguous nature
+        .map(i -> i * 10) // multiples of 10 to simulate noncontiguous nature
         .mapToObj(StreamsTestUtil::mockRecord)
         .collect(toList());
 
