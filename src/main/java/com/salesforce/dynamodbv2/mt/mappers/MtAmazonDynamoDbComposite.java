@@ -9,6 +9,7 @@ package com.salesforce.dynamodbv2.mt.mappers;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemRequest;
 import com.amazonaws.services.dynamodbv2.model.BatchGetItemResult;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
@@ -69,7 +70,8 @@ public class MtAmazonDynamoDbComposite extends MtAmazonDynamoDbBase {
             MtAmazonDynamoDbBase next = iterator.next();
             checkArgument(Objects.equals(first.getMtContext(), next.getMtContext()),
                 "Delegates must share the same mt context provider");
-            checkArgument(Objects.equals(first.getAmazonDynamoDb(), next.getAmazonDynamoDb()),
+            checkArgument(Objects.equals(disregardLogger(first.getAmazonDynamoDb()),
+                disregardLogger(next.getAmazonDynamoDb())),
                 "Delegates must share the same parent AmazonDynamoDB");
             checkArgument(Objects.equals(first.getMeterRegistry(), next.getMeterRegistry()),
                 "Delegates must share the same meter registry");
@@ -79,6 +81,12 @@ public class MtAmazonDynamoDbComposite extends MtAmazonDynamoDbBase {
                 "Delegates must share the same scan virtual table key");
         }
         return first;
+    }
+
+    private static AmazonDynamoDB disregardLogger(AmazonDynamoDB amazonDynamoDB) {
+        return amazonDynamoDB instanceof MtAmazonDynamoDbLogger
+            ? ((MtAmazonDynamoDbLogger) amazonDynamoDB).getAmazonDynamoDb()
+            : amazonDynamoDB;
     }
 
     Collection<MtAmazonDynamoDbBase> getDelegates() {
