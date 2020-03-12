@@ -217,10 +217,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.1.2</version>
                 <!--
                      Adding the maven-dependency-analyzer 1.1.1 dependency here works around bug using
-                     dependency:analyze 3.1.1 with jdk11.  This dependency can be removed when maven-dependency-plugin
+                     dependency:analyze 3.1.2 with jdk11.  This dependency can be removed when maven-dependency-plugin
                      3.1.2 is published to Maven central.
 
                      https://issues.apache.org/jira/browse/MDEP-613
