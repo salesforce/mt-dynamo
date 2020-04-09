@@ -9,7 +9,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -21,14 +20,14 @@ import java.util.Optional;
  */
 public interface CreateTableRequestFactory {
 
-    /*
+    /**
      * Takes a virtual table description and returns a CreateTableRequest corresponding physical table if one is found.
      */
     Optional<CreateTableRequest> getCreateTableRequest(DynamoTableDescription virtualTableDescription);
 
-    /*
-     * Returns a list of CreateTableRequests that will be created when the factory is initialized.
+    /**
+     * Returns whether the given physical table name belongs to a table that can be created by this factory.
      */
-    List<CreateTableRequest> getPhysicalTables();
+    boolean isPhysicalTable(String physicalTableName);
 
 }

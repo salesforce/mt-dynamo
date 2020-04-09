@@ -8,14 +8,10 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.String.format;
 
-import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
-import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.google.common.annotations.VisibleForTesting;
-import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -26,8 +22,6 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
 import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,55 +38,36 @@ public class TableMappingFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(TableMappingFactory.class);
 
-    private final AmazonDynamoDbAdminUtils dynamoDbAdminUtils;
     private final CreateTableRequestFactory createTableRequestFactory;
     private final MtAmazonDynamoDbContextProvider mtContext;
-    private final AmazonDynamoDB amazonDynamoDb;
     private final TablePartitioningStrategy partitioningStrategy;
     private final VirtualTableCreationValidator virtualTableCreationValidator;
-    private final int pollIntervalSeconds;
-    private final Map<String, DynamoTableDescription> physicalTableDescriptions;
+    private final PhysicalTableManager physicalTableManager;
 
     /**
      * TODO: write Javadoc.
      *
      * @param createTableRequestFactory maps virtual to physical table instances
      * @param mtContext                 the multitenant context provider
-     * @param amazonDynamoDb            the underlying {@code AmazonDynamoDB} delegate
-     * @param createTablesEagerly       a flag indicating whether to create physical tables eagerly at start time
-     * @param pollIntervalSeconds       the interval in seconds between attempts at checking the status of the table
-     *                                  being created
      */
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
                                MtAmazonDynamoDbContextProvider mtContext,
-                               AmazonDynamoDB amazonDynamoDb,
                                TablePartitioningStrategy partitioningStrategy,
-                               boolean createTablesEagerly,
-                               int pollIntervalSeconds) {
+                               PhysicalTableManager physicalTableManager) {
         this.createTableRequestFactory = createTableRequestFactory;
         this.mtContext = mtContext;
-        this.amazonDynamoDb = amazonDynamoDb;
-        this.dynamoDbAdminUtils = new AmazonDynamoDbAdminUtils(amazonDynamoDb);
         this.partitioningStrategy = partitioningStrategy;
         this.virtualTableCreationValidator = new VirtualTableCreationValidator(partitioningStrategy);
-        this.pollIntervalSeconds = pollIntervalSeconds;
-        this.physicalTableDescriptions = new ConcurrentHashMap<>();
-        if (createTablesEagerly) {
-            createTablesEagerly(createTableRequestFactory);
-        }
+        this.physicalTableManager = physicalTableManager;
     }
 
     CreateTableRequestFactory getCreateTableRequestFactory() {
         return createTableRequestFactory;
     }
 
-    private void createTablesEagerly(CreateTableRequestFactory createTableRequestFactory) {
-        createTableRequestFactory.getPhysicalTables().forEach(this::createTableIfNotExists);
-    }
-
     void validateCreateVirtualTableRequest(CreateTableRequest createVirtualTableRequest) {
         DynamoTableDescription virtualTable = new DynamoTableDescriptionImpl(createVirtualTableRequest);
-        DynamoTableDescription physicalTable = lookupPhysicalTable(virtualTable);
+        DynamoTableDescription physicalTable = new DynamoTableDescriptionImpl(lookupPhysicalTable(virtualTable));
 
         // validate physical table key types
         virtualTableCreationValidator.validatePhysicalTable(physicalTable);
@@ -108,10 +83,9 @@ public class TableMappingFactory {
      * Calls the provided CreateTableRequestFactory passing in the virtual table description and returns the
      * corresponding physical table.  Throws a ResourceNotFoundException if the implementation returns null.
      */
-    private DynamoTableDescription lookupPhysicalTable(DynamoTableDescription virtualTable) {
-        return new DynamoTableDescriptionImpl(
-            createTableRequestFactory.getCreateTableRequest(virtualTable).orElseThrow(() ->
-                new ResourceNotFoundException("table " + virtualTable.getTableName() + " is not a supported table")));
+    private CreateTableRequest lookupPhysicalTable(DynamoTableDescription virtualTable) {
+        return createTableRequestFactory.getCreateTableRequest(virtualTable).orElseThrow(() ->
+                new ResourceNotFoundException("table " + virtualTable.getTableName() + " is not a supported table"));
     }
 
     @VisibleForTesting
@@ -186,8 +160,8 @@ public class TableMappingFactory {
      * table is created, like the streamArn.
      */
     TableMapping getTableMapping(DynamoTableDescription virtualTable) {
-        DynamoTableDescription physicalTable = lookupPhysicalTable(virtualTable);
-        physicalTable = createTableIfNotExists(physicalTable.getCreateTableRequest());
+        CreateTableRequest createTableRequest = lookupPhysicalTable(virtualTable);
+        DynamoTableDescription physicalTable = physicalTableManager.ensurePhysicalTableExists(createTableRequest);
         Map<DynamoSecondaryIndex, DynamoSecondaryIndex> secondaryIndexMap =
             virtualTableCreationValidator.validateAndGetSecondaryIndexMap(virtualTable, physicalTable);
         TableMapping tableMapping = partitioningStrategy.createTableMapping(virtualTable, physicalTable,
@@ -195,32 +169,4 @@ public class TableMappingFactory {
         LOG.debug("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
     }
-
-    private DynamoTableDescription createTableIfNotExists(CreateTableRequest physicalTable) {
-        // does not exist, create
-        final String tableName = physicalTable.getTableName();
-        return physicalTableDescriptions.computeIfAbsent(tableName, ignored ->
-            new DynamoTableDescriptionImpl(getTableDescription(tableName)
-                .map(description -> {
-                    LOG.info(format("using existing physical table %s", tableName));
-                    return description;
-                }).orElseGet(() -> {
-                    LOG.info(format("creating physical table %s", physicalTable.getTableName()));
-                    dynamoDbAdminUtils.createTableIfNotExists(physicalTable, pollIntervalSeconds);
-                    return amazonDynamoDb.describeTable(tableName).getTable();
-                }))
-        );
-    }
-
-    private Optional<TableDescription> getTableDescription(String tableName) {
-        try {
-            return Optional.of(amazonDynamoDb.describeTable(tableName).getTable());
-        } catch (ResourceNotFoundException e) {
-            return Optional.empty();
-        } catch (IllegalStateException e) {
-            throw new RuntimeException("Mt context available.  When chaining, you must either set the mt context "
-                + "before building, or set createTablesEagerly=false");
-        }
-    }
-
 }

@@ -14,13 +14,19 @@ import static org.awaitility.Awaitility.await;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.DeleteTableRequest;
+import com.amazonaws.services.dynamodbv2.model.ListTablesResult;
 import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TableStatus;
+import com.google.common.base.Predicates;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Predicate;
 import org.awaitility.pollinterval.FixedPollInterval;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +108,25 @@ public class AmazonDynamoDbAdminUtils {
             .until(() -> !tableExists(tableName, TableStatus.DELETING));
     }
 
+    public Set<String> listTables() {
+        return listTables(Predicates.alwaysTrue());
+    }
+
+    public Set<String> listTables(Predicate<String> predicate) {
+        final Set<String> tableNames = new HashSet<>();
+        String lastEvaluatedTableName = null;
+        do {
+            final ListTablesResult listTablesResult = amazonDynamoDb.listTables(lastEvaluatedTableName);
+            for (String tableName : listTablesResult.getTableNames()) {
+                if (predicate.test(tableName)) {
+                    tableNames.add(tableName);
+                }
+            }
+            lastEvaluatedTableName = listTablesResult.getLastEvaluatedTableName();
+        } while (lastEvaluatedTableName != null);
+        return tableNames;
+    }
+
     private void awaitTableActive(String tableName, int pollIntervalSeconds) {
         int timeoutSeconds = TABLE_DDL_OPERATION_TIMEOUT_SECONDS;
         log.info("awaiting " + timeoutSeconds + "s for table=" + tableName + " to become active ...");
@@ -172,9 +197,16 @@ public class AmazonDynamoDbAdminUtils {
         }
     }
 
-    private TableDescription describeTable(String tableName) {
+    public TableDescription describeTable(String tableName) {
         return amazonDynamoDb.describeTable(tableName).getTable();
     }
 
+    public Optional<TableDescription> describeTableIfExists(String tableName) {
+        try {
+            return Optional.of(describeTable(tableName));
+        } catch (ResourceNotFoundException e) {
+            return Optional.empty();
+        }
+    }
 
 }

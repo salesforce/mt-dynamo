@@ -3,8 +3,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.CreateTableRequestFactory;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 
@@ -25,7 +23,8 @@ public class SingletonCreateTableRequestFactory implements CreateTableRequestFac
     }
 
     @Override
-    public List<CreateTableRequest> getPhysicalTables() {
-        return Collections.singletonList(createTableRequest);
+    public boolean isPhysicalTable(String physicalTableName) {
+        return createTableRequest.getTableName().equals(physicalTableName);
     }
+
 }
