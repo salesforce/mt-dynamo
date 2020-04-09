@@ -19,7 +19,6 @@ import com.amazonaws.services.dynamodbv2.model.ResourceInUseException;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.amazonaws.services.dynamodbv2.model.TableDescription;
 import com.amazonaws.services.dynamodbv2.model.TableStatus;
-import com.google.common.base.Predicates;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import java.time.Duration;
@@ -106,10 +105,6 @@ public class AmazonDynamoDbAdminUtils {
             .pollInterval(new FixedPollInterval(Duration.ofSeconds(pollIntervalSeconds)))
             .atMost(timeoutSeconds, SECONDS)
             .until(() -> !tableExists(tableName, TableStatus.DELETING));
-    }
-
-    public Set<String> listTables() {
-        return listTables(Predicates.alwaysTrue());
     }
 
     public Set<String> listTables(Predicate<String> predicate) {

@@ -208,9 +208,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName) {
-        checkArgument(isPhysicalTable(sharedTableName),
-            "Physical table does not belong to this shared table client: %s", sharedTableName);
+        return getContextParser(sharedTableName, true);
+    }
+
+    private Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName,
+                                                                                      boolean validateTableName) {
+        // skip valid table check if this is invoked by the scanAllTenants(), which either already did the check, or
+        // is invoked for backup snapshot tables, which the table mapping factory is not aware of
+        if (validateTableName) {
+            checkArgument(isPhysicalTable(sharedTableName),
+                "Physical table does not belong to this shared table client: %s", sharedTableName);
+        }
         DynamoTableDescription table = physicalTableManager.describeTable(sharedTableName);
+        checkArgument(table != null);
         String hashKeyName = table.getPrimaryKey().getHashKey();
         ScalarAttributeType hashKeyType = table.getPrimaryKey().getHashKeyType();
         return item -> partitioningStrategy.toContextAndTable(hashKeyType, item.get(hashKeyName));
@@ -435,9 +445,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         putItemRequest = putItemRequest.clone();
 
         // validate scan attributes are not populated
-        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
+        checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
             "Trying to update a reserved column name: " + scanTenantKey);
-        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanVirtualTableKey),
+        checkArgument(!putItemRequest.getItem().containsKey(scanVirtualTableKey),
             "Trying to update a reserved column name: " + scanVirtualTableKey);
 
         TableMapping tableMapping = getTableMapping(putItemRequest.getTableName()).get();
@@ -490,6 +500,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
             // if we are here, we are doing a multitenant scan on a shared table
+            checkArgument(isPhysicalTable(scanRequest.getTableName()),
+                "Non-context scan called for an invalid physical table: %s", scanRequest.getTableName());
             return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName()).get();
@@ -528,14 +540,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
-        Preconditions.checkArgument(isPhysicalTable(scanRequest.getTableName()));
         ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we are working with,
         // get the function to map the primary key back to
         // tuple (tenant, virtual table name, primary attributes)
         Function<Map<String, AttributeValue>, MtContextAndTable> contextParser =
-            getContextParser(scanRequest.getTableName());
+            getContextParser(scanRequest.getTableName(), false);
         List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             // go through each row in the scan and pull out the tenant and table information from the primary key to
@@ -598,10 +609,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // validate scan attributes are not being used
         if (updateItemRequest.getExpressionAttributeNames() != null) {
-            Preconditions.checkArgument(
+            checkArgument(
                 !updateItemRequest.getExpressionAttributeNames().containsKey(scanTenantKey),
                 "Trying to update a reserved column name: " + scanTenantKey);
-            Preconditions.checkArgument(
+            checkArgument(
                 !updateItemRequest.getExpressionAttributeNames().containsKey(scanVirtualTableKey),
                 "Trying to update a reserved column name: " + scanVirtualTableKey);
         }
@@ -709,7 +720,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
         if (backupManager.isPresent()) {
-            Preconditions.checkArgument(getMtContext().getContextOpt().isEmpty(),
+            checkArgument(getMtContext().getContextOpt().isEmpty(),
                 "Cannot delete tenant scoped backup");
             Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
             MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
@@ -731,19 +742,20 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
             Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
-            Preconditions.checkArgument(createBackupRequest.getTableName() == null,
+            checkArgument(createBackupRequest.getTableName() == null,
                 "Multitenant backups cannot backup individual tables, table-name arguments are disallowed");
             backupManager.get().createBackup(createBackupRequest);
 
             // list all physical tables belonging to this shared table client
-            Collection<String> origPhysicalTables = new AmazonDynamoDbAdminUtils(getAmazonDynamoDb()).listTables()
-                .stream().filter(this::isPhysicalTable).collect(Collectors.toSet());
+            Collection<String> origPhysicalTables = new AmazonDynamoDbAdminUtils(getAmazonDynamoDb())
+                .listTables(this::isPhysicalTable);
 
             ExecutorService executorService = Executors.newFixedThreadPool(origPhysicalTables.size());
 
+            String backupRequestTablePrefix = getSnapshotBackupRequestTablePrefix(createBackupRequest);
             List<Future<SnapshotResult>> futures = new ArrayList<>();
             for (String tableName : origPhysicalTables) {
-                String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." + tableName;
+                String snapshottedTable = backupRequestTablePrefix + tableName;
                 futures.add(executorService.submit(
                     snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
@@ -793,6 +805,24 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 snapshotResult.getTempSnapshotTable());
             return snapshotResult;
         };
+    }
+
+    /**
+     * Used by {@link MtSharedTableBackupManager#createBackupData}.
+     */
+    ScanResult scanBackupSnapshotTable(CreateBackupRequest createBackupRequest, ScanRequest scanRequest) {
+        final String backupRequestTablePrefix = getSnapshotBackupRequestTablePrefix(createBackupRequest);
+        checkArgument(scanRequest.getTableName().startsWith(backupRequestTablePrefix),
+            "Scan not called on a snapshot table of backup request (CreateBackupRequest: %s. Table: %s)",
+            createBackupRequest.getBackupName(), scanRequest.getTableName());
+        checkArgument(isPhysicalTable(scanRequest.getTableName().substring(backupRequestTablePrefix.length())),
+            "Scan not called on a snapshot table belonging to this client: %s",
+            scanRequest.getTableName());
+        return scanAllTenants(scanRequest);
+    }
+
+    private String getSnapshotBackupRequestTablePrefix(CreateBackupRequest createBackupRequest) {
+        return backupTablePrefix + createBackupRequest.getBackupName() + ".";
     }
 
     /**
