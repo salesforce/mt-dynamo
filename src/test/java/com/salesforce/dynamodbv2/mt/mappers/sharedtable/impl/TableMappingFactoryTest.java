@@ -121,6 +121,7 @@ import com.salesforce.dynamodbv2.dynamodblocal.AmazonDynamoDbLocal;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescriptionImpl;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrategy;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -202,14 +203,15 @@ class TableMappingFactoryTest {
     private TableMappingFactory createTestFactory(String tableName, boolean createEagerly) {
         final TablePartitioningStrategy strategy = mock(TablePartitioningStrategy.class);
         when(strategy.createTableMapping(any(), any(), any(), any())).thenReturn(mock(TableMapping.class));
+        final CreateTableRequest createTableRequest = simpleTable(tableName);
+        final PhysicalTableManager physicalTableManager = new PhysicalTableManager(dynamoDb, 0, true,
+            createEagerly ? Collections.singleton(createTableRequest) : Collections.emptyList());
 
         return new TableMappingFactory(
-            new SingletonCreateTableRequestFactory(simpleTable(tableName)),
+            new SingletonCreateTableRequestFactory(createTableRequest),
             Optional::empty,
-            dynamoDb,
             strategy,
-            createEagerly,
-            0
+            physicalTableManager
         );
     }
 

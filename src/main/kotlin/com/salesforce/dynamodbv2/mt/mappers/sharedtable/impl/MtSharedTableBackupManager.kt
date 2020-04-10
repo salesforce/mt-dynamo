@@ -45,12 +45,11 @@ import com.salesforce.dynamodbv2.mt.backups.TenantRestoreMetadata
 import com.salesforce.dynamodbv2.mt.backups.TenantTableBackupMetadata
 import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.TenantTable
-import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDbBase
 import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
-import java.util.ArrayList
+import java.util.*
 import java.util.stream.Collectors
 
 /**
@@ -166,7 +165,7 @@ open class MtSharedTableBackupManager(
         physicalTableName: String
     ): MtBackupMetadata {
         val startTime = System.currentTimeMillis()
-        val backupMetadata = createBackupData(createBackupRequest, physicalTableName, sharedTableMtDynamo)
+        val backupMetadata = createBackupData(createBackupRequest, physicalTableName)
         // write out actual backup data
         commitBackupMetadata(backupMetadata)
 
@@ -440,8 +439,7 @@ open class MtSharedTableBackupManager(
 
     protected open fun createBackupData(
         createBackupRequest: CreateBackupRequest,
-        physicalTableName: String,
-        mtDynamo: MtAmazonDynamoDbBase
+        physicalTableName: String
     ): MtBackupMetadata {
         var lastRow: TenantTableRow? = null
         val tenantTables = hashMapOf<TenantTableBackupMetadata, Long>()
@@ -449,7 +447,7 @@ open class MtSharedTableBackupManager(
         do {
             val scanRequest: ScanRequest = ScanRequest(physicalTableName)
                     .withExclusiveStartKey(lastRow?.attributeMap)
-            val scanResult = mtDynamo.scan(scanRequest)
+            val scanResult = sharedTableMtDynamo.scanBackupSnapshotTable(createBackupRequest, scanRequest)
             if (scanResult.lastEvaluatedKey != null) {
                 lastRow = TenantTableRow(scanResult.lastEvaluatedKey)
             }

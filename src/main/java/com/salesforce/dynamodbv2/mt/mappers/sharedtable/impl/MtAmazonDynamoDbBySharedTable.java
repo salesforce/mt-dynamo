@@ -59,8 +59,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupManager;
@@ -84,12 +84,12 @@ import com.salesforce.dynamodbv2.mt.util.StreamArn;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -120,9 +120,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Cache<Object, Optional<TableMapping>> tableMappingCache;
     private final TableMappingFactory tableMappingFactory;
     private final TablePartitioningStrategy partitioningStrategy;
+    private final PhysicalTableManager physicalTableManager;
     private final boolean deleteTableAsync;
     private final boolean truncateOnDeleteTable;
-    private final Map<String, DynamoTableDescription> mtTables;
     private final long getRecordsTimeLimit;
     private final Clock clock;
     private final Optional<MtBackupManager> backupManager;
@@ -137,6 +137,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * @param tableMappingFactory    the table-mapping factory for mapping virtual to physical table instances
      * @param partitioningStrategy   the table partitioning strategy
      * @param mtTableDescriptionRepo the {@code MtTableDescriptionRepo} impl
+     * @param physicalTableManager   manager that creates, deletes, and describes physical tables
      * @param deleteTableAsync       flag indicating whether to perform delete-table operations async (vs. sync)
      * @param truncateOnDeleteTable  flag indicating whether to delete all table data when a virtual table is deleted
      * @param getRecordsTimeLimit    soft time limit for getting records out of the shared stream.
@@ -154,6 +155,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                                          TableMappingFactory tableMappingFactory,
                                          TablePartitioningStrategy partitioningStrategy,
                                          MtTableDescriptionRepo mtTableDescriptionRepo,
+                                         PhysicalTableManager physicalTableManager,
                                          boolean deleteTableAsync,
                                          boolean truncateOnDeleteTable,
                                          long getRecordsTimeLimit,
@@ -170,11 +172,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         this.tableMappingCache = new MtCache<>(mtContext, tableMappingCache);
         this.tableMappingFactory = tableMappingFactory;
         this.partitioningStrategy = partitioningStrategy;
+        this.physicalTableManager = physicalTableManager;
         this.deleteTableAsync = deleteTableAsync;
         this.truncateOnDeleteTable = truncateOnDeleteTable;
-        this.mtTables = tableMappingFactory.getCreateTableRequestFactory().getPhysicalTables().stream()
-            .map(DynamoTableDescriptionImpl::new)
-            .collect(Collectors.toMap(DynamoTableDescription::getTableName, Function.identity()));
         this.getRecordsTimeLimit = getRecordsTimeLimit;
         this.clock = clock;
 
@@ -196,7 +196,11 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     protected boolean isMtTable(String tableName) {
-        return mtTables.containsKey(tableName) && !tableName.startsWith(backupTablePrefix);
+        return isPhysicalTable(tableName) && !tableName.startsWith(backupTablePrefix);
+    }
+
+    private boolean isPhysicalTable(String tableName) {
+        return tableMappingFactory.getCreateTableRequestFactory().isPhysicalTable(tableName);
     }
 
     public MtTableDescriptionRepo getMtTableDescriptionRepo() {
@@ -204,7 +208,18 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName) {
-        DynamoTableDescription table = mtTables.get(sharedTableName);
+        return getContextParser(sharedTableName, true);
+    }
+
+    private Function<Map<String, AttributeValue>, MtContextAndTable> getContextParser(String sharedTableName,
+                                                                                      boolean validateTableName) {
+        // skip valid table check if this is invoked by the scanAllTenants(), which either already did the check, or
+        // is invoked for backup snapshot tables, which the table mapping factory is not aware of
+        if (validateTableName) {
+            checkArgument(isPhysicalTable(sharedTableName),
+                "Physical table does not belong to this shared table client: %s", sharedTableName);
+        }
+        DynamoTableDescription table = physicalTableManager.describeTable(sharedTableName);
         checkArgument(table != null);
         String hashKeyName = table.getPrimaryKey().getHashKey();
         ScalarAttributeType hashKeyType = table.getPrimaryKey().getHashKeyType();
@@ -430,9 +445,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         putItemRequest = putItemRequest.clone();
 
         // validate scan attributes are not populated
-        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
+        checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
             "Trying to update a reserved column name: " + scanTenantKey);
-        Preconditions.checkArgument(!putItemRequest.getItem().containsKey(scanVirtualTableKey),
+        checkArgument(!putItemRequest.getItem().containsKey(scanVirtualTableKey),
             "Trying to update a reserved column name: " + scanVirtualTableKey);
 
         TableMapping tableMapping = getTableMapping(putItemRequest.getTableName()).get();
@@ -485,6 +500,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public ScanResult scan(ScanRequest scanRequest) {
         if (getMtContext().getContextOpt().isEmpty()) {
             // if we are here, we are doing a multitenant scan on a shared table
+            checkArgument(isPhysicalTable(scanRequest.getTableName()),
+                "Non-context scan called for an invalid physical table: %s", scanRequest.getTableName());
             return scanAllTenants(scanRequest);
         }
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName()).get();
@@ -523,14 +540,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     }
 
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
-        Preconditions.checkArgument(mtTables.containsKey(scanRequest.getTableName()), scanRequest.getTableName());
         ScanResult scanResult = getAmazonDynamoDb().scan(scanRequest);
 
         // given the shared table we are working with,
         // get the function to map the primary key back to
         // tuple (tenant, virtual table name, primary attributes)
         Function<Map<String, AttributeValue>, MtContextAndTable> contextParser =
-            getContextParser(scanRequest.getTableName());
+            getContextParser(scanRequest.getTableName(), false);
         List<Map<String, AttributeValue>> unpackedItems = new ArrayList<>(scanResult.getItems().size());
         for (Map<String, AttributeValue> item : scanResult.getItems()) {
             // go through each row in the scan and pull out the tenant and table information from the primary key to
@@ -593,10 +609,10 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
         // validate scan attributes are not being used
         if (updateItemRequest.getExpressionAttributeNames() != null) {
-            Preconditions.checkArgument(
+            checkArgument(
                 !updateItemRequest.getExpressionAttributeNames().containsKey(scanTenantKey),
                 "Trying to update a reserved column name: " + scanTenantKey);
-            Preconditions.checkArgument(
+            checkArgument(
                 !updateItemRequest.getExpressionAttributeNames().containsKey(scanVirtualTableKey),
                 "Trying to update a reserved column name: " + scanVirtualTableKey);
         }
@@ -704,7 +720,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     @Override
     public DeleteBackupResult deleteBackup(DeleteBackupRequest deleteBackupRequest) {
         if (backupManager.isPresent()) {
-            Preconditions.checkArgument(getMtContext().getContextOpt().isEmpty(),
+            checkArgument(getMtContext().getContextOpt().isEmpty(),
                 "Cannot delete tenant scoped backup");
             Preconditions.checkNotNull(deleteBackupRequest.getBackupArn(), "Must pass backup arn.");
             MtBackupMetadata backupMetadata = backupManager.get().deleteBackup(deleteBackupRequest.getBackupArn());
@@ -726,17 +742,20 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     public CreateBackupResult createBackup(CreateBackupRequest createBackupRequest) {
         if (backupManager.isPresent()) {
             Preconditions.checkNotNull(createBackupRequest.getBackupName(), "Must pass backup name.");
-            Preconditions.checkArgument(createBackupRequest.getTableName() == null,
+            checkArgument(createBackupRequest.getTableName() == null,
                 "Multitenant backups cannot backup individual tables, table-name arguments are disallowed");
             backupManager.get().createBackup(createBackupRequest);
 
-            ExecutorService executorService = Executors.newFixedThreadPool(mtTables.keySet().size());
+            // list all physical tables belonging to this shared table client
+            Collection<String> origPhysicalTables = new AmazonDynamoDbAdminUtils(getAmazonDynamoDb())
+                .listTables(this::isPhysicalTable);
 
+            ExecutorService executorService = Executors.newFixedThreadPool(origPhysicalTables.size());
+
+            String backupRequestTablePrefix = getSnapshotBackupRequestTablePrefix(createBackupRequest);
             List<Future<SnapshotResult>> futures = new ArrayList<>();
-            Set<String> origMtTables = ImmutableSet.copyOf(mtTables.keySet());
-            for (String tableName : origMtTables) {
-                String snapshottedTable = backupTablePrefix + createBackupRequest.getBackupName() + "." + tableName;
-                mtTables.put(snapshottedTable, mtTables.get(tableName));
+            for (String tableName : origPhysicalTables) {
+                String snapshottedTable = backupRequestTablePrefix + tableName;
                 futures.add(executorService.submit(
                     snapshotScanAndBackup(createBackupRequest, tableName, snapshottedTable)));
             }
@@ -753,7 +772,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 executorService.shutdown();
                 for (SnapshotResult result : snapshotResults) {
                     backupManager.get().getMtBackupTableSnapshotter().cleanup(result, getAmazonDynamoDb());
-                    mtTables.remove(result.getTempSnapshotTable());
                 }
             }
 
@@ -787,6 +805,24 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 snapshotResult.getTempSnapshotTable());
             return snapshotResult;
         };
+    }
+
+    /**
+     * Used by {@link MtSharedTableBackupManager#createBackupData}.
+     */
+    ScanResult scanBackupSnapshotTable(CreateBackupRequest createBackupRequest, ScanRequest scanRequest) {
+        final String backupRequestTablePrefix = getSnapshotBackupRequestTablePrefix(createBackupRequest);
+        checkArgument(scanRequest.getTableName().startsWith(backupRequestTablePrefix),
+            "Scan not called on a snapshot table of backup request (CreateBackupRequest: %s. Table: %s)",
+            createBackupRequest.getBackupName(), scanRequest.getTableName());
+        checkArgument(isPhysicalTable(scanRequest.getTableName().substring(backupRequestTablePrefix.length())),
+            "Scan not called on a snapshot table belonging to this client: %s",
+            scanRequest.getTableName());
+        return scanAllTenants(scanRequest);
+    }
+
+    private String getSnapshotBackupRequestTablePrefix(CreateBackupRequest createBackupRequest) {
+        return backupTablePrefix + createBackupRequest.getBackupName() + ".";
     }
 
     /**

@@ -12,6 +12,7 @@ import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.GSI;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static java.util.Optional.empty;
@@ -43,6 +44,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtAmazonDynamoDbBySharedTable;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.MtSharedTableBackupManagerBuilder;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.PhysicalTableManager;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RandomPartitioningStrategy;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMapping;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.TableMappingFactory;
@@ -53,8 +55,10 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -180,7 +184,10 @@ public class SharedTableBuilder implements TableBuilder {
      */
     private static final String DEFAULT_BACKUP_TABLE_PREFIX = "mt-table-snapshot-";
 
+    private CreateTableRequestFactory createTableRequestFactory;
     private List<CreateTableRequest> createTableRequests;
+    private Boolean canCreatePhysicalTables = Boolean.TRUE;
+
     private Long defaultProvisionedThroughput; /* TODO if this is ever going to be used in production we will need
                                                        more granularity, like at the table, index, read, write level */
 
@@ -217,13 +224,31 @@ public class SharedTableBuilder implements TableBuilder {
         return tablePrefix.map(tablePrefix1 -> tablePrefix1 + tableName).orElse(tableName);
     }
 
+    public SharedTableBuilder withCanCreatePhysicalTables(boolean canCreatePhysicalTables) {
+        this.canCreatePhysicalTables = canCreatePhysicalTables;
+        return this;
+    }
+
     /**
-     * TODO: write Javadoc.
-     *
-     * @param createTableRequests the {@code CreateTableRequest}s representing the physical tables
-     * @return a newly created {@code SharedTableBuilder} based on the contents of the {@code SharedTableBuilder}
+     * Sets the {@link CreateTableRequestFactory} that decides how to map each virtual table to a physical table.
+     * <p/>
+     * NOTE: Can't be used if {@link #withCreateTableRequests} is also used.
+     */
+    public SharedTableBuilder withCreateTableRequestFactory(CreateTableRequestFactory createTableRequestFactory) {
+        checkState(createTableRequests == null,
+            "Cannot specify CreateTableRequestFactory when CreateTableRequests are already specified");
+        this.createTableRequestFactory = createTableRequestFactory;
+        return this;
+    }
+
+    /**
+     * Sets the {@link CreateTableRequest}s representing the physical tables that virtual tables can be mapped to.
+     * <p/>
+     * NOTE: Can't be used if {@link #withCreateTableRequestFactory} is also used.
      */
     public SharedTableBuilder withCreateTableRequests(CreateTableRequest... createTableRequests) {
+        checkState(createTableRequestFactory == null,
+            "Cannot specify CreateTableRequests when CreateTableRequestFactory is already specified");
         if (this.createTableRequests == null) {
             this.createTableRequests = new ArrayList<>();
         }
@@ -318,16 +343,14 @@ public class SharedTableBuilder implements TableBuilder {
         setDefaults();
         withName("SharedTableBuilder");
         validate();
+        final PhysicalTableManager physicalTableManager = new PhysicalTableManager(amazonDynamoDb, pollIntervalSeconds,
+            canCreatePhysicalTables, createTablesEagerly ? createTableRequests : Collections.emptyList());
         if (tableMappingFactory == null) {
-            CreateTableRequestFactory createTableRequestFactory = new SharedTableCreateTableRequestFactory(
-                partitioningStrategy.getTablePrimaryKeyMapper(), createTableRequests, getTablePrefix());
             tableMappingFactory = new TableMappingFactory(
                 createTableRequestFactory,
                 mtContext,
-                amazonDynamoDb,
                 partitioningStrategy,
-                createTablesEagerly,
-                pollIntervalSeconds
+                physicalTableManager
             );
         }
         return new MtAmazonDynamoDbBySharedTable(name,
@@ -336,6 +359,7 @@ public class SharedTableBuilder implements TableBuilder {
             tableMappingFactory,
             partitioningStrategy,
             mtTableDescriptionRepo,
+            physicalTableManager,
             deleteTableAsync,
             truncateOnDeleteTable,
             getRecordsTimeLimit,
@@ -364,21 +388,21 @@ public class SharedTableBuilder implements TableBuilder {
         if (partitioningStrategy == null) {
             partitioningStrategy = new RandomPartitioningStrategy();
         }
-        if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
-            this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
-                this.billingMode, this.streamsEnabled, this.binaryHashKey, this.partitioningStrategy);
-        } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
-            this.createTableRequests = createTableRequests.stream()
-                .map(createTableRequest ->
-                    createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
-                .collect(Collectors.toList());
+        if (createTableRequestFactory == null) {
+            if (this.createTableRequests == null || this.createTableRequests.isEmpty()) {
+                this.createTableRequests = buildDefaultCreateTableRequests(this.defaultProvisionedThroughput,
+                    this.billingMode, this.streamsEnabled, this.binaryHashKey, this.partitioningStrategy);
+            } else if (this.billingMode.equals(BillingMode.PAY_PER_REQUEST)) {
+                this.createTableRequests = createTableRequests.stream()
+                    .map(createTableRequest ->
+                        createTableRequest.withBillingMode(BillingMode.PAY_PER_REQUEST))
+                    .collect(Collectors.toList());
+            }
+            createTableRequestFactory = new StaticCreateTableRequestFactory(
+                partitioningStrategy.getTablePrimaryKeyMapper(), createTableRequests, getTablePrefix());
         }
-        withBillingMode(this.billingMode);
         if (name == null) {
             name = "MtAmazonDynamoDbBySharedTable";
-        }
-        if (this.billingMode == null) {
-            this.billingMode = BillingMode.PROVISIONED;
         }
         if (truncateOnDeleteTable == null) {
             truncateOnDeleteTable = false;
@@ -386,7 +410,10 @@ public class SharedTableBuilder implements TableBuilder {
         if (deleteTableAsync == null) {
             deleteTableAsync = false;
         }
-        if (createTablesEagerly == null) {
+        if (canCreatePhysicalTables == null) {
+            canCreatePhysicalTables = true;
+        }
+        if (createTablesEagerly == null && canCreatePhysicalTables && createTableRequests != null) {
             createTablesEagerly = true;
         }
         if (pollIntervalSeconds == null) {
@@ -623,14 +650,22 @@ public class SharedTableBuilder implements TableBuilder {
         checkNotNull(amazonDynamoDb, "amazonDynamoDb is required");
         checkNotNull(mtContext, "mtContext is required");
 
-        boolean tableCollidesWithBackupPrefix = createTableRequests
-            .stream()
-            .map(CreateTableRequest::getTableName)
-            .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
-        Preconditions.checkState(!tableCollidesWithBackupPrefix,
-            "Cannot suffix a physical table name with "
-                + DEFAULT_BACKUP_TABLE_PREFIX
-                + ". Either change your table names or override the default backup suffix.");
+        if (createTableRequests != null) {
+            boolean tableCollidesWithBackupPrefix = createTableRequests
+                .stream()
+                .map(CreateTableRequest::getTableName)
+                .anyMatch(c -> c.startsWith(DEFAULT_BACKUP_TABLE_PREFIX));
+            checkState(!tableCollidesWithBackupPrefix,
+                "Cannot prefix a physical table name with "
+                    + DEFAULT_BACKUP_TABLE_PREFIX
+                    + ". Either change your table names or override the default backup suffix.");
+        }
+        if (createTablesEagerly) {
+            checkState(canCreatePhysicalTables,
+                "Cannot create physical tables eagerly when creating physical tables is not allowed");
+            checkState(createTableRequests != null,
+                "Cannot create physical tables eagerly when there isn't a static set of tables");
+        }
     }
 
     private static class CreateTableRequestWrapper implements HasPrimaryKey {
@@ -656,19 +691,23 @@ public class SharedTableBuilder implements TableBuilder {
      * Implements the request factory that is capable of mapping virtual tables to the physical tables underlying
      * the SharedTable multitenancy strategy as described in the class-level Javadoc.
      */
-    static class SharedTableCreateTableRequestFactory implements CreateTableRequestFactory {
+    private static class StaticCreateTableRequestFactory implements CreateTableRequestFactory {
 
         private final PrimaryKeyMapper primaryKeyMapper;
         private final List<CreateTableRequest> createTableRequests;
+        private final Set<String> tableNames;
 
-        SharedTableCreateTableRequestFactory(PrimaryKeyMapper primaryKeyMapper,
-                                             List<CreateTableRequest> createTableRequests,
-                                             Optional<String> tablePrefix) {
+        StaticCreateTableRequestFactory(PrimaryKeyMapper primaryKeyMapper,
+                                        List<CreateTableRequest> createTableRequests,
+                                        Optional<String> tablePrefix) {
             this.primaryKeyMapper = primaryKeyMapper;
             this.createTableRequests = createTableRequests.stream()
                 .map(createTableRequest -> createTableRequest.withTableName(
                     prefix(tablePrefix, createTableRequest.getTableName())))
                 .collect(Collectors.toList());
+            this.tableNames = this.createTableRequests.stream()
+                .map(CreateTableRequest::getTableName)
+                .collect(Collectors.toSet());
         }
 
         @Override
@@ -692,8 +731,8 @@ public class SharedTableBuilder implements TableBuilder {
         }
 
         @Override
-        public List<CreateTableRequest> getPhysicalTables() {
-            return createTableRequests;
+        public boolean isPhysicalTable(String physicalTableName) {
+            return tableNames.contains(physicalTableName);
         }
 
     }
