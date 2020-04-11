@@ -49,7 +49,7 @@ import com.salesforce.dynamodbv2.mt.repo.MtTableDescriptionRepo
 import org.slf4j.LoggerFactory
 import java.io.InputStreamReader
 import java.nio.ByteBuffer
-import java.util.*
+import java.util.ArrayList
 import java.util.stream.Collectors
 
 /**

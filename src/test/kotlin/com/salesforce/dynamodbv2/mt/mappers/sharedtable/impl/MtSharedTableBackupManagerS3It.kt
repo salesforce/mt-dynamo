@@ -132,7 +132,7 @@ internal class MtSharedTableBackupManagerS3It {
         // now try restoring backed up data to new target table and validate data appears on target
         val tenantTableBackups = MT_CONTEXT.withContext(
                 tenantTable.tenantName,
-                Supplier<ListBackupsResult> {
+                Supplier {
                     sharedTableBinaryHashKey!!
                             .listBackups(ListBackupsRequest()
                                     .withTableName(tenantTable.virtualTableName))
