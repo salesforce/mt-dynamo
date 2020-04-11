@@ -200,7 +200,8 @@ public class MtAmazonDynamoDbByTable extends MtAmazonDynamoDbBase {
     /**
      * Run a scan on the given table specified {@code scanRequest}'s table name prefixed by the current tenant context.
      * If the context is not specified, run a scan against the {@code scanRequest}'s raw table name, with tenant context
-     * info encoded into the result item map keyed by {@link scanTenantKey} and {@link scanVirtualTableKey}.
+     * info encoded into the result item map keyed by {@link MtAmazonDynamoDbByTable#scanTenantKey} and
+     * {@link MtAmazonDynamoDbByTable#scanVirtualTableKey}.
      */
     @Override
     public ScanResult scan(ScanRequest scanRequest) {

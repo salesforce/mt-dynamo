@@ -140,7 +140,7 @@ class MtScanningSnapshotter : MtBackupTableSnapshotter() {
         var exclusiveStartKey: Map<String, AttributeValue>? = null
 
         do {
-            var oldTableScanRequest: ScanRequest = ScanRequest().withTableName(snapshotRequest.sourceTableName)
+            val oldTableScanRequest: ScanRequest = ScanRequest().withTableName(snapshotRequest.sourceTableName)
                     .withExclusiveStartKey(exclusiveStartKey)
             val scanResult = snapshotRequest.amazonDynamoDb.scan(oldTableScanRequest)
             scanResult.items.forEach { snapshotRequest.amazonDynamoDb.putItem(snapshotRequest.targetTableName, it) }
