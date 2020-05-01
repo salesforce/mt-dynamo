@@ -12,7 +12,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperToBinary;
@@ -69,11 +68,11 @@ public class HashPartitioningStrategy implements TablePartitioningStrategy {
     }
 
     @Override
-    public TableMapping createTableMapping(DynamoTableDescription virtualTable,
+    public TableMapping createTableMapping(String context,
+                                           DynamoTableDescription virtualTable,
                                            DynamoTableDescription physicalTable,
-                                           UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                           MtAmazonDynamoDbContextProvider mtContext) {
-        return new HashPartitioningTableMapping(virtualTable, physicalTable, secondaryIndexMapper, mtContext,
+                                           UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper) {
+        return new HashPartitioningTableMapping(context, virtualTable, physicalTable, secondaryIndexMapper,
             numBucketsPerVirtualTable);
     }
 }

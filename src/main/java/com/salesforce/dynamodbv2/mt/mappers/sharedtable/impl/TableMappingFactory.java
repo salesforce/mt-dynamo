@@ -12,7 +12,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
 import com.amazonaws.services.dynamodbv2.model.ResourceNotFoundException;
 import com.google.common.annotations.VisibleForTesting;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MappingException;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndexMapperTrackingAssigned;
@@ -39,7 +38,6 @@ public class TableMappingFactory {
     private static final Logger LOG = LoggerFactory.getLogger(TableMappingFactory.class);
 
     private final CreateTableRequestFactory createTableRequestFactory;
-    private final MtAmazonDynamoDbContextProvider mtContext;
     private final TablePartitioningStrategy partitioningStrategy;
     private final VirtualTableCreationValidator virtualTableCreationValidator;
     private final PhysicalTableManager physicalTableManager;
@@ -48,14 +46,11 @@ public class TableMappingFactory {
      * TODO: write Javadoc.
      *
      * @param createTableRequestFactory maps virtual to physical table instances
-     * @param mtContext                 the multitenant context provider
      */
     public TableMappingFactory(CreateTableRequestFactory createTableRequestFactory,
-                               MtAmazonDynamoDbContextProvider mtContext,
                                TablePartitioningStrategy partitioningStrategy,
                                PhysicalTableManager physicalTableManager) {
         this.createTableRequestFactory = createTableRequestFactory;
-        this.mtContext = mtContext;
         this.partitioningStrategy = partitioningStrategy;
         this.virtualTableCreationValidator = new VirtualTableCreationValidator(partitioningStrategy);
         this.physicalTableManager = physicalTableManager;
@@ -159,13 +154,13 @@ public class TableMappingFactory {
      * back onto the table mapping so it includes things that can only be determined after the physical
      * table is created, like the streamArn.
      */
-    TableMapping getTableMapping(DynamoTableDescription virtualTable) {
+    TableMapping getTableMapping(String context, DynamoTableDescription virtualTable) {
         CreateTableRequest createTableRequest = lookupPhysicalTable(virtualTable);
         DynamoTableDescription physicalTable = physicalTableManager.ensurePhysicalTableExists(createTableRequest);
         Map<DynamoSecondaryIndex, DynamoSecondaryIndex> secondaryIndexMap =
             virtualTableCreationValidator.validateAndGetSecondaryIndexMap(virtualTable, physicalTable);
-        TableMapping tableMapping = partitioningStrategy.createTableMapping(virtualTable, physicalTable,
-            secondaryIndexMap::get, mtContext);
+        TableMapping tableMapping = partitioningStrategy.createTableMapping(context, virtualTable, physicalTable,
+            secondaryIndexMap::get);
         LOG.debug("created virtual to physical table mapping: " + tableMapping.toString());
         return tableMapping;
     }

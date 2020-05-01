@@ -40,10 +40,11 @@ class RandomPartitioningTableMappingTest {
     private final DynamoTableDescription physicalTable = TableMappingTestUtil.buildTable("physicalTableName",
         new PrimaryKey("physicalHk", S, "physicalRk", N),
         ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S, "physicalGsiRk", N)));
-    private final RandomPartitioningTableMapping sut = new RandomPartitioningTableMapping(virtualTable,
+    private final RandomPartitioningTableMapping sut = new RandomPartitioningTableMapping(
+        "ctx",
+        virtualTable,
         physicalTable,
-        index -> index.getIndexName().equals("virtualGsi") ? physicalTable.findSi("physicalGsi") : null,
-        null
+        index -> index.getIndexName().equals("virtualGsi") ? physicalTable.findSi("physicalGsi") : null
     );
     private final Map<String, List<FieldMapping>> virtualToPhysicalFieldMappings = ImmutableMap.of(
         "virtualHk", ImmutableList.of(

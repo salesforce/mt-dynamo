@@ -31,8 +31,9 @@ class RandomPartitioningConditionMapper extends AbstractConditionMapper {
     private final RandomPartitioningTableMapping tableMapping;
     private final FieldMapper fieldMapper;
 
-    RandomPartitioningConditionMapper(RandomPartitioningTableMapping tableMapping, FieldMapper fieldMapper) {
-        super(tableMapping.getVirtualTable(), tableMapping.getItemMapper());
+    RandomPartitioningConditionMapper(RandomPartitioningTableMapping tableMapping,
+                                      FieldMapper fieldMapper) {
+        super(tableMapping.getContext(), tableMapping.getVirtualTable(), tableMapping.getItemMapper());
         this.tableMapping = tableMapping;
         this.fieldMapper = fieldMapper;
     }
@@ -69,7 +70,7 @@ class RandomPartitioningConditionMapper extends AbstractConditionMapper {
     }
 
     private AttributeValue applyFieldMapping(FieldMapping fieldMapping, AttributeValue value) {
-        return fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, value) : value;
+        return fieldMapping.isContextAware() ? fieldMapper.apply(context, fieldMapping, value) : value;
     }
 
     private String getRangeKeyCondition(ComparisonOperator operator, String fieldPlaceholder,
@@ -140,7 +141,7 @@ class RandomPartitioningConditionMapper extends AbstractConditionMapper {
                     AttributeValue virtualValue = request.getExpressionAttributeValues()
                         .get(valuePlaceholder); // {S: hkValue,}
                     AttributeValue physicalValue = fieldMapping.isContextAware()
-                        ? fieldMapper.apply(fieldMapping, virtualValue) // {S: ctx.virtualTable.hkValue,}
+                        ? fieldMapper.apply(context, fieldMapping, virtualValue) // {S: ctx.virtualTable.hkValue,}
                         : virtualValue;
                     request.putExpressionAttributeValue(valuePlaceholder, physicalValue);
                 }

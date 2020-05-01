@@ -18,13 +18,11 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Optional;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -40,9 +38,8 @@ class FieldMapperTest {
     private static final String CONTEXT = "context";
     private static final String TABLE_NAME = "table";
     private static final String PREFIX = CONTEXT + DELIMITER + TABLE_NAME + DELIMITER;
-    private static final MtAmazonDynamoDbContextProvider CONTEXT_PROVIDER = () -> Optional.of(CONTEXT);
-    private static final FieldMapper SFM = new StringFieldMapper(CONTEXT_PROVIDER, TABLE_NAME);
-    private static final FieldMapper BFM = new BinaryFieldMapper(CONTEXT_PROVIDER, TABLE_NAME);
+    private static final FieldMapper SFM = new StringFieldMapper(TABLE_NAME);
+    private static final FieldMapper BFM = new BinaryFieldMapper(TABLE_NAME);
     private static final byte[] TEST_BYTES = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
 
     private static ByteBuffer prefix(int valueLength) {
@@ -78,7 +75,7 @@ class FieldMapperTest {
               AttributeValue qualifiedAttributeValue) {
         FieldMapping fieldMapping = buildFieldMapping(virtualFieldType, physicalFieldType, indexType);
 
-        AttributeValue actualQualifiedAttributeValue = fieldMapper.apply(fieldMapping, attributeValue);
+        AttributeValue actualQualifiedAttributeValue = fieldMapper.apply(CONTEXT, fieldMapping, attributeValue);
 
         assertEquals(qualifiedAttributeValue, actualQualifiedAttributeValue);
     }
@@ -116,7 +113,7 @@ class FieldMapperTest {
                        Exception expected) {
         FieldMapping fieldMapping = buildFieldMapping(virtualFieldType, physicalFieldType, TABLE);
         try {
-            fieldMapper.apply(fieldMapping, new AttributeValue().withS("value"));
+            fieldMapper.apply(CONTEXT, fieldMapping, new AttributeValue().withS("value"));
             fail("Expected exception not thrown");
         } catch (Exception e) {
             assertEquals(expected.getClass(), e.getClass());
@@ -139,7 +136,7 @@ class FieldMapperTest {
     @ParameterizedTest
     @MethodSource("filterData")
     void testFilter(FieldMapper fieldMapper, AttributeValue value, boolean expected) {
-        assertEquals(expected, fieldMapper.createFilter().test(value));
+        assertEquals(expected, fieldMapper.createFilter(CONTEXT).test(value));
     }
 
     private FieldMapping buildFieldMapping(ScalarAttributeType sourceFieldType, ScalarAttributeType targetFieldType,

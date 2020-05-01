@@ -14,7 +14,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapperByTypeImpl;
@@ -77,10 +76,10 @@ public class RandomPartitioningStrategy implements TablePartitioningStrategy {
     }
 
     @Override
-    public TableMapping createTableMapping(DynamoTableDescription virtualTable,
+    public TableMapping createTableMapping(String context,
+                                           DynamoTableDescription virtualTable,
                                            DynamoTableDescription physicalTable,
-                                           UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                           MtAmazonDynamoDbContextProvider mtContext) {
-        return new RandomPartitioningTableMapping(virtualTable, physicalTable, secondaryIndexMapper, mtContext);
+                                           UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper) {
+        return new RandomPartitioningTableMapping(context, virtualTable, physicalTable, secondaryIndexMapper);
     }
 }

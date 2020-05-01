@@ -13,8 +13,6 @@ import com.amazonaws.services.dynamodbv2.model.QueryRequest;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
-import com.salesforce.dynamodbv2.mt.context.impl.MtAmazonDynamoDbContextProviderThreadLocalImpl;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.AbstractQueryAndScanMapper.QueryRequestWrapper;
@@ -47,13 +45,12 @@ class RandomPartitioningConditionMapperTest {
     private void executeKeyConditionsTest(KeyConditionTestInvocation testInvocation) {
         final KeyConditionTestInputs inputs = testInvocation.getInputs();
         final KeyConditionTestExpected expected = testInvocation.getExpected();
-        MtAmazonDynamoDbContextProvider mtContext = new MtAmazonDynamoDbContextProviderThreadLocalImpl();
-        mtContext.setContext(inputs.getOrg());
         DynamoTableDescription virtualTable = mock(DynamoTableDescription.class);
         when(virtualTable.getTableName()).thenReturn(inputs.getVirtualTableName());
         when(tableMapping.getVirtualTable()).thenReturn(virtualTable);
+        when(tableMapping.getContext()).thenReturn(testInvocation.inputs.org);
         RandomPartitioningConditionMapper sut = new RandomPartitioningConditionMapper(tableMapping,
-            new StringFieldMapper(mtContext, inputs.getVirtualTableName()));
+            new StringFieldMapper(inputs.getVirtualTableName()));
         RequestWrapper requestWrapper = inputs.getRequestWrapper();
         sut.mapFieldInConditionExpression(requestWrapper, inputs.getFieldMapping());
         expected.getAttributeNames().forEach((name, value) ->
@@ -116,10 +113,6 @@ class RandomPartitioningConditionMapperTest {
         KeyConditionTestInputs primaryExpression(String primaryExpression) {
             this.primaryExpression = primaryExpression;
             return this;
-        }
-
-        String getOrg() {
-            return org;
         }
 
         String getVirtualTableName() {
@@ -495,12 +488,12 @@ class RandomPartitioningConditionMapperTest {
             ImmutableMap.of("physicalGsi1", new PrimaryKey("physicalGsi1Hk", S),
                 "physicalGsi2", new PrimaryKey("physicalGsi2Hk", S, "physicalGsi2Rk", S)));
         RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+            "ctx",
             virtualTable,
             physicalTable,
             index -> index.getIndexName().equals("virtualGsi1")
                 ? physicalTable.findSi("physicalGsi1")
-                : physicalTable.findSi("physicalGsi2"),
-            () -> Optional.of("ctx")
+                : physicalTable.findSi("physicalGsi2")
         );
         ConditionMapper mapper = tableMapping.getConditionMapper();
 

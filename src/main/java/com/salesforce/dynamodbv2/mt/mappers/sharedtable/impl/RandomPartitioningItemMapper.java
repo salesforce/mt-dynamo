@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.util.CollectionUtils.isNullOrEmpty;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
@@ -25,16 +26,19 @@ import javax.annotation.Nullable;
  */
 class RandomPartitioningItemMapper implements ItemMapper {
 
+    private final String context;
     private final FieldMapper fieldMapper;
     private final List<FieldMapping> tableVirtualToPhysicalFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexVirtualToPhysicalFieldMappings;
     private final Map<String, List<FieldMapping>> allVirtualToPhysicalFieldMappings;
     private final Map<String, FieldMapping> physicalToVirtualFieldMappings;
 
-    RandomPartitioningItemMapper(FieldMapper fieldMapper,
+    RandomPartitioningItemMapper(String context,
+                                 FieldMapper fieldMapper,
                                  List<FieldMapping> tablePrimaryKeyFieldMappings,
                                  Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings,
                                  Map<String, List<FieldMapping>> allMappingsPerField) {
+        this.context = checkNotNull(context);
         this.fieldMapper = fieldMapper;
         this.tableVirtualToPhysicalFieldMappings = tablePrimaryKeyFieldMappings;
         this.indexVirtualToPhysicalFieldMappings = indexPrimaryKeyFieldMappings;
@@ -99,7 +103,7 @@ class RandomPartitioningItemMapper implements ItemMapper {
      */
     private void applyFieldMapping(Map<String, AttributeValue> item, FieldMapping fieldMapping, AttributeValue value) {
         item.put(fieldMapping.getTarget().getName(),
-            fieldMapping.isContextAware() ? fieldMapper.apply(fieldMapping, value) : value);
+            fieldMapping.isContextAware() ? fieldMapper.apply(context, fieldMapping, value) : value);
     }
 
     @Override

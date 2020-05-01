@@ -124,7 +124,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.TablePartitioningStrateg
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 
@@ -147,7 +146,7 @@ class TableMappingFactoryTest {
         // should not have called describe again
         reset(dynamoDb);
         final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
-        sut.getTableMapping(description);
+        sut.getTableMapping("ctx", description);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
@@ -163,12 +162,12 @@ class TableMappingFactoryTest {
 
         // should create table lazily
         final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
-        sut.getTableMapping(description);
+        sut.getTableMapping("ctx", description);
         assertEquals(TableStatus.ACTIVE.toString(), dynamoDb.describeTable(tableName).getTable().getTableStatus());
 
         // subsequent requests should no longer call describe
         reset(dynamoDb);
-        sut.getTableMapping(description);
+        sut.getTableMapping("ctx", description);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
@@ -185,12 +184,12 @@ class TableMappingFactoryTest {
         // expect that getting a table mapping describes the physical table
         final TableMappingFactory sut = createTestFactory(tableName, false);
         final DynamoTableDescription description = new DynamoTableDescriptionImpl(simpleTable("vtable"));
-        sut.getTableMapping(description);
+        sut.getTableMapping("ctx", description);
         verify(dynamoDb, atLeastOnce()).describeTable(tableName);
 
         // subsequent requests should no longer call describe
         reset(dynamoDb);
-        sut.getTableMapping(description);
+        sut.getTableMapping("ctx", description);
         verify(dynamoDb, never()).describeTable(any(String.class));
     }
 
@@ -209,7 +208,6 @@ class TableMappingFactoryTest {
 
         return new TableMappingFactory(
             new SingletonCreateTableRequestFactory(createTableRequest),
-            Optional::empty,
             strategy,
             physicalTableManager
         );

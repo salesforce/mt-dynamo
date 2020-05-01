@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
  */
 class RandomPartitioningItemMapperTest {
 
+    private static final String CONTEXT = "context";
     private static final String PREFIX = "PREFIX-";
 
     private static final DynamoTableDescription VIRTUAL_TABLE = TableMappingTestUtil.buildTable("virtualTable",
@@ -36,12 +37,13 @@ class RandomPartitioningItemMapperTest {
         new PrimaryKey("physicalHk", S, "physicalRk", S));
 
     private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
+        CONTEXT,
         VIRTUAL_TABLE,
         PHYSICAL_TABLE,
-        index -> null,
-        null
+        index -> null
     );
     private static final RandomPartitioningItemMapper SUT = new RandomPartitioningItemMapper(
+        CONTEXT,
         new MockFieldMapper(),
         TABLE_MAPPING.getTablePrimaryKeyFieldMappings(),
         Collections.emptyMap(),
@@ -78,7 +80,7 @@ class RandomPartitioningItemMapperTest {
         }
 
         @Override
-        public AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
+        public AttributeValue apply(String context, FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
             if (unqualifiedAttribute.getS() != null) {
                 return new AttributeValue().withS(PREFIX + unqualifiedAttribute.getS());
             }
@@ -94,7 +96,7 @@ class RandomPartitioningItemMapperTest {
         }
 
         @Override
-        public Predicate<AttributeValue> createFilter() {
+        public Predicate<AttributeValue> createFilter(String context) {
             return v -> true;
         }
     }

@@ -8,13 +8,13 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex.DynamoSecondaryIndexType.LSI;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.SECONDARY_INDEX;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.IndexType.TABLE;
 import static java.lang.String.format;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.FieldMapping.Field;
@@ -37,6 +37,7 @@ import javax.annotation.Nullable;
  */
 public class RandomPartitioningTableMapping implements TableMapping {
 
+    private final String context;
     private final DynamoTableDescription virtualTable;
     private final DynamoTableDescription physicalTable;
     private final UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper;
@@ -50,10 +51,11 @@ public class RandomPartitioningTableMapping implements TableMapping {
     private final QueryAndScanMapper queryAndScanMapper;
     private final ConditionMapper conditionMapper;
 
-    public RandomPartitioningTableMapping(DynamoTableDescription virtualTable,
+    public RandomPartitioningTableMapping(String context,
+                                          DynamoTableDescription virtualTable,
                                           DynamoTableDescription physicalTable,
-                                          UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                          MtAmazonDynamoDbContextProvider mtContext) {
+                                          UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper) {
+        this.context = checkNotNull(context);
         this.virtualTable = virtualTable;
         this.physicalTable = physicalTable;
         this.secondaryIndexMapper = secondaryIndexMapper;
@@ -69,16 +71,20 @@ public class RandomPartitioningTableMapping implements TableMapping {
                 fieldMapping -> addFieldMapping(allMappingsPerField, fieldMapping)));
 
         FieldMapper fieldMapper = physicalTable.getPrimaryKey().getHashKeyType() == S
-            ? new StringFieldMapper(mtContext, virtualTable.getTableName())
-            : new BinaryFieldMapper(mtContext, virtualTable.getTableName());
+            ? new StringFieldMapper(virtualTable.getTableName())
+            : new BinaryFieldMapper(virtualTable.getTableName());
 
-        itemMapper = new RandomPartitioningItemMapper(fieldMapper, tablePrimaryKeyFieldMappings,
+        itemMapper = new RandomPartitioningItemMapper(context, fieldMapper, tablePrimaryKeyFieldMappings,
             indexPrimaryKeyFieldMappings, allMappingsPerField);
         conditionMapper = new RandomPartitioningConditionMapper(this, fieldMapper);
-        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(this::getRequestIndex, conditionMapper,
+        queryAndScanMapper = new RandomPartitioningQueryAndScanMapper(context, this::getRequestIndex, conditionMapper,
             itemMapper, fieldMapper, tablePrimaryKeyFieldMappings, indexPrimaryKeyFieldMappings);
-        recordMapper = new RecordMapper(mtContext, virtualTable.getTableName(),
-            physicalTable.getPrimaryKey().getHashKey(), v -> isMatchingPhysicalHashKey(fieldMapper, v), itemMapper);
+        recordMapper = new RecordMapper(
+            context,
+            virtualTable.getTableName(),
+            physicalTable.getPrimaryKey().getHashKey(),
+            v -> isMatchingPhysicalHashKey(context, fieldMapper, v),
+            itemMapper);
     }
 
     @Override
@@ -89,6 +95,10 @@ public class RandomPartitioningTableMapping implements TableMapping {
     @Override
     public DynamoTableDescription getPhysicalTable() {
         return physicalTable;
+    }
+
+    public String getContext() {
+        return context;
     }
 
     @Override
@@ -212,7 +222,7 @@ public class RandomPartitioningTableMapping implements TableMapping {
         fieldMapping.add(fieldMappingToAdd);
     }
 
-    private static boolean isMatchingPhysicalHashKey(FieldMapper fieldMapper, AttributeValue value) {
-        return fieldMapper.createFilter().test(value);
+    private static boolean isMatchingPhysicalHashKey(String context, FieldMapper fieldMapper, AttributeValue value) {
+        return fieldMapper.createFilter(context).test(value);
     }
 }

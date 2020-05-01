@@ -19,7 +19,6 @@ import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKey
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Optional;
 
 class HashPartitioningTestUtil {
 
@@ -46,13 +45,13 @@ class HashPartitioningTestUtil {
     );
 
     static HashPartitioningTableMapping getTableMapping(DynamoTableDescription virtualTable) {
-        return new HashPartitioningTableMapping(virtualTable, PHYSICAL_TABLE,
+        return new HashPartitioningTableMapping(CONTEXT, virtualTable, PHYSICAL_TABLE,
             index -> index.getIndexName().equals(VIRTUAL_GSI) ? PHYSICAL_TABLE.findSi(PHYSICAL_GSI) : null,
-            () -> Optional.of(CONTEXT), NUM_BUCKETS);
+            NUM_BUCKETS);
     }
 
     static HashPartitioningKeyMapper getKeyMapper(DynamoTableDescription virtualTable) {
-        return new HashPartitioningKeyMapper(virtualTable.getTableName(), () -> Optional.of(CONTEXT), NUM_BUCKETS);
+        return new HashPartitioningKeyMapper(CONTEXT, virtualTable.getTableName(), NUM_BUCKETS);
     }
 
     static DynamoTableDescription buildVirtualHkTable(ScalarAttributeType hashKeyType) {

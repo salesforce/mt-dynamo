@@ -47,10 +47,12 @@ import org.antlr.v4.runtime.Recognizer;
 
 abstract class AbstractConditionMapper implements ConditionMapper {
 
+    protected final String context;
     private final DynamoTableDescription virtualTable;
     private final ItemMapper itemMapper;
 
-    AbstractConditionMapper(DynamoTableDescription virtualTable, ItemMapper itemMapper) {
+    AbstractConditionMapper(String context, DynamoTableDescription virtualTable, ItemMapper itemMapper) {
+        this.context = checkNotNull(context);
         this.virtualTable = virtualTable;
         this.itemMapper = itemMapper;
     }
