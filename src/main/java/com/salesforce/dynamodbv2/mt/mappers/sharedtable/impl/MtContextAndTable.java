@@ -22,11 +22,11 @@ public class MtContextAndTable {
         this.tableName = tableName;
     }
 
-    String getContext() {
+    public String getContext() {
         return context;
     }
 
-    String getTableName() {
+    public String getTableName() {
         return tableName;
     }
 

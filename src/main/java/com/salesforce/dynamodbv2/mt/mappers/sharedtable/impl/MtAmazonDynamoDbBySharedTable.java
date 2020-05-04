@@ -8,7 +8,6 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.util.stream.Collectors.toList;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
@@ -59,7 +58,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.cache.Cache;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterables;
 import com.salesforce.dynamodbv2.mt.admin.AmazonDynamoDbAdminUtils;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupAwsAdaptorKt;
 import com.salesforce.dynamodbv2.mt.backups.MtBackupException;
@@ -86,7 +84,6 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -127,6 +124,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
     private final Clock clock;
     private final Optional<MtBackupManager> backupManager;
     private final String backupTablePrefix;
+
+    private final SharedTableMappingDelegate delegate;
 
     /**
      * Shared-table constructor.
@@ -184,6 +183,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         // the physical backup off of mt-dynamo data.
         this.backupManager = backupManager.map(b -> b.build(this));
         this.backupTablePrefix = backupTablePrefix;
+
+        this.delegate = new SharedTableMappingDelegate(amazonDynamoDb);
     }
 
     long getGetRecordsTimeLimit() {
@@ -235,70 +236,19 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * Retrieves batches of items using their primary key.
      */
     @Override
-    public BatchGetItemResult batchGetItem(BatchGetItemRequest unqualifiedBatchGetItemRequest) {
+    public BatchGetItemResult batchGetItem(BatchGetItemRequest batchGetItemRequest) {
         // validate
-        unqualifiedBatchGetItemRequest.getRequestItems().values()
-            .forEach(MtAmazonDynamoDbBySharedTable::validateGetItemKeysAndAttribute);
+        checkArgument(batchGetItemRequest.getRequestItems().keySet().size() == 1,
+            "batchGetItem must target one and only one table");
 
-        // clone request and clear items
-        Map<String, KeysAndAttributes> unqualifiedKeysByTable = unqualifiedBatchGetItemRequest.getRequestItems();
-        BatchGetItemRequest qualifiedBatchGetItemRequest = unqualifiedBatchGetItemRequest.clone();
-        qualifiedBatchGetItemRequest.clearRequestItemsEntries();
+        String unqualifiedTableName = batchGetItemRequest.getRequestItems().keySet().iterator().next();
+        TableMapping tableMapping = getTableMapping(unqualifiedTableName).get();
 
-        // create a map of physical table names to TableMapping for use when handling the request later
-        Map<String, TableMapping> tableMappingByPhysicalTableName = new HashMap<>();
-
-        // for each table in the batch request, map table name and keys
-        unqualifiedKeysByTable.forEach((unqualifiedTableName, unqualifiedKeys) -> {
-            // map table name
-            TableMapping tableMapping = getTableMapping(unqualifiedTableName).get();
-            String qualifiedTableName = tableMapping.getPhysicalTable().getTableName();
-            tableMappingByPhysicalTableName.put(qualifiedTableName, tableMapping);
-            // map key
-            qualifiedBatchGetItemRequest.addRequestItemsEntry(
-                qualifiedTableName,
-                new KeysAndAttributes().withKeys(unqualifiedKeys.getKeys().stream()
-                    .map(key -> tableMapping.getItemMapper().applyToKeyAttributes(key, null))
-                    .collect(Collectors.toList())));
-        });
-
-        // batch get
-        final BatchGetItemResult qualifiedBatchGetItemResult = getAmazonDynamoDb()
-            .batchGetItem(qualifiedBatchGetItemRequest);
-        Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = qualifiedBatchGetItemResult
-            .getResponses();
-
-        // map result
-        final BatchGetItemResult unqualifiedBatchGetItemResult = qualifiedBatchGetItemResult.clone();
-        unqualifiedBatchGetItemResult.clearResponsesEntries();
-        qualifiedItemsByTable.forEach((qualifiedTableName, qualifiedItems) -> {
-            TableMapping tableMapping = tableMappingByPhysicalTableName.get(qualifiedTableName);
-            unqualifiedBatchGetItemResult.addResponsesEntry(
-                tableMapping.getVirtualTable().getTableName(),
-                qualifiedItems.stream().map(keysAndAttributes ->
-                    tableMapping.getItemMapper().reverse(keysAndAttributes)).collect(Collectors.toList()));
-            // map unprocessedKeys
-            if (!qualifiedBatchGetItemResult.getUnprocessedKeys().isEmpty()) {
-                unqualifiedBatchGetItemResult.clearUnprocessedKeysEntries();
-                qualifiedBatchGetItemResult.getUnprocessedKeys()
-                    .forEach((qualifiedTableNameUk, qualifiedUkKeysAndAttributes) -> {
-                        TableMapping tableMappingUk = tableMappingByPhysicalTableName.get(qualifiedTableNameUk);
-                        unqualifiedBatchGetItemResult.addUnprocessedKeysEntry(
-                            tableMappingUk.getVirtualTable().getTableName(),
-                            new KeysAndAttributes()
-                                .withConsistentRead(qualifiedUkKeysAndAttributes.getConsistentRead())
-                                .withKeys(qualifiedUkKeysAndAttributes.getKeys().stream()
-                                    .map(keysAndAttributes ->
-                                        tableMapping.getItemMapper().reverse(keysAndAttributes))
-                                    .collect(Collectors.toList())));
-                    });
-            }
-        });
-
-        return unqualifiedBatchGetItemResult;
+        return delegate.batchGetItem(tableMapping, batchGetItemRequest);
     }
 
-    private static void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
+    // TODO move to common class
+    static void validateGetItemKeysAndAttribute(KeysAndAttributes keysAndAttributes) {
         checkArgument(keysAndAttributes.getAttributesToGet() == null,
             "attributesToGet are not supported on BatchGetItemRequest calls");
         checkArgument(keysAndAttributes.getProjectionExpression() == null,
@@ -329,19 +279,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public DeleteItemResult deleteItem(DeleteItemRequest deleteItemRequest) {
-        // map table name
-        deleteItemRequest = deleteItemRequest.clone();
         TableMapping tableMapping = getTableMapping(deleteItemRequest.getTableName()).get();
-        deleteItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // map key
-        deleteItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(deleteItemRequest.getKey(), null));
-
-        // map conditions
-        tableMapping.getConditionMapper().applyToFilterExpression(new DeleteItemRequestWrapper(deleteItemRequest));
-
-        // delete
-        return getAmazonDynamoDb().deleteItem(deleteItemRequest);
+        return delegate.deleteItem(tableMapping, deleteItemRequest);
     }
 
     /**
@@ -400,23 +339,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         checkArgument(getItemRequest.getExpressionAttributeNames() == null,
             "expressionAttributeNames are not supported on GetItemRequest calls");
 
-        // map table name
-        getItemRequest = getItemRequest.clone();
         TableMapping tableMapping = getTableMapping(getItemRequest.getTableName()).get();
-        getItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // map key
-        getItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(getItemRequest.getKey(), null));
-
-        // get
-        GetItemResult getItemResult = getAmazonDynamoDb().getItem(getItemRequest);
-
-        // map result
-        if (getItemResult.getItem() != null) {
-            getItemResult.withItem(tableMapping.getItemMapper().reverse(getItemResult.getItem()));
-        }
-
-        return getItemResult;
+        return delegate.getItem(tableMapping, getItemRequest);
     }
 
     Optional<TableMapping> getTableMapping(String virtualTableName) {
@@ -442,9 +366,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     @Override
     public PutItemResult putItem(PutItemRequest putItemRequest) {
-        // map table name
-        putItemRequest = putItemRequest.clone();
-
         // validate scan attributes are not populated
         checkArgument(!putItemRequest.getItem().containsKey(scanTenantKey),
             "Trying to update a reserved column name: " + scanTenantKey);
@@ -452,38 +373,13 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             "Trying to update a reserved column name: " + scanVirtualTableKey);
 
         TableMapping tableMapping = getTableMapping(putItemRequest.getTableName()).get();
-        putItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // map conditions
-        tableMapping.getConditionMapper().applyToFilterExpression(new PutItemRequestWrapper(putItemRequest));
-
-        // map item
-        putItemRequest.setItem(tableMapping.getItemMapper().applyForWrite(putItemRequest.getItem()));
-
-        // put
-        return getAmazonDynamoDb().putItem(putItemRequest);
+        return delegate.putItem(tableMapping, putItemRequest);
     }
 
     @Override
     public QueryResult query(QueryRequest queryRequest) {
         final TableMapping tableMapping = getTableMapping(queryRequest.getTableName()).get();
-
-        // map table name
-        final QueryRequest clonedQueryRequest = queryRequest.clone();
-        clonedQueryRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // map query request
-        tableMapping.getQueryAndScanMapper().apply(clonedQueryRequest);
-
-        // map result
-        final QueryResult queryResult = getAmazonDynamoDb().query(clonedQueryRequest);
-        queryResult.setItems(queryResult.getItems().stream().map(tableMapping.getItemMapper()::reverse)
-            .collect(toList()));
-        if (queryResult.getLastEvaluatedKey() != null) {
-            queryResult.setLastEvaluatedKey(tableMapping.getItemMapper().reverse(queryResult.getLastEvaluatedKey()));
-        }
-
-        return queryResult;
+        return delegate.query(tableMapping, queryRequest);
     }
 
     /**
@@ -505,39 +401,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 "Non-context scan called for an invalid physical table: %s", scanRequest.getTableName());
             return scanAllTenants(scanRequest);
         }
+
         TableMapping tableMapping = getTableMapping(scanRequest.getTableName()).get();
-        PrimaryKey key = scanRequest.getIndexName() == null ? tableMapping.getVirtualTable().getPrimaryKey()
-            : tableMapping.getVirtualTable().findSi(scanRequest.getIndexName()).getPrimaryKey();
-
-        // Projection must include primary key, since we use it for paging.
-        // (We could add key fields into projection and filter result in the future)
-        checkArgument(projectionContainsKey(scanRequest, key),
-            "Multitenant scans must include key in projection expression");
-
-        // map table name
-        ScanRequest clonedScanRequest = scanRequest.clone();
-        clonedScanRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // execute scan, keep moving forward pages until we find at least one record for current tenant or reach end
-        ScanResult scanResult = tableMapping.getQueryAndScanMapper().executeScan(getAmazonDynamoDb(),
-            clonedScanRequest);
-
-        // map result
-        List<Map<String, AttributeValue>> items = scanResult.getItems();
-        if (!items.isEmpty()) {
-            scanResult.setItems(items.stream().map(tableMapping.getItemMapper()::reverse).collect(toList()));
-            if (scanResult.getLastEvaluatedKey() != null) {
-                Map<String, AttributeValue> lastItem = Iterables.getLast(scanResult.getItems());
-                Map<String, AttributeValue> lastEvaluatedKey = new HashMap<>();
-                lastEvaluatedKey.putAll(getKeyFromItem(lastItem, tableMapping.getVirtualTable().getPrimaryKey()));
-                if (scanRequest.getIndexName() != null) {
-                    lastEvaluatedKey.putAll(getKeyFromItem(lastItem, key));
-                }
-                scanResult.setLastEvaluatedKey(lastEvaluatedKey);
-            }
-        } // else: while loop ensures that getLastEvaluatedKey is null (no need to map)
-
-        return scanResult;
+        return delegate.scan(tableMapping, scanRequest);
     }
 
     private ScanResult scanAllTenants(ScanRequest scanRequest) {
@@ -564,7 +430,7 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return scanResult.withItems(unpackedItems);
     }
 
-    @VisibleForTesting
+    // TODO move to common class
     static boolean projectionContainsKey(ScanRequest request, PrimaryKey key) {
         String projection = request.getProjectionExpression();
         List<String> legacyProjection = request.getAttributesToGet();
@@ -605,9 +471,6 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      */
     @Override
     public UpdateItemResult updateItem(UpdateItemRequest updateItemRequest) {
-        // validate that attributeUpdates are not being used
-        validateUpdateItemRequest(updateItemRequest);
-
         // validate scan attributes are not being used
         if (updateItemRequest.getExpressionAttributeNames() != null) {
             checkArgument(
@@ -618,20 +481,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 "Trying to update a reserved column name: " + scanVirtualTableKey);
         }
 
-
-        // map table name
-        updateItemRequest = updateItemRequest.clone();
         TableMapping tableMapping = getTableMapping(updateItemRequest.getTableName()).get();
-        updateItemRequest.withTableName(tableMapping.getPhysicalTable().getTableName());
-
-        // map key
-        updateItemRequest.setKey(tableMapping.getItemMapper().applyToKeyAttributes(updateItemRequest.getKey(), null));
-
-        // map conditions
-        tableMapping.getConditionMapper().applyForUpdate(updateItemRequest);
-
-        // update
-        return getAmazonDynamoDb().updateItem(updateItemRequest);
+        return delegate.updateItem(tableMapping, updateItemRequest);
     }
 
     @Override
@@ -857,7 +708,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
      * See class-level Javadoc for explanation of why the use of {@code addAttributeUpdateEntry} and
      * {@code withAttributeUpdates} is not supported.
      */
-    private static void validateUpdateItemRequest(UpdateItemRequest updateItemRequest) {
+    // TODO move to common class
+    static void validateUpdateItemRequest(UpdateItemRequest updateItemRequest) {
         checkArgument(updateItemRequest.getAttributeUpdates() == null,
             "Use of attributeUpdates in UpdateItemRequest objects is not supported.  Use UpdateExpression instead.");
     }
@@ -880,21 +732,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
 
     private void truncateTable(String tableName) {
         if (truncateOnDeleteTable) {
-            long deletedCount = 0;
-            ScanRequest scanRequest = new ScanRequest().withTableName(tableName);
-            while (true) {
-                ScanResult scanResult = scan(scanRequest);
-                log.warn("truncating " + scanResult.getItems().size() + " items from table=" + tableName);
-                for (Map<String, AttributeValue> item : scanResult.getItems()) {
-                    deleteItem(new DeleteItemRequest().withTableName(tableName)
-                        .withKey(getKeyFromItem(item, tableName)));
-                }
-                deletedCount += scanResult.getItems().size();
-                if (scanResult.getLastEvaluatedKey() == null) {
-                    break;
-                }
-                scanRequest.withExclusiveStartKey(scanResult.getLastEvaluatedKey());
-            }
+            TableMapping tableMapping = getTableMapping(tableName).get();
+            long deletedCount = delegate.truncateTable(tableMapping);
             log.warn("truncation of " + deletedCount + " items from table=" + tableName + " complete.");
         } else {
             log.info("truncateOnDeleteTable is disabled for " + tableName + ", skipping truncation. "
@@ -909,7 +748,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
                 keySchemaElement -> item.get(keySchemaElement.getAttributeName())));
     }
 
-    private static Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item, PrimaryKey primaryKey) {
+    // TODO move to common class
+    static Map<String, AttributeValue> getKeyFromItem(Map<String, AttributeValue> item, PrimaryKey primaryKey) {
         String hashKey = primaryKey.getHashKey();
         return primaryKey.getRangeKey()
             .map(rangeKey -> ImmutableMap.of(hashKey, item.get(hashKey), rangeKey, item.get(rangeKey)))
@@ -920,7 +760,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         return backupManager.orElse(null);
     }
 
-    private static class PutItemRequestWrapper extends AbstractRequestWrapper {
+    // TODO move to common class
+    static class PutItemRequestWrapper extends AbstractRequestWrapper {
 
         PutItemRequestWrapper(PutItemRequest putItemRequest) {
             super(putItemRequest::getExpressionAttributeNames, putItemRequest::setExpressionAttributeNames,
@@ -929,7 +770,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         }
     }
 
-    private static class DeleteItemRequestWrapper extends AbstractRequestWrapper {
+    // TODO move to common class
+    static class DeleteItemRequestWrapper extends AbstractRequestWrapper {
 
         DeleteItemRequestWrapper(DeleteItemRequest deleteItemRequest) {
             super(deleteItemRequest::getExpressionAttributeNames, deleteItemRequest::setExpressionAttributeNames,
