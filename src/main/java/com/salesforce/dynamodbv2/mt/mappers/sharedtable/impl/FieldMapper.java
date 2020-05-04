@@ -5,10 +5,10 @@ import java.util.function.Predicate;
 
 public interface FieldMapper {
 
-    AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute);
+    AttributeValue apply(String context, FieldMapping fieldMapping, AttributeValue unqualifiedAttribute);
 
     AttributeValue reverse(FieldMapping fieldMapping, AttributeValue qualifiedAttribute);
 
-    Predicate<AttributeValue> createFilter();
+    Predicate<AttributeValue> createFilter(String context);
 
 }

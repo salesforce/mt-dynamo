@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter.fromStringByteArray;
 import static com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningKeyMapper.HashPartitioningKeyBytesConverter.toStringByteArray;
@@ -17,7 +18,6 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.UnsignedBytes;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -58,14 +58,13 @@ public class HashPartitioningKeyMapper {
         }
     }
 
+    private final String context;
     private final String virtualTableName;
-    private final MtAmazonDynamoDbContextProvider mtContext;
     private final int numBucketsPerVirtualTable;
 
-    HashPartitioningKeyMapper(String virtualTableName, MtAmazonDynamoDbContextProvider mtContext,
-                              int numBucketsPerVirtualTable) {
+    HashPartitioningKeyMapper(String context, String virtualTableName, int numBucketsPerVirtualTable) {
+        this.context = checkNotNull(context);
         this.virtualTableName = virtualTableName;
-        this.mtContext = mtContext;
         this.numBucketsPerVirtualTable = numBucketsPerVirtualTable;
     }
 
@@ -75,7 +74,7 @@ public class HashPartitioningKeyMapper {
     }
 
     AttributeValue toPhysicalHashKey(int bucket) {
-        return HashPartitioningKeyPrefixFunction.toPhysicalHashKey(mtContext.getContext(), virtualTableName, bucket);
+        return HashPartitioningKeyPrefixFunction.toPhysicalHashKey(context, virtualTableName, bucket);
     }
 
     int getBucketNumber(ScalarAttributeType virtualHkType, AttributeValue virtualHkValue) {

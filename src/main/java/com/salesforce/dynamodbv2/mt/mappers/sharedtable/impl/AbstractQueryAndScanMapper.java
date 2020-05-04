@@ -33,13 +33,16 @@ import java.util.function.Supplier;
 
 abstract class AbstractQueryAndScanMapper implements QueryAndScanMapper {
 
+    protected final String context;
     private final Function<String, RequestIndex> indexLookup;
     private final ConditionMapper conditionMapper;
     private final ItemMapper itemMapper;
 
-    AbstractQueryAndScanMapper(Function<String, RequestIndex> indexLookup,
+    AbstractQueryAndScanMapper(String context,
+                               Function<String, RequestIndex> indexLookup,
                                ConditionMapper conditionMapper,
                                ItemMapper itemMapper) {
+        this.context = checkNotNull(context);
         this.indexLookup = indexLookup;
         this.conditionMapper = conditionMapper;
         this.itemMapper = itemMapper;

@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableMap;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import java.util.HashMap;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -41,10 +40,10 @@ class RandomPartitioningQueryAndScanMapperTest {
         new PrimaryKey("physicalHk", S),
         ImmutableMap.of("physicalGsi", new PrimaryKey("physicalGsiHk", S)));
     private static final RandomPartitioningTableMapping TABLE_MAPPING = new RandomPartitioningTableMapping(
+        "ctx",
         VIRTUAL_TABLE,
         PHYSICAL_TABLE,
-        index -> PHYSICAL_TABLE.findSi("physicalGsi"),
-        () -> Optional.of("ctx")
+        index -> PHYSICAL_TABLE.findSi("physicalGsi")
     );
     private static final RandomPartitioningQueryAndScanMapper QUERY_AND_SCAN_MAPPER =
         (RandomPartitioningQueryAndScanMapper) TABLE_MAPPING.getQueryAndScanMapper();

@@ -13,7 +13,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.nio.ByteBuffer;
 import java.util.Base64;
 import java.util.function.Predicate;
@@ -25,20 +24,17 @@ import java.util.function.Predicate;
  */
 class StringFieldMapper implements FieldMapper {
 
-    private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
 
-    StringFieldMapper(MtAmazonDynamoDbContextProvider mtContext,
-                      String virtualTableName) {
-        this.mtContext = mtContext;
+    StringFieldMapper(String virtualTableName) {
         this.virtualTableName = virtualTableName;
     }
 
     @Override
-    public AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
+    public AttributeValue apply(String context, FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
         checkArgument(fieldMapping.getTarget().getType() == S);
         String stringValue = convertToStringNotNull(fieldMapping.getSource().getType(), unqualifiedAttribute);
-        FieldValue<String> fieldValue = new FieldValue<>(mtContext.getContext(), virtualTableName, stringValue);
+        FieldValue<String> fieldValue = new FieldValue<>(context, virtualTableName, stringValue);
         return new AttributeValue(StringFieldPrefixFunction.INSTANCE.apply(fieldValue));
     }
 
@@ -50,9 +46,9 @@ class StringFieldMapper implements FieldMapper {
     }
 
     @Override
-    public Predicate<AttributeValue> createFilter() {
+    public Predicate<AttributeValue> createFilter(String context) {
         final Predicate<String> prefixFilter =
-            StringFieldPrefixFunction.INSTANCE.createFilter(mtContext.getContext(), virtualTableName);
+            StringFieldPrefixFunction.INSTANCE.createFilter(context, virtualTableName);
         return attributeValue -> prefixFilter.test(attributeValue.getS());
     }
 

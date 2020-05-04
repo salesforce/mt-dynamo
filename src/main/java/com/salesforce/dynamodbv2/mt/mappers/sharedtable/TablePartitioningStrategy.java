@@ -9,7 +9,6 @@ package com.salesforce.dynamodbv2.mt.mappers.sharedtable;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import com.salesforce.dynamodbv2.mt.mappers.index.PrimaryKeyMapper;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
@@ -49,9 +48,9 @@ public interface TablePartitioningStrategy {
      */
     MtContextAndTable toContextAndTable(ScalarAttributeType physicalHashKeyType, AttributeValue physicalHashKeyValue);
 
-    TableMapping createTableMapping(DynamoTableDescription virtualTable,
+    TableMapping createTableMapping(String context,
+                                    DynamoTableDescription virtualTable,
                                     DynamoTableDescription physicalTable,
-                                    UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper,
-                                    MtAmazonDynamoDbContextProvider mtContext);
+                                    UnaryOperator<DynamoSecondaryIndex> secondaryIndexMapper);
 
 }

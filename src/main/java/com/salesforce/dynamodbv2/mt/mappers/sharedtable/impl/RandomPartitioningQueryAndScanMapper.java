@@ -38,13 +38,14 @@ class RandomPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
     private final List<FieldMapping> tablePrimaryKeyFieldMappings;
     private final Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings;
 
-    RandomPartitioningQueryAndScanMapper(Function<String, RequestIndex> indexLookup,
+    RandomPartitioningQueryAndScanMapper(String context,
+                                         Function<String, RequestIndex> indexLookup,
                                          ConditionMapper conditionMapper,
                                          ItemMapper itemMapper,
                                          FieldMapper fieldMapper,
                                          List<FieldMapping> tablePrimaryKeyFieldMappings,
                                          Map<DynamoSecondaryIndex, List<FieldMapping>> indexPrimaryKeyFieldMappings) {
-        super(indexLookup, conditionMapper, itemMapper);
+        super(context, indexLookup, conditionMapper, itemMapper);
         this.fieldMapper = fieldMapper;
         this.tablePrimaryKeyFieldMappings = tablePrimaryKeyFieldMappings;
         this.indexPrimaryKeyFieldMappings = indexPrimaryKeyFieldMappings;
@@ -112,7 +113,10 @@ class RandomPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
             fieldMapping.getPhysicalIndexName(),
             fieldMapping.getIndexType(),
             fieldMapping.isContextAware());
-        AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(fieldMappingForPrefix, new AttributeValue(""));
+        AttributeValue physicalValuePrefixAttribute = fieldMapper.apply(
+            context,
+            fieldMappingForPrefix,
+            new AttributeValue(""));
         request.putExpressionAttributeName(NAME_PLACEHOLDER, hashKey.getName());
         request.putExpressionAttributeValue(VALUE_PLACEHOLDER, physicalValuePrefixAttribute);
         request.setExpression(

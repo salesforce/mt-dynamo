@@ -14,9 +14,7 @@ import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
 import com.amazonaws.services.dynamodbv2.model.StreamViewType;
 import com.google.common.collect.ImmutableMap;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -25,16 +23,15 @@ class RandomPartitioningRecordMapperTest {
 
     private final String context = "context";
     private final String tableName = "table";
-    private final MtAmazonDynamoDbContextProvider provider = () -> Optional.of(context);
     private final String virtualHk = "vhk";
     private final String virtualRk = "vrk";
     private final String physicalHk = "phk";
     private final String physicalRk = "prk";
     private final RandomPartitioningTableMapping tableMapping = new RandomPartitioningTableMapping(
+        context,
         buildTable(tableName, new PrimaryKey(virtualHk, S, virtualRk, S)),
         buildTable("physicalTable", new PrimaryKey(physicalHk, S, physicalRk, S)),
-        index -> null,
-        provider
+        index -> null
     );
     private final RecordMapper sut = tableMapping.getRecordMapper();
 

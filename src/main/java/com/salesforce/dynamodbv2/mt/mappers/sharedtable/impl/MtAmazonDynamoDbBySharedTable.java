@@ -423,8 +423,9 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
         try {
             return tableMappingCache.get(virtualTableName, () -> {
                 try {
-
+                    String context = getMtContext().getContext();
                     return Optional.of(tableMappingFactory.getTableMapping(
+                        context,
                         new DynamoTableDescriptionImpl(mtTableDescriptionRepo.getTableDescription(virtualTableName))));
                 } catch (ResourceNotFoundException e) {
                     // This isn't great, but we're assuming a missing virtual table entry here is a deleted virtual

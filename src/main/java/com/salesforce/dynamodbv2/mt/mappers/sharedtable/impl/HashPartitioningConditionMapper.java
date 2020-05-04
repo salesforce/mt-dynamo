@@ -35,10 +35,11 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
     private final HashPartitioningKeyMapper keyMapper;
     private final Multimap<String, String> secondaryIndexFieldPartners;
 
-    HashPartitioningConditionMapper(DynamoTableDescription virtualTable,
+    HashPartitioningConditionMapper(String context,
+                                    DynamoTableDescription virtualTable,
                                     HashPartitioningItemMapper itemMapper,
                                     HashPartitioningKeyMapper keyMapper) {
-        super(virtualTable, itemMapper);
+        super(context, virtualTable, itemMapper);
         this.keyMapper = keyMapper;
         this.secondaryIndexFieldPartners = getSecondaryIndexFieldPartners(virtualTable);
     }

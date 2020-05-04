@@ -7,7 +7,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -15,20 +14,18 @@ import java.util.function.Predicate;
 
 class BinaryFieldMapper implements FieldMapper {
 
-    private final MtAmazonDynamoDbContextProvider mtContext;
     private final String virtualTableName;
 
-    BinaryFieldMapper(MtAmazonDynamoDbContextProvider mtContext,
-                      String virtualTableName) {
-        this.mtContext = mtContext;
+    BinaryFieldMapper(String virtualTableName) {
         this.virtualTableName = virtualTableName;
     }
 
     @Override
-    public AttributeValue apply(FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
+    public AttributeValue apply(String context, FieldMapping fieldMapping, AttributeValue unqualifiedAttribute) {
+        checkNotNull(context);
         checkArgument(fieldMapping.getTarget().getType() == B);
         ByteBuffer binaryValue = convertToBinary(fieldMapping.getSource().getType(), unqualifiedAttribute);
-        FieldValue<ByteBuffer> fieldValue = new FieldValue<>(mtContext.getContext(), virtualTableName, binaryValue);
+        FieldValue<ByteBuffer> fieldValue = new FieldValue<>(context, virtualTableName, binaryValue);
         return new AttributeValue().withB(BinaryFieldPrefixFunction.INSTANCE.apply(fieldValue));
     }
 
@@ -40,9 +37,10 @@ class BinaryFieldMapper implements FieldMapper {
     }
 
     @Override
-    public Predicate<AttributeValue> createFilter() {
+    public Predicate<AttributeValue> createFilter(String context) {
+        checkNotNull(context);
         final Predicate<ByteBuffer> prefixFilter =
-            BinaryFieldPrefixFunction.INSTANCE.createFilter(mtContext.getContext(), virtualTableName);
+            BinaryFieldPrefixFunction.INSTANCE.createFilter(context, virtualTableName);
         return attributeValue -> prefixFilter.test(attributeValue.getB());
     }
 

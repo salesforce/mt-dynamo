@@ -7,10 +7,11 @@
 
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.Record;
 import com.amazonaws.services.dynamodbv2.model.StreamRecord;
-import com.salesforce.dynamodbv2.mt.context.MtAmazonDynamoDbContextProvider;
 import com.salesforce.dynamodbv2.mt.mappers.MtAmazonDynamoDb.MtRecord;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -21,18 +22,18 @@ import java.util.function.Predicate;
  */
 public class RecordMapper implements Function<Record, MtRecord> {
 
-    private final MtAmazonDynamoDbContextProvider mtContext;
+    private final String context;
     private final String virtualTableName;
     private final String physicalHashKey;
     private final Predicate<AttributeValue> isMatchingPhysicalHashKey;
     private final ItemMapper itemMapper;
 
-    RecordMapper(MtAmazonDynamoDbContextProvider mtContext,
+    RecordMapper(String context,
                  String virtualTableName,
                  String physicalHashKey,
                  Predicate<AttributeValue> isMatchingPhysicalHashKey,
                  ItemMapper itemMapper) {
-        this.mtContext = mtContext;
+        this.context = checkNotNull(context);
         this.virtualTableName = virtualTableName;
         this.physicalHashKey = physicalHashKey;
         this.isMatchingPhysicalHashKey = isMatchingPhysicalHashKey;
@@ -51,7 +52,8 @@ public class RecordMapper implements Function<Record, MtRecord> {
     @Override
     public MtRecord apply(Record record) {
         final StreamRecord streamRecord = record.getDynamodb();
-        return getDefaultMtRecord(record).withContext(mtContext.getContext())
+        return getDefaultMtRecord(record)
+            .withContext(context)
             .withTableName(virtualTableName)
             .withDynamodb(new StreamRecord()
                 .withKeys(itemMapper.reverse(streamRecord.getKeys())) // should this use key mapper?

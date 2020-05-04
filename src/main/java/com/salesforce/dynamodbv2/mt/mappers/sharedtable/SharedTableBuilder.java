@@ -348,7 +348,6 @@ public class SharedTableBuilder implements TableBuilder {
         if (tableMappingFactory == null) {
             tableMappingFactory = new TableMappingFactory(
                 createTableRequestFactory,
-                mtContext,
                 partitioningStrategy,
                 physicalTableManager
             );
