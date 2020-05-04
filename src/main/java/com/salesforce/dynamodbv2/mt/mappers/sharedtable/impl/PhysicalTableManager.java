@@ -40,13 +40,13 @@ public class PhysicalTableManager {
      * When we are allowed to create tables, then this will create the physical table if it doesn't already exist;
      * otherwise, we assume that the physical table has already been created, and simply do a describe.
      */
-    DynamoTableDescription ensurePhysicalTableExists(CreateTableRequest createTableRequest) {
+    public DynamoTableDescription ensurePhysicalTableExists(CreateTableRequest createTableRequest) {
         return canCreateTables
             ? createTableIfNotExists(createTableRequest)
             : describeTable(createTableRequest.getTableName());
     }
 
-    DynamoTableDescription describeTable(String tableName) {
+    public DynamoTableDescription describeTable(String tableName) {
         return physicalTableDescriptions.computeIfAbsent(tableName, ignored ->
             new DynamoTableDescriptionImpl(dynamoDbAdminUtils.describeTable(tableName)));
     }
