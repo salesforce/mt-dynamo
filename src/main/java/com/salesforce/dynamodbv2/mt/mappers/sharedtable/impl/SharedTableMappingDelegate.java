@@ -193,8 +193,6 @@ public class SharedTableMappingDelegate {
         // batch get
         final BatchGetItemResult physicalResult = getDynamoDB()
             .batchGetItem(physicalRequest);
-        Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = physicalResult
-            .getResponses();
 
         // map result
         final BatchGetItemResult virtualResult = physicalResult.clone();
