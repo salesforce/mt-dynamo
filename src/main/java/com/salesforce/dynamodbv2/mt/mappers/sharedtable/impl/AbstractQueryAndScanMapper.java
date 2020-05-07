@@ -170,7 +170,7 @@ abstract class AbstractQueryAndScanMapper implements QueryAndScanMapper {
                 final ComparisonOperator comparisonOperator = ComparisonOperator
                     .valueOf(condition.getComparisonOperator());
                 LegacyKeyConditionType type = KEY_CONDITION_PER_OPERATOR.get(comparisonOperator);
-                checkNotNull(type,"unsupported comparison operator " + condition.getComparisonOperator()
+                checkNotNull(type, "unsupported comparison operator " + condition.getComparisonOperator()
                     + " in condition=" + condition);
                 checkArgument(condition.getAttributeValueList().size() == type.numValues,
                     "keyCondition with wrong number of attribute values (" + condition.getAttributeValueList().size()
