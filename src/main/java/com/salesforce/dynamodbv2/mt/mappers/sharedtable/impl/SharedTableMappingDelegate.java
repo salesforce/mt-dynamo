@@ -171,8 +171,7 @@ public class SharedTableMappingDelegate {
     public BatchGetItemResult batchGetItem(TableMapping mapping, BatchGetItemRequest virtualRequest) {
         checkArgument(virtualRequest.getRequestItems()
             .keySet().size() == 1);
-        checkArgument(virtualRequest.getRequestItems()
-            .keySet().contains(mapping.getVirtualTable().getTableName()));
+        checkArgument(virtualRequest.getRequestItems().containsKey(mapping.getVirtualTable().getTableName()));
         virtualRequest.getRequestItems().values()
             .forEach(MtAmazonDynamoDbBySharedTable::validateGetItemKeysAndAttribute);
 
@@ -194,8 +193,6 @@ public class SharedTableMappingDelegate {
         // batch get
         final BatchGetItemResult physicalResult = getDynamoDB()
             .batchGetItem(physicalRequest);
-        Map<String, List<Map<String, AttributeValue>>> qualifiedItemsByTable = physicalResult
-            .getResponses();
 
         // map result
         final BatchGetItemResult virtualResult = physicalResult.clone();
@@ -252,7 +249,7 @@ public class SharedTableMappingDelegate {
         ScanRequest scanRequest = new ScanRequest().withTableName(tableName);
         while (true) {
             // TODO reimplement scan and delete in physical namespace
-            //      maping to logical and back to physical is unnecessary overhead
+            //      mapping to logical and back to physical is unnecessary overhead
             ScanResult scanResult = scan(mapping, scanRequest);
             for (Map<String, AttributeValue> item : scanResult.getItems()) {
                 DeleteItemRequest deleteRequest = new DeleteItemRequest()

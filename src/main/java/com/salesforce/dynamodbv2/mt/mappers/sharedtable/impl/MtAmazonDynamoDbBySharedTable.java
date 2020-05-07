@@ -756,7 +756,8 @@ public class MtAmazonDynamoDbBySharedTable extends MtAmazonDynamoDbBase {
             .orElseGet(() -> ImmutableMap.of(hashKey, item.get(hashKey)));
     }
 
-    @VisibleForTesting MtBackupManager getBackupManager() {
+    @VisibleForTesting
+    MtBackupManager getBackupManager() {
         return backupManager.orElse(null);
     }
 
