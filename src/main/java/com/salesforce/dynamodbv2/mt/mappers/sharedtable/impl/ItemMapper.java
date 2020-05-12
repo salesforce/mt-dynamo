@@ -8,6 +8,7 @@
 package com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl;
 
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
+import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.mt.mappers.index.DynamoSecondaryIndex;
 import java.util.Map;
 import javax.annotation.Nullable;
@@ -16,7 +17,8 @@ import javax.annotation.Nullable;
  * Maps items representing records in virtual tables so they can be read from and written to their physical table
  * counterparts.
  */
-interface ItemMapper {
+@VisibleForTesting
+public interface ItemMapper {
 
     /**
      * Takes a virtual table record (not qualified with multitenant context) to be upserted and converts it into the

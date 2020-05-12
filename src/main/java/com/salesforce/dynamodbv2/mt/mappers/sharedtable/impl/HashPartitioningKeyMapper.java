@@ -28,12 +28,13 @@ import java.util.Objects;
 
 public class HashPartitioningKeyMapper {
 
-    static class HashPartitioningKeyPrefixFunction {
+    @VisibleForTesting
+    public static class HashPartitioningKeyPrefixFunction {
 
         // see https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Limits.html#limits-partition-sort-keys
         private static final int MAX_HASH_KEY_LENGTH = 2048;
 
-        static AttributeValue toPhysicalHashKey(String context, String virtualTableName, int bucket) {
+        public static AttributeValue toPhysicalHashKey(String context, String virtualTableName, int bucket) {
             byte[] contextBytes = toStringByteArray(context);
             byte[] tableNameBytes = toStringByteArray(virtualTableName);
 
@@ -47,7 +48,7 @@ public class HashPartitioningKeyMapper {
             return new AttributeValue().withB(byteBuffer);
         }
 
-        static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
+        public static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
             ByteBuffer byteBuffer = value.getB().rewind();
             byte[] contextBytes = new byte[byteBuffer.getShort()];
             byteBuffer.get(contextBytes);
