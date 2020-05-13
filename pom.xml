@@ -33,7 +33,7 @@
         <url>https://github.com/salesforce/mt-dynamo</url>
         <connection>scm:git:git@github.com:salesforce/mt-dynamo.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/salesforce/mt-dynamo.git</developerConnection>
-      <tag>HEAD</tag>
+        <tag>HEAD</tag>
     </scm>
     <dependencies>
         <dependency>
@@ -266,7 +266,7 @@
                 </executions>
                 <configuration><!-- [ERROR] Failed to execute goal org.jacoco:jacoco-maven-plugin:0.7.7.201606060606:check (default-check) on project zucker: The parameters 'rules' for goal org.jacoco:jacoco-maven-plugin:0.7.7.201606060606:check are missing or invalid -->
                     <rules>
-                        <rule implementation="org.jacoco.maven.RuleConfiguration" />
+                        <rule implementation="org.jacoco.maven.RuleConfiguration"/>
                     </rules>
                     <excludes>
                         <!-- This class is a pass-through that contains no logic. -->
@@ -316,7 +316,7 @@
                         <format>html</format>
                         <format>xml</format>
                     </formats>
-                    <check />
+                    <check/>
                 </configuration>
             </plugin>
             <plugin>
@@ -398,7 +398,7 @@
                         <licenseHeader>
                             <file>${project.basedir}/license-header</file>
                         </licenseHeader>
-                        <trimTrailingWhitespace />
+                        <trimTrailingWhitespace/>
                         <ktlint>
                             <!-- available versions: https://github.com/pinterest/ktlint/releases -->
                             <version>${ktlint.version}</version>
