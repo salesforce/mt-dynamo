@@ -176,8 +176,8 @@ class HashPartitioningQueryAndScanMapperTest {
             assertFalse(expectedItems.isEmpty());
         }
 
-        AmazonDynamoDB amazonDynamoDB = mock(AmazonDynamoDB.class);
-        when(amazonDynamoDB.query(any())).thenAnswer(new PhysicalQueryAnswer(onGsi, physicalRkValuesPerBucket));
+        AmazonDynamoDB amazonDynamoDb = mock(AmazonDynamoDB.class);
+        when(amazonDynamoDb.query(any())).thenAnswer(new PhysicalQueryAnswer(onGsi, physicalRkValuesPerBucket));
 
         HashPartitioningQueryAndScanMapper mapper = getTableMapping(virtualTable).getQueryAndScanMapper();
         ScanRequest request = new ScanRequest()
@@ -186,7 +186,7 @@ class HashPartitioningQueryAndScanMapperTest {
         if (onGsi) {
             request.withIndexName(VIRTUAL_GSI);
         }
-        ScanResult result = mapper.executeScan(amazonDynamoDB, request);
+        ScanResult result = mapper.executeScan(amazonDynamoDb, request);
 
         assertEquals(expectedItems, result.getItems());
         assertEquals(shouldHaveLastEvaluatedKey ? expectedItems.get(expectedItems.size() - 1) : null,

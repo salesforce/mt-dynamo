@@ -27,5 +27,5 @@ interface QueryAndScanMapper {
      * Executes a virtual table ScanRequest, which can potentially entail multiple scan/query requests on the physical
      * table.
      */
-    ScanResult executeScan(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest);
+    ScanResult executeScan(AmazonDynamoDB amazonDynamoDb, ScanRequest scanRequest);
 }

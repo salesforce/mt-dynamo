@@ -83,10 +83,10 @@ public class MtAmazonDynamoDbComposite extends MtAmazonDynamoDbBase {
         return first;
     }
 
-    private static AmazonDynamoDB disregardLogger(AmazonDynamoDB amazonDynamoDB) {
-        return amazonDynamoDB instanceof MtAmazonDynamoDbLogger
-            ? ((MtAmazonDynamoDbLogger) amazonDynamoDB).getAmazonDynamoDb()
-            : amazonDynamoDB;
+    private static AmazonDynamoDB disregardLogger(AmazonDynamoDB amazonDynamoDb) {
+        return amazonDynamoDb instanceof MtAmazonDynamoDbLogger
+            ? ((MtAmazonDynamoDbLogger) amazonDynamoDb).getAmazonDynamoDb()
+            : amazonDynamoDb;
     }
 
     Collection<MtAmazonDynamoDbBase> getDelegates() {

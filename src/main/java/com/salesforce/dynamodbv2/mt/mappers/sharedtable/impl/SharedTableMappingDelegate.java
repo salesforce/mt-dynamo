@@ -33,19 +33,19 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Maps virtual table requests to underlying "physical" {@link AmazonDynamoDB} dynamoDB instance.
+ * Maps virtual table requests to underlying "physical" {@link AmazonDynamoDB} DynamoDB instance.
  */
 public class SharedTableMappingDelegate {
 
-    private final AmazonDynamoDB dynamoDB;
+    private final AmazonDynamoDB dynamoDb;
 
-    public SharedTableMappingDelegate(AmazonDynamoDB dynamoDB) {
-        this.dynamoDB = dynamoDB;
+    public SharedTableMappingDelegate(AmazonDynamoDB dynamoDb) {
+        this.dynamoDb = dynamoDb;
     }
 
     // TODO inline?
-    public AmazonDynamoDB getDynamoDB() {
-        return dynamoDB;
+    public AmazonDynamoDB getDynamoDb() {
+        return dynamoDb;
     }
 
     public PutItemResult putItem(TableMapping mapping, PutItemRequest request) {
@@ -63,7 +63,7 @@ public class SharedTableMappingDelegate {
         request.setItem(mapping.getItemMapper().applyForWrite(request.getItem()));
 
         // put
-        return getDynamoDB().putItem(request);
+        return getDynamoDb().putItem(request);
     }
 
     public GetItemResult getItem(TableMapping mapping, GetItemRequest request) {
@@ -78,7 +78,7 @@ public class SharedTableMappingDelegate {
         request.setKey(mapping.getItemMapper().applyToKeyAttributes(request.getKey(), null));
 
         // get
-        GetItemResult getItemResult = getDynamoDB().getItem(request);
+        GetItemResult getItemResult = getDynamoDb().getItem(request);
 
         // map result
         if (getItemResult.getItem() != null) {
@@ -106,7 +106,7 @@ public class SharedTableMappingDelegate {
         mapping.getConditionMapper().applyForUpdate(request);
 
         // update
-        return getDynamoDB().updateItem(request);
+        return getDynamoDb().updateItem(request);
     }
 
     public QueryResult query(TableMapping mapping, QueryRequest request) {
@@ -121,7 +121,7 @@ public class SharedTableMappingDelegate {
         mapping.getQueryAndScanMapper().apply(request);
 
         // map result
-        final QueryResult queryResult = getDynamoDB().query(request);
+        final QueryResult queryResult = getDynamoDb().query(request);
         queryResult.setItems(queryResult.getItems().stream().map(mapping.getItemMapper()::reverse)
             .collect(toList()));
         if (queryResult.getLastEvaluatedKey() != null) {
@@ -148,7 +148,7 @@ public class SharedTableMappingDelegate {
         request.withTableName(mapping.getPhysicalTable().getTableName());
 
         // execute scan, keep moving forward pages until we find at least one record for current tenant or reach end
-        ScanResult scanResult = mapping.getQueryAndScanMapper().executeScan(getDynamoDB(), request);
+        ScanResult scanResult = mapping.getQueryAndScanMapper().executeScan(getDynamoDb(), request);
 
         // map result
         List<Map<String, AttributeValue>> items = scanResult.getItems();
@@ -191,7 +191,7 @@ public class SharedTableMappingDelegate {
                 .collect(Collectors.toList())));
 
         // batch get
-        final BatchGetItemResult physicalResult = getDynamoDB()
+        final BatchGetItemResult physicalResult = getDynamoDb()
             .batchGetItem(physicalRequest);
 
         // map result
@@ -240,7 +240,7 @@ public class SharedTableMappingDelegate {
         mapping.getConditionMapper().applyToFilterExpression(new DeleteItemRequestWrapper(request));
 
         // delete
-        return getDynamoDB().deleteItem(request);
+        return getDynamoDb().deleteItem(request);
     }
 
     public long truncateTable(TableMapping mapping) {

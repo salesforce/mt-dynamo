@@ -9,7 +9,7 @@ import java.util.Objects;
 public class ShardIterator {
 
     public static final char ITERATOR_SEPARATOR = '|';
-    private static final String LOCAL_DYNAMODB_PREFIX = "000" + ITERATOR_SEPARATOR;
+    private static final String LOCAL_DYNAMO_DB_PREFIX = "000" + ITERATOR_SEPARATOR;
 
     /**
      * Parses shard iterator from string representation.
@@ -18,9 +18,9 @@ public class ShardIterator {
      * @return Shard iterator.
      */
     public static ShardIterator fromString(String value) {
-        final boolean local = value.startsWith(LOCAL_DYNAMODB_PREFIX);
+        final boolean local = value.startsWith(LOCAL_DYNAMO_DB_PREFIX);
         if (local) {
-            value = value.substring(LOCAL_DYNAMODB_PREFIX.length());
+            value = value.substring(LOCAL_DYNAMO_DB_PREFIX.length());
         }
         final int idx = value.indexOf(ITERATOR_SEPARATOR);
         final String arn = value.substring(0, idx);
@@ -58,7 +58,7 @@ public class ShardIterator {
     public String toString() {
         String value = arn + ITERATOR_SEPARATOR + rest;
         if (local) {
-            value = LOCAL_DYNAMODB_PREFIX + value;
+            value = LOCAL_DYNAMO_DB_PREFIX + value;
         }
         return value;
     }

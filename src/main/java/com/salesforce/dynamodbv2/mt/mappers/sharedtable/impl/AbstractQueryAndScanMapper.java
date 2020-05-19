@@ -72,14 +72,14 @@ abstract class AbstractQueryAndScanMapper implements QueryAndScanMapper {
     }
 
     @Override
-    public ScanResult executeScan(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest) {
+    public ScanResult executeScan(AmazonDynamoDB amazonDynamoDb, ScanRequest scanRequest) {
         validateScanRequest(scanRequest);
         convertLegacyExpression(new ScanLegacyConditionRequestWrapper(scanRequest), scanRequest.getScanFilter());
 
-        return executeScanInternal(amazonDynamoDB, scanRequest);
+        return executeScanInternal(amazonDynamoDb, scanRequest);
     }
 
-    abstract ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest);
+    abstract ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDb, ScanRequest scanRequest);
 
     protected RequestIndex getRequestIndexAndMapIndexName(QueryOrScanRequestWrapper request) {
         RequestIndex requestIndex = indexLookup.apply(request.getIndexName());
