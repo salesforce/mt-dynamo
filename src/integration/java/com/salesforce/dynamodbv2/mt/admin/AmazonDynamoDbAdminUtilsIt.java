@@ -36,10 +36,10 @@ class AmazonDynamoDbAdminUtilsIt {
     (local create times are too short) */
 
     private static final Regions REGION = Regions.US_EAST_1;
-    private static final AmazonDynamoDB remoteDynamoDB = AmazonDynamoDBClientBuilder.standard()
+    private static final AmazonDynamoDB remoteDynamoDb = AmazonDynamoDBClientBuilder.standard()
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(REGION).build();
-    private static final AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDB);
+    private static final AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDb);
     private static final String TABLE_PREFIX = "okToDelete-testBillingMode.";
     private String fullTableName;
     private static final ArrayList<String> testTables = new ArrayList<>();
@@ -74,7 +74,7 @@ class AmazonDynamoDbAdminUtilsIt {
 
     @Test
     void createTableIfNotExistsButTableInUseForCreating() {
-        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
+        remoteDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
         remoteUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
     }
 
@@ -82,12 +82,12 @@ class AmazonDynamoDbAdminUtilsIt {
     (local create times are too short) */
     @Test
     void createTableIfNotExistsButTableInUseForOtherStatus() throws InterruptedException {
-        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
-        TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
+        remoteDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
+        TableUtils.waitUntilActive(remoteDynamoDb, fullTableName);
 
         Throwable e = null;
         try {
-            remoteDynamoDB.deleteTable(fullTableName);
+            remoteDynamoDb.deleteTable(fullTableName);
             remoteUtils.createTableIfNotExists(getTestCreateTableRequest(fullTableName), 10);
         } catch (Throwable ex) {
             e = ex;
@@ -97,7 +97,7 @@ class AmazonDynamoDbAdminUtilsIt {
 
     @Test
     void deleteTableIfExistsButTableInUse() throws InterruptedException {
-        remoteDynamoDB.createTable(getTestCreateTableRequest(fullTableName));
+        remoteDynamoDb.createTable(getTestCreateTableRequest(fullTableName));
 
         // intentionally wait for table to be created
         Throwable e = null;
@@ -108,7 +108,7 @@ class AmazonDynamoDbAdminUtilsIt {
             e = ex;
         }
         assertTrue(e instanceof ResourceInUseException);
-        TableUtils.waitUntilActive(remoteDynamoDB, fullTableName);
+        TableUtils.waitUntilActive(remoteDynamoDb, fullTableName);
     }
 
     @AfterAll
@@ -118,10 +118,10 @@ class AmazonDynamoDbAdminUtilsIt {
             try {
                 remoteUtils.deleteTableIfExists(table, 10, 600);
             } catch (ResourceInUseException e) {
-                if (remoteDynamoDB.describeTable(table) != null
-                        && remoteDynamoDB.describeTable(table).getTable() != null
-                        && remoteDynamoDB.describeTable(table).getTable().getTableStatus() != null
-                        && remoteDynamoDB.describeTable(table).getTable().getTableStatus().equals(
+                if (remoteDynamoDb.describeTable(table) != null
+                        && remoteDynamoDb.describeTable(table).getTable() != null
+                        && remoteDynamoDb.describeTable(table).getTable().getTableStatus() != null
+                        && remoteDynamoDb.describeTable(table).getTable().getTableStatus().equals(
                         TableStatus.DELETING.toString())) {
                     LOG.info("table delete already in progress for table: " + table);
                 }

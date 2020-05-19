@@ -488,9 +488,9 @@ class MtAmazonDynamoDbStreamsBySharedTableTest {
     }
 
     private static MtAmazonDynamoDbBySharedTable createMtAmazonDynamoDb(String prefix, Clock clock) {
-        final AmazonDynamoDB amazonDynamoDB = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
+        final AmazonDynamoDB amazonDynamoDb = AmazonDynamoDbLocal.getAmazonDynamoDbLocal();
         return SharedTableBuilder.builder()
-            .withAmazonDynamoDb(amazonDynamoDB)
+            .withAmazonDynamoDb(amazonDynamoDb)
             .withClock(clock)
             .withContext(MT_CONTEXT)
             .withGetRecordsTimeLimit(1L)

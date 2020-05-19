@@ -31,7 +31,7 @@ public class MtAmazonDynamoDbStreamsBySharedTable extends MtAmazonDynamoDbStream
      * Default constructor.
      *
      * @param dynamoDbStreams underlying streams instance
-     * @param mtDynamoDb      corresponding shared table dynamo DB instance
+     * @param mtDynamoDb      corresponding shared table DynamoDB instance
      */
     public MtAmazonDynamoDbStreamsBySharedTable(AmazonDynamoDBStreams dynamoDbStreams,
                                                 MtAmazonDynamoDbBySharedTable mtDynamoDb) {

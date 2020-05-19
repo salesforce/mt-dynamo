@@ -39,7 +39,7 @@ class HashPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
     }
 
     @Override
-    ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest) {
+    ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDb, ScanRequest scanRequest) {
         RequestIndex requestIndex = getRequestIndexAndMapIndexName(new ScanRequestWrapper(scanRequest, null, null));
         PrimaryKey virtualPk = requestIndex.getVirtualPk();
         PrimaryKey physicalPk = requestIndex.getPhysicalPk();
@@ -76,7 +76,7 @@ class HashPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
 
         // keep moving forward pages until we find at least one record or reach end
         QueryResult queryResult;
-        while ((queryResult = amazonDynamoDB.query(queryRequest)).getItems().isEmpty()) {
+        while ((queryResult = amazonDynamoDb.query(queryRequest)).getItems().isEmpty()) {
             checkState(queryResult.getLastEvaluatedKey() == null,
                 "Query without filter expression should not return no items while having a lastEvaluatedKey");
 

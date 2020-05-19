@@ -52,13 +52,13 @@ class RandomPartitioningQueryAndScanMapper extends AbstractQueryAndScanMapper {
     }
 
     @Override
-    ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDB, ScanRequest scanRequest) {
+    ScanResult executeScanInternal(AmazonDynamoDB amazonDynamoDb, ScanRequest scanRequest) {
         // map scan request
         applyToScanInternal(scanRequest);
 
         // keep moving forward pages until we find at least one record for current tenant or reach end
         ScanResult scanResult;
-        while ((scanResult = amazonDynamoDB.scan(scanRequest)).getItems().isEmpty()
+        while ((scanResult = amazonDynamoDb.scan(scanRequest)).getItems().isEmpty()
             && scanResult.getLastEvaluatedKey() != null) {
             scanRequest.setExclusiveStartKey(scanResult.getLastEvaluatedKey());
         }
