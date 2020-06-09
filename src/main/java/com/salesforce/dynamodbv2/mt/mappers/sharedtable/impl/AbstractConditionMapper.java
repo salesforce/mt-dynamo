@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.grammar.ExpressionsBaseVisitor;
 import com.salesforce.dynamodbv2.grammar.ExpressionsLexer;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser;
+import com.salesforce.dynamodbv2.grammar.ExpressionsParser.AddActionContext;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser.ComparatorContext;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser.IdContext;
 import com.salesforce.dynamodbv2.grammar.ExpressionsParser.KeyConditionContext;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -57,28 +59,46 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         this.itemMapper = itemMapper;
     }
 
+    private List<String> getPhysicalUpdateExpressionForAction(RequestWrapper request,
+                                                               Map<String, AttributeValue> actions,
+                                                               String delimiter) {
+        // validate no table primary key field is being updated, and that if one field in a secondary index is
+        // being updated, then the other is as well
+        validateFieldsCanBeUpdated(actions.keySet());
+
+        // map virtual field values to physical ones
+        Map<String, AttributeValue> physicalActions = itemMapper.applyForWrite(actions);
+
+        // construct physical update SET expression
+        List<String> clauses = physicalActions.entrySet().stream()
+            .map(entry -> getUpdateClause(request, entry.getKey(), entry.getValue(), delimiter))
+            .collect(Collectors.toList());
+
+        return clauses;
+    }
+
     @Override
     public void applyForUpdate(UpdateItemRequest updateItemRequest) {
         if (updateItemRequest.getUpdateExpression() != null) {
             RequestWrapper request = new UpdateExpressionRequestWrapper(updateItemRequest);
 
             // parse update expression for the field values being set
-            Map<String, AttributeValue> virtualSetActions = parseUpdateExpression(request,
-                updateItemRequest.getConditionExpression());
-            checkArgument(!virtualSetActions.isEmpty(), "Update expression needs at least one SET action");
+            Pair<Map<String, AttributeValue>, Map<String, AttributeValue>> virtualActions = parseUpdateExpression(
+                request, updateItemRequest.getConditionExpression());
+            Map<String, AttributeValue> virtualSetActions = virtualActions.getFirst();
+            Map<String, AttributeValue> virtualAddActions = virtualActions.getSecond();
 
-            // validate no table primary key field is being updated, and that if one field in a secondary index is
-            // being updated, then the other is as well
-            validateFieldsCanBeUpdated(virtualSetActions.keySet());
+            checkArgument(!virtualSetActions.isEmpty() || !virtualAddActions.isEmpty(),
+                "Update expression needs at least one supported action: SET or ADD");
 
-            // map virtual field values to physical ones
-            Map<String, AttributeValue> physicalSetActions = itemMapper.applyForWrite(virtualSetActions);
+            List<String> setClauses = getPhysicalUpdateExpressionForAction(request, virtualSetActions, " = ");
+            List<String> addClauses = getPhysicalUpdateExpressionForAction(request, virtualAddActions, " ");
 
-            // construct physical update SET expression
-            List<String> clauses = physicalSetActions.entrySet().stream()
-                .map(entry -> getUpdateSetClause(request, entry.getKey(), entry.getValue()))
-                .collect(Collectors.toList());
-            request.setExpression("SET " + String.join(", ", clauses));
+            String setExpression = setClauses.isEmpty() ? "" : "SET " + String.join(", ", setClauses);
+            String addExpression = addClauses.isEmpty() ? "" : "ADD " + String.join(", ", addClauses);
+            String updateExpression = (setExpression + " " + addExpression).trim();
+
+            request.setExpression(updateExpression);
         }
 
         if (updateItemRequest.getConditionExpression() != null) {
@@ -101,26 +121,27 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         }
     }
 
-    private String getUpdateSetClause(RequestWrapper request, String field, AttributeValue value) {
+    private String getUpdateClause(RequestWrapper request, String field, AttributeValue value, String delimiter) {
         String fieldPlaceholder = MappingUtils.getNextFieldPlaceholder(request);
         request.putExpressionAttributeName(fieldPlaceholder, field);
         String valuePlaceholder = MappingUtils.getNextValuePlaceholder(request);
         request.putExpressionAttributeValue(valuePlaceholder, value);
-        return fieldPlaceholder + " = " + valuePlaceholder;
+        return fieldPlaceholder + delimiter + valuePlaceholder;
     }
 
     @VisibleForTesting
-    static Map<String, AttributeValue> parseUpdateExpression(RequestWrapper request,
-                                                             String conditionExpression) {
+    static Pair<Map<String, AttributeValue>, Map<String, AttributeValue>> parseUpdateExpression(
+        RequestWrapper request, String conditionExpression) {
         Set<String> conditionExprFieldPlaceholders = MappingUtils.getFieldPlaceholders(conditionExpression);
         Set<String> conditionExprValuePlaceholders = MappingUtils.getValuePlaceholders(conditionExpression);
 
         ExpressionsParser parser = getExpressionsParser(request.getExpression());
+
         UpdateExpressionVisitor visitor = new UpdateExpressionVisitor(request.getExpressionAttributeNames(),
             request.getExpressionAttributeValues(), conditionExprFieldPlaceholders, conditionExprValuePlaceholders);
         parser.updateExpression().accept(visitor);
 
-        return visitor.setActions;
+        return new Pair<>(visitor.setActions, visitor.addActions);
     }
 
     private static class UpdateExpressionVisitor extends ExpressionsBaseVisitor<Void> {
@@ -131,6 +152,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         private final Set<String> doNotRemoveValuePlaceholders;
 
         private Map<String, AttributeValue> setActions = new HashMap<>();
+        private Map<String, AttributeValue> addActions = new HashMap<>();
 
         UpdateExpressionVisitor(Map<String, String> fieldPlaceholders,
                                 Map<String, AttributeValue> valuePlaceholders,
@@ -142,21 +164,34 @@ abstract class AbstractConditionMapper implements ConditionMapper {
             this.doNotRemoveValuePlaceholders = doNotRemoveValuePlaceholders;
         }
 
-        @Override
-        public Void visitSetAction(SetActionContext setAction) {
-            String fieldName = setAction.path().id().getText();
-            String valuePlaceholder = setAction.setValue().literal().getText();
+        private void putAction(Map<String, AttributeValue> actions, String fieldName, String valuePlaceholder) {
             if (fieldName.startsWith("#")) {
                 fieldName = getAndRemovePlaceholderIfNeeded(fieldName, fieldPlaceholders,
                     doNotRemoveFieldPlaceholders);
             }
-            if (setActions.containsKey(fieldName)) {
+            if (actions.containsKey(fieldName)) {
                 throw new AmazonServiceException(
                     "Two document paths overlap with each other; must remove or rewrite one of these paths");
             }
+
             AttributeValue value = getAndRemovePlaceholderIfNeeded(valuePlaceholder, valuePlaceholders,
                 doNotRemoveValuePlaceholders);
-            setActions.put(fieldName, value);
+            actions.put(fieldName, value);
+        }
+
+        @Override
+        public Void visitSetAction(SetActionContext setAction) {
+            String fieldName = setAction.path().id().getText();
+            String valuePlaceholder = setAction.setValue().literal().getText();
+            putAction(setActions, fieldName, valuePlaceholder);
+            return null;
+        }
+
+        @Override
+        public Void visitAddAction(AddActionContext addAction) {
+            String fieldName = addAction.path().id().getText();
+            String valuePlaceholder = addAction.addValue().literal().getText();
+            putAction(addActions, fieldName, valuePlaceholder);
             return null;
         }
     }

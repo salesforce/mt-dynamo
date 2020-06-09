@@ -61,7 +61,13 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "SET #field1 = :value1",
-        "sEt Score = :value1, CreatedBy = :value2"
+        "sEt Score = :value1, CreatedBy = :value2",
+        "ADD Score :value2",
+        "Set Score = :value1 add Score :value2",
+
+        "ADD Score :value2, CreatedBy :value1", // add multiple
+        "sEt Score = :value1, CreatedBy = :value2 ADD Score :value2", // set multiple, add once
+        "sEt Score = :value1, CreatedBy = :value2 ADD Score :value2, CreatedBy :value1" // set multiple, add multiple
     })
     void testParseUpdateExpression(String expression) {
         // our grammar

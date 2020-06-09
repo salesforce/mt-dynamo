@@ -68,7 +68,7 @@ class HashPartitioningConditionMapperTest {
 
         RequestWrapper requestWrapper = new HashPartitioningConditionMapper.UpdateExpressionRequestWrapper(request);
         Map<String, AttributeValue> result = AbstractConditionMapper.parseUpdateExpression(requestWrapper,
-            null);
+            null).getFirst();
         assertEquals(ImmutableMap.of(VIRTUAL_GSI_HK, gsiHkValue, VIRTUAL_GSI_RK, gsiRkValue), result);
     }
 

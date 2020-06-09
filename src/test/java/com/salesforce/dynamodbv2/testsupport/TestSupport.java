@@ -1,5 +1,6 @@
 package com.salesforce.dynamodbv2.testsupport;
 
+import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.N;
 import static com.amazonaws.services.dynamodbv2.model.ScalarAttributeType.S;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
@@ -148,6 +149,10 @@ public class TestSupport {
 
     public static AttributeValue createStringAttribute(String value) {
         return createAttributeValue(S, value);
+    }
+
+    public static AttributeValue createNumberAttribute(String value) {
+        return createAttributeValue(N, value);
     }
 
     /**

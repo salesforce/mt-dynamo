@@ -13,6 +13,7 @@ import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.HASH_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.INDEX_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.RANGE_KEY_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_FIELD;
+import static com.salesforce.dynamodbv2.testsupport.ItemBuilder.SOME_OTHER_FIELD;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_HK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI2_RK_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.GSI_HK_FIELD_VALUE;
@@ -22,7 +23,9 @@ import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_OTHER_
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.RANGE_KEY_S_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_FIELD_VALUE;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.SOME_OTHER_OTHER_FIELD_VALUE;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createAttributeValue;
+import static com.salesforce.dynamodbv2.testsupport.TestSupport.createNumberAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.createStringAttribute;
 import static com.salesforce.dynamodbv2.testsupport.TestSupport.getItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -60,7 +63,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
-    void update(TestArgument testArgument) {
+    void setUpdate(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
@@ -89,7 +92,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
-    void updatePrimaryKeyFieldFails(TestArgument testArgument) {
+    void addUpdate(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
@@ -97,15 +100,186 @@ class UpdateTest {
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
-                .withUpdateExpression("set #someField = :someValue")
-                .withExpressionAttributeNames(ImmutableMap.of("#someField", HASH_KEY_FIELD))
+                .withUpdateExpression("add #someOtherField :" + SOME_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField","someOtherField"))
+                .withExpressionAttributeValues(ImmutableMap.of(":" + SOME_OTHER_FIELD_VALUE,
+                    createNumberAttribute("1")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .someOtherField(N, "1")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void multipleAddUpdate(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("add #someOtherField :" + SOME_OTHER_FIELD_VALUE + ", #someOtherOtherField :"
+                    + SOME_OTHER_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField","someOtherField",
+                    "#someOtherOtherField", "someOtherOtherField"))
+                .withExpressionAttributeValues(ImmutableMap.of(
+                    ":" + SOME_OTHER_FIELD_VALUE, createNumberAttribute("1"),
+                    ":" + SOME_OTHER_OTHER_FIELD_VALUE, createNumberAttribute("2")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .someOtherField(N, "1")
+                    .someOtherOtherField(N, "2")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void setAndAddUpdate(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #someField = :someValue add #someOtherField :" + SOME_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD, "#someOtherField",
+                    "someOtherField"))
                 .withExpressionAttributeValues(ImmutableMap.of(":someValue",
-                    createStringAttribute("someUpdatedValue")));
-            try {
-                testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-                fail("Updating table PK field should fail");
-            } catch (AmazonServiceException e) {
-                assertTrue(e.getMessage().contains("This attribute is part of the key"));
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"), ":"
+                        + SOME_OTHER_FIELD_VALUE, createNumberAttribute("1")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void setAndMultipleAddUpdate(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #someField = :someValue add #someOtherField :" + SOME_OTHER_FIELD_VALUE
+                    + ", #someOtherOtherField :" + SOME_OTHER_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD, "#someOtherField",
+                    "someOtherField", "#someOtherOtherField", "someOtherOtherField"))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"),
+                    ":" + SOME_OTHER_FIELD_VALUE, createNumberAttribute("1"),
+                    ":" + SOME_OTHER_OTHER_FIELD_VALUE, createNumberAttribute("2")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
+                    .someOtherOtherField(N, "2")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void multipleSetAndAddUpdate(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("set #someField = :someValue, #someOtherField = :" + SOME_OTHER_FIELD_VALUE
+                    + " add #someOtherOtherField :" + SOME_OTHER_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD, "#someOtherField",
+                    "someOtherField", "#someOtherOtherField", "someOtherOtherField"))
+                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"),
+                    ":" + SOME_OTHER_FIELD_VALUE, createNumberAttribute("1"),
+                    ":" + SOME_OTHER_OTHER_FIELD_VALUE, createNumberAttribute("2")));
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
+                    .someOtherOtherField(N, "2")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void updatePrimaryKeyFieldFails(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+
+            String[] updateExpressions = new String[]{"set #someField = :someValue", "add #someField :someValue"};
+            for (String actionUpdateExpr: updateExpressions) {
+                UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                    .withTableName(TABLE1)
+                    .withKey(updateItemKey)
+                    .withUpdateExpression(actionUpdateExpr)
+                    .withExpressionAttributeNames(ImmutableMap.of("#someField", HASH_KEY_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":someValue", createNumberAttribute("1")));
+                try {
+                    testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+                    fail("Updating table PK field should fail");
+                } catch (AmazonServiceException e) {
+                    assertTrue(e.getMessage().contains("This attribute is part of the key"));
+                }
             }
         });
     }
@@ -113,23 +287,27 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
-    void updateSetFieldMultipleTimesFails(TestArgument testArgument) {
+    void updateFieldMultipleTimesFails(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
                 .build();
-            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
-                .withTableName(TABLE1)
-                .withKey(updateItemKey)
-                .withUpdateExpression("set #someField = :someValue, " + SOME_FIELD + " = :someValue")
-                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
-                .withExpressionAttributeValues(ImmutableMap.of(":someValue",
-                    createStringAttribute("someUpdatedValue")));
-            try {
-                testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
-                fail("Update expression with the same field being set more than once should fail");
-            } catch (AmazonServiceException e) {
-                assertTrue(e.getMessage().contains("Two document paths overlap with each other"));
+
+            String[] updateExpressions = new String[]{"set #someField = :someValue, " + SOME_FIELD + " = :someValue",
+                "add #someField :someValue, " + SOME_FIELD + " :someValue"};
+            for (String actionUpdateExpr: updateExpressions) {
+                UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                    .withTableName(TABLE1)
+                    .withKey(updateItemKey)
+                    .withUpdateExpression(actionUpdateExpr)
+                    .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD))
+                    .withExpressionAttributeValues(ImmutableMap.of(":someValue", createNumberAttribute("1")));
+                try {
+                    testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+                    fail("Update expression with the same field being set more than once should fail");
+                } catch (AmazonServiceException e) {
+                    assertTrue(e.getMessage().contains("Two document paths overlap with each other"));
+                }
             }
         });
     }
@@ -137,7 +315,7 @@ class UpdateTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
-    void updateConditionalSuccess(TestArgument testArgument) {
+    void updateSetConditionalSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
@@ -164,22 +342,80 @@ class UpdateTest {
     @ParameterizedTest(name = "{arguments}")
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void updateAddConditionalSuccess(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .build())
+                .withUpdateExpression("add #someOtherField :newValue")
+                .withConditionExpression("attribute_not_exists(#someOtherField)")
+                .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
+                .addExpressionAttributeValuesEntry(":newValue", createNumberAttribute("1")));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .someOtherField(N, "1")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void updateSetAndAddConditionalSuccess(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .build())
+                .withUpdateExpression("set #someField = :newValue add #someOtherField :addValue")
+                .withConditionExpression("#someField = :currentValue and attribute_not_exists(#someOtherField)")
+                .withExpressionAttributeNames(ImmutableMap.of("#someField", SOME_FIELD, "#someOtherField",
+                    SOME_OTHER_FIELD))
+                .withExpressionAttributeValues(ImmutableMap.of(
+                    ":currentValue", createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org),
+                    ":newValue", createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"),
+                    ":addValue", createNumberAttribute("1")
+                )));
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
     void updateConditionalOnHkSuccess(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             testArgument.getAmazonDynamoDb().updateItem(new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .build())
-                .withUpdateExpression("set #someField = :newValue")
+                .withUpdateExpression("set #someField = :newValue add #someOtherField :addValue")
                 .withConditionExpression("#hk = :currentValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
                 .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
+                .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue",
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
-                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"))
+                .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
                     .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
@@ -198,15 +434,17 @@ class UpdateTest {
                 .withTableName(TABLE1)
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .build())
-                .withUpdateExpression("set " + SOME_FIELD + " = :newValue")
+                .withUpdateExpression("set " + SOME_FIELD + " = :newValue add " + SOME_OTHER_FIELD + ":addValue")
                 .withConditionExpression(HASH_KEY_FIELD + " = :currentValue")
                 .addExpressionAttributeValuesEntry(":currentValue",
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
-                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"))
+                .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
             assertEquals(ItemBuilder
                     .builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE1 + org + "Updated")
+                    .someOtherField(N, "1")
                     .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE1,
@@ -280,12 +518,14 @@ class UpdateTest {
                     .withTableName(TABLE1)
                     .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .build())
-                    .withUpdateExpression("set #name = :newValue")
-                    .withConditionExpression("#name = :currentValue")
+                    .withUpdateExpression("set #name = :newValue add #someOtherField :addValue")
+                    .withConditionExpression("#name = :currentValue and attribute_exists(#someOtherField)")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
+                    .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
                     .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
                     .addExpressionAttributeValuesEntry(":newValue",
-                        createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated")));
+                        createStringAttribute(SOME_FIELD_VALUE + TABLE1 + org + "Updated"))
+                    .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
                 throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
@@ -497,15 +737,18 @@ class UpdateTest {
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build())
-                .withUpdateExpression("set #someField = :newValue")
-                .withConditionExpression("#someField = :currentValue")
+                .withUpdateExpression("set #someField = :newValue add #someOtherField :addValue")
+                .withConditionExpression("#someField = :currentValue and attribute_not_exists(#someOtherField)")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
+                .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
                 .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute(SOME_FIELD_VALUE
                     + TABLE3 + org))
                 .addExpressionAttributeValuesEntry(":newValue",
-                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated"))
+                .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .someOtherField(N, "1")
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
@@ -526,18 +769,21 @@ class UpdateTest {
                 .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build())
-                .withUpdateExpression("set #someField = :newValue")
+                .withUpdateExpression("set #someField = :newValue add #someOtherField :addValue")
                 .withConditionExpression("#hk = :currentHkValue and #rk = :currentRkValue")
                 .addExpressionAttributeNamesEntry("#someField", SOME_FIELD)
+                .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
                 .addExpressionAttributeNamesEntry("#hk", HASH_KEY_FIELD)
                 .addExpressionAttributeNamesEntry("#rk", RANGE_KEY_FIELD)
                 .addExpressionAttributeValuesEntry(":currentHkValue",
                     createAttributeValue(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE))
                 .addExpressionAttributeValuesEntry(":currentRkValue", createStringAttribute(RANGE_KEY_S_VALUE))
                 .addExpressionAttributeValuesEntry(":newValue",
-                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated")));
+                    createStringAttribute(SOME_FIELD_VALUE + TABLE3 + org + "Updated"))
+                .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
             assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                     .someField(S, SOME_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .someOtherField(N, "1")
                     .rangeKey(S, RANGE_KEY_S_VALUE)
                     .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
@@ -559,12 +805,14 @@ class UpdateTest {
                     .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                         .rangeKey(S, RANGE_KEY_S_VALUE)
                         .build())
-                    .withUpdateExpression("set #name = :newValue")
-                    .withConditionExpression("#name = :currentValue")
+                    .withUpdateExpression("set #name = :newValue add #someOtherField :addValue")
+                    .withConditionExpression("#name = :currentValue and attribute_exists(#someOtherField)")
                     .addExpressionAttributeNamesEntry("#name", SOME_FIELD)
+                    .addExpressionAttributeNamesEntry("#someOtherField", SOME_OTHER_FIELD)
                     .addExpressionAttributeValuesEntry(":currentValue", createStringAttribute("invalidValue"))
                     .addExpressionAttributeValuesEntry(":newValue", createStringAttribute(SOME_FIELD_VALUE
-                        + TABLE3 + org + "Updated")));
+                        + TABLE3 + org + "Updated"))
+                    .addExpressionAttributeValuesEntry(":addValue", createNumberAttribute("1")));
                 throw new RuntimeException("expected ConditionalCheckFailedException was not encountered");
             } catch (ConditionalCheckFailedException e) {
                 assertTrue(e.getMessage().contains("ConditionalCheckFailedException"));
