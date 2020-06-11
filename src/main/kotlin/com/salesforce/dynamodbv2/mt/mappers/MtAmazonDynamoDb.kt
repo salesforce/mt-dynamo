@@ -34,12 +34,12 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
         }
 
         override fun withAwsRegion(awsRegion: String): MtRecord {
-            setAwsRegion(awsRegion)
+            super.withAwsRegion(awsRegion)
             return this
         }
 
         override fun withDynamodb(dynamodb: StreamRecord): MtRecord {
-            setDynamodb(dynamodb)
+            super.withDynamodb(dynamodb)
             return this
         }
 
@@ -49,27 +49,27 @@ interface MtAmazonDynamoDb : AmazonDynamoDB {
         }
 
         override fun withEventName(eventName: OperationType): MtRecord {
-            setEventName(eventName)
+            super.withEventName(eventName)
             return this
         }
 
         override fun withEventName(eventName: String): MtRecord {
-            setEventName(eventName)
+            super.withEventName(eventName)
             return this
         }
 
         override fun withEventSource(eventSource: String): MtRecord {
-            setEventSource(eventSource)
+            super.withEventSource(eventSource)
             return this
         }
 
         override fun withEventVersion(eventVersion: String): MtRecord {
-            setEventVersion(eventVersion)
+            super.withEventVersion(eventVersion)
             return this
         }
 
         override fun withUserIdentity(userIdentity: Identity): MtRecord {
-            setUserIdentity(userIdentity)
+            super.withUserIdentity(userIdentity)
             return this
         }
 
