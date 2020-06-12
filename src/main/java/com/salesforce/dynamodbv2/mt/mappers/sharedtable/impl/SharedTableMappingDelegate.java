@@ -156,8 +156,8 @@ public class SharedTableMappingDelegate {
             scanResult.setItems(items.stream().map(mapping.getItemMapper()::reverse).collect(toList()));
             if (scanResult.getLastEvaluatedKey() != null) {
                 Map<String, AttributeValue> lastItem = Iterables.getLast(scanResult.getItems());
-                Map<String, AttributeValue> lastEvaluatedKey = new HashMap<>();
-                lastEvaluatedKey.putAll(getKeyFromItem(lastItem, mapping.getVirtualTable().getPrimaryKey()));
+                Map<String, AttributeValue> lastEvaluatedKey = new HashMap<>(getKeyFromItem(lastItem,
+                    mapping.getVirtualTable().getPrimaryKey()));
                 if (request.getIndexName() != null) {
                     lastEvaluatedKey.putAll(getKeyFromItem(lastItem, key));
                 }

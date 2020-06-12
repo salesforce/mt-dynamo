@@ -37,8 +37,8 @@ class AmazonDynamoDbAdminUtilsIt {
 
     private static final Regions REGION = Regions.US_EAST_1;
     private static final AmazonDynamoDB remoteDynamoDb = AmazonDynamoDBClientBuilder.standard()
-            .withCredentials(new EnvironmentVariableCredentialsProvider())
-            .withRegion(REGION).build();
+        .withCredentials(new EnvironmentVariableCredentialsProvider())
+        .withRegion(REGION).build();
     private static final AmazonDynamoDbAdminUtils remoteUtils = new AmazonDynamoDbAdminUtils(remoteDynamoDb);
     private static final String TABLE_PREFIX = "okToDelete-testBillingMode.";
     private String fullTableName;
@@ -55,21 +55,21 @@ class AmazonDynamoDbAdminUtilsIt {
     private CreateTableRequest getTestCreateTableRequest(String tableName) {
 
         return new CreateTableRequest()
-                .withTableName(tableName)
-                .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
-                        new AttributeDefinition(RANGE_KEY_FIELD, S),
-                        new AttributeDefinition(INDEX_FIELD, S))
-                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                        new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
+            .withTableName(tableName)
+            .withAttributeDefinitions(new AttributeDefinition(HASH_KEY_FIELD, S),
+                new AttributeDefinition(RANGE_KEY_FIELD, S),
+                new AttributeDefinition(INDEX_FIELD, S))
+            .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                new KeySchemaElement(RANGE_KEY_FIELD, KeyType.RANGE))
+            .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
+            .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi")
+                .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
                 .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                .withGlobalSecondaryIndexes(new GlobalSecondaryIndex().withIndexName("testGsi")
-                        .withKeySchema(new KeySchemaElement(INDEX_FIELD, KeyType.HASH))
-                        .withProvisionedThroughput(new ProvisionedThroughput(1L, 1L))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
-                .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
-                        .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
-                                new KeySchemaElement(INDEX_FIELD, KeyType.RANGE))
-                        .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)))
+            .withLocalSecondaryIndexes(new LocalSecondaryIndex().withIndexName("testLsi")
+                .withKeySchema(new KeySchemaElement(HASH_KEY_FIELD, KeyType.HASH),
+                    new KeySchemaElement(INDEX_FIELD, KeyType.RANGE))
+                .withProjection(new Projection().withProjectionType(ProjectionType.ALL)));
     }
 
     @Test
@@ -114,15 +114,15 @@ class AmazonDynamoDbAdminUtilsIt {
     @AfterAll
     static void afterAll() throws InterruptedException {
         Thread.sleep(5000);
-        for (String table: testTables) {
+        for (String table : testTables) {
             try {
                 remoteUtils.deleteTableIfExists(table, 10, 600);
             } catch (ResourceInUseException e) {
                 if (remoteDynamoDb.describeTable(table) != null
-                        && remoteDynamoDb.describeTable(table).getTable() != null
-                        && remoteDynamoDb.describeTable(table).getTable().getTableStatus() != null
-                        && remoteDynamoDb.describeTable(table).getTable().getTableStatus().equals(
-                        TableStatus.DELETING.toString())) {
+                    && remoteDynamoDb.describeTable(table).getTable() != null
+                    && remoteDynamoDb.describeTable(table).getTable().getTableStatus() != null
+                    && remoteDynamoDb.describeTable(table).getTable().getTableStatus().equals(
+                    TableStatus.DELETING.toString())) {
                     LOG.info("table delete already in progress for table: " + table);
                 }
             } catch (ResourceNotFoundException e) {
