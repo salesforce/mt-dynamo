@@ -305,7 +305,7 @@ public class MtDynamoDbTableDescriptionRepo implements MtTableDescriptionRepo {
      * scanning until a full page of results is populated, or the description table is exhausted.
      */
     private ListMetadataResult listVirtualTableMetadata(ListMetadataRequest listMetadataRequest, String filterTenant) {
-        Preconditions.checkArgument(mtContext.getContextOpt().map(t -> filterTenant.equals(t))
+        Preconditions.checkArgument(mtContext.getContextOpt().map(t -> t.equals(filterTenant))
                 .orElse(filterTenant == null),
             "Tenant context does not match filter");
         Map<String, AttributeValue> lastEvaluatedKey = null;
