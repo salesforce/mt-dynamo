@@ -35,12 +35,12 @@ public class HashPartitioningKeyMapper {
         private static final int MAX_HASH_KEY_LENGTH = 2048;
 
         public static AttributeValue toPhysicalHashKey(String context, String virtualTableName, int bucket) {
-            byte[] contextBytes = toStringByteArray(context);
-            byte[] tableNameBytes = toStringByteArray(virtualTableName);
+            final byte[] contextBytes = toStringByteArray(context);
+            final byte[] tableNameBytes = toStringByteArray(virtualTableName);
 
-            int totalLength = 2 + contextBytes.length + 2 + tableNameBytes.length + 4;
+            final int totalLength = 2 + contextBytes.length + 2 + tableNameBytes.length + 4;
             checkArgument(totalLength <= MAX_HASH_KEY_LENGTH);
-            ByteBuffer byteBuffer = ByteBuffer.allocate(totalLength)
+            final ByteBuffer byteBuffer = ByteBuffer.allocate(totalLength)
                 .putShort((short) contextBytes.length).put(contextBytes)
                 .putShort((short) tableNameBytes.length).put(tableNameBytes)
                 .putInt(bucket)
@@ -49,10 +49,10 @@ public class HashPartitioningKeyMapper {
         }
 
         public static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
-            ByteBuffer byteBuffer = value.getB().rewind();
-            byte[] contextBytes = new byte[byteBuffer.getShort()];
+            final ByteBuffer byteBuffer = value.getB().rewind();
+            final byte[] contextBytes = new byte[byteBuffer.getShort()];
             byteBuffer.get(contextBytes);
-            byte[] tableNameBytes = new byte[byteBuffer.getShort()];
+            final byte[] tableNameBytes = new byte[byteBuffer.getShort()];
             byteBuffer.get(tableNameBytes);
 
             return new MtContextAndTable(fromStringByteArray(contextBytes), fromStringByteArray(tableNameBytes));
@@ -70,8 +70,7 @@ public class HashPartitioningKeyMapper {
     }
 
     AttributeValue toPhysicalHashKey(ScalarAttributeType virtualHkType, AttributeValue virtualHkValue) {
-        int bucket = getBucketNumber(virtualHkType, virtualHkValue);
-        return toPhysicalHashKey(bucket);
+        return toPhysicalHashKey(getBucketNumber(virtualHkType, virtualHkValue));
     }
 
     AttributeValue toPhysicalHashKey(int bucket) {
@@ -79,8 +78,7 @@ public class HashPartitioningKeyMapper {
     }
 
     int getBucketNumber(ScalarAttributeType virtualHkType, AttributeValue virtualHkValue) {
-        int valueHashCode = getPrimitiveValueHashCode(virtualHkType, virtualHkValue);
-        return Math.abs(valueHashCode) % numBucketsPerVirtualTable;
+        return Math.abs(getPrimitiveValueHashCode(virtualHkType, virtualHkValue)) % numBucketsPerVirtualTable;
     }
 
     int getNumberOfBucketsPerVirtualTable() {
@@ -131,22 +129,22 @@ public class HashPartitioningKeyMapper {
 
         static ByteBuffer toBytes(ScalarAttributeType hkType, AttributeValue hk,
                                   ScalarAttributeType rkType, AttributeValue rk) {
-            byte[] hkb = toByteArray(hkType, hk);
-            byte[] rkb = toByteArray(rkType, rk);
+            final byte[] hkb = toByteArray(hkType, hk);
+            final byte[] rkb = toByteArray(rkType, rk);
             return toBytes(hkb, rkb, false);
         }
 
         static ByteBuffer toBytes(byte[] hkb, byte[] rkb, boolean padWithMaxUnsignedByte) {
             Preconditions.checkArgument(hkb.length + rkb.length <= MAX_KEY_LENGTH - 2);
             if (padWithMaxUnsignedByte) {
-                ByteBuffer key = ByteBuffer.allocate(MAX_KEY_LENGTH);
+                final ByteBuffer key = ByteBuffer.allocate(MAX_KEY_LENGTH);
                 key.putShort((short) hkb.length).put(hkb).put(rkb);
                 while (key.hasRemaining()) {
                     key.put(UnsignedBytes.MAX_VALUE);
                 }
                 return key.flip();
             } else {
-                ByteBuffer key = ByteBuffer.allocate(2 + hkb.length + rkb.length);
+                final ByteBuffer key = ByteBuffer.allocate(2 + hkb.length + rkb.length);
                 return key.putShort((short) hkb.length).put(hkb).put(rkb).flip();
             }
         }
@@ -160,8 +158,7 @@ public class HashPartitioningKeyMapper {
                 case S:
                     return toStringByteArray(value.getS());
                 case N:
-                    BigDecimal bigDecimal = new BigDecimal(value.getN());
-                    return BigDecimalSortedBytesConverter.encode(bigDecimal);
+                    return BigDecimalSortedBytesConverter.encode(new BigDecimal(value.getN()));
                 case B:
                     return value.getB().array();
                 default:
@@ -174,9 +171,9 @@ public class HashPartitioningKeyMapper {
         }
 
         static AttributeValue[] fromBytes(ScalarAttributeType hkType, ScalarAttributeType rkType, ByteBuffer buf) {
-            short hkValueLength = buf.getShort();
-            AttributeValue hkValue = fromBytes(hkType, buf, hkValueLength);
-            AttributeValue rkValue = fromBytes(rkType, buf, buf.remaining());
+            final short hkValueLength = buf.getShort();
+            final AttributeValue hkValue = fromBytes(hkType, buf, hkValueLength);
+            final AttributeValue rkValue = fromBytes(rkType, buf, buf.remaining());
             return new AttributeValue[] { hkValue, rkValue };
         }
 
@@ -185,7 +182,7 @@ public class HashPartitioningKeyMapper {
         }
 
         private static AttributeValue fromBytes(ScalarAttributeType type, ByteBuffer buf, int size) {
-            byte[] bytes = new byte[size];
+            final byte[] bytes = new byte[size];
             buf.get(bytes);
             switch (type) {
                 case S:
@@ -232,15 +229,15 @@ public class HashPartitioningKeyMapper {
 
         public static byte[] encode(BigDecimal bigDecimal) {
             bigDecimal = bigDecimal.stripTrailingZeros();
-            int precision = bigDecimal.precision();
-            byte[] byteArray = new byte[2 + precision];
+            final int precision = bigDecimal.precision();
+            final byte[] byteArray = new byte[2 + precision];
 
             // first byte represents the signum
             byteArray[0] = toSignumByte(bigDecimal.signum());
 
             // second byte represents the exponent, when in the number is in normalized notation
             // e.g., 12.345 has precision 5 and scale 3, and in normalized notation is 1.2345 x 10^1 -> exponent = 1
-            int normalizedExponent = precision - bigDecimal.scale() - 1;
+            final int normalizedExponent = precision - bigDecimal.scale() - 1;
             checkState(normalizedExponent >= MIN_EXPONENT);
             checkState(normalizedExponent <= MAX_EXPONENT);
             byteArray[1] = toExponentByte(normalizedExponent);
@@ -248,7 +245,7 @@ public class HashPartitioningKeyMapper {
             // the rest of the bytes are the significand. work backwards, from the least significant digit to the most.
             BigInteger significand = bigDecimal.unscaledValue();
             for (int i = byteArray.length - 1; i >= 2; i--) {
-                BigInteger[] quotientAndRemainder = significand.divideAndRemainder(BigInteger.TEN);
+                final BigInteger[] quotientAndRemainder = significand.divideAndRemainder(BigInteger.TEN);
                 // remove least significant digit
                 significand = quotientAndRemainder[0];
                 // write it in the least significant byte not yet written
@@ -285,19 +282,19 @@ public class HashPartitioningKeyMapper {
 
         public static BigDecimal decode(byte[] byteArray) {
             // get signum from first byte
-            int signum = fromSignumByte(byteArray[0]);
+            final int signum = fromSignumByte(byteArray[0]);
 
             // get exponent from second byte, and the number of significand digits from the length of the remaining
             // bytes, so we can recover the scale
-            int normalizedExponent = fromExponentByte(flipByteIfNegative(byteArray[1], signum));
-            int precision = byteArray.length - 2;
-            int scale = precision - normalizedExponent - 1;
+            final int normalizedExponent = fromExponentByte(flipByteIfNegative(byteArray[1], signum));
+            final int precision = byteArray.length - 2;
+            final int scale = precision - normalizedExponent - 1;
 
             // compute the significand, working backwards from the least significant digit
             BigInteger significand = BigInteger.ZERO;
             BigInteger power = BigInteger.ONE;
             for (int i = byteArray.length - 1; i >= 2; i--) {
-                byte digit = flipByteIfNegative(byteArray[i], signum);
+                final byte digit = flipByteIfNegative(byteArray[i], signum);
                 significand = significand.add(BigInteger.valueOf(digit).multiply(power));
                 power = power.multiply(BigInteger.TEN);
             }
