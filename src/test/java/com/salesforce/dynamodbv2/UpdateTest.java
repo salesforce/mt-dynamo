@@ -91,7 +91,7 @@ class UpdateTest {
     @ParameterizedTest
     @ArgumentsSource(DefaultArgumentProvider.class)
     @DefaultArgumentProviderConfig(tables = { TABLE1 })
-    void addUpdate(TestArgument testArgument) {
+    void addUpdateToAttributeThatDoesNotExist(TestArgument testArgument) {
         testArgument.forEachOrgContext(org -> {
             Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
                 HASH_KEY_VALUE)
@@ -104,7 +104,39 @@ class UpdateTest {
                 .withExpressionAttributeValues(ImmutableMap.of(":" + SOME_OTHER_FIELD_VALUE,
                     createNumberAttribute("1")));
 
-            // assert add works for attribute_not_exists, and for attribute_exists (increments value by 1)
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_FIELD_VALUE + TABLE1 + org)
+                    .someOtherField(N, "1")
+                    .build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE1,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.empty()));
+
+            assertEquals(new HashMap<>(updateItemKey), updateItemRequest.getKey()); // assert no side effects
+            assertEquals(TABLE1, updateItemRequest.getTableName()); // assert no side effects
+        });
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE1 })
+    void addUpdateToAttributeThatAlreadyExists(TestArgument testArgument) {
+        testArgument.forEachOrgContext(org -> {
+            Map<String, AttributeValue> updateItemKey = ItemBuilder.builder(testArgument.getHashKeyAttrType(),
+                HASH_KEY_VALUE)
+                .build();
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE1)
+                .withKey(updateItemKey)
+                .withUpdateExpression("add #someOtherField :" + SOME_OTHER_FIELD_VALUE)
+                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField","someOtherField"))
+                .withExpressionAttributeValues(ImmutableMap.of(":" + SOME_OTHER_FIELD_VALUE,
+                    createNumberAttribute("1")));
+
+            // during the second iteration, someOtherField already exists so its value will be incremented by 1
             String[] expectedValues = new String[]{"1", "2"};
             for (String expectedValue : expectedValues) {
                 testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
