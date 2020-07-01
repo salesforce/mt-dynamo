@@ -240,7 +240,7 @@ class UpdateTest {
             UpdateItemRequest updateItemRequest = new UpdateItemRequest()
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
-                .withUpdateExpression("add someField :someValue, " + SOME_FIELD + " :someValue")
+                .withUpdateExpression("add " + SOME_FIELD + " :someValue, " + SOME_FIELD + " :someValue")
                 .withExpressionAttributeValues(ImmutableMap.of(":someValue", createNumberAttribute("1")));
             try {
                 testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
