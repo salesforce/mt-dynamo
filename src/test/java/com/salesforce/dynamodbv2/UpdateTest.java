@@ -568,10 +568,11 @@ class UpdateTest {
             try {
                 testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
                 if (testArgument.getAmazonDynamoDbStrategy().equals(HashPartitioning)) {
-                    fail("Update expression containing add with an index field should fail");
+                    fail("Update expression containing add with only one key attribute being updated");
                 }
-            } catch (AmazonServiceException e) {
-                assertTrue(e.getMessage().contains("This secondary index is part of the index key"));
+            } catch (IllegalArgumentException e) {
+                assertTrue(e.getMessage().contains("The other key attribute in a secondary index is not being "
+                    + "updated"));
             }
 
             String expectedNewValue = String.valueOf(Integer.parseInt(GSI2_RK_FIELD_VALUE + "999") + 2);
@@ -590,6 +591,61 @@ class UpdateTest {
             }
 
             assertEquals(itemBuilder.build(),
+                getItem(testArgument.getAmazonDynamoDb(),
+                    TABLE3,
+                    HASH_KEY_VALUE,
+                    testArgument.getHashKeyAttrType(),
+                    Optional.of(RANGE_KEY_OTHER_S_VALUE)));
+        });
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
+    void updateWithSetAndAddConditionalOnGsiRkSuccess_usePlaceholder(TestArgument testArgument) {
+        runUpdateWithSetAndAddConditionalOnGsiRkTest(testArgument, true);
+    }
+
+    @ParameterizedTest(name = "{arguments}")
+    @ArgumentsSource(DefaultArgumentProvider.class)
+    @DefaultArgumentProviderConfig(tables = { TABLE3 })
+    void updateWithSetAndAddConditionalOnGsiRkSuccess_useLiteral(TestArgument testArgument) {
+        runUpdateWithSetAndAddConditionalOnGsiRkTest(testArgument, false);
+    }
+
+    private void runUpdateWithSetAndAddConditionalOnGsiRkTest(TestArgument testArgument, boolean usePlaceHolder) {
+        testArgument.forEachOrgContext(org -> {
+            UpdateItemRequest updateItemRequest = new UpdateItemRequest()
+                .withTableName(TABLE3)
+                .withKey(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE).build())
+                .addExpressionAttributeValuesEntry(
+                    ":hkValue", createAttributeValue(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated"))
+                .addExpressionAttributeValuesEntry(
+                    ":rkValue", createAttributeValue(N, GSI2_RK_FIELD_VALUE))
+                .addExpressionAttributeValuesEntry(
+                    ":currentValue", createAttributeValue(N, GSI2_RK_FIELD_VALUE));
+            if (usePlaceHolder) {
+                updateItemRequest.withUpdateExpression("set #hkField = :hkValue add #rkField :rkValue")
+                    .withConditionExpression("#rkField = :currentValue")
+                    .addExpressionAttributeNamesEntry("#hkField", GSI2_HK_FIELD)
+                    .addExpressionAttributeNamesEntry("#rkField", GSI2_RK_FIELD);
+            } else {
+                updateItemRequest.withUpdateExpression("set " + GSI2_HK_FIELD + " = :hkValue add "
+                    + GSI2_RK_FIELD + " :rkValue")
+                    .withConditionExpression(GSI2_RK_FIELD + " = :currentValue");
+            }
+            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+
+            String expectedNewValue = String.valueOf(Integer.parseInt(GSI2_RK_FIELD_VALUE) * 2);
+            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+                    .indexField(S, INDEX_FIELD_VALUE)
+                    .gsiHkField(S, GSI_HK_FIELD_VALUE)
+                    .gsi2HkField(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated")
+                    .gsi2RkField(N, expectedNewValue)
+                    .build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,

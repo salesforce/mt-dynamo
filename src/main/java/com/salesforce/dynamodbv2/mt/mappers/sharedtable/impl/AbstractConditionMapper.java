@@ -20,6 +20,7 @@ import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
+import com.amazonaws.services.dynamodbv2.xspec.UpdateAction;
 import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.grammar.ExpressionsBaseVisitor;
 import com.salesforce.dynamodbv2.grammar.ExpressionsLexer;
@@ -35,6 +36,7 @@ import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.RequestWrapper.AbstractRequestWrapper;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -95,22 +97,17 @@ abstract class AbstractConditionMapper implements ConditionMapper {
             RequestWrapper request = new UpdateExpressionRequestWrapper(updateItemRequest);
 
             // parse update expression for the field values being set
-            List<? extends Map<String, AttributeValue>> virtualActions = parseUpdateExpression(
-                request, updateItemRequest.getConditionExpression());
+            UpdateActions updateActions = parseUpdateExpression(request, updateItemRequest.getConditionExpression());
 
-            Map<String, AttributeValue> virtualSetActions = virtualActions.get(0);
-            Map<String, AttributeValue> virtualAddActions = virtualActions.get(1);
-
-            checkArgument(!virtualSetActions.isEmpty() || !virtualAddActions.isEmpty(),
+            checkArgument(!updateActions.setActions.isEmpty() || !updateActions.addActions.isEmpty(),
                 "Update expression needs at least one supported action: SET or ADD");
 
             // validate no table primary key field is being updated, and that if one field in a secondary index is
             // being updated, then the other is as well
-            validateFieldsCanBeUpdated(virtualSetActions.keySet(), UpdateType.SET);
-            validateFieldsCanBeUpdated(virtualAddActions.keySet(), UpdateType.ADD);
+            validateFieldsCanBeUpdated(updateActions);
 
-            List<String> setClauses = getPhysicalUpdateExpressionForAction(request, virtualSetActions, " = ");
-            List<String> addClauses = getPhysicalUpdateExpressionForAction(request, virtualAddActions, " ");
+            List<String> setClauses = getPhysicalUpdateExpressionForAction(request, updateActions.setActions, " = ");
+            List<String> addClauses = getPhysicalUpdateExpressionForAction(request, updateActions.addActions, " ");
 
             String setExpression = setClauses.isEmpty() ? "" : "SET " + String.join(", ", setClauses);
             String addExpression = addClauses.isEmpty() ? "" : "ADD " + String.join(", ", addClauses);
@@ -124,8 +121,8 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         }
     }
 
-    protected void validateFieldsCanBeUpdated(Set<String> allSetFields, UpdateType type) {
-        allSetFields.forEach(field -> {
+    protected void validateFieldsCanBeUpdated(UpdateActions updateActions) {
+        updateActions.getMergedKeySet().forEach(field -> {
             validateUpdatedFieldIsNotInPrimaryKey(field, virtualTable.getPrimaryKey().getHashKey());
             virtualTable.getPrimaryKey().getRangeKey().ifPresent(
                 rk -> validateUpdatedFieldIsNotInPrimaryKey(field, rk));
@@ -139,16 +136,6 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         }
     }
 
-    protected void validateUpdatedFieldIsNotInIndexKey(String updatedField, DynamoSecondaryIndex index) {
-        PrimaryKey primaryKey = index.getPrimaryKey();
-        if (updatedField.equals(primaryKey.getHashKey()) || (primaryKey.getRangeKey().isPresent()
-            && updatedField.equals(primaryKey.getRangeKey().get()))) {
-            throw new AmazonServiceException(
-                String.format("Cannot update attribute %s. This secondary index is part of the index key",
-                    updatedField));
-        }
-    }
-
     private String getUpdateClause(RequestWrapper request, String field, AttributeValue value, String delimiter) {
         String fieldPlaceholder = MappingUtils.getNextFieldPlaceholder(request);
         request.putExpressionAttributeName(fieldPlaceholder, field);
@@ -158,7 +145,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
     }
 
     @VisibleForTesting
-    static List<? extends Map<String, AttributeValue>> parseUpdateExpression(
+    static UpdateActions parseUpdateExpression(
         RequestWrapper request, String conditionExpression) {
         Set<String> conditionExprFieldPlaceholders = MappingUtils.getFieldPlaceholders(conditionExpression);
         Set<String> conditionExprValuePlaceholders = MappingUtils.getValuePlaceholders(conditionExpression);
@@ -169,7 +156,28 @@ abstract class AbstractConditionMapper implements ConditionMapper {
             request.getExpressionAttributeValues(), conditionExprFieldPlaceholders, conditionExprValuePlaceholders);
         parser.updateExpression().accept(visitor);
 
-        return List.of(visitor.setActions, visitor.addActions);
+        return visitor.actions;
+    }
+
+    static class UpdateActions {
+        private Map<String, AttributeValue> setActions;
+        private Map<String, AttributeValue> addActions;
+
+        UpdateActions() {
+            this.setActions = new HashMap<>();
+            this.addActions = new HashMap<>();
+        }
+
+        protected Map<String, AttributeValue> getSetActions() {
+            return setActions;
+        }
+
+        public Set<String> getMergedKeySet() {
+            Set<String> mergedKeySet = new HashSet<>();
+            mergedKeySet.addAll(setActions.keySet());
+            mergedKeySet.addAll(addActions.keySet());
+            return mergedKeySet;
+        }
     }
 
     private static class UpdateExpressionVisitor extends ExpressionsBaseVisitor<Void> {
@@ -179,8 +187,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         private final Set<String> doNotRemoveFieldPlaceholders;
         private final Set<String> doNotRemoveValuePlaceholders;
 
-        private Map<String, AttributeValue> setActions = new HashMap<>();
-        private Map<String, AttributeValue> addActions = new HashMap<>();
+        private UpdateActions actions = new UpdateActions();
 
         UpdateExpressionVisitor(Map<String, String> fieldPlaceholders,
                                 Map<String, AttributeValue> valuePlaceholders,
@@ -211,7 +218,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         public Void visitSetAction(SetActionContext setAction) {
             String fieldName = setAction.path().id().getText();
             String valuePlaceholder = setAction.setValue().literal().getText();
-            putAction(setActions, fieldName, valuePlaceholder);
+            putAction(actions.setActions, fieldName, valuePlaceholder);
             return null;
         }
 
@@ -219,7 +226,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         public Void visitAddAction(AddActionContext addAction) {
             String fieldName = addAction.path().id().getText();
             String valuePlaceholder = addAction.addValue().literal().getText();
-            putAction(addActions, fieldName, valuePlaceholder);
+            putAction(actions.addActions, fieldName, valuePlaceholder);
             return null;
         }
     }
