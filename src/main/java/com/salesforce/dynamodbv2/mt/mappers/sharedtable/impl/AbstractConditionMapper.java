@@ -60,22 +60,6 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         this.itemMapper = itemMapper;
     }
 
-    public enum UpdateType {
-        SET("SET"),
-        ADD("ADD");
-
-        private final String value;
-
-        UpdateType(String value) {
-            this.value = value;
-        }
-
-        @Override
-        public String toString() {
-            return this.value;
-        }
-    }
-
     private List<String> getPhysicalUpdateExpressionForAction(RequestWrapper request,
                                                                Map<String, AttributeValue> actions,
                                                                String delimiter) {
