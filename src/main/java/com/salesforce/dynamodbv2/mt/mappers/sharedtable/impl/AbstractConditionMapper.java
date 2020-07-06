@@ -124,7 +124,7 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         if (updatedField.equals(primaryKey.getHashKey()) || (primaryKey.getRangeKey().isPresent()
             && updatedField.equals(primaryKey.getRangeKey().get()))) {
             throw new IllegalArgumentException(
-                String.format("Cannot update attribute %s. This secondary index is part of the index key",
+                String.format("Cannot update attribute %s with ADD. This secondary index is part of the index key",
                     updatedField));
         }
     }
