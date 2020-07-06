@@ -34,6 +34,7 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
 
     private final HashPartitioningKeyMapper keyMapper;
     private final Multimap<String, String> secondaryIndexFieldPartners;
+    private final List<DynamoSecondaryIndex> secondaryIndexes;
 
     HashPartitioningConditionMapper(String context,
                                     DynamoTableDescription virtualTable,
@@ -42,6 +43,7 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
         super(context, virtualTable, itemMapper);
         this.keyMapper = keyMapper;
         this.secondaryIndexFieldPartners = getSecondaryIndexFieldPartners(virtualTable);
+        this.secondaryIndexes = virtualTable.getSis();
     }
 
     /**
@@ -66,13 +68,20 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
     protected void validateFieldsCanBeUpdated(UpdateActions allUpdateActions) {
         super.validateFieldsCanBeUpdated(allUpdateActions);
 
-        Set<String> allKeys = allUpdateActions.getMergedKeySet();
+        Set<String> addUpdateFields = allUpdateActions.getAddActions().keySet();
+        Set<String> setUpdateFields = allUpdateActions.getSetActions().keySet();
 
-        for (String field : allKeys) {
+        addUpdateFields.forEach(updatedField -> {
+            secondaryIndexes.stream().forEach(index -> {
+                validateUpdatedFieldIsNotInIndexKey(updatedField, index);
+            });
+        });
+
+        for (String field : setUpdateFields) {
             Collection<String> indexPartners = secondaryIndexFieldPartners.get(field);
             if (indexPartners != null) {
                 for (String indexPartner : indexPartners) {
-                    if (!(allKeys).contains(indexPartner)) {
+                    if (!(setUpdateFields).contains(indexPartner)) {
                         throw new IllegalArgumentException("Cannot update attribute " + field
                             + ", The other key attribute in a secondary index is not being updated");
                     }

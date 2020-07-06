@@ -571,12 +571,10 @@ class UpdateTest {
                     fail("Update expression containing add with only one key attribute being updated");
                 }
             } catch (IllegalArgumentException e) {
-                assertTrue(e.getMessage().contains("The other key attribute in a secondary index is not being "
-                    + "updated"));
+                assertTrue(e.getMessage().contains("This secondary index is part of the index key"));
             }
 
             String expectedNewValue = String.valueOf(Integer.parseInt(GSI2_RK_FIELD_VALUE + "999") + 2);
-
             ItemBuilder itemBuilder = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
                 .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
                 .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
@@ -635,17 +633,33 @@ class UpdateTest {
                     + GSI2_RK_FIELD + " :rkValue")
                     .withConditionExpression(GSI2_RK_FIELD + " = :currentValue");
             }
-            testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+
+            try {
+                testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
+                if (testArgument.getAmazonDynamoDbStrategy().equals(HashPartitioning)) {
+                    fail("Update expression containing add with only one key attribute being updated");
+                }
+            } catch (IllegalArgumentException e) {
+                assertTrue(e.getMessage().contains("This secondary index is part of the index key"));
+            }
 
             String expectedNewValue = String.valueOf(Integer.parseInt(GSI2_RK_FIELD_VALUE) * 2);
-            assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
-                    .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
-                    .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
-                    .indexField(S, INDEX_FIELD_VALUE)
-                    .gsiHkField(S, GSI_HK_FIELD_VALUE)
-                    .gsi2HkField(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated")
-                    .gsi2RkField(N, expectedNewValue)
-                    .build(),
+            ItemBuilder itemBuilder = ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
+                .someField(S, SOME_OTHER_FIELD_VALUE + TABLE3 + org)
+                .rangeKey(S, RANGE_KEY_OTHER_S_VALUE)
+                .indexField(S, INDEX_FIELD_VALUE)
+                .gsiHkField(S, GSI_HK_FIELD_VALUE)
+                .gsi2HkField(S, GSI2_HK_FIELD_VALUE);
+
+            if (testArgument.getAmazonDynamoDbStrategy().equals(HashPartitioning)) {
+                // this is the starting value before set and add attempt
+                itemBuilder.gsi2RkField(N, GSI2_RK_FIELD_VALUE);
+            } else {
+                itemBuilder.gsi2HkField(S, GSI2_HK_FIELD_VALUE + TABLE3 + org + "Updated");
+                itemBuilder.gsi2RkField(N, expectedNewValue);
+            }
+
+            assertEquals(itemBuilder.build(),
                 getItem(testArgument.getAmazonDynamoDb(),
                     TABLE3,
                     HASH_KEY_VALUE,

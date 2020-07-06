@@ -20,7 +20,6 @@ import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.ComparisonOperator;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
-import com.amazonaws.services.dynamodbv2.xspec.UpdateAction;
 import com.google.common.annotations.VisibleForTesting;
 import com.salesforce.dynamodbv2.grammar.ExpressionsBaseVisitor;
 import com.salesforce.dynamodbv2.grammar.ExpressionsLexer;
@@ -136,6 +135,16 @@ abstract class AbstractConditionMapper implements ConditionMapper {
         }
     }
 
+    protected void validateUpdatedFieldIsNotInIndexKey(String updatedField, DynamoSecondaryIndex index) {
+        PrimaryKey primaryKey = index.getPrimaryKey();
+        if (updatedField.equals(primaryKey.getHashKey()) || (primaryKey.getRangeKey().isPresent()
+            && updatedField.equals(primaryKey.getRangeKey().get()))) {
+            throw new IllegalArgumentException(
+                String.format("Cannot update attribute %s. This secondary index is part of the index key",
+                    updatedField));
+        }
+    }
+
     private String getUpdateClause(RequestWrapper request, String field, AttributeValue value, String delimiter) {
         String fieldPlaceholder = MappingUtils.getNextFieldPlaceholder(request);
         request.putExpressionAttributeName(fieldPlaceholder, field);
@@ -168,11 +177,20 @@ abstract class AbstractConditionMapper implements ConditionMapper {
             this.addActions = new HashMap<>();
         }
 
-        protected Map<String, AttributeValue> getSetActions() {
+        Map<String, AttributeValue> getSetActions() {
             return setActions;
         }
 
-        public Set<String> getMergedKeySet() {
+        Map<String, AttributeValue> getAddActions() {
+            return addActions;
+        }
+
+        @VisibleForTesting
+        void setSetActions(Map<String, AttributeValue> setActions) {
+            this.setActions = setActions;
+        }
+
+        Set<String> getMergedKeySet() {
             Set<String> mergedKeySet = new HashSet<>();
             mergedKeySet.addAll(setActions.keySet());
             mergedKeySet.addAll(addActions.keySet());
