@@ -35,17 +35,16 @@ import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.amazonaws.services.dynamodbv2.model.UpdateItemRequest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.UnsignedBytes;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.DynamoTableDescription;
 import com.salesforce.dynamodbv2.mt.mappers.metadata.PrimaryKey;
+import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.AbstractConditionMapper.UpdateActions;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.AbstractQueryAndScanMapper.QueryRequestWrapper;
 import com.salesforce.dynamodbv2.mt.mappers.sharedtable.impl.HashPartitioningTestUtil.TestHashKeyValue;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.junit.jupiter.api.Test;
@@ -68,7 +67,7 @@ class HashPartitioningConditionMapperTest {
 
         RequestWrapper requestWrapper = new HashPartitioningConditionMapper.UpdateExpressionRequestWrapper(request);
         Map<String, AttributeValue> result = AbstractConditionMapper.parseUpdateExpression(requestWrapper,
-            null);
+            null).getSetActions();
         assertEquals(ImmutableMap.of(VIRTUAL_GSI_HK, gsiHkValue, VIRTUAL_GSI_RK, gsiRkValue), result);
     }
 
@@ -85,25 +84,62 @@ class HashPartitioningConditionMapperTest {
         HashPartitioningTableMapping tableMapping = getTableMapping(virtualTable);
         HashPartitioningConditionMapper mapper = tableMapping.getConditionMapper();
 
+        UpdateActions updateActions = new UpdateActions();
+
         // cannot update table primary key fields
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of(VIRTUAL_HK));
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of(VIRTUAL_RK));
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of(VIRTUAL_HK, VIRTUAL_RK));
+        updateActions.setSetActions(ImmutableMap.of(
+            VIRTUAL_HK, new AttributeValue().withS("value")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
+
+        updateActions.setSetActions(ImmutableMap.of(
+            VIRTUAL_RK, new AttributeValue().withS("value")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
+
+        updateActions.setSetActions(ImmutableMap.of(
+            VIRTUAL_HK, new AttributeValue().withS("value1"),
+            VIRTUAL_RK, new AttributeValue().withS("value2")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
 
         // can update a field only if all other index partner fields are updated
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of("A", "B"));
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of("A", "C"));
-        validateFieldsCanBeUpdatedError(mapper, ImmutableSet.of("A", "B", "C"));
+        updateActions.setSetActions(ImmutableMap.of(
+            "A", new AttributeValue().withS("value1"),
+            "B", new AttributeValue().withS("value2")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
+
+        updateActions.setSetActions(ImmutableMap.of(
+            "A", new AttributeValue().withS("value1"),
+            "C", new AttributeValue().withS("value2")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
+
+        updateActions.setSetActions(ImmutableMap.of(
+            "A", new AttributeValue().withS("value"),
+            "B", new AttributeValue().withS("value"),
+            "C", new AttributeValue().withS("value")));
+        validateFieldsCanBeUpdatedError(mapper, updateActions);
 
         // valid field combinations
-        mapper.validateFieldsCanBeUpdated(ImmutableSet.of("A", "B", "C", "D"));
-        mapper.validateFieldsCanBeUpdated(ImmutableSet.of("E", "F"));
-        mapper.validateFieldsCanBeUpdated(Collections.emptySet());
+        updateActions.setSetActions(ImmutableMap.of(
+            "A", new AttributeValue().withN("1"),
+            "B", new AttributeValue().withN("2"),
+            "C", new AttributeValue().withN("3"),
+            "D", new AttributeValue().withN("4")));
+        assertEquals(4, updateActions.getSetActions().size());
+        mapper.validateFieldsCanBeUpdated(updateActions);
+
+        updateActions.setSetActions(ImmutableMap.of(
+            "E", new AttributeValue().withN("1"),
+            "F", new AttributeValue().withN("2")));
+        assertEquals(2, updateActions.getSetActions().size());
+        mapper.validateFieldsCanBeUpdated(updateActions);
+
+        updateActions.setSetActions(Collections.emptyMap());
+        assertEquals(Collections.emptyMap(), updateActions.getSetActions());
+        mapper.validateFieldsCanBeUpdated(updateActions);
     }
 
-    private void validateFieldsCanBeUpdatedError(HashPartitioningConditionMapper mapper, Set<String> allSetFields) {
+    private void validateFieldsCanBeUpdatedError(HashPartitioningConditionMapper mapper, UpdateActions allUpdates) {
         try {
-            mapper.validateFieldsCanBeUpdated(allSetFields);
+            mapper.validateFieldsCanBeUpdated(allUpdates);
             fail("validateFieldsCanBeUpdated() should have thrown exception");
         } catch (AmazonServiceException | IllegalArgumentException e) {
             // expected

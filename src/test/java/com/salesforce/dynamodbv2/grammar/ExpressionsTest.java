@@ -7,6 +7,8 @@
 
 package com.salesforce.dynamodbv2.grammar;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.amazon.dynamodb.grammar.DynamoDbExpressionParser;
 import com.amazon.dynamodb.grammar.DynamoDbGrammarParser;
 import com.amazonaws.services.dynamodbv2.local.shared.env.LocalDBEnv;
@@ -17,6 +19,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.antlr.v4.runtime.ANTLRErrorListener;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -33,7 +36,6 @@ import org.junit.jupiter.params.provider.ValueSource;
  * These tests are helpful for developing request expression grammars / parsing, but don't actually assert anything,
  * and are therefore disabled.
  */
-@Disabled
 class ExpressionsTest {
 
     /*@ParameterizedTest
@@ -61,7 +63,14 @@ class ExpressionsTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "SET #field1 = :value1",
-        "sEt Score = :value1, CreatedBy = :value2"
+        "sEt Score = :value1, CreatedBy = :value2",
+        "add Score :value2",
+        "Set Score = :value1 add Score :value2",
+        "set #hkField = :hkValue, #rkField = :rkValue",
+
+        "ADD Score :value2, CreatedBy :value1", // add multiple
+        "sEt Score = :value1, CreatedBy = :value2 ADD Score :value2", // set multiple, add once
+        "sEt Score = :value1, CreatedBy = :value2 ADD Score :value2, CreatedBy :value1" // set multiple, add multiple
     })
     void testParseUpdateExpression(String expression) {
         // our grammar
@@ -69,16 +78,49 @@ class ExpressionsTest {
             = new ExpressionsParser(new CommonTokenStream(new ExpressionsLexer(CharStreams.fromString(expression))));
         UpdateExpressionContext context = parser.updateExpression();
 
-        System.out.println("Our tree: " + TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames)));
-
         // dynamodb local grammar
         ANTLRErrorListener listener = new ExpressionErrorListener(new LocalDBEnv());
         ParseTree tree = DynamoDbExpressionParser.parseUpdate(expression, listener);
 
-        System.out.println("Their tree: "
-            + TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames)));
+        String dynamodbTree = TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames));
+        String ourTree = TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames));
+
+        /*  filter out tree levels that can be ignored
+            - operand is only present in dynamodb tree level before a set value level
+            - update is present in both trees but dynamodb shows update for two levels and
+                our tree shows updateExpression
+            - addValue is only present in our tree to describe the value being added
+         */
+        List<String> dynamodbTreeLevels = Arrays.stream(dynamodbTree.split("\\r?\\n"))
+            .filter(x -> !x.contains("operand") && !x.contains("update"))
+            .collect(Collectors.toList());
+
+        List<String> ourTreeLevels = Arrays.stream(ourTree.split("\\r?\\n"))
+            .filter(x -> !x.contains("operand") && !x.contains("update") && !x.contains("addValue"))
+            .collect(Collectors.toList());
+
+        // assert both trees match
+        int level = 0;
+        for (String ourTreeLevel: ourTreeLevels) {
+            String dynamodbTreeLevel = dynamodbTreeLevels.get(level);
+
+            if (dynamodbTreeLevel.contains("_section") || dynamodbTreeLevel.contains("_action")
+                || dynamodbTreeLevel.contains("_value")) {
+                // dynamodb and our tree contain the same text but differ in the delimiter used and case sensitivity
+                dynamodbTreeLevel.replace("_", "").toLowerCase();
+                ourTreeLevel.toLowerCase();
+            } else if (dynamodbTreeLevel.contains("EOF") || dynamodbTreeLevel.contains("literal")) {
+                // for a SET update value, the dynamodb tree has an `operand` level right before the update value,
+                // causing the additional indentation, for add there is no additional indentation
+                assertEquals(dynamodbTreeLevel.trim(), ourTreeLevel.trim());
+            } else {
+                assertEquals(dynamodbTreeLevels.get(level), "  " + ourTreeLevel);
+            }
+            level++;
+        }
     }
 
+    @Disabled // no assertions present
     @ParameterizedTest
     @ValueSource(strings = {
         "#hk = :hk",
@@ -101,6 +143,7 @@ class ExpressionsTest {
             + TreeUtils.toPrettyTree(tree, Arrays.asList(DynamoDbGrammarParser.ruleNames)));
     }
 
+    @Disabled // no assertions present
     @ParameterizedTest
     @ValueSource(strings = {
         "#hk = :hk",

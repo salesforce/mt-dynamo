@@ -34,6 +34,7 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
 
     private final HashPartitioningKeyMapper keyMapper;
     private final Multimap<String, String> secondaryIndexFieldPartners;
+    private final List<DynamoSecondaryIndex> secondaryIndexes;
 
     HashPartitioningConditionMapper(String context,
                                     DynamoTableDescription virtualTable,
@@ -42,6 +43,7 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
         super(context, virtualTable, itemMapper);
         this.keyMapper = keyMapper;
         this.secondaryIndexFieldPartners = getSecondaryIndexFieldPartners(virtualTable);
+        this.secondaryIndexes = virtualTable.getSis();
     }
 
     /**
@@ -63,14 +65,23 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
     }
 
     @Override
-    protected void validateFieldsCanBeUpdated(Set<String> allSetFields) {
-        super.validateFieldsCanBeUpdated(allSetFields);
+    protected void validateFieldsCanBeUpdated(UpdateActions allUpdateActions) {
+        super.validateFieldsCanBeUpdated(allUpdateActions);
 
-        for (String field : allSetFields) {
+        Set<String> addUpdateFields = allUpdateActions.getAddActions().keySet();
+        Set<String> setUpdateFields = allUpdateActions.getSetActions().keySet();
+
+        addUpdateFields.forEach(updatedField -> {
+            secondaryIndexes.stream().forEach(index -> {
+                validateUpdatedFieldIsNotInIndexKey(updatedField, index);
+            });
+        });
+
+        for (String field : setUpdateFields) {
             Collection<String> indexPartners = secondaryIndexFieldPartners.get(field);
             if (indexPartners != null) {
                 for (String indexPartner : indexPartners) {
-                    if (!allSetFields.contains(indexPartner)) {
+                    if (!(setUpdateFields).contains(indexPartner)) {
                         throw new IllegalArgumentException("Cannot update attribute " + field
                             + ", The other key attribute in a secondary index is not being updated");
                     }

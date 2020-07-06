@@ -17,6 +17,8 @@ public class ItemBuilder {
     public static final String HASH_KEY_FIELD = "hashKeyField";
     public static final String RANGE_KEY_FIELD = "rangeKeyField";
     public static final String SOME_FIELD = "someField";
+    public static final String SOME_OTHER_FIELD = "someOtherField";
+    public static final String SOME_OTHER_OTHER_FIELD = "someOtherOtherField";
     public static final String INDEX_FIELD = "indexField";
     public static final String GSI_HK_FIELD = "gsiHkField";
     public static final String GSI2_HK_FIELD = "gsi2HkField";
@@ -52,6 +54,16 @@ public class ItemBuilder {
 
     public ItemBuilder someField(ScalarAttributeType type, String someFieldValue) {
         this.item.put(SOME_FIELD, createAttributeValue(type, someFieldValue));
+        return this;
+    }
+
+    public ItemBuilder someOtherField(ScalarAttributeType type, String someOtherFieldValue) {
+        this.item.put(SOME_OTHER_FIELD, createAttributeValue(type, someOtherFieldValue));
+        return this;
+    }
+
+    public ItemBuilder someOtherOtherField(ScalarAttributeType type, String someOtherOtherFieldValue) {
+        this.item.put(SOME_OTHER_OTHER_FIELD, createAttributeValue(type, someOtherOtherFieldValue));
         return this;
     }
 

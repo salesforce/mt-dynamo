@@ -1,12 +1,18 @@
 grammar Expressions;
 
-// not supported: REMOVE, ADD, DELETE
+// not supported: REMOVE, DELETE
 updateExpression
     : setSection EOF
+    | addSection EOF
+    | setSection addSection EOF
     ;
 
 setSection
     : SET setAction (COMMA setAction)*
+    ;
+
+addSection
+    : ADD addAction (COMMA addAction)*
     ;
 
 // not supported: path = setValue + setValue, path = setValue - setValue
@@ -14,8 +20,16 @@ setAction
     : path '=' setValue
     ;
 
+addAction
+    : path addValue
+    ;
+
 // not supported: non-literal value, if_not_exists, list_append
 setValue
+    : literal
+    ;
+
+addValue
     : literal
     ;
 
@@ -79,6 +93,10 @@ FIELD_PLACEHOLDER
 
 SET
     : [sS][eE][tT]
+    ;
+
+ADD
+    : [aA][dD][dD]
     ;
 
 BETWEEN
