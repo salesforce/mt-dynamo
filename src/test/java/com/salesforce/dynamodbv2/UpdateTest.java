@@ -100,7 +100,7 @@ class UpdateTest {
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
                 .withUpdateExpression("add #someOtherField :" + SOME_OTHER_FIELD_VALUE)
-                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField","someOtherField"))
+                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField", "someOtherField"))
                 .withExpressionAttributeValues(ImmutableMap.of(":" + SOME_OTHER_FIELD_VALUE,
                     createNumberAttribute("1")));
 
@@ -132,12 +132,12 @@ class UpdateTest {
                 .withTableName(TABLE1)
                 .withKey(updateItemKey)
                 .withUpdateExpression("add #someOtherField :" + SOME_OTHER_FIELD_VALUE)
-                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField","someOtherField"))
+                .withExpressionAttributeNames(ImmutableMap.of("#someOtherField", "someOtherField"))
                 .withExpressionAttributeValues(ImmutableMap.of(":" + SOME_OTHER_FIELD_VALUE,
                     createNumberAttribute("1")));
 
             // during the second iteration, someOtherField already exists so its value will be incremented by 1
-            String[] expectedValues = new String[]{"1", "2"};
+            String[] expectedValues = new String[] { "1", "2" };
             for (String expectedValue : expectedValues) {
                 testArgument.getAmazonDynamoDb().updateItem(updateItemRequest);
                 assertEquals(ItemBuilder.builder(testArgument.getHashKeyAttrType(), HASH_KEY_VALUE)
@@ -286,6 +286,7 @@ class UpdateTest {
     /**
      * The test ensures that if a field name appears in a conditional expression for an update expression
      * containing set, the conditional expression still works as expected.
+     *
      * @param testArgument argument for testing.
      */
     @ParameterizedTest(name = "{arguments}")
@@ -318,6 +319,7 @@ class UpdateTest {
     /**
      * The test ensures that if a field name appears in a conditional expression for an update expression
      * containing add, the conditional expression still works as expected.
+     *
      * @param testArgument argument for testing.
      */
     @ParameterizedTest(name = "{arguments}")
@@ -348,6 +350,7 @@ class UpdateTest {
     /**
      * The test ensures that if a field name appears in a conditional expression for an update expression
      * containing set and add, the conditional expression still works as expected.
+     *
      * @param testArgument argument for testing.
      */
     @ParameterizedTest(name = "{arguments}")

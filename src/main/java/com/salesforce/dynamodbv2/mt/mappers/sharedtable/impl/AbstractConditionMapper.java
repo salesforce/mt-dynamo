@@ -61,8 +61,8 @@ abstract class AbstractConditionMapper implements ConditionMapper {
     }
 
     private List<String> getPhysicalUpdateExpressionForAction(RequestWrapper request,
-                                                               Map<String, AttributeValue> actions,
-                                                               String delimiter) {
+                                                              Map<String, AttributeValue> actions,
+                                                              String delimiter) {
         // map virtual field values to physical ones
         Map<String, AttributeValue> physicalActions = itemMapper.applyForWrite(actions);
 

@@ -71,11 +71,8 @@ class HashPartitioningConditionMapper extends AbstractConditionMapper {
         Set<String> addUpdateFields = allUpdateActions.getAddActions().keySet();
         Set<String> setUpdateFields = allUpdateActions.getSetActions().keySet();
 
-        addUpdateFields.forEach(updatedField -> {
-            secondaryIndexes.stream().forEach(index -> {
-                validateUpdatedFieldIsNotInIndexKey(updatedField, index);
-            });
-        });
+        addUpdateFields.forEach(updatedField -> secondaryIndexes.forEach(index ->
+            validateUpdatedFieldIsNotInIndexKey(updatedField, index)));
 
         for (String field : setUpdateFields) {
             Collection<String> indexPartners = secondaryIndexFieldPartners.get(field);
