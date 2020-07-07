@@ -86,8 +86,8 @@ class ExpressionsTest {
         String ourTree = TreeUtils.toPrettyTree(context, Arrays.asList(ExpressionsParser.ruleNames));
 
         /*  filter out tree levels that can be ignored
-            - operand is only present in dynamodb tree level before a set value level
-            - update is present in both trees but dynamodb shows update for two levels and
+            - operand is only present in DynamoDB tree level before a set value level
+            - update is present in both trees but DynamoDB shows update for two levels and
                 our tree shows updateExpression
             - addValue is only present in our tree to describe the value being added
          */
@@ -101,14 +101,14 @@ class ExpressionsTest {
 
         // assert both trees match
         int level = 0;
-        for (String ourTreeLevel: ourTreeLevels) {
+        for (String ourTreeLevel : ourTreeLevels) {
             String dynamodbTreeLevel = dynamodbTreeLevels.get(level);
 
             if (dynamodbTreeLevel.contains("_section") || dynamodbTreeLevel.contains("_action")
                 || dynamodbTreeLevel.contains("_value")) {
                 // dynamodb and our tree contain the same text but differ in the delimiter used and case sensitivity
-                dynamodbTreeLevel.replace("_", "").toLowerCase();
-                ourTreeLevel.toLowerCase();
+                assertEquals(dynamodbTreeLevel.replace("_", "").toLowerCase().trim(),
+                    ourTreeLevel.toLowerCase().trim());
             } else if (dynamodbTreeLevel.contains("EOF") || dynamodbTreeLevel.contains("literal")) {
                 // for a SET update value, the dynamodb tree has an `operand` level right before the update value,
                 // causing the additional indentation, for add there is no additional indentation

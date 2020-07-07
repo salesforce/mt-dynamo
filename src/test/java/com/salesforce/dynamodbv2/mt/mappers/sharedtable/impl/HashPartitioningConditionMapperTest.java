@@ -133,7 +133,7 @@ class HashPartitioningConditionMapperTest {
         mapper.validateFieldsCanBeUpdated(updateActions);
 
         updateActions.setSetActions(Collections.emptyMap());
-        assertEquals(Collections.emptyMap(), updateActions.getSetActions());
+        assertEquals(Collections.<String, AttributeValue>emptyMap(), updateActions.getSetActions());
         mapper.validateFieldsCanBeUpdated(updateActions);
     }
 
