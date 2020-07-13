@@ -1,7 +1,6 @@
-[![Build Status](https://travis-ci.org/salesforce/mt-dynamo.svg?branch=master)](https://travis-ci.org/salesforce/mt-dynamo)
-[![Coverage Status](https://codecov.io/gh/salesforce/mt-dynamo/branch/master/graph/badge.svg)](https://codecov.io/gh/salesforce/mt-dynamo)
+# Status: Archived
 
-
+This project is no longer actively maintained.  There's no plan to address issues, provide ongoing support, or updates.  We are leaving the repo here for reference.
 
 # Multitenant AWS Dynamo SDK (mt-dynamodb)
 
@@ -122,9 +121,3 @@ See `DocGeneratorRunner` for examples of how to configure builders for each of t
 ## Release Notes
 
 See [CHANGELOG.md](CHANGELOG.md)
-
-## Backlog
-
-- Additional support for the remainder of the API for all 3 impls.
-- Add support for updateTable with table definition invalidation and/or cache timeouts.
-- Add support for choosing using `LSI` when there is a `GSI` with matching key schema data types.
