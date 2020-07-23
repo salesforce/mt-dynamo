@@ -48,8 +48,13 @@ public class HashPartitioningKeyMapper {
             return new AttributeValue().withB(byteBuffer);
         }
 
+<<<<<<< Updated upstream
         public static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
             ByteBuffer byteBuffer = value.getB().rewind();
+=======
+        static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
+            ByteBuffer byteBuffer = value.getB().duplicate().rewind();
+>>>>>>> Stashed changes
             byte[] contextBytes = new byte[byteBuffer.getShort()];
             byteBuffer.get(contextBytes);
             byte[] tableNameBytes = new byte[byteBuffer.getShort()];
