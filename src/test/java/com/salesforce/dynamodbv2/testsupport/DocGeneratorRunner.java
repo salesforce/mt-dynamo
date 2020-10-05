@@ -93,7 +93,6 @@ import org.junit.jupiter.api.Test;
  */
 @Disabled
 class DocGeneratorRunner {
-
     private static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
     private static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
     private static final boolean SKIP_ACCOUNT_TEST = false;
