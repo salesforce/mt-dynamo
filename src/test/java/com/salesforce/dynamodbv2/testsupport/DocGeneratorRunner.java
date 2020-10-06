@@ -93,7 +93,6 @@ import org.junit.jupiter.api.Test;
  */
 @Disabled
 class DocGeneratorRunner {
-
     private static final TestAccountMapper LOCAL_DYNAMO_ACCOUNT_MAPPER = new TestAccountMapper();
     private static final TestAccountCredentialsMapper HOSTED_DYNAMO_ACCOUNT_MAPPER = new TestAccountCredentialsMapper();
     private static final boolean SKIP_ACCOUNT_TEST = false;
@@ -113,8 +112,6 @@ class DocGeneratorRunner {
      * logger -> account
      */
     @Test
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     void byAccount() {
         if (SKIP_ACCOUNT_TEST) {
             return;
@@ -135,8 +132,6 @@ class DocGeneratorRunner {
     /*
      * table -> logger
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTable() {
         AmazonDynamoDB amazonDynamoDb =
@@ -155,8 +150,6 @@ class DocGeneratorRunner {
     /*
      * shared_table -> logger
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTable() {
         AmazonDynamoDB amazonDynamoDb =
@@ -175,8 +168,6 @@ class DocGeneratorRunner {
     /*
      * table -> logger -> account
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -199,8 +190,6 @@ class DocGeneratorRunner {
     /*
      * shared_table -> logger -> account
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -224,8 +213,6 @@ class DocGeneratorRunner {
     /*
      * table -> shared_table -> logger
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTable() {
         AmazonDynamoDB amazonDynamoDb =
@@ -245,8 +232,6 @@ class DocGeneratorRunner {
     /*
      * shared_table -> table -> logger
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTable() {
         AmazonDynamoDB amazonDynamoDb =
@@ -266,8 +251,6 @@ class DocGeneratorRunner {
     /*
      * table -> shared_table -> logger -> account
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void byTableBySharedTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
@@ -292,8 +275,6 @@ class DocGeneratorRunner {
     /*
      * shared_table -> table -> logger -> account
      */
-    // Suppresses "'lambda arguments' has incorrect indentation level" warning.
-    @SuppressWarnings("checkstyle:Indentation")
     @Test
     void bySharedTableByTableByAccount() {
         if (SKIP_ACCOUNT_TEST) {
