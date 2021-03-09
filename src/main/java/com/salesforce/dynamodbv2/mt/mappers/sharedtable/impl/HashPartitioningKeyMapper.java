@@ -49,7 +49,7 @@ public class HashPartitioningKeyMapper {
         }
 
         public static MtContextAndTable fromPhysicalHashKey(AttributeValue value) {
-            ByteBuffer byteBuffer = value.getB().rewind();
+            ByteBuffer byteBuffer = value.getB().duplicate().rewind();
             byte[] contextBytes = new byte[byteBuffer.getShort()];
             byteBuffer.get(contextBytes);
             byte[] tableNameBytes = new byte[byteBuffer.getShort()];
